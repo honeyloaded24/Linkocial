@@ -168,7 +168,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/providers/{id}/toggle', [AdminController::class, 'toggleProviderStatus'])->name('hq.providers.toggle');
         Route::delete('/providers/{id}', [AdminController::class, 'destroyProvider'])->name('hq.providers.destroy');
         Route::get('/providers/{id}/balance', [AdminController::class, 'providerBalance']);
-        Route::get('/providers/{id}/services-count', [AdminController::class, 'providerServicesCount']);
+        Route::get('/providers/{id}/debug-sync', [AdminController::class, 'debugProviderSync'])->name('hq.providers.debug');
         Route::get('/logs', [AdminController::class, 'activityLogs'])->name('hq.logs');
         Route::get('/queues', [AdminController::class, 'queueStatus'])->name('hq.queues');
         Route::get('/financial-transactions', [AdminController::class, 'allTransactions'])->name('hq.transactions');

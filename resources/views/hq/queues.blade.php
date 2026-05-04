@@ -55,6 +55,67 @@
         </div>
     </div>
 
+    <!-- Scheduled Tasks Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="premium-card p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid var(--primary-color) !important;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-primary-custom"><i class="fa-solid fa-calendar-check me-2"></i>Automation Schedule (Cron)</h5>
+                        <p class="text-muted small mb-0">High-authority timeline for recurring background tasks</p>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-borderless align-middle mb-0">
+                        <thead>
+                            <tr class="text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">
+                                <th class="ps-0">Task Command</th>
+                                <th>Frequency</th>
+                                <th>Next Scheduled Run</th>
+                                <th class="text-end pe-0">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($scheduledTasks as $task)
+                            <tr class="border-bottom border-light">
+                                <td class="ps-0">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="bg-white rounded-3 p-2 shadow-sm border">
+                                            <i class="fa-solid fa-terminal text-primary small"></i>
+                                        </div>
+                                        <div>
+                                            <code class="text-primary-custom fw-bold small">{{ $task['command'] }}</code>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-white text-dark border fw-medium px-3 py-2 rounded-pill">
+                                        <i class="fa-solid fa-repeat me-1 opacity-50"></i> {{ $task['expression'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fw-bold small text-dark">{{ $task['next_run'] }}</div>
+                                    <div class="text-muted" style="font-size: 0.7rem;">UTC Time</div>
+                                </td>
+                                <td class="text-end pe-0">
+                                    <span class="badge bg-success-soft text-success rounded-pill px-3 py-2">
+                                        <i class="fa-solid fa-clock-rotate-left me-1"></i> Standing By
+                                    </span>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted small">No scheduled tasks identified.</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Failed Jobs Section -->
     <div class="row">
         <div class="col-12">

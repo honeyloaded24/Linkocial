@@ -238,15 +238,20 @@ class AdminController extends Controller
     }
 
     /**
-     * Get Provider Services Count via AJAX
+     * Debug and View Raw Provider Services (High-Authority Diagnostic)
      */
-    public function providerServicesCount($id, SmmProviderService $smmService)
+    public function debugProviderSync($id, SmmProviderService $smmService)
     {
         $provider = Provider::findOrFail($id);
-        $services = $smmService->getServices($provider);
+        $rawServices = $smmService->getServices($provider);
 
         return response()->json([
-            'count' => $services && is_array($services) ? count($services) : 'Error'
+            'provider' => $provider->name,
+            'api_url' => $provider->api_url,
+            'count' => is_array($rawServices) ? count($rawServices) : 0,
+            'structure_type' => gettype($rawServices),
+            'sample_service' => is_array($rawServices) && !empty($rawServices) ? array_slice($rawServices, 0, 1) : 'No data received',
+            'raw_payload' => $rawServices
         ]);
     }
 
@@ -944,7 +949,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Show background queue status and failed jobs
+     * Show background queue status, failed jobs, and scheduled tasks
      */
     public function queueStatus()
     {
@@ -959,6 +964,17 @@ class AdminController extends Controller
 
         $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->latest()->paginate(15);
         
-        return view('hq.queues', compact('queueSize', 'failedJobs'));
+        // Get Scheduled Tasks (Cron Jobs)
+        $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+        $scheduledTasks = collect($schedule->events())->map(function ($event) {
+            return [
+                'command' => $event->command,
+                'expression' => $event->expression,
+                'next_run' => $event->nextRunDate()->format('Y-m-d H:i:s'),
+                'description' => $event->description,
+            ];
+        });
+
+        return view('hq.queues', compact('queueSize', 'failedJobs', 'scheduledTasks'));
     }
 }

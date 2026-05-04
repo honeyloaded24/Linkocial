@@ -63,6 +63,10 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ route('hq.providers.debug', $provider->id) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-circle" title="Debug API Response" style="width: 32px; height: 32px; padding: 0; line-height: 30px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-bug" style="font-size: 0.75rem;"></i>
+                                    </a>
+                                    
                                     <button class="btn btn-sm btn-outline-primary rounded-circle" title="Edit Provider" onclick="editProvider('{{ $provider->name }}', '{{ $provider->api_url }}')" data-bs-toggle="modal" data-bs-target="#addProviderModal" style="width: 32px; height: 32px; padding: 0;">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
