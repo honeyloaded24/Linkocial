@@ -941,5 +941,22 @@ class AdminController extends Controller
         \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $request->all());
 
         return back()->with('success', 'Settings updated successfully.');
+        /**
+     * Show background queue status and failed jobs
+     */
+    public function queueStatus()
+    {
+        $queueSize = 0;
+        try {
+            // Using the discovered prefix: linkocial-database-
+            // Laravel's Redis facade prepends the prefix automatically if configured
+            $queueSize = \Illuminate\Support\Facades\Redis::llen('queues:default');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Redis Queue Monitor Error: " . $e->getMessage());
+        }
+
+        $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->latest()->paginate(15);
+        
+        return view('hq.queues', compact('queueSize', 'failedJobs'));
     }
 }

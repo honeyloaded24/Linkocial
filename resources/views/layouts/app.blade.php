@@ -163,6 +163,9 @@
                                 <a href="{{ route('hq.logs') }}" class="nav-link mb-2 {{ request()->routeIs('hq.logs*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
                                 </a>
+                                <a href="{{ route('hq.queues') }}" class="nav-link mb-2 {{ request()->routeIs('hq.queues*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-bolt-lightning"></i> Queue Monitor
+                                </a>
                                 <a href="{{ route('hq.settings') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-gears"></i> Settings
                                 </a>

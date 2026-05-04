@@ -170,6 +170,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/providers/{id}/balance', [AdminController::class, 'providerBalance']);
         Route::get('/providers/{id}/services-count', [AdminController::class, 'providerServicesCount']);
         Route::get('/logs', [AdminController::class, 'activityLogs'])->name('hq.logs');
+        Route::get('/queues', [AdminController::class, 'queueStatus'])->name('hq.queues');
         Route::get('/financial-transactions', [AdminController::class, 'allTransactions'])->name('hq.transactions');
         
         Route::get('/tickets', [AdminController::class, 'hqTickets'])->name('hq.tickets');
