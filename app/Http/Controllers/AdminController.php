@@ -964,8 +964,14 @@ class AdminController extends Controller
 
         $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->latest()->paginate(15);
         
-        // Get Scheduled Tasks (Cron Jobs)
+        // Get Scheduled Tasks (Cron Jobs) - Bootstrapping for Laravel 11
         $schedule = app(\Illuminate\Console\Scheduling\Schedule::class);
+        
+        // Ensure console routes are loaded to populate the schedule
+        if (file_exists(base_path('routes/console.php'))) {
+            require base_path('routes/console.php');
+        }
+
         $scheduledTasks = collect($schedule->events())->map(function ($event) {
             return [
                 'command' => $event->command,
