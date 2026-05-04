@@ -107,16 +107,18 @@
         <div class="d-flex align-items-center justify-content-between mb-3 px-1">
             <h6 class="fw-bold mb-0 text-uppercase small text-muted" style="letter-spacing: 1px;">Service Channels</h6>
         </div>
-        <div class="d-flex flex-wrap gap-3 pb-2">
+        <div class="row g-2 g-md-3">
             @foreach($channels as $channel)
-            <a href="{{ route('orders.create', ['channel' => $channel['name']]) }}" class="text-decoration-none">
-                <div class="premium-card p-2 px-3 d-flex align-items-center gap-3" style="min-width: 160px; transition: all 0.3s ease; cursor: pointer; border-radius: 50px;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--primary-color)'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--border-color)'">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 38px; height: 38px; background: {{ $channel['color'] }}15; color: {{ $channel['color'] }};">
-                        <i class="fa-brands {{ $channel['icon'] }} fa-lg"></i>
+            <div class="col-6 col-md-auto">
+                <a href="{{ route('orders.create', ['channel' => $channel['name']]) }}" class="text-decoration-none">
+                    <div class="premium-card p-2 px-3 d-flex align-items-center gap-3 h-100" style="min-width: 100%; md-min-width: 160px; transition: all 0.3s ease; cursor: pointer; border-radius: 50px;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--primary-color)'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--border-color)'">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px; background: {{ $channel['color'] }}15; color: {{ $channel['color'] }};">
+                            <i class="fa-brands {{ $channel['icon'] }} fa-lg"></i>
+                        </div>
+                        <div class="fw-bold small text-muted text-truncate">{{ $channel['name'] }}</div>
                     </div>
-                    <div class="fw-bold small text-muted">{{ $channel['name'] }}</div>
-                </div>
-            </a>
+                </a>
+            </div>
             @endforeach
         </div>
     </div>
