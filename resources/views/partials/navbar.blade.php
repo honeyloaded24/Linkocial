@@ -100,12 +100,44 @@
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.faq') }}">FAQ</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.blog') }}">Blog</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.contact') }}">Contact</a></li>
-                <li class="nav-item ms-lg-2 w-100 mt-2 mt-lg-0">
-                    <a class="btn btn-outline-premium btn-sm w-100 px-4" href="{{ route('login') }}">Login</a>
-                </li>
-                <li class="nav-item w-100 mt-2 mt-lg-0">
-                    <a class="btn btn-premium btn-sm w-100 px-4" href="{{ route('register') }}">Register</a>
-                </li>
+                @auth
+                    <li class="nav-item dropdown ms-lg-2 w-100 mt-2 mt-lg-0">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 justify-content-center justify-content-lg-start" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="avatar-sm bg-primary-soft text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                <i class="fa-solid fa-user small"></i>
+                            </div>
+                            <span class="fw-semibold">{{ auth()->user()->first_name ?: auth()->user()->username }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="userDropdown">
+                            <li>
+                                <a class="dropdown-item rounded-3 py-2" href="{{ auth()->user()->isAdmin() ? route('hq.dashboard') : route('dashboard') }}">
+                                    <i class="fa-solid fa-chart-line me-2 opacity-50"></i> Dashboard
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item rounded-3 py-2" href="{{ route('profile.index') }}">
+                                    <i class="fa-solid fa-circle-user me-2 opacity-50"></i> Profile
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider opacity-50"></li>
+                            <li>
+                                <form action="{{ route('logout') }}" method="POST" id="logout-form">
+                                    @csrf
+                                    <button type="submit" class="dropdown-item rounded-3 py-2 text-danger">
+                                        <i class="fa-solid fa-right-from-bracket me-2 opacity-50"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                @else
+                    <li class="nav-item ms-lg-2 w-100 mt-2 mt-lg-0">
+                        <a class="btn btn-outline-premium btn-sm w-100 px-4" href="{{ route('login') }}">Login</a>
+                    </li>
+                    <li class="nav-item w-100 mt-2 mt-lg-0">
+                        <a class="btn btn-premium btn-sm w-100 px-4" href="{{ route('register') }}">Register</a>
+                    </li>
+                @endauth
             </ul>
         </div>
     </div>
