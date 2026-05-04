@@ -941,7 +941,9 @@ class AdminController extends Controller
         \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $request->all());
 
         return back()->with('success', 'Settings updated successfully.');
-        /**
+    }
+
+    /**
      * Show background queue status and failed jobs
      */
     public function queueStatus()
