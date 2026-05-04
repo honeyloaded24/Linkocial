@@ -220,7 +220,7 @@
                 <!-- Illustration - Hidden on Mobile -->
                 <div class="col-lg-6 mt-5 mt-lg-0 text-center d-none d-lg-block">
                     <div class="floating-mockup">
-                        <img src="{{ asset('storage/branding/undraw_social-media-interactions_5rls.svg') }}" alt="Social Media Growth Illustration" class="img-fluid" style="max-height: 450px;">
+                        <img src="{{ asset('branding/undraw_social-media-interactions_5rls.svg') }}" alt="Social Media Growth Illustration" class="img-fluid" style="max-height: 450px;">
                     </div>
                 </div>
             </div>
