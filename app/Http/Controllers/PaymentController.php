@@ -38,7 +38,7 @@ class PaymentController extends Controller
         $amountInKobo = $request->amount * 100; // Paystack processes amounts in Kobo
 
         try {
-            $response = Http::withToken(env('PAYSTACK_SECRET_KEY'))
+            $response = Http::withToken(config('services.paystack.secret'))
                 ->post('https://api.paystack.co/transaction/initialize', [
                     'email' => $user->email,
                     'amount' => $amountInKobo,
@@ -76,7 +76,7 @@ class PaymentController extends Controller
         }
 
         try {
-            $response = Http::withToken(env('PAYSTACK_SECRET_KEY'))
+            $response = Http::withToken(config('services.paystack.secret'))
                 ->get("https://api.paystack.co/transaction/verify/{$reference}");
 
             $result = $response->json();
@@ -105,7 +105,7 @@ class PaymentController extends Controller
         $signature = $request->header('x-paystack-signature');
         $payload = $request->getContent();
         
-        $expectedSignature = hash_hmac('sha512', $payload, env('PAYSTACK_SECRET_KEY'));
+        $expectedSignature = hash_hmac('sha512', $payload, config('services.paystack.secret'));
         
         if ($signature !== $expectedSignature) {
             Log::warning('Invalid Paystack Webhook Signature detected.');
