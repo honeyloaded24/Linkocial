@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-bs-theme="light">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,6 +12,18 @@
     @if($favicon)
         <link rel="icon" type="image/png" href="{{ $favicon }}">
     @endif
+
+    <script>
+        // Apply theme IMMEDIATELY to prevent flash of wrong colors
+        (function() {
+            var theme = localStorage.getItem('theme');
+            if (theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -26,6 +38,13 @@
             --text-muted: #475569;
             --border: #e2e8f0;
         }
+
+        /* Logo Theme Switching */
+        .logo-dark { display: none !important; }
+        .logo-light { display: block !important; }
+
+        [data-theme="dark"] .logo-dark { display: block !important; }
+        [data-theme="dark"] .logo-light { display: none !important; }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
