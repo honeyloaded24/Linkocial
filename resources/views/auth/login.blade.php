@@ -149,14 +149,16 @@
                     $siteName = \App\Models\Setting::get('site_name', 'Linkocial');
                 @endphp
                 <div class="mb-4">
-                    @if($logoDark)
-                        <img src="{{ $logoDark }}" alt="{{ $siteName }}" class="img-fluid" style="max-height: 35px;">
-                    @else
-                        <div class="d-inline-flex align-items-center justify-content-center bg-primary-custom rounded-circle shadow-lg"
-                            style="width: 40px; height: 40px;">
-                            <i class="fa-solid fa-bolt-lightning text-white fs-4"></i>
-                        </div>
-                    @endif
+                    <a href="{{ route('landing') }}">
+                        @if($logoDark)
+                            <img src="{{ $logoDark }}" alt="{{ $siteName }}" class="img-fluid" style="max-height: 35px;">
+                        @else
+                            <div class="d-inline-flex align-items-center justify-content-center bg-primary-custom rounded-circle shadow-lg"
+                                style="width: 40px; height: 40px;">
+                                <i class="fa-solid fa-bolt-lightning text-white fs-4"></i>
+                            </div>
+                        @endif
+                    </a>
                 </div>
                 <h2 class="fw-black text-white mb-2" style="font-family: 'Outfit', sans-serif;">Welcome Back</h2>
                 <p class="text-muted opacity-75 fw-medium">Access your growth center</p>
