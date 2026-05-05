@@ -38,6 +38,7 @@ class SyncSmmServices extends Command
         }
 
         foreach ($providers as $provider) {
+            /** @var \App\Models\Provider $provider */
             $this->info("Fetching services for Provider: {$provider->name}");
             Log::info("SMM Sync: Starting fetch for {$provider->name}");
             
@@ -55,53 +56,58 @@ class SyncSmmServices extends Command
 
             $syncedCount = 0;
             $newCount = 0;
+            $errorCount = 0;
 
             foreach ($services as $providerService) {
-                // SMM v2 APIs typically return: service, name, type, rate, min, max, desc, average_time
-                $providerServiceId = $providerService['service'] ?? ($providerService['id'] ?? null);
-                $name = $providerService['name'] ?? 'Unknown Service';
-                $rate = $providerService['rate'] ?? 0;
-                $min = $providerService['min'] ?? 0;
-                $max = $providerService['max'] ?? 0;
-                $type = $providerService['type'] ?? 'Default';
-                $category = $providerService['category'] ?? 'Default';
-                $desc = $providerService['desc'] ?? null;
-                $averageTime = $providerService['average_time'] ?? null;
+                try {
+                    // Extract data with fallbacks and sanitization
+                    $providerServiceId = (string) ($providerService['service'] ?? ($providerService['id'] ?? ''));
+                    $name = trim($providerService['name'] ?? 'Unknown Service');
+                    $category = trim($providerService['category'] ?? 'General');
+                    $rate = (float) ($providerService['rate'] ?? 0);
+                    $min = (int) ($providerService['min'] ?? 0);
+                    $max = (int) ($providerService['max'] ?? 0);
+                    $type = trim($providerService['type'] ?? 'Default');
+                    $desc = $providerService['desc'] ?? null;
+                    $averageTime = $providerService['average_time'] ?? null;
 
-                if (!$providerServiceId) continue;
-
-                // Check if mapping exists
-                $mapping = ProviderServiceMapping::where('provider_id', $provider->id)
-                            ->where('provider_service_id', $providerServiceId)
-                            ->first();
-
-                if ($mapping) {
-                    // Update existing mapping cost and service details
-                    $mapping->update(['original_price' => $rate]);
-                    
-                    if ($mapping->service) {
-                        $mapping->service->update([
-                            'category' => $category,
-                            'description' => $desc,
-                            'average_time' => $averageTime,
-                            'min' => $min,
-                            'max' => $max,
-                        ]);
+                    if (empty($providerServiceId)) {
+                        Log::debug("SMM Sync: Skipping service with no ID from {$provider->name}");
+                        continue;
                     }
-                    $syncedCount++;
-                } else {
-                    try {
+
+                    // Check if mapping exists for this provider and service ID
+                    $mapping = ProviderServiceMapping::where('provider_id', $provider->id)
+                                ->where('provider_service_id', $providerServiceId)
+                                ->first();
+
+                    if ($mapping) {
+                        // Update existing mapping cost
+                        $mapping->update(['original_price' => $rate]);
+                        
+                        if ($mapping->service) {
+                            $mapping->service->update([
+                                'category' => $category,
+                                'description' => $desc,
+                                'average_time' => $averageTime,
+                                'min' => $min,
+                                'max' => $max,
+                            ]);
+                        }
+                        $syncedCount++;
+                    } else {
+                        // Create a NEW service and mapping
                         DB::transaction(function () use ($provider, $providerServiceId, $name, $rate, $min, $max, $type, $category, $desc, $averageTime) {
                             $internalService = Service::create([
                                 'name' => "[Review] {$name}",
                                 'category' => $category,
                                 'description' => $desc,
                                 'average_time' => $averageTime,
-                                'selling_price' => $rate * 1.5,
-                                'type' => $type,
+                                'selling_price' => $rate * 1.5, // Default markup
                                 'min' => $min,
                                 'max' => $max,
-                                'is_active' => false,
+                                'is_active' => false, // New services must be reviewed
+                                'type' => $type
                             ]);
 
                             ProviderServiceMapping::create([
@@ -114,14 +120,15 @@ class SyncSmmServices extends Command
                             ]);
                         });
                         $newCount++;
-                    } catch (\Exception $e) {
-                        Log::error("SMM Sync: DB Error creating service {$name}: " . $e->getMessage());
                     }
+                } catch (\Exception $e) {
+                    $errorCount++;
+                    Log::error("SMM Sync Error [{$provider->name}] - Service ID: " . ($providerService['service'] ?? 'N/A') . " - Error: " . $e->getMessage());
                 }
             }
 
-            $this->info("Completed {$provider->name}: Synced {$syncedCount} existing, Added {$newCount} new services.");
-            Log::info("SMM Sync: Completed {$provider->name}. Added: {$newCount}");
+            $this->info("Completed {$provider->name}: Synced {$syncedCount}, Added {$newCount}, Errors {$errorCount}");
+            Log::info("SMM Sync: Completed {$provider->name}. Synced: {$syncedCount}, Added: {$newCount}, Errors: {$errorCount}");
         }
 
         $this->info('Synchronization complete!');

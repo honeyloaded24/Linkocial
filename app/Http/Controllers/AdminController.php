@@ -238,6 +238,33 @@ class AdminController extends Controller
     }
 
     /**
+     * Get Provider Services Count via AJAX (High-Authority Diagnostic)
+     */
+    public function providerServicesCount($id, SmmProviderService $smmService)
+    {
+        $provider = Provider::findOrFail($id);
+        $services = $smmService->getServices($provider);
+
+        // Standard SMM v2 APIs return a numerically indexed array of services.
+        // If they return an error, it's usually an associative array like ['error' => '...']
+        if (is_array($services)) {
+            if (isset($services['error'])) {
+                return response()->json(['count' => 'Err']);
+            }
+            
+            // Check if it's a list (numerically indexed)
+            if (count($services) > 0 && !isset($services[0])) {
+                // It's an object but not a list, likely a single error or different format
+                return response()->json(['count' => 'Err']);
+            }
+
+            return response()->json(['count' => count($services)]);
+        }
+
+        return response()->json(['count' => 'Err']);
+    }
+
+    /**
      * Debug and View Raw Provider Services (High-Authority Diagnostic)
      */
     public function debugProviderSync($id, SmmProviderService $smmService)
@@ -278,14 +305,7 @@ class AdminController extends Controller
         return back()->with('success', 'Provider deleted successfully.');
     }
 
-    /**
-     * Trigger background synchronization of services
-     */
-    public function triggerServiceSync()
-    {
-        \App\Jobs\SyncSmmServicesJob::dispatch();
-        return back()->with('success', 'Service synchronization has been queued in the background. Refresh the page in a few moments to see updates.');
-    }
+
     /**
      * Update user balance manually
      */
@@ -954,12 +974,18 @@ class AdminController extends Controller
     public function queueStatus()
     {
         $queueSize = 0;
+        $connection = config('queue.default');
+        
         try {
-            // Using the discovered prefix: linkocial-database-
-            // Laravel's Redis facade prepends the prefix automatically if configured
-            $queueSize = \Illuminate\Support\Facades\Redis::llen('queues:default');
+            if ($connection === 'redis') {
+                // Production logic: Monitor Redis queue size
+                $queueSize = \Illuminate\Support\Facades\Redis::llen('queues:default');
+            } else if ($connection === 'database') {
+                // Local/Database logic: Monitor jobs table
+                $queueSize = \Illuminate\Support\Facades\DB::table('jobs')->count();
+            }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning("Redis Queue Monitor Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Queue Monitor Error ({$connection}): " . $e->getMessage());
         }
 
         $failedJobs = \Illuminate\Support\Facades\DB::table('failed_jobs')->latest()->paginate(15);
@@ -982,5 +1008,24 @@ class AdminController extends Controller
         });
 
         return view('hq.queues', compact('queueSize', 'failedJobs', 'scheduledTasks'));
+    }
+
+    /**
+     * Manually trigger the SMM service synchronization command
+     */
+    public function triggerServiceSync()
+    {
+        try {
+            // Run the command via Artisan to reuse the hardened logic
+            \Illuminate\Support\Facades\Artisan::call('smm:sync-services');
+            $output = \Illuminate\Support\Facades\Artisan::output();
+            
+            \App\Models\ActivityLog::log("Manually triggered SMM service synchronization", auth()->user());
+            
+            return back()->with('success', 'Synchronization completed successfully! Check the services list for new entries.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Manual Sync Failed: " . $e->getMessage());
+            return back()->with('error', 'Synchronization failed: ' . $e->getMessage());
+        }
     }
 }

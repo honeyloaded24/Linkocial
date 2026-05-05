@@ -39,6 +39,20 @@ class Service extends Model
     }
 
     /**
+     * Scope a query to only include services that have at least one active provider mapping.
+     */
+    public function scopeWithActiveProvider($query)
+    {
+        return $query->where('is_active', true)
+            ->whereHas('mappings', function($q) {
+                $q->where('is_active', true)
+                  ->whereHas('provider', function($p) {
+                      $p->where('is_active', true);
+                  });
+            });
+    }
+
+    /**
      * Get the provider mappings for the service.
      */
     public function mappings()
@@ -63,8 +77,8 @@ class Service extends Model
         ];
 
         foreach ($channels as &$channel) {
-            $channel['count'] = self::where('name', 'like', '%' . $channel['name'] . '%')
-                ->where('is_active', true)
+            $channel['count'] = self::withActiveProvider()
+                ->where('name', 'like', '%' . $channel['name'] . '%')
                 ->count();
         }
 
@@ -81,7 +95,7 @@ class Service extends Model
         $configuredPlatforms = array_keys($instructions);
         
         // Default list to fall back on if JSON is empty or for common names
-        $platforms = array_unique(array_merge($configuredPlatforms, ['Instagram', 'TikTok', 'YouTube', 'X', 'Twitter', 'Facebook', 'Telegram', 'Spotify']));
+        $platforms = array_unique(array_merge($configuredPlatforms, ['Instagram', 'TikTok', 'YouTube', 'X', 'Twitter', 'Facebook', 'Telegram', 'Spotify', 'Audiomack']));
 
         foreach ($platforms as $channel) {
             if (stripos($this->name, $channel) !== false) {

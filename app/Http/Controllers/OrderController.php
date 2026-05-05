@@ -33,7 +33,7 @@ class OrderController extends Controller
      */
     public function create()
     {
-        $services = Service::where('is_active', true)->get();
+        $services = Service::withActiveProvider()->get();
         $channels = Service::getChannels();
         return view('orders.create', compact('services', 'channels'));
     }
@@ -193,8 +193,8 @@ class OrderController extends Controller
             $quantity = (int) trim($parts[1]);
             $link = trim($parts[2]);
 
-            $service = Service::find($serviceId);
-            if (!$service || !$service->is_active) {
+            $service = Service::withActiveProvider()->find($serviceId);
+            if (!$service) {
                 $errorLines[] = "Line " . ($index + 1) . ": Service ID {$serviceId} not found or inactive.";
                 continue;
             }

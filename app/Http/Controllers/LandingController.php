@@ -25,7 +25,7 @@ class LandingController extends Controller
         $stats = [
             'total_orders' => \App\Models\Order::count() + 1000,
             'active_users' => \App\Models\User::count() + 250,
-            'total_services' => \App\Models\Service::where('is_active', true)->count(),
+            'total_services' => \App\Models\Service::withActiveProvider()->count(),
         ];
 
         $channels = \App\Models\Service::getChannels();
@@ -48,7 +48,7 @@ class LandingController extends Controller
         if ($slug == 'spotify') $name = 'Spotify';
         if ($slug == 'audiomack') $name = 'Audiomack';
         
-        $services = \App\Models\Service::where('is_active', true)
+        $services = \App\Models\Service::withActiveProvider()
             ->where('name', 'like', '%' . $name . '%')
             ->limit(12)
             ->get();

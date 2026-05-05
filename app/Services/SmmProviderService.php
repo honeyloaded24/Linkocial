@@ -88,16 +88,29 @@ class SmmProviderService
     public function getServices(Provider $provider): ?array
     {
         try {
-            $response = Http::timeout(60)->connectTimeout(15)->post($provider->api_url, [
-                'key'    => $provider->api_key,
-                'action' => 'services',
-            ]);
+            // SMM Panels can return MASSIVE amounts of data for the 'services' action (several MBs)
+            // We increase the timeout and use a more resilient connection
+            $response = Http::timeout(120) // Increased to 2 minutes
+                ->connectTimeout(30)
+                ->withHeaders(['Accept' => 'application/json'])
+                ->post($provider->api_url, [
+                    'key'    => $provider->api_key,
+                    'action' => 'services',
+                ]);
 
             if ($response->successful()) {
-                return $response->json();
+                $data = $response->json();
+                
+                // Ensure we actually got an array of services
+                if (is_array($data)) {
+                    return $data;
+                }
+                
+                Log::error("SMM API ({$provider->name}): Services response was not an array. Body snippet: " . substr($response->body(), 0, 500));
+                return null;
             }
 
-            Log::error("SMM API Services Fetch Failed ({$provider->name}): " . $response->body());
+            Log::error("SMM API Services Fetch Failed ({$provider->name}) - Status: {$response->status()} - Body: " . substr($response->body(), 0, 500));
             return null;
 
         } catch (\Exception $e) {
