@@ -78,7 +78,10 @@ class Service extends Model
 
         foreach ($channels as &$channel) {
             $channel['count'] = self::withActiveProvider()
-                ->where('name', 'like', '%' . $channel['name'] . '%')
+                ->where(function($q) use ($channel) {
+                    $q->where('name', 'like', '%' . $channel['name'] . '%')
+                      ->orWhere('category', 'like', '%' . $channel['name'] . '%');
+                })
                 ->count();
         }
 
@@ -98,7 +101,7 @@ class Service extends Model
         $platforms = array_unique(array_merge($configuredPlatforms, ['Instagram', 'TikTok', 'YouTube', 'X', 'Twitter', 'Facebook', 'Telegram', 'Spotify', 'Audiomack']));
 
         foreach ($platforms as $channel) {
-            if (stripos($this->name, $channel) !== false) {
+            if (stripos($this->name, $channel) !== false || stripos($this->category, $channel) !== false) {
                 return $channel;
             }
         }
