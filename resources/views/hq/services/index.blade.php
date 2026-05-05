@@ -55,12 +55,12 @@
             @endif
 
             <!-- Filter Bar -->
-            <form action="{{ route('hq.services') }}" method="GET" class="row g-3 mb-4 p-3 rounded-3 bg-light bg-opacity-10 border border-secondary">
-                <div class="col-md-4">
+            <form action="{{ route('hq.services') }}" method="GET" class="row g-3 mb-4 p-3 rounded-4 bg-light bg-opacity-10 border border-secondary">
+                <div class="col-md-3">
                     <label class="form-label small text-muted fw-bold">SEARCH NAME</label>
                     <input type="text" name="search" class="form-control form-control-sm bg-transparent border-secondary" placeholder="e.g. Instagram" value="{{ request('search') }}" style="color: var(--text-main);">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">PROVIDER</label>
                     <select name="provider_id" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
                         <option value="" class="text-dark">All Providers</option>
@@ -69,31 +69,56 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">CHANNEL/TYPE</label>
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary w-100 text-start dropdown-toggle bg-transparent border-secondary d-flex justify-content-between align-items-center" type="button" id="typeDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-main);">
-                            <span id="selectedTypeText">{{ request('type') ?: 'All Types' }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-dark shadow-lg overflow-auto" aria-labelledby="typeDropdown" style="max-height: 250px; border: 1px solid var(--border-color);">
-                            <li><a class="dropdown-item py-2" href="#" onclick="setFilterValue('type', '', 'All Types')">All Types</a></li>
-                            @foreach($types as $type)
-                                <li><a class="dropdown-item py-2" href="#" onclick="setFilterValue('type', '{{ $type }}', '{{ $type }}')">{{ $type }}</a></li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <input type="hidden" name="type" id="filter_type" value="{{ request('type') }}">
+                    <select name="type" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
+                        <option value="" class="text-dark">All Types</option>
+                        @foreach($types as $type)
+                            <option value="{{ $type }}" {{ request('type') == $type ? 'selected' : '' }} class="text-dark">{{ $type }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted fw-bold">STATUS</label>
+                    <select name="status" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
+                        <option value="" class="text-dark">All Status</option>
+                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }} class="text-dark">Active Only</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }} class="text-dark">Inactive Only</option>
+                    </select>
                 </div>
                 <div class="col-md-3">
+                    <label class="form-label small text-muted fw-bold">PRICE RANGE (₦)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="number" name="price_min" class="form-control bg-transparent border-secondary" placeholder="Min" value="{{ request('price_min') }}" style="color: var(--text-main);">
+                        <span class="input-group-text bg-transparent border-secondary text-muted">-</span>
+                        <input type="number" name="price_max" class="form-control bg-transparent border-secondary" placeholder="Max" value="{{ request('price_max') }}" style="color: var(--text-main);">
+                    </div>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label small text-muted fw-bold">HOT</label>
+                    <select name="is_hot" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
+                        <option value="" class="text-dark">Both</option>
+                        <option value="1" {{ request('is_hot') == '1' ? 'selected' : '' }} class="text-dark">Hot Only</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small text-muted fw-bold">TRENDING</label>
+                    <select name="is_trending" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
+                        <option value="" class="text-dark">Both</option>
+                        <option value="1" {{ request('is_trending') == '1' ? 'selected' : '' }} class="text-dark">Trending Only</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label small text-muted fw-bold">SALES FILTER</label>
                     <div class="form-check form-switch pt-1">
                         <input class="form-check-input" type="checkbox" name="recently_sold" id="recentlySoldSwitch" value="1" {{ request('recently_sold') == '1' ? 'checked' : '' }} onchange="this.form.submit()">
                         <label class="form-check-label text-muted small" for="recentlySoldSwitch">Recently Sold (24h)</label>
                     </div>
                 </div>
-                <div class="col-md-2 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-sm btn-primary-custom w-100">Filter</button>
-                    <a href="{{ route('hq.services') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary-custom w-100 py-2">Apply Forensic Filters</button>
+                    <a href="{{ route('hq.services') }}" class="btn btn-sm btn-outline-secondary py-2">Reset</a>
                 </div>
             </form>
 

@@ -107,6 +107,27 @@ class AdminController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', '%' . $request->search . '%');
         }
+
+        // Filter by Status (Active/Inactive)
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status == 'active');
+        }
+
+        // Filter by Badges
+        if ($request->filled('is_hot')) {
+            $query->where('is_hot', true);
+        }
+        if ($request->filled('is_trending')) {
+            $query->where('is_trending', true);
+        }
+
+        // Filter by Price Range
+        if ($request->filled('price_min')) {
+            $query->where('selling_price', '>=', $request->price_min);
+        }
+        if ($request->filled('price_max')) {
+            $query->where('selling_price', '<=', $request->price_max);
+        }
         
         // Filter by Recently Sold (Orders in last 24h)
         if ($request->filled('recently_sold') && $request->recently_sold == '1') {
