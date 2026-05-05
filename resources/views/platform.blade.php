@@ -634,7 +634,11 @@
                         <div class="p-5 bg-white rounded-5 shadow-lg border text-center">
                             <h4 class="fw-bold mb-3">Ready to Dominate?</h4>
                             <p class="text-muted mb-4">Join thousands of influencers and brands who use our premium infrastructure for daily growth.</p>
-                            <a href="{{ route('register') }}" class="btn btn-premium btn-lg w-100 py-3 shadow">Join Linkocial Now</a>
+                            @auth
+                                <a href="{{ route('orders.create', ['platform' => $meta['platform']]) }}" class="btn btn-premium btn-lg w-100 py-3 shadow">Order {{ $meta['platform'] }} Now</a>
+                            @else
+                                <a href="{{ route('register') }}" class="btn btn-premium btn-lg w-100 py-3 shadow">Join Linkocial Now</a>
+                            @endauth
                         </div>
                     </div>
                 </div>
@@ -661,14 +665,18 @@
                                         <span class="price-badge">${{ number_format($service->selling_price, 2) }}</span>
                                         <span class="text-muted small">/ 1k</span>
                                     </div>
-                                    <a href="{{ route('register') }}" class="btn btn-premium btn-sm">Register</a>
+                                    <a href="{{ auth()->check() ? route('orders.create', ['platform' => $meta['platform']]) : route('register') }}" class="btn btn-premium btn-sm">
+                                        {{ auth()->check() ? 'Order Now' : 'Register' }}
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     @empty
                         <div class="col-12 text-center py-5">
                             <p class="text-muted">No specific services found for this platform yet.</p>
-                            <a href="{{ route('register') }}" class="btn btn-premium">Register</a>
+                            <a href="{{ auth()->check() ? route('orders.create', ['platform' => $meta['platform']]) : route('register') }}" class="btn btn-premium">
+                                {{ auth()->check() ? 'Go to Dashboard' : 'Register' }}
+                            </a>
                         </div>
                     @endforelse
                 </div>

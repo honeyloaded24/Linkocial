@@ -31,11 +31,12 @@ class OrderController extends Controller
     /**
      * Show the form to place a new order.
      */
-    public function create()
+    public function create(Request $request)
     {
         $services = Service::withActiveProvider()->get();
         $channels = Service::getChannels();
-        return view('orders.create', compact('services', 'channels'));
+        $selectedPlatform = $request->query('platform');
+        return view('orders.create', compact('services', 'channels', 'selectedPlatform'));
     }
 
     /**

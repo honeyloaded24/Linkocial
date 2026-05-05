@@ -584,6 +584,17 @@
 
         // Initial category load
         updateCategories();
+
+        // 7. Auto-select platform from URL if provided
+        @if(isset($selectedPlatform) && $selectedPlatform)
+            const targetPlatform = "{{ $selectedPlatform }}";
+            const targetBtn = Array.from(channelFilters).find(btn => 
+                btn.getAttribute('data-platform').toLowerCase() === targetPlatform.toLowerCase()
+            );
+            if (targetBtn) {
+                targetBtn.click();
+            }
+        @endif
     });
 </script>
 @endpush

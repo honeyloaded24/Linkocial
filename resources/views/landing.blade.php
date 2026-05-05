@@ -197,7 +197,11 @@
                     <h1 class="hero-title">Buy Instagram, TikTok Followers, YouTube Subscribers, And More In Minutes.</h1>
                     <p class="hero-subtitle mx-auto mx-lg-0">With <span class="text-gradient">Linkocial</span>, you can buy hundreds of real TikTok & Instagram Followers, Comments, Likes, Views, and YouTube Subscribers from real accounts.</p>
                     <div class="d-flex flex-wrap justify-content-center justify-content-lg-start gap-3">
-                        <a href="{{ route('register') }}" class="btn btn-premium btn-lg">Register</a>
+                        @auth
+                            <a href="{{ route('dashboard') }}" class="btn btn-premium btn-lg">Go to Dashboard</a>
+                        @else
+                            <a href="{{ route('register') }}" class="btn btn-premium btn-lg">Register Now</a>
+                        @endauth
                         <a href="#features" class="btn btn-outline-premium btn-lg">Explore Features</a>
                     </div>
                     
