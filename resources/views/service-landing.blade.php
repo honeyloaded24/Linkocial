@@ -129,7 +129,7 @@
             <p class="fs-4 text-muted mb-4 mx-auto" style="max-width: 800px;">The most reliable way to <span class="fw-bold text-dark">{{ $keyword }}</span> with viral-speed delivery and 100% organic-looking results.</p>
             <div class="d-flex justify-content-center gap-3">
                 @auth
-                    <a href="{{ route('orders.create', ['platform' => $platformSlug]) }}" class="btn-service btn-lg">Order {{ $name }} Now</a>
+                    <a href="{{ route('orders.create', ['platform' => $platformSlug]) }}" class="btn-service btn-lg">{{ $name }} Now</a>
                 @else
                     <a href="{{ route('register') }}" class="btn-service btn-lg">Get Started Now</a>
                 @endauth
@@ -331,7 +331,7 @@
                                 @endforeach
                             </ul>
                             <a href="{{ auth()->check() ? route('orders.create', ['platform' => $platformSlug]) : route('register') }}" class="btn @if($index == 2) btn-dark @else btn-outline-dark @endif w-100 rounded-pill py-3 fw-bold">
-                                {{ auth()->check() ? 'Order ' . $tier['name'] : 'Select ' . $tier['name'] }}
+                                {{ auth()->check() ? $tier['name'] . ' Now' : 'Select ' . $tier['name'] }}
                             </a>
                         </div>
                     </div>

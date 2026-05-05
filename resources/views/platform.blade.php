@@ -635,7 +635,7 @@
                             <h4 class="fw-bold mb-3">Ready to Dominate?</h4>
                             <p class="text-muted mb-4">Join thousands of influencers and brands who use our premium infrastructure for daily growth.</p>
                             @auth
-                                <a href="{{ route('orders.create', ['platform' => $meta['platform']]) }}" class="btn btn-premium btn-lg w-100 py-3 shadow">Order {{ $meta['platform'] }} Now</a>
+                                <a href="{{ route('orders.create', ['platform' => $meta['platform']]) }}" class="btn btn-premium btn-lg w-100 py-3 shadow">{{ $meta['platform'] }} Promotion Now</a>
                             @else
                                 <a href="{{ route('register') }}" class="btn btn-premium btn-lg w-100 py-3 shadow">Join Linkocial Now</a>
                             @endauth
