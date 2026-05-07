@@ -58,7 +58,7 @@
                         $amounts = $currentCurrency->code === 'NGN' ? [1000, 5000, 10000] : [10, 50, 100];
                     @endphp
                     @foreach($amounts as $amt)
-                        <button type="button" class="btn bg-light bg-opacity-10 text-main flex-fill rounded-pill border-0 fw-bold py-2 shadow-sm" onclick="setAmount({{ $amt }})">{{ money($amt) }}</button>
+                        <button type="button" class="btn bg-light bg-opacity-10 text-main flex-fill rounded-pill border-0 fw-bold py-2 shadow-sm" onclick="setAmount({{ $amt }})">{{ get_currency_symbol() }}{{ number_format($amt) }}</button>
                     @endforeach
                 </div>
                 
