@@ -157,14 +157,14 @@
         }
 
         if (gateway === 'heleket') {
-            payButton.className = "btn btn-lg rounded-3 fw-bold py-3 shadow-lg border-0 w-100";
-            payButton.style.backgroundColor = "#161b22"; // Dark crypto style
-            payButton.style.color = "#ffffff";
-            payButton.innerHTML = `Pay ${displayAmount} with crypto <img src="{{ asset('branding/heleketpay.svg') }}" style="height: 24px; margin-left: 8px;" alt="Crypto">`;
+            payButton.className = "btn p-0 border-0 w-100";
+            payButton.style.backgroundColor = "transparent";
+            payButton.style.boxShadow = "none";
+            payButton.innerHTML = `<img src="{{ asset('branding/heleketpay.svg') }}" style="height: 54px; max-width: 100%; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" alt="Pay with Crypto">`;
         } else {
             payButton.className = "btn btn-lg bg-primary-custom text-white rounded-4 fw-bold py-3 shadow-lg border-0 w-100";
             payButton.style.backgroundColor = "";
-            payButton.style.color = "";
+            payButton.style.boxShadow = "";
             payButton.innerHTML = `<i class="fa-solid ${btnIcon} me-2"></i> Pay ${displayAmount} Now`;
         }
 
