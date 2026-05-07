@@ -12,15 +12,22 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectTo(
+            guests: '/login',
+            users: '/dashboard'
+        );
+
         // Alias custom middleware
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
 
-        // Exempt Paystack webhook from CSRF protection
+        // Exempt payment webhooks from CSRF protection
         $middleware->preventRequestForgery(except: [
             '/api/webhooks/paystack',
+            '/api/webhooks/korapay',
+            '/api/webhooks/heleket',
         ]);
 
         $middleware->append(\App\Http\Middleware\CheckMaintenanceMode::class);

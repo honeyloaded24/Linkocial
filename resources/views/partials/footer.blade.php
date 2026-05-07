@@ -35,7 +35,9 @@
                     <li><a href="{{ route('info.blog') }}">Growth Blog</a></li>
                     <li><a href="{{ route('info.contact') }}">Contact</a></li>
                     <li><a href="{{ route('legal.terms') }}">Terms of Service</a></li>
+                    <li><a href="{{ route('download') }}" class="fw-bold text-primary"><i class="fa-solid fa-mobile-screen-button me-1"></i> Download App</a></li>
                 </ul>
+
             </div>
 
             <!-- Platforms Column -->
@@ -69,7 +71,7 @@
                 <a href="{{ route('login') }}" class="text-primary fw-bold text-decoration-none small">Open a Ticket</a>
                 <div class="mt-4">
                     <span class="d-block text-muted small mb-2">Verified Secure</span>
-                    <i class="fa-solid fa-shield-check text-success fs-3"></i>
+                    <i class="fa-solid fa-shield-halved text-success fs-3"></i>
                 </div>
             </div>
         </div>

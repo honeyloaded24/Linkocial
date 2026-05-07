@@ -389,7 +389,7 @@ class LandingController extends Controller
             'benefits' => [
                 ['title' => 'Unlock Revenue', 'desc' => 'Reach the required subscriber counts to join the YouTube Partner Program and start earning ad revenue.', 'icon' => 'fa-solid fa-sack-dollar'],
                 ['title' => 'Search Authority', 'desc' => 'YouTube\'s search engine favors channels with larger subscriber bases, pushing your videos to the top of search.', 'icon' => 'fa-solid fa-magnifying-glass-chart'],
-                ['title' => 'Brand Trust', 'desc' => 'A high subscriber count makes your channel look professional and authoritative to potential viewers.', 'icon' => 'fa-solid fa-shield-check'],
+                ['title' => 'Brand Trust', 'desc' => 'A high subscriber count makes your channel look professional and authoritative to potential viewers.', 'icon' => 'fa-solid fa-shield-halved'],
                 ['title' => 'Organic Growth', 'desc' => 'Subscribers attract more organic viewers by showing that your content is high-value and worth following.', 'icon' => 'fa-solid fa-chart-line']
             ],
             'faqs' => [
@@ -661,7 +661,7 @@ class LandingController extends Controller
                 ['name' => 'Brand VIP', 'icon' => 'fa-solid fa-crown', 'features' => ['Max Impact Targeted', 'Instant Start', 'Priority Delivery', 'Priority VIP Support']]
             ],
             'benefits' => [
-                ['title' => 'Instant Trust', 'desc' => 'A high page like count tells potential customers that you are a reliable and established business.', 'icon' => 'fa-solid fa-shield-check'],
+                ['title' => 'Instant Trust', 'desc' => 'A high page like count tells potential customers that you are a reliable and established business.', 'icon' => 'fa-solid fa-shield-halved'],
                 ['title' => 'Better SEO', 'desc' => 'Facebook\'s search algorithm favors pages with larger communities, helping you reach new clients.', 'icon' => 'fa-solid fa-magnifying-glass-chart'],
                 ['title' => 'Viral Potential', 'desc' => 'Building a base makes your future posts and ads more effective through social proof.', 'icon' => 'fa-solid fa-arrow-up-right-dots'],
                 ['title' => 'Market Authority', 'desc' => 'Show your competitors and partners that you are a dominant force in your industry.', 'icon' => 'fa-solid fa-briefcase']
@@ -843,7 +843,7 @@ class LandingController extends Controller
                 ['name' => 'Broadcast VIP', 'icon' => 'fa-solid fa-crown', 'features' => ['Max Authority Reach', 'Instant Start', 'Priority Delivery', 'Priority VIP Support']]
             ],
             'benefits' => [
-                ['title' => 'Build Trust', 'desc' => 'High view counts on your posts signal to new and existing members that your content is highly valued.', 'icon' => 'fa-solid fa-shield-check'],
+                ['title' => 'Build Trust', 'desc' => 'High view counts on your posts signal to new and existing members that your content is highly valued.', 'icon' => 'fa-solid fa-shield-halved'],
                 ['title' => 'Active Image', 'desc' => 'Create a professional "Busy Channel" image that attracts more organic members and engagement.', 'icon' => 'fa-solid fa-users-viewfinder'],
                 ['title' => 'Instant Impact', 'desc' => 'See results in minutes and watch your posts gain immediate social proof and authority.', 'icon' => 'fa-solid fa-bolt-lightning'],
                 ['title' => 'Brand Growth', 'desc' => 'Consistent high views build a professional image that attracts high-value sponsorships.', 'icon' => 'fa-solid fa-briefcase']
@@ -1072,7 +1072,7 @@ class LandingController extends Controller
                 ['name' => 'Trending VIP', 'icon' => 'fa-solid fa-crown', 'features' => ['Max Authority Reach', 'Instant Start', 'Priority Delivery', 'Priority VIP Support']]
             ],
             'benefits' => [
-                ['title' => 'Build Trust', 'desc' => 'High play counts on your tracks signal to new and existing fans that your content is highly valued.', 'icon' => 'fa-solid fa-shield-check'],
+                ['title' => 'Build Trust', 'desc' => 'High play counts on your tracks signal to new and existing fans that your content is highly valued.', 'icon' => 'fa-solid fa-shield-halved'],
                 ['title' => 'Trending Image', 'desc' => 'Create a professional "Trending Track" image that attracts more organic listeners and engagement.', 'icon' => 'fa-solid fa-users-viewfinder'],
                 ['title' => 'Instant Impact', 'desc' => 'See results in minutes and watch your tracks gain immediate social proof and authority.', 'icon' => 'fa-solid fa-bolt-lightning'],
                 ['title' => 'Artist Growth', 'desc' => 'Consistent high plays build a professional image that attracts high-value sponsorships.', 'icon' => 'fa-solid fa-briefcase']

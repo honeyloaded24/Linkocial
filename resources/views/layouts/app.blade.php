@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ \App\Models\Setting::get('site_name', 'Linkocial') }} - @yield('header_title', 'Dashboard')</title>
     
+    @include('partials.tracking')
+
+    
     @php
         $favicon = \App\Models\Setting::get('site_favicon');
     @endphp
@@ -138,6 +141,9 @@
                                 <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-pen-to-square"></i> Blog Manager
                                 </a>
+                                <a href="{{ route('hq.currencies') }}" class="nav-link mb-2 {{ request()->routeIs('hq.currencies*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-coins"></i> Currencies
+                                </a>
                             </div>
                         </div>
 
@@ -214,7 +220,20 @@
                 <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-life-ring"></i> Support Tickets
                 </a>
-            @endif
+
+                <h6 class="text-muted small fw-bold text-uppercase mt-4 mb-3 px-3" style="letter-spacing: 1px;">Add-ons</h6>
+                <a href="{{ route('services.virtual-numbers') }}" class="nav-link {{ request()->routeIs('services.virtual-numbers') ? 'active' : '' }}">
+                    <i class="fa-solid fa-phone-volume"></i> Virtual Numbers
+                </a>
+                <a href="{{ route('services.gift-cards') }}" class="nav-link {{ request()->routeIs('services.gift-cards') ? 'active' : '' }}">
+                    <i class="fa-solid fa-gift"></i> Buy Gift Cards
+                </a>
+                <a href="{{ route('services.buy-esim') }}" class="nav-link {{ request()->routeIs('services.buy-esim') ? 'active' : '' }}">
+                    <i class="fa-solid fa-sim-card"></i> Buy eSim
+                </a>
+@endif
+
+
 @else
             <h6 class="text-muted small fw-bold text-uppercase mb-3 px-3" style="letter-spacing: 1px;">Getting Started</h6>
             <a href="{{ route('login') }}" class="nav-link">
@@ -233,12 +252,12 @@
         <div class="mt-auto pt-5 border-top border-secondary border-opacity-10">
             <div class="premium-card p-3 mb-4 bg-primary bg-opacity-10 border-0">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="bg-primary-custom rounded-circle p-2 text-white shadow-sm">
-                        <i class="fa-solid fa-naira-sign px-1"></i>
+                    <div class="bg-primary-custom rounded-circle p-2 text-white shadow-sm d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                        <i class="fa-solid fa-wallet"></i>
                     </div>
                     <div>
                         <div class="text-muted small fw-bold">Balance</div>
-                        <div class="fw-bold text-main">₦ {{ number_format(Auth::user()->balance, 2) }}</div>
+                        <div class="fw-bold text-main">{{ money(Auth::user()->balance) }}</div>
                     </div>
                 </div>
             </div>
@@ -281,6 +300,31 @@
             </div>
             
             <div class="d-flex align-items-center gap-2 gap-md-3">
+                <!-- Currency Switcher -->
+                <div class="dropdown me-md-2">
+                    @php
+                        $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+                        $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
+                    @endphp
+                    <button class="btn btn-sm bg-light bg-opacity-10 text-main fw-bold rounded-pill border-0 d-flex align-items-center gap-2 px-3 py-2 shadow-sm" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fa-solid fa-earth-africa opacity-50"></i>
+                        <span>{{ $currentCurrency->code }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdown" style="z-index: 2001; max-height: 300px; overflow-y: auto;">
+                        @foreach($activeCurrencies as $cur)
+                            <li>
+                                <form action="{{ route('currency.switch') }}" method="POST">
+                                    @csrf
+                                    <input type="hidden" name="currency_code" value="{{ $cur->code }}">
+                                    <button type="submit" class="dropdown-item rounded-3 py-2 {{ $currentCurrency->code == $cur->code ? 'bg-primary-soft fw-bold' : '' }}">
+                                        {{ $cur->code }} ({{ $cur->symbol }})
+                                    </button>
+                                </form>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
                 <!-- Theme Switcher - Hidden on Mobile -->
                 <div class="theme-switch-wrapper d-none d-md-flex me-2">
                     <i class="fa-solid fa-sun text-muted"></i>

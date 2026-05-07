@@ -1,140 +1,143 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-bs-theme="dark">
+@extends('layouts.marketing')
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - {{ \App\Models\Setting::get('site_name', 'Linkocial') }}</title>
+@section('title', 'Login - ' . \App\Models\Setting::get('site_name', 'Linkocial'))
 
-    @php
-        $favicon = \App\Models\Setting::get('site_favicon');
-    @endphp
-    @if($favicon)
-        <link rel="icon" type="image/png" href="{{ $favicon }}">
-    @endif
+@push('styles')
+<style>
+    body {
+        /* Reset any conflicting layout styles if necessary */
+    }
+    
+    .auth-page-wrapper {
+        background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow-x: hidden;
+        padding-top: 100px; /* Space for fixed navbar */
+        padding-bottom: 80px;
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    .bg-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 80%);
+    }
 
-    <style>
-        body {
-            background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow-x: hidden;
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-        }
+    .glow-1 {
+        position: absolute;
+        top: -10%;
+        right: -10%;
+        width: 70%;
+        height: 70%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+        filter: blur(80px);
+    }
 
-        .bg-glow {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-            background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 80%);
-        }
+    .glow-2 {
+        position: absolute;
+        bottom: -15%;
+        left: -5%;
+        width: 60%;
+        height: 60%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+        filter: blur(100px);
+    }
 
-        .glow-1 {
-            position: absolute;
-            top: -10%;
-            right: -10%;
-            width: 70%;
-            height: 70%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
-            filter: blur(80px);
-        }
+    .login-wrapper {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        padding: 2rem;
+        position: relative;
+        z-index: 1;
+    }
 
-        .glow-2 {
-            position: absolute;
-            bottom: -15%;
-            left: -5%;
-            width: 60%;
-            height: 60%;
-            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
-            filter: blur(100px);
-        }
+    .login-card {
+        width: 100%;
+        max-width: 440px;
+        padding: 3.5rem;
+        border-radius: 32px;
+        background: rgba(30, 41, 59, 0.8);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
+    }
 
-        .login-wrapper {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            padding: 2rem;
-            position: relative;
-            z-index: 1;
-        }
+    .form-control {
+        background-color: rgba(15, 23, 42, 0.6);
+        border: 2px solid rgba(255, 255, 255, 0.05);
+        color: #ffffff !important;
+        padding: 1rem 1.25rem;
+        border-radius: 16px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
 
-        .login-card {
-            width: 100%;
-            max-width: 440px;
-            padding: 3.5rem;
-            border-radius: 32px;
-            background: rgba(30, 41, 59, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.7);
-        }
+    .form-control:focus {
+        background-color: rgba(15, 23, 42, 0.9);
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
 
-        .form-control {
-            background-color: rgba(15, 23, 42, 0.6);
-            border: 2px solid rgba(255, 255, 255, 0.05);
-            color: #ffffff;
-            padding: 1rem 1.25rem;
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    .btn-primary-custom {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        border: none;
+        color: white !important;
+        padding: 1.1rem;
+        border-radius: 16px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-size: 0.9rem;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 1 !important;
+        cursor: pointer;
+    }
 
-        .form-control:focus {
-            background-color: rgba(15, 23, 42, 0.9);
-            border-color: #6366f1;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
-            color: #ffffff;
-            transform: translateY(-1px);
-        }
+    .btn-primary-custom:hover:not(:disabled) {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.6);
+        background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    }
 
-        .btn-primary-custom {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            border: none;
-            color: white !important;
-            padding: 1.1rem;
-            border-radius: 16px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-size: 0.9rem;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            opacity: 1 !important;
-            cursor: pointer;
-        }
+    .btn-primary-custom:disabled {
+        background: #334155 !important;
+        color: #94a3b8 !important;
+        transform: none !important;
+        box-shadow: none !important;
+        cursor: not-allowed;
+        opacity: 0.8 !important;
+    }
 
-        .btn-primary-custom:hover:not(:disabled) {
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.6);
-            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
-        }
+    /* Force light text for auth labels and placeholders */
+    .login-card .form-label, .login-card .text-muted {
+        color: rgba(255, 255, 255, 0.7) !important;
+        font-weight: 700;
+    }
 
-        .btn-primary-custom:disabled {
-            background: #334155 !important;
-            color: #94a3b8 !important;
-            transform: none !important;
-            box-shadow: none !important;
-            cursor: not-allowed;
-            opacity: 0.8 !important;
-        }
-    </style>
-</head>
+    .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.5) !important;
+    }
 
-<body>
+    .form-check-label {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+</style>
+@endpush
 
+@section('content')
+<div class="auth-page-wrapper">
     <div class="bg-glow">
         <div class="glow-1"></div>
         <div class="glow-2"></div>
@@ -212,65 +215,65 @@
                 </button>
 
                 <p class="text-center text-muted mb-0 small">New to {{ $siteName }}? <a href="{{ route('register') }}"
-                        class="text-decoration-none fw-bold" style="color: var(--primary-color);">Create an account</a>
+                        class="text-decoration-none fw-bold" style="color: var(--primary);">Create an account</a>
                 </p>
             </form>
         </div>
     </div>
+</div>
+@endsection
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const form = document.querySelector('form');
-            const btn = document.getElementById('loginBtn');
-            const btnText = document.getElementById('btnText');
-            const btnSpinner = document.getElementById('btnSpinner');
-            const inputs = form.querySelectorAll('input[required]');
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+        const btn = document.getElementById('loginBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const inputs = form.querySelectorAll('input[required]');
 
-            // Define High-Contrast Colors
-            const colorActive = "#6366f1"; // Vibrant Indigo
-            const colorInactive = "#334155"; // Dark Slate
-            const textActive = "#ffffff";
-            const textInactive = "#94a3b8";
+        // Define High-Contrast Colors
+        const colorActive = "#6366f1"; // Vibrant Indigo
+        const colorInactive = "#334155"; // Dark Slate
+        const textActive = "#ffffff";
+        const textInactive = "#94a3b8";
 
-            function checkForm() {
-                let allFilled = true;
-                inputs.forEach(input => {
-                    if (!input.value.trim()) allFilled = false;
-                });
-
-                if (allFilled) {
-                    btn.disabled = false;
-                    btn.style.backgroundColor = colorActive;
-                    btn.style.borderColor = colorActive;
-                    btn.style.color = textActive;
-                    btn.style.opacity = "1";
-                    btn.style.boxShadow = "0 10px 15px -3px rgba(99, 102, 241, 0.4)";
-                } else {
-                    btn.disabled = true;
-                    btn.style.backgroundColor = colorInactive;
-                    btn.style.borderColor = colorInactive;
-                    btn.style.color = textInactive;
-                    btn.style.opacity = "0.6";
-                    btn.style.boxShadow = "none";
-                }
-            }
-
+        function checkForm() {
+            let allFilled = true;
             inputs.forEach(input => {
-                input.addEventListener('input', checkForm);
+                if (!input.value.trim()) allFilled = false;
             });
 
-            form.addEventListener('submit', function () {
+            if (allFilled) {
+                btn.disabled = false;
+                btn.style.backgroundColor = colorActive;
+                btn.style.borderColor = colorActive;
+                btn.style.color = textActive;
+                btn.style.opacity = "1";
+                btn.style.boxShadow = "0 10px 15px -3px rgba(99, 102, 241, 0.4)";
+            } else {
                 btn.disabled = true;
-                btnText.innerText = "Signing In...";
-                btnSpinner.classList.remove('d-none');
-                btn.style.backgroundColor = "#4f46e5"; // Darker indigo on click
-            });
+                btn.style.backgroundColor = colorInactive;
+                btn.style.borderColor = colorInactive;
+                btn.style.color = textInactive;
+                btn.style.opacity = "0.6";
+                btn.style.boxShadow = "none";
+            }
+        }
 
-            // Initial check
-            checkForm();
+        inputs.forEach(input => {
+            input.addEventListener('input', checkForm);
         });
-    </script>
 
-</body>
+        form.addEventListener('submit', function () {
+            btn.disabled = true;
+            btnText.innerText = "Signing In...";
+            btnSpinner.classList.remove('d-none');
+            btn.style.backgroundColor = "#4f46e5"; // Darker indigo on click
+        });
 
-</html>
+        // Initial check
+        checkForm();
+    });
+</script>
+@endpush

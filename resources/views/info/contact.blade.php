@@ -3,7 +3,7 @@
 @section('title', 'Contact Our Elite Support Team - ' . $siteName)
 
 @section('content')
-<section class="py-5 bg-soft">
+<section class="py-5 bg-soft" style="padding-top: 100px !important;">
     <div class="container py-5 text-center">
         <h1 class="display-4 fw-bold mb-3">Get in Touch</h1>
         <p class="text-muted lead mx-auto" style="max-width: 600px;">Our world-class support team is available 24/7 to help you dominate your social presence.</p>

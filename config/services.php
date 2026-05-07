@@ -40,4 +40,18 @@ return [
         'secret' => env('PAYSTACK_SECRET_KEY'),
     ],
 
+    'exchangerate' => [
+        'key' => env('EXCHANGERATE_API_KEY'),
+    ],
+
+    'heleket' => [
+        'key' => env('HELEKET_API_KEY'),
+        'merchant_id' => env('HELEKET_MERCHANT_ID'),
+    ],
+
+    'korapay' => [
+        'public' => env('KORAPAY_PUBLIC_KEY'),
+        'secret' => env('KORAPAY_SECRET_KEY'),
+    ],
+
 ];

@@ -97,6 +97,7 @@
                     </div>
                 </li>
 
+
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.faq') }}">FAQ</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.blog') }}">Blog</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.contact') }}">Contact</a></li>

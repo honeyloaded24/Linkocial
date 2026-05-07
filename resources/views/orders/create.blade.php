@@ -68,7 +68,7 @@
                                                         data-platform="{{ $service->getChannelName() }}"
                                                         data-min="{{ $service->min }}" 
                                                         data-max="{{ $service->max }}" 
-                                                        data-price="{{ $service->selling_price }}"
+                                                        data-price="{{ money($service->selling_price, false) }}"
                                                         data-desc="{{ $service->description }}"
                                                         data-average-time="{{ $service->average_time }}"
                                                         style="background: transparent; color: var(--text-main); display: none;">
@@ -81,7 +81,7 @@
                                                             </div>
                                                         </div>
                                                         <div class="text-end" style="min-width: 80px;">
-                                                            <div class="fw-bold text-primary-custom">₦{{ number_format((float)$service->selling_price, 2) }}</div>
+                                                            <div class="fw-bold text-primary-custom">{{ money($service->selling_price) }}</div>
                                                             <div class="text-muted small" style="font-size: 0.7rem;">per 1k</div>
                                                         </div>
                                                     </div>
@@ -110,14 +110,14 @@
                             <div class="p-3 rounded text-center mb-4" style="background-color: rgba(20, 184, 166, 0.05); border: 1px dashed var(--accent-color);">
                                 <div class="row g-0 align-items-center">
                                     <div class="col-6 border-end">
-                                        <span class="text-muted small fw-bold d-block mb-1">Your Balance</span>
-                                        <h5 class="fw-bold mb-0" id="userBalanceText" data-balance="{{ (float)auth()->user()->balance }}">
-                                            ₦ {{ number_format((float)auth()->user()->balance, 2) }}
+                                        <span class="text-muted small fw-bold d-block mb-1">Available Balance</span>
+                                        <h5 class="fw-bold mb-0" id="userBalanceText" data-balance="{{ money(auth()->user()->balance, false) }}">
+                                            {{ money(auth()->user()->balance) }}
                                         </h5>
                                     </div>
                                     <div class="col-6">
                                         <span class="text-muted small fw-bold d-block mb-1">Total Charge</span>
-                                        <h3 class="fw-bold mb-0 text-primary-custom" id="totalCharge">₦ 0.00</h3>
+                                        <h3 class="fw-bold mb-0 text-primary-custom" id="totalCharge">{{ get_currency_symbol() }} 0.00</h3>
                                     </div>
                                 </div>
                             </div>
@@ -145,7 +145,7 @@
                         <div class="mb-4">
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted small fw-bold">RATE PER 1000</span>
-                                <span class="fw-bold text-primary-custom" id="detailRate">₦ 0.00</span>
+                                <span class="fw-bold text-primary-custom" id="detailRate">{{ get_currency_symbol() }} 0.00</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted small fw-bold">AVG. TIME</span>
@@ -541,7 +541,7 @@
 
                 detailName.innerText = name;
                 detailId.innerText = `ID: ${id}`;
-                detailRate.innerText = `₦ ${parseFloat(price).toFixed(2)}`;
+                detailRate.innerText = `${currencySymbol} ${parseFloat(price).toFixed(2)}`;
                 detailAvgTime.innerText = (avgTime && avgTime !== 'null' && avgTime !== "") ? avgTime : '5mins - 24hrs';
                 
                 let finalDesc = 'No instructions provided.';
@@ -556,13 +556,15 @@
             });
         });
 
+        const currencySymbol = "{{ get_currency_symbol() }}";
+
         function calculateCost() {
             const selectedItem = serviceItems.find(item => item.getAttribute('data-id') === serviceIdInput.value);
             if (selectedItem) {
                 const pricePerK = parseFloat(selectedItem.getAttribute('data-price'));
                 const qty = parseInt(quantityInput.value) || 0;
                 const cost = (qty / 1000) * pricePerK;
-                totalCharge.innerText = `₦ ${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                totalCharge.innerText = `${currencySymbol} ${cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
                 // --- Balance Warning Logic ---
                 const userBalanceText = document.getElementById('userBalanceText');

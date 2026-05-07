@@ -14,11 +14,17 @@ use App\Http\Controllers\LandingController;
 // --- MARKETING & PUBLIC ROUTES ---
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index']);
+Route::post('/currency/switch', [\App\Http\Controllers\CurrencyController::class, 'switch'])->name('currency.switch');
 
 // Platform-specific landing pages (e.g., /instagram-promotion, /tiktok-promotion)
 Route::get('/{platform}-promotion', [LandingController::class, 'platform'])
     ->where('platform', 'instagram|tiktok|youtube|facebook|x|telegram|spotify|audiomack')
     ->name('platform');
+
+Route::get('/download', function() {
+    return view('download');
+})->name('download');
+
 
 // Specialized Instagram SEO Pages
 Route::get('/buy-instagram-followers', [LandingController::class, 'instagramFollowers'])->name('services.ig-followers');
@@ -72,10 +78,12 @@ Route::get('/privacy', function() { return view('legal.terms'); })->name('legal.
 
 
 // --- AUTHENTICATION ROUTES ---
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register']);
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
+    Route::post('/register', [AuthController::class, 'register']);
+});
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Email Verification
@@ -110,6 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/wallet', [App\Http\Controllers\PaymentController::class, 'deposit'])->name('wallet.index');
     Route::get('/wallet/history', [App\Http\Controllers\TransactionController::class, 'index'])->name('wallet.history');
     Route::post('/api/payments/deposit', [App\Http\Controllers\PaymentController::class, 'initializeDeposit']);
+    Route::post('/api/payments/korapay', [App\Http\Controllers\PaymentController::class, 'initializeKorapay'])->name('wallet.korapay.initialize');
+    Route::post('/api/payments/heleket', [App\Http\Controllers\PaymentController::class, 'initializeHeleket'])->name('wallet.heleket.initialize');
 
     // Support Tickets
     Route::get('/tickets', [App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');
@@ -121,6 +131,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Affiliate Routes
     Route::get('/affiliate', [App\Http\Controllers\AffiliateController::class, 'index'])->name('affiliate.index');
     Route::post('/affiliate/withdraw', [App\Http\Controllers\AffiliateController::class, 'requestWithdrawal'])->name('affiliate.withdraw');
+
+    // New Coming Soon Services
+    Route::get('/virtual-numbers', function() {
+        return view('services.coming_soon', ['title' => 'Virtual Number Verification', 'icon' => 'fa-phone-volume']);
+    })->name('services.virtual-numbers');
+    
+    Route::get('/gift-cards', function() {
+        return view('services.coming_soon', ['title' => 'Buy Gift Cards', 'icon' => 'fa-gift']);
+    })->name('services.gift-cards');
+
+    Route::get('/buy-esim', function() {
+        return view('services.coming_soon', ['title' => 'Buy eSim', 'icon' => 'fa-sim-card']);
+    })->name('services.buy-esim');
+
+
+
+
+
 
     Route::get('/api/docs', function() {
         return view('api.docs');
@@ -190,6 +218,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/settings', [AdminController::class, 'hqSettings'])->name('hq.settings');
         Route::post('/settings', [AdminController::class, 'hqUpdateSettings'])->name('hq.settings.update');
+
+        // Currency Management
+        Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index'])->name('hq.currencies');
+        Route::post('/currencies', [\App\Http\Controllers\CurrencyController::class, 'store'])->name('hq.currencies.store');
+        Route::put('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'update'])->name('hq.currencies.update');
+        Route::delete('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'destroy'])->name('hq.currencies.destroy');
     });
 });
 

@@ -1,4 +1,4 @@
-<section class="pb-5">
+<section class="py-5">
     <div class="container">
         <div class="text-center mb-4">
             <h6 class="text-uppercase ls-wide text-muted fw-bold small">Supported Payment Methods</h6>
@@ -25,7 +25,7 @@
 
         <!-- Global Coverage - Now Below -->
         <div class="d-flex justify-content-center align-items-center gap-2 opacity-50">
-            <i class="fa-solid fa-shield-check text-success small"></i>
+            <i class="fa-solid fa-shield-halved text-success small"></i>
             <span class="text-muted small fw-semibold">PCI-DSS Compliant & Secure Transactions</span>
         </div>
     </div>

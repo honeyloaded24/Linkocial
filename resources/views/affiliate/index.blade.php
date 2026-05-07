@@ -53,13 +53,18 @@
                         <div class="col-6">
                             <div class="p-3 rounded-4 shadow-sm" style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(255,255,255,0.1);">
                                 <small class="text-white text-opacity-75 d-block mb-1 text-uppercase fw-bold" style="font-size: 0.65rem;">Available</small>
-                                <h4 class="fw-bold text-white mb-0">₦{{ number_format($user->commission_balance, 2) }}</h4>
+                                <h4 class="fw-bold text-white mb-0">{{ money($user->commission_balance) }}</h4>
                             </div>
                         </div>
-                        <div class="col-6">
-                            <div class="p-3 rounded-4 shadow-sm" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(255,255,255,0.1);">
-                                <small class="text-white text-opacity-75 d-block mb-1 text-uppercase fw-bold" style="font-size: 0.65rem;">Total Earned</small>
-                                <h4 class="fw-bold text-white mb-0">₦{{ number_format($user->total_earned_commission, 2) }}</h4>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="premium-card p-4 h-100 bg-secondary bg-opacity-10 border-0 d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0" style="width: 55px; height: 55px;">
+                                <i class="fa-solid fa-sack-dollar fa-2x"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-white opacity-50 small fw-bold text-uppercase mb-1" style="letter-spacing: 1px;">Total Earned</h6>
+                                <h4 class="fw-bold text-white mb-0">{{ money($user->total_earned_commission) }}</h4>
                             </div>
                         </div>
                         <div class="col-12">

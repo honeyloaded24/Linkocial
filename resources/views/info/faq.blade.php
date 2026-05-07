@@ -3,7 +3,7 @@
 @section('header_title', 'Frequently Asked Questions')
 
 @section('content')
-<div class="container py-5">
+<div class="container py-5" style="padding-top: 100px !important;">
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="premium-card p-5 shadow-sm">

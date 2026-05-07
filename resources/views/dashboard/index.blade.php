@@ -1,8 +1,13 @@
 @extends('layouts.app')
 
-@section('header_title', 'Dashboard Overview')
+@section('header_title', 'Dashboard')
 
 @section('content')
+@php
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', $user->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+@endphp
 <div class="container-fluid">
     <!-- Broadcast / News Slider -->
     @php
@@ -40,67 +45,117 @@
     </div>
     @endif
 
-    <div class="row g-4 mb-4">
-    <!-- Stat Cards -->
-    <div class="col-12 col-md-3">
-        <div class="premium-card p-4 h-100 bg-primary-custom text-white border-0">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-white opacity-75 mb-0 fw-bold">Current Balance</h6>
-                <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px;">
-                    <i class="fa-solid fa-wallet fa-lg text-white"></i>
+    <!-- Balance Hero Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="premium-card border-0 shadow-sm position-relative overflow-hidden" 
+                 style="border-radius: 35px; background: #ffffff; border: 1px solid rgba(0,0,0,0.03) !important;">
+                
+                <!-- Soft Glow Backgrounds -->
+                <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.05), transparent 50%); pointer-events: none;"></div>
+                <div class="position-absolute bottom-0 end-0 w-100 h-100" style="background: radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.05), transparent 50%); pointer-events: none;"></div>
+
+                <div class="p-4 p-md-5 d-flex flex-column flex-md-row align-items-center justify-content-between position-relative" style="z-index: 1;">
+                    <div class="text-center text-md-start mb-4 mb-md-0">
+                        <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-3">
+                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                <i class="fa-solid fa-wallet small"></i>
+                            </div>
+                            <h6 class="text-uppercase small text-muted fw-bold mb-0" style="letter-spacing: 2px; font-size: 0.7rem;">Account Liquidity</h6>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-3">
+                        <h1 class="display-4 fw-bold mb-0" style="color: var(--text-main); font-family: var(--heading-font); letter-spacing: -1px;">{{ money($user->balance) }}</h1>
+                        </div>
+                        <p class="text-muted mt-3 mb-0 small fw-medium">
+                            <i class="fa-solid fa-circle-check text-success me-1"></i> Verified & Protected Funds
+                        </p>
+                    </div>
+                    <div class="d-flex flex-column align-items-center align-items-md-end gap-3">
+                        <a href="{{ route('wallet.index') }}" class="btn btn-premium btn-lg rounded-pill px-5 shadow-lg d-flex align-items-center gap-2" style="background: #1e293b; border: none; font-size: 0.95rem; padding-top: 0.9rem; padding-bottom: 0.9rem; color: #ffffff !important;">
+                            <span class="text-white">Fund Your Wallet</span>
+                            <i class="fa-solid fa-arrow-right small opacity-50 text-white"></i>
+                        </a>
+                        <div class="d-flex gap-4 mt-2">
+                            <div class="text-center">
+                                <div class="text-muted small fw-bold">Daily Limit</div>
+                                <div class="text-main fw-bold small">Unlimited</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-muted small fw-bold">Currency</div>
+                                <div class="text-main fw-bold small">{{ $currentCurrency->code }}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <h2 class="fw-bold mb-1"><i class="fa-solid fa-naira-sign fs-4"></i> {{ number_format(Auth::user()->balance, 2) }}</h2>
-            <a href="{{ route('wallet.index') }}" class="text-white small fw-bold text-decoration-none mt-2 d-inline-block">
-                Fund Wallet <i class="fa-solid fa-circle-plus ms-1"></i>
-            </a>
         </div>
     </div>
 
-    <div class="col-12 col-md-3">
-        <div class="premium-card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-muted mb-0 fw-bold">Total Spent</h6>
-                <div class="bg-primary-custom rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; opacity: 0.9;">
-                    <i class="fa-solid fa-money-bill-wave fa-lg text-white"></i>
+    <div class="row g-3 mb-4">
+        <!-- Stat Cards -->
+        <div class="col-12 col-md-3">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                        <i class="fa-solid fa-money-bill-wave small"></i>
+                    </div>
+                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Total Spent</h6>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ money($totalSpent) }}</h4>
+                    @if($growth > 0)
+                        <span class="text-success fw-bold" style="font-size: 0.65rem;"><i class="fa-solid fa-arrow-trend-up"></i> +{{ number_format($growth, 0) }}%</span>
+                    @elseif($growth < 0)
+                        <span class="text-danger fw-bold" style="font-size: 0.65rem;"><i class="fa-solid fa-arrow-trend-down"></i> {{ number_format($growth, 0) }}%</span>
+                    @endif
                 </div>
             </div>
-            <h2 class="fw-bold mb-1"><i class="fa-solid fa-naira-sign fs-4"></i> {{ number_format($totalSpent, 2) }}</h2>
-            @if($growth > 0)
-                <small class="text-success fw-bold"><i class="fa-solid fa-arrow-trend-up"></i> +{{ number_format($growth, 1) }}% this week</small>
-            @elseif($growth < 0)
-                <small class="text-danger fw-bold"><i class="fa-solid fa-arrow-trend-down"></i> {{ number_format($growth, 1) }}% this week</small>
-            @else
-                <small class="text-muted fw-bold">Stable this week</small>
-            @endif
         </div>
-    </div>
-    
-    <div class="col-12 col-md-3">
-        <div class="premium-card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-muted mb-0 fw-bold">Active Orders</h6>
-                <div class="bg-warning rounded-circle d-flex align-items-center justify-content-center text-dark" style="width: 48px; height: 48px; opacity: 0.9;">
-                    <i class="fa-solid fa-spinner fa-spin fa-lg"></i>
+        
+        <div class="col-12 col-md-3">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                        <i class="fa-solid fa-spinner fa-spin-slow small"></i>
+                    </div>
+                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Active Orders</h6>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($activeOrders) }}</h4>
+                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Running</span>
                 </div>
             </div>
-            <h2 class="fw-bold mb-1">{{ number_format($activeOrders) }}</h2>
-            <small class="text-muted fw-bold">Currently processing</small>
         </div>
-    </div>
-    
-    <div class="col-12 col-md-3">
-        <div class="premium-card p-4 h-100">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="text-muted mb-0 fw-bold">Completed Orders</h6>
-                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 48px; height: 48px; opacity: 0.9;">
-                    <i class="fa-solid fa-circle-check fa-lg"></i>
+        
+        <div class="col-12 col-md-3">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                        <i class="fa-solid fa-circle-check small"></i>
+                    </div>
+                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Completed</h6>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($completedOrders) }}</h4>
+                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Total</span>
                 </div>
             </div>
-            <h2 class="fw-bold mb-1">{{ number_format($completedOrders) }}</h2>
-            <small class="text-muted fw-bold">Lifetime completed</small>
         </div>
-    </div>
+
+        <div class="col-12 col-md-3">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                        <i class="fa-solid fa-ticket small"></i>
+                    </div>
+                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Support</h6>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($user->tickets()->count()) }}</h4>
+                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Tickets</span>
+                </div>
+            </div>
+        </div>
 <!-- Channels Section -->
 <div class="row mb-4 pt-3">
     <div class="col-12">
@@ -161,7 +216,7 @@
                                 </a>
                             </td>
                             <td class="fw-bold small">{{ number_format($order->quantity) }}</td>
-                            <td class="fw-bold small">₦ {{ number_format((float)$order->charge, 2) }}</td>
+                            <td class="fw-bold small">{{ money((float)$order->charge) }}</td>
                             <td class="pe-4 text-end">
                                 @php
                                     $cleanStatus = strtolower(str_replace(' ', '_', $order->status));

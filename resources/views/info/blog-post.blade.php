@@ -5,7 +5,7 @@
 @section('header_title', $post->seo_title)
 
 @section('content')
-<div class="container py-5">
+<div class="container py-5" style="padding-top: 100px !important;">
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <!-- Article Header -->

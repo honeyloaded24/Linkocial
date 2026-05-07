@@ -31,11 +31,22 @@ class PaymentController extends Controller
     public function initializeDeposit(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:100', // Minimum deposit of 100 NGN
+            'amount' => 'required|numeric|min:0.01', 
         ]);
 
         $user = $request->user();
-        $amountInKobo = $request->amount * 100; // Paystack processes amounts in Kobo
+        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
+        
+        // 1. Convert the user-provided amount into NGN for Paystack
+        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
+        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
+        
+        $amountInNgn = ($request->amount / $currentCurrency->exchange_rate) * $ngnCurrency->exchange_rate;
+        $amountInKobo = round($amountInNgn * 100); // Paystack processes amounts in Kobo
+
+        if ($amountInKobo < 10000) { // Paystack min is usually 100 NGN (10000 kobo)
+            return response()->json(['error' => 'The minimum deposit is ₦100.'], 422);
+        }
 
         try {
             $response = Http::withToken(config('services.paystack.secret'))
@@ -49,7 +60,6 @@ class PaymentController extends Controller
             $result = $response->json();
 
             if ($response->successful() && $result['status']) {
-                // Return the checkout URL to the frontend
                 return response()->json([
                     'authorization_url' => $result['data']['authorization_url'],
                     'reference' => $result['data']['reference']
@@ -66,7 +76,74 @@ class PaymentController extends Controller
     }
 
     /**
-     * Verify a transaction with Paystack API
+     * Initialize a Korapay Deposit (Naira)
+     */
+    public function initializeKorapay(Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01', 
+        ]);
+
+        $user = $request->user();
+        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
+        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
+        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
+
+        // 1. Determine the charge currency
+        $supportedKoraCurrencies = ['NGN', 'GHS', 'KES'];
+        $chargeCurrency = in_array($currentCurrency->code, $supportedKoraCurrencies) ? $currentCurrency->code : 'NGN';
+        
+        // 2. Calculate the amount in the charge currency
+        if ($chargeCurrency === $currentCurrency->code) {
+            $chargeAmount = $request->amount;
+        } else {
+            // Convert to NGN if the user's currency isn't natively supported by Kora
+            $chargeAmount = ($request->amount / $currentCurrency->exchange_rate) * $ngnCurrency->exchange_rate;
+        }
+        
+        $chargeAmount = round($chargeAmount, 2);
+
+        if ($chargeCurrency === 'NGN' && $chargeAmount < 100) { 
+            return response()->json(['error' => 'The minimum deposit is ₦100.'], 422);
+        }
+
+        try {
+            $reference = 'DEP_KORA_' . time() . '_' . $user->id;
+            
+            $response = Http::withToken(config('services.korapay.secret'))
+                ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
+                    'amount' => $chargeAmount,
+                    'currency' => $chargeCurrency,
+                    'reference' => $reference,
+                    'notification_url' => url('/api/webhooks/korapay'),
+                    'redirect_url' => route('wallet.index') . '?status=success&reference=' . $reference,
+                    'customer' => [
+                        'email' => $user->email,
+                        'name' => $user->username,
+                    ],
+                    'merchant_bears_cost' => false
+                ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['status']) && $result['status'] === true) {
+                return response()->json([
+                    'checkout_url' => $result['data']['checkout_url'],
+                    'reference' => $reference
+                ]);
+            }
+
+            Log::error('Korapay Initialization Failed: ' . $response->body());
+            return response()->json(['error' => 'Failed to initialize Korapay.'], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Korapay Exception: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred with Korapay.'], 500);
+        }
+    }
+
+    /**
+     * Verify a transaction with the appropriate gateway API
      */
     private function verifyTransaction($reference)
     {
@@ -75,6 +152,15 @@ class PaymentController extends Controller
             return;
         }
 
+        if (str_starts_with($reference, 'DEP_KORA_')) {
+            $this->verifyKorapayTransaction($reference);
+        } else {
+            $this->verifyPaystackTransaction($reference);
+        }
+    }
+
+    private function verifyPaystackTransaction($reference)
+    {
         try {
             $response = Http::withToken(config('services.paystack.secret'))
                 ->get("https://api.paystack.co/transaction/verify/{$reference}");
@@ -88,11 +174,35 @@ class PaymentController extends Controller
                 $user = User::where('email', $customerEmail)->first();
 
                 if ($user) {
-                    $this->processSuccessfulPayment($user, $amountInNaira, $reference);
+                    $this->processSuccessfulPayment($user, $amountInNaira, $reference, 'Paystack');
                 }
             }
         } catch (\Exception $e) {
-            Log::error("Manual Verification Failed for {$reference}: " . $e->getMessage());
+            Log::error("Manual Paystack Verification Failed for {$reference}: " . $e->getMessage());
+        }
+    }
+
+    private function verifyKorapayTransaction($reference)
+    {
+        try {
+            $response = Http::withToken(config('services.korapay.secret'))
+                ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['status']) && $result['status'] === true && $result['data']['status'] === 'success') {
+                $data = $result['data'];
+                $amount = $data['amount'];
+                $currency = $data['currency'] ?? 'NGN';
+                $customerEmail = $data['customer']['email'];
+                $user = User::where('email', $customerEmail)->first();
+
+                if ($user) {
+                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Manual Korapay Verification Failed for {$reference}: " . $e->getMessage());
         }
     }
 
@@ -145,35 +255,87 @@ class PaymentController extends Controller
     }
 
     /**
+     * Handle Korapay Webhook
+     */
+    public function korapayWebhook(Request $request)
+    {
+        $signature = $request->header('x-korapay-signature');
+        $payload = $request->getContent();
+        
+        $expectedSignature = hash_hmac('sha256', $payload, config('services.korapay.secret'));
+        
+        if ($signature !== $expectedSignature) {
+            Log::warning('Invalid Korapay Webhook Signature detected.');
+            return response()->json(['status' => 'invalid signature'], 400);
+        }
+
+        $event = json_decode($payload, true);
+
+        if ($event['event'] === 'charge.success' && $event['data']['status'] === 'success') {
+            $data = $event['data'];
+            $reference = $data['reference'];
+            $amount = $data['amount'];
+            $currency = $data['currency'] ?? 'NGN';
+            $customerEmail = $data['customer']['email'];
+
+            if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
+                return response()->json(['status' => 'already processed']);
+            }
+
+            DB::beginTransaction();
+            try {
+                $user = User::where('email', $customerEmail)->first();
+                if ($user) {
+                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
+                    DB::commit();
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("Failed to process Korapay webhook for {$reference}: " . $e->getMessage());
+                return response()->json(['status' => 'database error'], 500);
+            }
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    /**
      * Shared logic to credit wallet and award commissions
      */
-    private function processSuccessfulPayment($user, $amountInNaira, $reference)
+    private function processSuccessfulPayment($user, $amount, $reference, $method = 'Paystack', $currencyCode = 'NGN')
     {
-        // 1. Record the payment history
+        // Get the exchange rate for the currency used in the transaction to convert to USD Master
+        $transactionCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? (object)['exchange_rate' => 1450.0];
+        $rate = $transactionCurrency->exchange_rate;
+        $amountInUsd = $amount / $rate;
+
+        // 1. Record the payment history (store the original amount and currency for records)
         \App\Models\Payment::create([
             'user_id' => $user->id,
-            'amount' => $amountInNaira,
+            'amount' => $amount,
+            'currency' => $currencyCode,
+            'amount_usd' => $amountInUsd,
             'reference' => $reference,
             'status' => 'success',
         ]);
 
-        // 2. Credit the user's wallet
-        $user->increment('balance', $amountInNaira);
+        // 2. Credit the user's wallet with USD value
+        $user->increment('balance', $amountInUsd);
 
-        // --- Promo Bonus Logic ---
+        // --- Promo Bonus Logic (Calculated in USD base) ---
         $promoEnabled = \App\Models\Setting::get('promo_enabled') == '1';
         $promoExpiry = \App\Models\Setting::get('promo_expires_at');
-        $promoMin = (float) \App\Models\Setting::get('promo_min_amount', 1000);
+        $promoMinNgn = (float) \App\Models\Setting::get('promo_min_amount', 1000);
         $promoPercent = (float) \App\Models\Setting::get('promo_bonus_percent', 10);
         
         if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
-            if ($amountInNaira >= $promoMin) {
-                $bonusAmount = ($amountInNaira * $promoPercent) / 100;
-                $user->increment('balance', $bonusAmount);
+            if ($amountInNaira >= $promoMinNgn) {
+                $bonusAmountUsd = ($amountInUsd * $promoPercent) / 100;
+                $user->increment('balance', $bonusAmountUsd);
                 
                 \App\Models\Transaction::add(
                     $user->id, 
-                    $bonusAmount, 
+                    $bonusAmountUsd, 
                     'credit', 
                     'deposit', 
                     "Promo Bonus (+{$promoPercent}%) for deposit"
@@ -181,21 +343,21 @@ class PaymentController extends Controller
             }
         }
 
-        // 3. Record in Financial Ledger
+        // 3. Record in Financial Ledger (in USD base)
         \App\Models\Transaction::add(
             $user->id, 
-            $amountInNaira, 
+            $amountInUsd, 
             'credit', 
             'deposit', 
-            "Deposit via Paystack (Ref: {$reference})",
+            "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
             $reference
         );
 
-        // 4. Send Notification & Email to user
+        // 4. Send Notification & Email to user (Formatted in their local currency)
         \App\Models\Notification::send(
             $user->id,
             "Wallet Funded Successfully",
-            "Your wallet has been credited with ₦" . number_format($amountInNaira, 2) . " via Paystack.",
+            "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
             'success',
             route('wallet.history')
         );
@@ -204,9 +366,9 @@ class PaymentController extends Controller
         try {
             Mail::send('emails.wallet_funded', [
                 'transaction_id' => 'TXN-' . time(),
-                'method' => 'Paystack',
-                'amount' => $amountInNaira,
-                'bonus' => isset($bonusAmount) ? $bonusAmount : 0
+                'method' => $method,
+                'amount' => $amountInNaira, // Email still shows NGN as that's what they paid
+                'bonus' => isset($bonusAmountUsd) ? ($bonusAmountUsd * $ngnRate) : 0
             ], function($message) use ($user) {
                 $message->to($user->email)->subject("Wallet Funded Successfully! 💰");
             });
@@ -231,22 +393,22 @@ class PaymentController extends Controller
                 }
 
                 $commissionRate = $rate / 100;
-                $commissionAmount = $amountInNaira * $commissionRate;
+                $commissionAmountUsd = $amountInUsd * $commissionRate;
 
-                $referrer->increment('commission_balance', $commissionAmount);
-                $referrer->increment('total_earned_commission', $commissionAmount);
+                $referrer->increment('commission_balance', $commissionAmountUsd);
+                $referrer->increment('total_earned_commission', $commissionAmountUsd);
                 
                 \App\Models\AffiliateTransaction::log(
                     $referrer->id, 
-                    $commissionAmount, 
+                    $commissionAmountUsd, 
                     'credit', 
                     "{$typeLabel} Commission from {$user->username}"
                 );
 
-                // Send Commission Email
+                // Send Commission Email (Show in their preferred currency if possible, or just NGN for now as hint)
                 try {
                     Mail::send('emails.affiliate_commission', [
-                        'amount' => $commissionAmount,
+                        'amount' => ($commissionAmountUsd * $ngnRate), // Show NGN value for clarity
                         'from_user' => $user->username
                     ], function($message) use ($referrer) {
                         $message->to($referrer->email)->subject("You just earned money! 💸");
@@ -257,12 +419,145 @@ class PaymentController extends Controller
 
                 \App\Models\ActivityLog::log("Awarded referral commission", $referrer, [
                     'from_user' => $user->username,
-                    'deposit_amount' => $amountInNaira,
-                    'commission' => $commissionAmount
+                    'deposit_amount_usd' => $amountInUsd,
+                    'commission_usd' => $commissionAmountUsd
                 ]);
             }
         }
         
-        Log::info("Payment Processed: Credited {$amountInNaira} NGN to User ID {$user->id}");
+        Log::info("Payment Processed: Credited " . number_format($amountInUsd, 4) . " USD to User ID {$user->id}");
+    }
+
+    /**
+     * Initialize a Heleket Deposit (Crypto/USD)
+     */
+    public function initializeHeleket(Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01', 
+        ]);
+
+        $user = $request->user();
+        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
+        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
+        
+        // Convert the input amount (could be NGN, KES, etc.) into USD for Heleket
+        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
+
+        $merchantId = config('services.heleket.merchant_id');
+        $apiKey = config('services.heleket.key');
+
+        $data = [
+            'amount' => number_format($amountInUsd, 2, '.', ''),
+            'currency' => 'USD',
+            'order_id' => 'DEP_CRYP_' . time() . '_' . $user->id,
+            'email' => $user->email,
+        ];
+
+        // Heleket Signature Algorithm: md5(base64_encode(json_encode($data)) . $API_KEY)
+        $jsonData = json_encode($data);
+        $sign = md5(base64_encode($jsonData) . $apiKey);
+
+        try {
+            $response = Http::withHeaders([
+                'merchant' => $merchantId,
+                'sign' => $sign,
+                'Content-Type' => 'application/json'
+            ])->post('https://api.heleket.com/v1/payment', $data);
+
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['state']) && $result['state'] === 0) {
+                return response()->json([
+                    'authorization_url' => $result['result']['url'],
+                    'uuid' => $result['result']['uuid']
+                ]);
+            }
+
+            Log::error('Heleket Initialization Failed: ' . $response->body());
+            return response()->json(['error' => 'Failed to initialize crypto gateway.'], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Heleket Exception: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred with the crypto gateway.'], 500);
+        }
+    }
+
+    /**
+     * Handle Heleket Webhook
+     */
+    public function heleketWebhook(Request $request)
+    {
+        $data = $request->all();
+        $receivedSign = $data['sign'] ?? '';
+        
+        $verificationData = $data;
+        unset($verificationData['sign']);
+        
+        $apiKey = config('services.heleket.key');
+        
+        $jsonString = json_encode($verificationData, JSON_UNESCAPED_UNICODE);
+        $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
+
+        if ($receivedSign !== $calculatedSign) {
+            Log::warning('Invalid Heleket Webhook Signature detected.');
+            return response()->json(['status' => 'invalid signature'], 400);
+        }
+
+        if ($data['status'] === 'paid' && $data['is_final'] === true) {
+            $reference = $data['order_id'];
+            $amountInUsd = (float) $data['amount'];
+            
+            if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
+                return response()->json(['status' => 'already processed']);
+            }
+
+            DB::beginTransaction();
+            try {
+                $refParts = explode('_', $reference);
+                $userId = $refParts[count($refParts)-1] ?? 0;
+                $user = User::find($userId);
+                
+                if ($user) {
+                    $this->processSuccessfulHeleketPayment($user, $amountInUsd, $reference);
+                    DB::commit();
+                }
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("Failed to process Heleket webhook for {$reference}: " . $e->getMessage());
+                return response()->json(['status' => 'database error'], 500);
+            }
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    private function processSuccessfulHeleketPayment($user, $amountInUsd, $reference)
+    {
+        \App\Models\Payment::create([
+            'user_id' => $user->id,
+            'amount' => $amountInUsd, 
+            'reference' => $reference,
+            'status' => 'success',
+        ]);
+
+        $user->increment('balance', $amountInUsd);
+
+        \App\Models\Transaction::add(
+            $user->id, 
+            $amountInUsd, 
+            'credit', 
+            'deposit', 
+            "Deposit via Heleket Crypto",
+            $reference
+        );
+
+        \App\Models\Notification::send(
+            $user->id,
+            "Crypto Deposit Successful",
+            "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
+            'success',
+            route('wallet.history')
+        );
     }
 }

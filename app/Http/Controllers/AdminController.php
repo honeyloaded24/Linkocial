@@ -27,8 +27,8 @@ class AdminController extends Controller
         $pendingOrders = Order::where('status', 'pending')->count();
         $completedOrders = Order::where('status', 'completed')->count();
 
-        // Financial Metrics
-        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount');
+        // Financial Metrics (All reporting in USD Master)
+        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount_usd');
         $totalSpent = Order::whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
         $totalCost = Order::whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('provider_cost');
         $totalProfit = $totalSpent - $totalCost;
@@ -161,6 +161,7 @@ class AdminController extends Controller
                     $isActive = isset($data['is_active']);
                     $isHot = isset($data['is_hot']);
                     $isTrending = isset($data['is_trending']);
+                    
                     $price = $data['selling_price'] ?? $service->selling_price;
 
                     $service->update([

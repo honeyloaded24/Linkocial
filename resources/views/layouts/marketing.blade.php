@@ -4,7 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', $siteName . ' - Professional SMM Solutions')</title>
+    @include('partials.tracking')
+
     <meta name="description" content="@yield('meta_description', 'Boost your social presence with ' . $siteName . '. High-quality followers, likes, and engagement.')">
+    <link rel="canonical" href="{{ request()->url() }}">
 
     @php
         $favicon = \App\Models\Setting::get('site_favicon');
@@ -34,19 +37,22 @@
     <style>
         :root {
             --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --accent: #14b8a6;
             --bg-body: #ffffff;
             --bg-soft: #f8fafc;
             --text-main: #0f172a;
             --text-muted: #475569;
             --border: #e2e8f0;
+            --card-shadow: 0 10px 30px -10px rgba(0,0,0,0.08);
         }
+
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-body);
             color: var(--text-main);
             overflow-x: hidden;
-            padding-top: 80px;
         }
 
         .premium-card {

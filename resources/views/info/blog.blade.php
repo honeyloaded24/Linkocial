@@ -3,7 +3,7 @@
 @section('header_title', 'Linkocial Blog')
 
 @section('content')
-<div class="container py-5">
+<div class="container py-5" style="padding-top: 100px !important;">
     <div class="text-center mb-5">
         <h1 class="fw-bold display-5">Growth Insights</h1>
         <p class="text-muted fs-5">Expert strategies and tips to dominate social media.</p>

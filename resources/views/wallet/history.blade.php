@@ -15,7 +15,7 @@
                 <div class="d-inline-flex align-items-center gap-3">
                     <div class="text-end">
                         <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.6rem;">Available Balance</small>
-                        <h4 class="fw-bold mb-0 text-primary-custom">₦{{ number_format((float)auth()->user()->balance, 2) }}</h4>
+                        <h4 class="fw-bold mb-0 text-primary-custom">{{ money((float)auth()->user()->balance) }}</h4>
                     </div>
                     <a href="{{ route('wallet.index') }}" class="btn btn-sm bg-primary-custom text-white px-3 py-1 rounded-pill shadow-sm fw-bold" style="font-size: 0.75rem;">
                         <i class="fa-solid fa-plus me-1"></i> Add Funds
@@ -61,15 +61,15 @@
                         </td>
                         <td>
                             <div class="fw-bold {{ $tx->type === 'credit' ? 'text-success' : 'text-danger' }}">
-                                {{ $tx->type === 'credit' ? '+' : '-' }} ₦{{ number_format((float)$tx->amount, 2) }}
+                                {{ $tx->type === 'credit' ? '+' : '-' }} {{ money((float)$tx->amount) }}
                             </div>
                         </td>
                         <td>
                             <div class="text-muted small" style="max-width: 300px;">{{ $tx->description }}</div>
                         </td>
                         <td>
-                            <div class="fw-bold small">₦{{ number_format((float)$tx->balance_after, 2) }}</div>
-                            <div class="text-muted" style="font-size: 0.65rem;">Before: ₦{{ number_format((float)$tx->balance_before, 2) }}</div>
+                            <div class="fw-bold small">{{ money((float)$tx->balance_after) }}</div>
+                            <div class="text-muted" style="font-size: 0.65rem;">Before: {{ money((float)$tx->balance_before) }}</div>
                         </td>
                         <td class="pe-4 text-end text-muted small">
                             {{ $tx->created_at->format('M d, Y') }}<br>

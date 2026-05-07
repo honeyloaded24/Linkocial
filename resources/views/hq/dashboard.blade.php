@@ -74,28 +74,28 @@
         <div class="col-md-3">
             <div class="premium-card p-3 h-100 bg-primary bg-opacity-10 border-0">
                 <h6 class="text-primary small fw-bold text-uppercase mb-1">Amount Deposited</h6>
-                <h3 class="fw-bold mb-0 text-primary">₦ {{ number_format($totalDeposited, 2) }}</h3>
+                <h3 class="fw-bold mb-0 text-primary">{{ money($totalDeposited, true, 'USD') }}</h3>
                 <small class="text-muted mt-2 d-block">Lifetime success deposits</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
                 <h6 class="text-danger small fw-bold text-uppercase mb-1">Amount Spent</h6>
-                <h3 class="fw-bold mb-0 text-danger">₦ {{ number_format($totalSpent, 2) }}</h3>
+                <h3 class="fw-bold mb-0 text-danger">{{ money($totalSpent, true, 'USD') }}</h3>
                 <small class="text-muted mt-2 d-block">Total order volume</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
                 <h6 class="text-warning small fw-bold text-uppercase mb-1">Cost of Services</h6>
-                <h3 class="fw-bold mb-0 text-warning">₦ {{ number_format($totalCost, 2) }}</h3>
+                <h3 class="fw-bold mb-0 text-warning">{{ money($totalCost, true, 'USD') }}</h3>
                 <small class="text-muted mt-2 d-block">Provider expenses</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="premium-card p-3 h-100 bg-success bg-opacity-10 border-0">
                 <h6 class="text-success small fw-bold text-uppercase mb-1">Platform Profit</h6>
-                <h3 class="fw-bold mb-0 text-success">₦ {{ number_format($totalProfit, 2) }}</h3>
+                <h3 class="fw-bold mb-0 text-success">{{ money($totalProfit, true, 'USD') }}</h3>
                 <small class="text-muted mt-2 d-block">Net margin</small>
             </div>
         </div>
@@ -113,7 +113,7 @@
         </div>
         <div class="col-md-4">
             <div class="premium-card p-4">
-                <h6 class="fw-bold text-muted mb-4 text-uppercase small">Profit Trend (₦)</h6>
+                <h6 class="fw-bold text-muted mb-4 text-uppercase small">Profit Trend (USD)</h6>
                 <div style="height: 320px; width: 100%;">
                     <canvas id="profitChart"></canvas>
                 </div>
@@ -129,7 +129,7 @@
                 <div class="row text-center">
                     <div class="col-6 border-end">
                         <small class="text-muted d-block mb-1">Unused Deposits</small>
-                        <h4 class="fw-bold mb-0">₦ {{ number_format($totalUserBalance, 2) }}</h4>
+                        <h4 class="fw-bold mb-0">{{ money($totalUserBalance, true, 'USD') }}</h4>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block mb-1">Pending Services</small>
@@ -148,15 +148,15 @@
                     </div>
                     <div class="col-3 border-end">
                         <small class="text-muted d-block mb-1">Earned</small>
-                        <h5 class="fw-bold mb-0 text-success">₦ {{ number_format($totalCommissionEarned, 2) }}</h5>
+                        <h5 class="fw-bold mb-0 text-success">{{ money($totalCommissionEarned, true, 'USD') }}</h5>
                     </div>
                     <div class="col-3 border-end">
                         <small class="text-muted d-block mb-1">Pending</small>
-                        <h5 class="fw-bold mb-0 text-warning">₦ {{ number_format($pendingCommission, 2) }}</h5>
+                        <h5 class="fw-bold mb-0 text-warning">{{ money($pendingCommission, true, 'USD') }}</h5>
                     </div>
                     <div class="col-3">
                         <small class="text-muted d-block mb-1">Paid</small>
-                        <h5 class="fw-bold mb-0 text-info">₦ {{ number_format($totalCommissionWithdrawn, 2) }}</h5>
+                        <h5 class="fw-bold mb-0 text-info">{{ money($totalCommissionWithdrawn, true, 'USD') }}</h5>
                     </div>
                 </div>
             </div>
@@ -192,7 +192,7 @@
                             <small class="text-muted" style="font-size: 0.75rem;">{{ $order->user->email }}</small>
                         </td>
                         <td class="small">{{ Str::limit($order->service->name, 40) }}</td>
-                        <td class="fw-bold">₦ {{ number_format((float)$order->charge, 2) }}</td>
+                        <td class="fw-bold">{{ money($order->charge, true, 'USD') }}</td>
                         <td>
                             @php
                                 $cleanStatus = strtolower(str_replace(' ', '_', $order->status));
