@@ -9,25 +9,26 @@
     <meta name="description" content="@yield('meta_description', 'Boost your social presence with ' . $siteName . '. High-quality followers, likes, and engagement.')">
     <link rel="canonical" href="{{ request()->url() }}">
 
+    @php
+        $favicon = \App\Models\Setting::get('site_favicon');
+        $siteLogoLight = \App\Models\Setting::get('site_logo_light');
+        $siteLogoDark = \App\Models\Setting::get('site_logo_dark');
+        $ogImage = \App\Models\Setting::get('site_og_image', asset('images/og-share-default.png'));
+    @endphp
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:title" content="@yield('title', $siteName)">
     <meta property="og:description" content="@yield('meta_description', 'Professional SMM solutions for your brand.')">
-    <meta property="og:image" content="{{ asset('images/og-share-default.png') }}">
+    <meta property="og:image" content="{{ $ogImage }}">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="{{ url()->current() }}">
     <meta name="twitter:title" content="@yield('title', $siteName)">
     <meta name="twitter:description" content="@yield('meta_description', 'Professional SMM solutions for your brand.')">
-    <meta name="twitter:image" content="{{ asset('images/twitter-share-default.png') }}">
-
-    @php
-        $favicon = \App\Models\Setting::get('site_favicon');
-        $siteLogoLight = \App\Models\Setting::get('site_logo_light');
-        $siteLogoDark = \App\Models\Setting::get('site_logo_dark');
-    @endphp
+    <meta name="twitter:image" content="{{ $ogImage }}">
     @if($favicon)
         <link rel="icon" type="image/png" href="{{ $favicon }}">
     @endif

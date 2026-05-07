@@ -85,6 +85,16 @@
                                     <label class="form-label text-muted small fw-bold text-uppercase">Contact Email</label>
                                     <input type="email" name="contact_email" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('contact_email') }}" required style="color: var(--text-main);">
                                 </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Social Share (OG) Image</label>
+                                    <input type="file" name="site_og_image" class="form-control border-secondary bg-transparent py-1" accept="image/png,image/jpeg,image/webp">
+                                    @if(\App\Models\Setting::get('site_og_image'))
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <small class="text-success"><i class="fa-solid fa-check-circle me-1"></i> Current OG image uploaded</small>
+                                            <a href="{{ \App\Models\Setting::get('site_og_image') }}" target="_blank" class="badge bg-light bg-opacity-10 text-muted border text-decoration-none x-small">Preview</a>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
 
                             <div class="row g-4 mb-4">

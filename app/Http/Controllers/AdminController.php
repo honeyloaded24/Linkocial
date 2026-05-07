@@ -969,7 +969,7 @@ class AdminController extends Controller
         }
 
         // Handle File Uploads for Branding
-        $brandFiles = ['site_logo_light', 'site_logo_dark', 'site_favicon'];
+        $brandFiles = ['site_logo_light', 'site_logo_dark', 'site_favicon', 'site_og_image'];
         foreach ($brandFiles as $field) {
             if ($request->hasFile($field)) {
                 $file = $request->file($field);
@@ -979,7 +979,7 @@ class AdminController extends Controller
         }
 
         // Handle all other settings
-        $settings = $request->except(['_token', 'platforms', 'descriptions', 'site_logo_light', 'site_logo_dark', 'site_favicon']);
+        $settings = $request->except(['_token', 'platforms', 'descriptions', 'site_logo_light', 'site_logo_dark', 'site_favicon', 'site_og_image']);
 
         foreach ($settings as $key => $value) {
             \App\Models\Setting::set($key, $value);
