@@ -41,12 +41,13 @@ class PaymentController extends Controller
         $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
         $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
         
-        $amountInNgn = ($request->amount / $currentCurrency->exchange_rate) * $ngnCurrency->exchange_rate;
-        $amountInKobo = round($amountInNgn * 100); // Paystack processes amounts in Kobo
-
-        if ($amountInKobo < 10000) { // Paystack min is usually 100 NGN (10000 kobo)
-            return response()->json(['error' => 'The minimum deposit is ₦100.'], 422);
+        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
+        if ($amountInUsd < 1) {
+            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
         }
+
+        $amountInNgn = $amountInUsd * $ngnCurrency->exchange_rate;
+        $amountInKobo = round($amountInNgn * 100); 
 
         try {
             $response = Http::withToken(config('services.paystack.secret'))
@@ -94,18 +95,18 @@ class PaymentController extends Controller
         $chargeCurrency = in_array($currentCurrency->code, $supportedKoraCurrencies) ? $currentCurrency->code : 'NGN';
         
         // 2. Calculate the amount in the charge currency
+        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
+        if ($amountInUsd < 1) {
+            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
+        }
+
         if ($chargeCurrency === $currentCurrency->code) {
             $chargeAmount = $request->amount;
         } else {
-            // Convert to NGN if the user's currency isn't natively supported by Kora
-            $chargeAmount = ($request->amount / $currentCurrency->exchange_rate) * $ngnCurrency->exchange_rate;
+            $chargeAmount = $amountInUsd * $ngnCurrency->exchange_rate;
         }
         
         $chargeAmount = round($chargeAmount, 2);
-
-        if ($chargeCurrency === 'NGN' && $chargeAmount < 100) { 
-            return response()->json(['error' => 'The minimum deposit is ₦100.'], 422);
-        }
 
         try {
             $reference = 'DEP_KORA_' . time() . '_' . $user->id;
@@ -441,8 +442,11 @@ class PaymentController extends Controller
         $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
         $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
         
-        // Convert the input amount (could be NGN, KES, etc.) into USD for Heleket
+        // Convert the input amount into USD for Heleket and enforce $1 min
         $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
+        if ($amountInUsd < 1) {
+            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
+        }
 
         $merchantId = config('services.heleket.merchant_id');
         $apiKey = config('services.heleket.key');

@@ -184,7 +184,20 @@
         event.preventDefault();
         
         const gateway = selectedGatewayInput.value;
-        const amount = amountInput.value;
+        const amount = parseFloat(amountInput.value) || 0;
+        const usdAmount = amount / currentRate;
+
+        if (usdAmount < 1) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Minimum Deposit',
+                text: 'The minimum deposit amount is $1.00 (or its equivalent in your currency).',
+                background: '#1a1d21',
+                color: '#ffffff',
+                confirmButtonColor: '#6366f1'
+            });
+            return;
+        }
         
         let url = '/api/payments/deposit';
         if (gateway === 'korapay') url = '/api/payments/korapay';
