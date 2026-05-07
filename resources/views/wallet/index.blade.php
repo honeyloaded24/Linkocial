@@ -156,7 +156,17 @@
             btnIcon = "fa-bitcoin";
         }
 
-        payButton.innerHTML = `<i class="fa-solid ${btnIcon} me-2"></i> Pay ${displayAmount} Now`;
+        if (gateway === 'heleket') {
+            payButton.className = "btn btn-lg rounded-3 fw-bold py-3 shadow-lg border-0 w-100";
+            payButton.style.backgroundColor = "#161b22"; // Dark crypto style
+            payButton.style.color = "#ffffff";
+            payButton.innerHTML = `Pay ${displayAmount} with crypto <img src="{{ asset('branding/heleketpay.svg') }}" style="height: 24px; margin-left: 8px;" alt="Crypto">`;
+        } else {
+            payButton.className = "btn btn-lg bg-primary-custom text-white rounded-4 fw-bold py-3 shadow-lg border-0 w-100";
+            payButton.style.backgroundColor = "";
+            payButton.style.color = "";
+            payButton.innerHTML = `<i class="fa-solid ${btnIcon} me-2"></i> Pay ${displayAmount} Now`;
+        }
 
         // Update the hint
         if (ngnEquivalent) {
