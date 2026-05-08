@@ -160,7 +160,7 @@
             payButton.className = "btn p-0 border-0 w-100";
             payButton.style.backgroundColor = "transparent";
             payButton.style.boxShadow = "none";
-            payButton.innerHTML = `<img src="{{ asset('branding/heleketpay.svg') }}" style="height: 54px; max-width: 100%; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" alt="Pay with Crypto">`;
+            payButton.innerHTML = `<img src="/branding/heleketpay.svg" style="height: 54px; max-width: 100%; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" alt="Pay with Crypto">`;
         } else {
             payButton.className = "btn btn-lg bg-primary-custom text-white rounded-4 fw-bold py-3 shadow-lg border-0 w-100";
             payButton.style.backgroundColor = "";
