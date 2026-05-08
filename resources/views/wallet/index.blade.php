@@ -26,9 +26,14 @@
                     <div class="input-group input-group-lg">
                         <span class="input-group-text bg-transparent text-muted border-end-0" style="border-color: var(--border-color);"><i class="fa-solid fa-credit-card"></i></span>
                         <select id="selectedGateway" name="gateway" class="form-select border-start-0 ps-0" onchange="updateConversion()" required style="background-color: transparent; color: var(--text-main); border-color: var(--border-color); font-size: 0.95rem;">
-                            <option value="paystack" selected>🇳🇬 Paystack [NGN Card & Transfer]</option>
-                            <option value="korapay">🌍 Kora [Local Africa: GHS, KES, NGN, ZAR]</option>
-                            <option value="heleket">💳 Crypto [Global: BTC, USDT, ETH]</option>
+                            @if(!$isForeigner)
+                                <option value="paystack" selected>🇳🇬 Paystack [NGN Card & Transfer]</option>
+                                <option value="korapay">🌍 Kora [Local Africa: GHS, KES, NGN, ZAR]</option>
+                                <option value="heleket">💳 Crypto [Global: BTC, USDT, ETH]</option>
+                            @else
+                                <option value="heleket" selected>💳 Crypto [Global: BTC, USDT, ETH]</option>
+                                <!-- TODO: Add PayPal integration here for international users -->
+                            @endif
                         </select>
                     </div>
                 </div>

@@ -22,7 +22,11 @@ class PaymentController extends Controller
             $this->verifyTransaction($request->reference);
         }
 
-        return view('wallet.index');
+        // Determine user location via Cloudflare header (default to NG for local dev/testing)
+        $cfCountry = $request->header('CF-IPCountry', 'NG');
+        $isForeigner = $cfCountry !== 'NG';
+
+        return view('wallet.index', compact('isForeigner', 'cfCountry'));
     }
 
     /**
