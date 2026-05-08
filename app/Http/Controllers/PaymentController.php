@@ -314,6 +314,10 @@ class PaymentController extends Controller
         $rate = $transactionCurrency->exchange_rate;
         $amountInUsd = $amount / $rate;
 
+        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
+        $ngnRate = $ngnCurrency->exchange_rate;
+        $amountInNaira = $amountInUsd * $ngnRate;
+
         // 1. Record the payment history (store the original amount and currency for records)
         \App\Models\Payment::create([
             'user_id' => $user->id,
