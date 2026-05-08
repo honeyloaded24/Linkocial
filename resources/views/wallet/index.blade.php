@@ -31,7 +31,8 @@
                                 <option value="korapay">🌍 Kora [Local Africa: GHS, KES, NGN, ZAR]</option>
                                 <option value="heleket">💳 Crypto [Global: BTC, USDT, ETH]</option>
                             @else
-                                <option value="heleket" selected>💳 Crypto [Global: BTC, USDT, ETH]</option>
+                                <option value="korapay" selected>🌍 Kora [Local Africa: GHS, KES, NGN, ZAR]</option>
+                                <option value="heleket">💳 Crypto [Global: BTC, USDT, ETH]</option>
                                 <!-- TODO: Add PayPal integration here for international users -->
                             @endif
                         </select>
