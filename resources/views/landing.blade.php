@@ -132,6 +132,25 @@
         50% { transform: translateY(-20px); }
         100% { transform: translateY(0px); }
     }
+
+    .text-instagram {
+        background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+    }
+
+    .text-tiktok {
+        color: #000000;
+        font-weight: 800;
+        text-shadow: 2px 2px #ff0050, -2px -2px #00f2ea;
+        position: relative;
+    }
+
+    .text-youtube {
+        color: #FF0000;
+        font-weight: 800;
+    }
 </style>
 @endpush
 
@@ -144,8 +163,8 @@
                 <span class="hero-badge mb-3 d-inline-block">
                     🚀 High-Performance Growth
                 </span>
-                <h1 class="hero-title">Buy Instagram, TikTok Followers, YouTube Subscribers, And More In Minutes.</h1>
-                <p class="hero-subtitle mx-auto mx-lg-0">With <span class="text-gradient">Linkocial</span>, you can buy hundreds of real TikTok & Instagram Followers, Comments, Likes, Views, and YouTube Subscribers from real accounts.</p>
+                <h1 class="hero-title">Buy <span class="text-instagram">Instagram</span>, <span class="text-tiktok">TikTok</span> Followers, <span class="text-youtube">YouTube</span> Subscribers, And More In Minutes.</h1>
+                <p class="hero-subtitle mx-auto mx-lg-0">With <span class="text-gradient">Linkocial</span>, you can buy hundreds of real <span class="text-tiktok">TikTok</span> & <span class="text-instagram">Instagram</span> Followers, Comments, Likes, Views, and <span class="text-youtube">YouTube</span> Subscribers from real accounts.</p>
                 <div class="d-flex flex-wrap justify-content-center justify-content-lg-start gap-3">
                     @auth
                         <a href="{{ route('dashboard') }}" class="btn btn-premium btn-lg">Go to Dashboard</a>
