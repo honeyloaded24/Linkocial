@@ -48,6 +48,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     
     <style>
         :root {
@@ -74,7 +75,12 @@
             background: #ffffff;
             border: 1px solid var(--border);
             border-radius: 24px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .premium-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
         }
 
         .btn-premium {
@@ -84,14 +90,14 @@
             font-weight: 700;
             border-radius: 12px;
             padding: 12px 24px;
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2);
         }
         .btn-premium:hover {
             background: #4f46e5;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4);
         }
 
         .btn-outline-premium {
@@ -101,12 +107,13 @@
             font-weight: 700;
             border-radius: 12px;
             padding: 10px 24px;
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .btn-outline-premium:hover {
             background: var(--primary);
             color: white;
-            transform: translateY(-2px);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 30px rgba(99, 102, 241, 0.15);
         }
 
         .bg-soft { background-color: var(--bg-soft); }
@@ -116,6 +123,16 @@
             background: linear-gradient(45deg, #6366f1, #a855f7);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+        }
+
+        /* Micro-animations */
+        @keyframes pulse-soft {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pulse-hover:hover i {
+            animation: pulse-soft 0.6s infinite;
         }
 
         /* Logo Theme Switching */
@@ -146,6 +163,17 @@
     @include('partials.footer')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init({
+                duration: 1000,
+                once: true,
+                offset: 100,
+                easing: 'ease-out-cubic'
+            });
+        });
+    </script>
     @stack('scripts')
 </body>
 </html>
