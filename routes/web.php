@@ -224,9 +224,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/currencies', [\App\Http\Controllers\CurrencyController::class, 'store'])->name('hq.currencies.store');
         Route::put('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'update'])->name('hq.currencies.update');
         Route::delete('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'destroy'])->name('hq.currencies.destroy');
-
-        // Heleket Test Route (Simulation Only)
-        Route::get('/heleket/test-trigger', [App\Http\Controllers\PaymentController::class, 'triggerHeleketTest'])->name('hq.heleket.test');
     });
 });
 
