@@ -366,15 +366,17 @@ class PaymentController extends Controller
         $ngnRate = $ngnCurrency->exchange_rate;
         $amountInNaira = $amountInUsd * $ngnRate;
 
-        // 1. Record the payment history (store the original amount and currency for records)
-        \App\Models\Payment::create([
-            'user_id' => $user->id,
-            'amount' => $amount,
-            'currency' => $currencyCode,
-            'amount_usd' => $amountInUsd,
-            'reference' => $reference,
-            'status' => 'success',
-        ]);
+        // 1. Record the payment history (idempotent update)
+        \App\Models\Payment::updateOrCreate(
+            ['reference' => $reference],
+            [
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'currency' => $currencyCode,
+                'amount_usd' => $amountInUsd,
+                'status' => 'success',
+            ]
+        );
 
         // 2. Credit the user's wallet with USD value
         $user->increment('balance', $amountInUsd);
