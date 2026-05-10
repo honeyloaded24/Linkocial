@@ -493,16 +493,22 @@ class PaymentController extends Controller
 
         $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
 
-        $data = [
+        // 1. Core Data used for the Signature
+        $coreData = [
             'amount' => number_format($amountInUsd, 2, '.', ''),
             'currency' => 'USD',
             'order_id' => $reference,
             'email' => $user->email,
-            'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
-            'fail_url' => route('wallet.index') . '?status=error',
         ];
 
-        // Create a pending payment record so we can track it even if webhook fails
+        // 2. Extended Data for redirection
+        $fullData = array_merge($coreData, [
+            'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
+            'fail_url' => route('wallet.index') . '?status=error',
+            'return_url' => route('wallet.index') . '?status=success&reference=' . $reference,
+        ]);
+
+        // Create a pending payment record
         \App\Models\Payment::create([
             'user_id' => $user->id,
             'amount' => $amountInUsd,
@@ -513,8 +519,8 @@ class PaymentController extends Controller
             'method' => 'Heleket'
         ]);
 
-        // Heleket Signature Algorithm
-        $jsonData = json_encode($data);
+        // Heleket Signature Algorithm: ONLY sign the core data
+        $jsonData = json_encode($coreData);
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
         try {
@@ -522,7 +528,7 @@ class PaymentController extends Controller
                 'merchant' => $merchantId,
                 'sign' => $sign,
                 'Content-Type' => 'application/json'
-            ])->post('https://api.heleket.com/v1/payment', $data);
+            ])->post('https://api.heleket.com/v1/payment', $fullData);
 
             $result = $response->json();
 
