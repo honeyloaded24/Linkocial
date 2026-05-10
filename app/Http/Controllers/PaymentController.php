@@ -522,8 +522,9 @@ class PaymentController extends Controller
             'method' => 'Heleket'
         ]);
 
-        // Heleket Signature Algorithm: ONLY sign the core data
-        $jsonData = json_encode($coreData);
+        // Heleket Signature Algorithm: Sign the full data including URLs
+        // We use JSON_UNESCAPED_SLASHES because URLs contain slashes that must match the raw payload
+        $jsonData = json_encode($fullData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
         try {
