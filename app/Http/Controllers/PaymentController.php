@@ -576,9 +576,20 @@ class PaymentController extends Controller
         $verificationData = $data;
         unset($verificationData['sign']);
         
-        // 1. Standardized Signature Verification: Sort and use correct flags
-        ksort($verificationData);
+        // 1. Merchant Identity Validation
+        $merchantId = config('services.heleket.merchant_id');
+        if (isset($data['merchant']) && $data['merchant'] !== $merchantId) {
+            Log::warning('Heleket Webhook: Merchant ID mismatch.', [
+                'received' => $data['merchant'],
+                'expected' => $merchantId
+            ]);
+            return response()->json(['status' => 'invalid merchant'], 403);
+        }
+        
         $apiKey = config('services.heleket.key');
+        
+        // 2. Standardized Signature Verification: Sort and use correct flags
+        ksort($verificationData);
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
 
@@ -601,36 +612,51 @@ class PaymentController extends Controller
 
         $status = strtolower($data['status'] ?? '');
         $isFinal = (bool) ($data['is_final'] ?? false);
+        $reference = $data['order_id'] ?? '';
 
         Log::info('Heleket Status Check:', [
+            'reference' => $reference,
             'status' => $status,
             'is_final' => $isFinal
         ]);
 
-        if ($status === 'paid' && $isFinal === true) {
-            $reference = $data['order_id'];
-            $amountInUsd = (float) $data['amount'];
-            
-            Log::info("Processing Heleket Payment for Reference: {$reference}");
+        // 3. Retrieve and Validate local payment record
+        $payment = \App\Models\Payment::where('reference', $reference)->first();
+        if (!$payment) {
+            Log::error("Heleket Webhook: Reference not found locally: {$reference}");
+            return response()->json(['status' => 'not found'], 404);
+        }
 
-            // Idempotency: Check if already processed
-            if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
-                Log::info("Heleket Payment already processed: {$reference}");
+        // 4. Handle Failed Payments
+        if (in_array($status, ['failed', 'canceled', 'expired'])) {
+            $payment->update(['status' => 'failed']);
+            return response()->json(['status' => 'failure recorded']);
+        }
+
+        // 5. Handle Successful Payments
+        if (in_array($status, ['paid', 'completed', 'success']) && $isFinal === true) {
+            $amountInUsd = (float) ($data['amount'] ?? 0);
+            
+            // Amount Parity Check (Never trust webhook amount blindly)
+            if (abs($amountInUsd - (float)$payment->amount_usd) > 0.01) {
+                Log::warning('Heleket Webhook: Amount mismatch!', [
+                    'received' => $amountInUsd,
+                    'expected' => $payment->amount_usd
+                ]);
+            }
+
+            // Idempotency: Don't process if already successful
+            if ($payment->status === 'success') {
                 return response()->json(['status' => 'already processed']);
             }
 
             DB::beginTransaction();
             try {
-                $refParts = explode('_', $reference);
-                $userId = $refParts[count($refParts)-1] ?? 0;
-                $user = User::find($userId);
-                
+                $user = User::find($payment->user_id);
                 if ($user) {
                     $this->processSuccessfulHeleketPayment($user, $amountInUsd, $reference);
                     DB::commit();
-                    Log::info("Heleket Payment Successful: {$reference}");
-                } else {
-                    Log::error("Heleket Webhook: User not found for Reference: {$reference}");
+                    Log::info("Heleket Payment Fulfillment Success: {$reference}");
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
