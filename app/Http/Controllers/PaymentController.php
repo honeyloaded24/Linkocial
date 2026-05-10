@@ -720,5 +720,20 @@ class PaymentController extends Controller
             'success',
             route('wallet.history')
         );
+
+        // 4. Send Wallet Funded Email
+        try {
+            \Illuminate\Support\Facades\Mail::send('emails.wallet_funded', [
+                'transaction_id' => 'TXN-' . time(),
+                'method' => 'Heleket Crypto',
+                'amount' => $amountInUsd,
+                'currency' => 'USD',
+                'bonus' => 0
+            ], function($message) use ($user) {
+                $message->to($user->email)->subject('Wallet Funded Successfully');
+            });
+        } catch (\Exception $e) {
+            Log::error('Heleket Wallet Funded Email Error: ' . $e->getMessage());
+        }
     }
 }
