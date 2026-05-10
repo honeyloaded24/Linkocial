@@ -634,8 +634,7 @@ class PaymentController extends Controller
         // We rely on the cryptographic signature validation below for security.
         $apiKey = config('services.heleket.key');
         
-        // 2. Standardized Signature Verification: Sort and use correct flags
-        ksort($verificationData);
+        // 1. Signature Verification: Heleket signs webhooks in the exact order received (DO NOT SORT)
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
 
