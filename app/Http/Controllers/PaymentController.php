@@ -630,16 +630,8 @@ class PaymentController extends Controller
         $verificationData = $data;
         unset($verificationData['sign']);
         
-        // 1. Merchant Identity Validation (Strict Check)
-        $merchantId = config('services.heleket.merchant_id');
-        if (!isset($data['merchant']) || $data['merchant'] !== $merchantId) {
-            Log::warning('Heleket Webhook: Unauthorized Merchant ID.', [
-                'received' => $data['merchant'] ?? 'N/A',
-                'expected' => $merchantId
-            ]);
-            return response()->json(['status' => 'unauthorized'], 403);
-        }
-        
+        // Removed strict Merchant ID check because Heleket does not include it in the webhook payload.
+        // We rely on the cryptographic signature validation below for security.
         $apiKey = config('services.heleket.key');
         
         // 2. Standardized Signature Verification: Sort and use correct flags
