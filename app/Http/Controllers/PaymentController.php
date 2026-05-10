@@ -176,9 +176,16 @@ class PaymentController extends Controller
                 'merchant' => $merchantId,
                 'sign' => $sign,
                 'Content-Type' => 'application/json'
-            ])->post('https://api.heleket.com/v1/payment/status', $data);
+            ])->withBody($jsonData, 'application/json')
+              ->post('https://api.heleket.com/v1/payment/status');
 
             $result = $response->json();
+
+            Log::info("Heleket Status Check for {$reference}:", [
+                'request_body' => $jsonData,
+                'signature' => $sign,
+                'response' => $result
+            ]);
 
             // status === 'paid' means it's successful
             if ($response->successful() && isset($result['result']['status']) && $result['result']['status'] === 'paid') {
@@ -192,7 +199,7 @@ class PaymentController extends Controller
                 }
             }
         } catch (\Exception $e) {
-            Log::error("Manual Heleket Verification Failed for {$reference}: " . $e->getMessage());
+            Log::error("Manual Heleket Verification Exception for {$reference}: " . $e->getMessage());
         }
     }
 
@@ -524,9 +531,16 @@ class PaymentController extends Controller
                 'merchant' => $merchantId,
                 'sign' => $sign,
                 'Content-Type' => 'application/json'
-            ])->post('https://api.heleket.com/v1/payment', $payload);
+            ])->withBody($jsonData, 'application/json')
+              ->post('https://api.heleket.com/v1/payment');
 
             $result = $response->json();
+
+            Log::info("Heleket Initialization Request:", [
+                'body' => $jsonData,
+                'sign' => $sign,
+                'response' => $result
+            ]);
 
             if ($response->successful() && isset($result['state']) && $result['state'] === 0) {
                 return response()->json([
