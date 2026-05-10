@@ -514,8 +514,9 @@ class PaymentController extends Controller
             'method' => 'Heleket'
         ]);
 
-        // Heleket Signature Algorithm: Sign the full payload as JSON
-        $jsonData = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        // Heleket Signature Algorithm: Sort keys alphabetically first
+        ksort($payload);
+        $jsonData = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
         try {
