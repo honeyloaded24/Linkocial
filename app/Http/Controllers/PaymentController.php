@@ -493,23 +493,15 @@ class PaymentController extends Controller
 
         $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
 
-        // 1. Core Data used for the Signature
-        $coreData = [
+        // Strictly documented fields only
+        $payload = [
             'amount' => number_format($amountInUsd, 2, '.', ''),
             'currency' => 'USD',
             'order_id' => $reference,
             'email' => $user->email,
-        ];
-
-        // 2. Extended Data for redirection (Strictly following Heleket Docs)
-        $fullData = array_merge($coreData, [
             'url_success' => route('wallet.index') . '?status=success&reference=' . $reference,
             'url_callback' => url('/api/webhooks/heleket'),
-            // Aliases for legacy/alternative versions
-            'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
-            'callback_url' => url('/api/webhooks/heleket'),
-            'return_url' => route('wallet.index') . '?status=success&reference=' . $reference,
-        ]);
+        ];
 
         // Create a pending payment record
         \App\Models\Payment::create([
@@ -522,9 +514,8 @@ class PaymentController extends Controller
             'method' => 'Heleket'
         ]);
 
-        // Heleket Signature Algorithm: Sign the full data including URLs
-        // We use JSON_UNESCAPED_SLASHES because URLs contain slashes that must match the raw payload
-        $jsonData = json_encode($fullData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        // Heleket Signature Algorithm: Sign the full payload as JSON
+        $jsonData = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
         try {
@@ -532,7 +523,7 @@ class PaymentController extends Controller
                 'merchant' => $merchantId,
                 'sign' => $sign,
                 'Content-Type' => 'application/json'
-            ])->post('https://api.heleket.com/v1/payment', $fullData);
+            ])->post('https://api.heleket.com/v1/payment', $payload);
 
             $result = $response->json();
 

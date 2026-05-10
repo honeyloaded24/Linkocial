@@ -246,8 +246,8 @@
                     background: '#1a1d21',
                     color: '#ffffff'
                 });
-                btn.disabled = false;
-                btn.innerHTML = originalContent;
+                payButton.disabled = false;
+                payButton.innerHTML = originalContent;
             }
         } catch (error) {
             console.error('Payment error:', error);
@@ -258,8 +258,8 @@
                 background: '#1a1d21',
                 color: '#ffffff'
             });
-            btn.disabled = false;
-            btn.innerHTML = originalContent;
+            payButton.disabled = false;
+            payButton.innerHTML = originalContent;
         }
     }
 </script>
