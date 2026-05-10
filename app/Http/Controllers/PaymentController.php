@@ -164,6 +164,12 @@ class PaymentController extends Controller
 
     private function verifyHeleketTransaction($reference)
     {
+        // 1. Skip if already processed (Performance & Safety)
+        $payment = \App\Models\Payment::where('reference', $reference)->first();
+        if (!$payment || $payment->status === 'success') {
+            return;
+        }
+
         try {
             $merchantId = config('services.heleket.merchant_id');
             $apiKey = config('services.heleket.key');
@@ -172,12 +178,14 @@ class PaymentController extends Controller
             $jsonData = json_encode($data);
             $sign = md5(base64_encode($jsonData) . $apiKey);
 
-            $response = Http::withHeaders([
-                'merchant' => $merchantId,
-                'sign' => $sign,
-                'Content-Type' => 'application/json'
-            ])->withBody($jsonData, 'application/json')
-              ->post('https://api.heleket.com/v1/payment/status');
+            $response = Http::timeout(15)
+                ->retry(3, 200)
+                ->withHeaders([
+                    'merchant' => $merchantId,
+                    'sign' => $sign,
+                    'Content-Type' => 'application/json'
+                ])->withBody($jsonData, 'application/json')
+                ->post('https://api.heleket.com/v1/payment/status');
 
             $result = $response->json();
 
@@ -187,13 +195,14 @@ class PaymentController extends Controller
                 'response' => $result
             ]);
 
-            // status === 'paid' means it's successful
-            if ($response->successful() && isset($result['result']['status']) && $result['result']['status'] === 'paid') {
-                $amount = (float) $result['result']['amount'];
-                $refParts = explode('_', $reference);
-                $userId = $refParts[count($refParts)-1] ?? 0;
-                $user = User::find($userId);
+            $status = strtolower($result['result']['status'] ?? '');
+            $isFinal = (bool) ($result['result']['is_final'] ?? false);
 
+            // 2. status === 'paid' means it's successful
+            if ($response->successful() && in_array($status, ['paid', 'completed', 'success']) && $isFinal === true) {
+                $amount = (float) $result['result']['amount'];
+                
+                $user = User::find($payment->user_id);
                 if ($user) {
                     $this->processSuccessfulHeleketPayment($user, $amount, $reference);
                 }
@@ -527,12 +536,14 @@ class PaymentController extends Controller
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
         try {
-            $response = Http::withHeaders([
-                'merchant' => $merchantId,
-                'sign' => $sign,
-                'Content-Type' => 'application/json'
-            ])->withBody($jsonData, 'application/json')
-              ->post('https://api.heleket.com/v1/payment');
+            $response = Http::timeout(15)
+                ->retry(2, 200)
+                ->withHeaders([
+                    'merchant' => $merchantId,
+                    'sign' => $sign,
+                    'Content-Type' => 'application/json'
+                ])->withBody($jsonData, 'application/json')
+                ->post('https://api.heleket.com/v1/payment');
 
             $result = $response->json();
 
@@ -572,18 +583,17 @@ class PaymentController extends Controller
         ]);
         
         $receivedSign = $data['sign'] ?? '';
-        
         $verificationData = $data;
         unset($verificationData['sign']);
         
-        // 1. Merchant Identity Validation
+        // 1. Merchant Identity Validation (Strict Check)
         $merchantId = config('services.heleket.merchant_id');
-        if (isset($data['merchant']) && $data['merchant'] !== $merchantId) {
-            Log::warning('Heleket Webhook: Merchant ID mismatch.', [
-                'received' => $data['merchant'],
+        if (!isset($data['merchant']) || $data['merchant'] !== $merchantId) {
+            Log::warning('Heleket Webhook: Unauthorized Merchant ID.', [
+                'received' => $data['merchant'] ?? 'N/A',
                 'expected' => $merchantId
             ]);
-            return response()->json(['status' => 'invalid merchant'], 403);
+            return response()->json(['status' => 'unauthorized'], 403);
         }
         
         $apiKey = config('services.heleket.key');
@@ -594,14 +604,15 @@ class PaymentController extends Controller
         $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
 
         if ($receivedSign !== $calculatedSign) {
-            // Also try signing raw body as fallback (common in some crypto APIs)
+            // Also try signing raw body as fallback
             $fallbackSign = md5(base64_encode($rawBody) . $apiKey);
             
             if ($receivedSign !== $fallbackSign) {
                 Log::warning('Invalid Heleket Webhook Signature detected.', [
                     'received' => $receivedSign,
                     'calculated' => $calculatedSign,
-                    'fallback' => $fallbackSign
+                    'fallback' => $fallbackSign,
+                    'payload' => $data
                 ]);
                 return response()->json(['status' => 'invalid signature'], 400);
             }
@@ -614,30 +625,36 @@ class PaymentController extends Controller
         $isFinal = (bool) ($data['is_final'] ?? false);
         $reference = $data['order_id'] ?? '';
 
+        // 3. Strict Reference Prefix Guard
+        if (!str_starts_with($reference, 'DEP_CRYP_')) {
+            Log::warning('Heleket Webhook: Invalid Reference Prefix.', ['reference' => $reference]);
+            return response()->json(['status' => 'invalid reference'], 400);
+        }
+
         Log::info('Heleket Status Check:', [
             'reference' => $reference,
             'status' => $status,
             'is_final' => $isFinal
         ]);
 
-        // 3. Retrieve and Validate local payment record
+        // 4. Retrieve and Validate local payment record
         $payment = \App\Models\Payment::where('reference', $reference)->first();
         if (!$payment) {
             Log::error("Heleket Webhook: Reference not found locally: {$reference}");
             return response()->json(['status' => 'not found'], 404);
         }
 
-        // 4. Handle Failed Payments
+        // 5. Handle Failed Payments
         if (in_array($status, ['failed', 'canceled', 'expired'])) {
             $payment->update(['status' => 'failed']);
             return response()->json(['status' => 'failure recorded']);
         }
 
-        // 5. Handle Successful Payments
+        // 6. Handle Successful Payments
         if (in_array($status, ['paid', 'completed', 'success']) && $isFinal === true) {
             $amountInUsd = (float) ($data['amount'] ?? 0);
             
-            // Amount Parity Check (Never trust webhook amount blindly)
+            // Amount Parity Check
             if (abs($amountInUsd - (float)$payment->amount_usd) > 0.01) {
                 Log::warning('Heleket Webhook: Amount mismatch!', [
                     'received' => $amountInUsd,
@@ -645,7 +662,7 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Idempotency: Don't process if already successful
+            // Idempotency: Skip if already success
             if ($payment->status === 'success') {
                 return response()->json(['status' => 'already processed']);
             }
@@ -663,8 +680,6 @@ class PaymentController extends Controller
                 Log::error("Failed to process Heleket webhook for {$reference}: " . $e->getMessage());
                 return response()->json(['status' => 'database error'], 500);
             }
-        } else {
-            Log::info("Heleket Payment not ready or failed: " . ($data['status'] ?? 'N/A'));
         }
 
         return response()->json(['status' => 'success']);
@@ -672,43 +687,47 @@ class PaymentController extends Controller
 
     private function processSuccessfulHeleketPayment($user, $amountInUsd, $reference)
     {
-        // 1. Update or create the payment record (avoiding duplicates)
-        \App\Models\Payment::updateOrCreate(
-            ['reference' => $reference],
-            [
-                'user_id' => $user->id,
+        // 1. Pessimistic Lock on the reference to prevent race conditions
+        // This ensures that only ONE process can enter this block for this reference
+        $exists = \App\Models\Transaction::where('reference', $reference)
+            ->lockForUpdate()
+            ->exists();
+
+        if ($exists) {
+            Log::info("Heleket Atomic Guard: Transaction already exists for {$reference}, skipping credit.");
+            return;
+        }
+
+        // 2. Update the payment record
+        $payment = \App\Models\Payment::where('reference', $reference)->first();
+        if ($payment) {
+            $payment->update([
                 'amount' => $amountInUsd, 
                 'amount_usd' => $amountInUsd,
                 'currency' => 'USD',
                 'status' => 'success',
                 'method' => 'Heleket'
-            ]
+            ]);
+        }
+
+        // 3. Credit the user's wallet
+        $user->increment('balance', $amountInUsd);
+
+        \App\Models\Transaction::add(
+            $user->id, 
+            $amountInUsd, 
+            'credit', 
+            'deposit', 
+            "Deposit via Heleket Crypto",
+            $reference
         );
 
-        // 2. Credit the user's wallet
-        // Prevent double-crediting if this function is called twice (e.g. webhook + manual check simultaneously)
-        // We check if a transaction for this reference already exists in the ledger
-        if (!\App\Models\Transaction::where('reference', $reference)->exists()) {
-            $user->increment('balance', $amountInUsd);
-
-            \App\Models\Transaction::add(
-                $user->id, 
-                $amountInUsd, 
-                'credit', 
-                'deposit', 
-                "Deposit via Heleket Crypto",
-                $reference
-            );
-
-            \App\Models\Notification::send(
-                $user->id,
-                "Crypto Deposit Successful",
-                "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
-                'success',
-                route('wallet.history')
-            );
-        } else {
-            Log::info("Heleket Ledger: Transaction already exists for {$reference}, skipping credit.");
-        }
+        \App\Models\Notification::send(
+            $user->id,
+            "Crypto Deposit Successful",
+            "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
+            'success',
+            route('wallet.history')
+        );
     }
 }
