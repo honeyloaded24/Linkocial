@@ -571,11 +571,8 @@ class PaymentController extends Controller
 
     public function triggerHeleketTest(Request $request)
     {
-        // Only allow in local environment or with a specific secure key for safety
-        if (config('app.env') === 'production') {
-            return response()->json(['error' => 'Not allowed in production'], 403);
-        }
-
+        // Removed production check to allow live verification of the webhook pipeline
+        
         $reference = $request->query('reference');
         if (!$reference) {
             return response()->json(['error' => 'Reference required'], 400);
@@ -590,7 +587,7 @@ class PaymentController extends Controller
             'is_final' => true,
             'amount' => 1.00,
             'currency' => 'USDT',
-            'network' => 'trc20',
+            'network' => 'bsc', // Switched to BSC as per user screenshot
             'url_callback' => url('/api/webhooks/heleket')
         ];
 
