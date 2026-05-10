@@ -147,20 +147,52 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Verify a transaction with the appropriate gateway API
-     */
     private function verifyTransaction($reference)
     {
         // Don't re-process if already successful
         if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
             return;
         }
-
         if (str_starts_with($reference, 'DEP_KORA_')) {
             $this->verifyKorapayTransaction($reference);
+        } elseif (str_starts_with($reference, 'DEP_CRYP_')) {
+            $this->verifyHeleketTransaction($reference);
         } else {
             $this->verifyPaystackTransaction($reference);
+        }
+    }
+
+    private function verifyHeleketTransaction($reference)
+    {
+        try {
+            $merchantId = config('services.heleket.merchant_id');
+            $apiKey = config('services.heleket.key');
+
+            $data = ['order_id' => $reference];
+            $jsonData = json_encode($data);
+            $sign = md5(base64_encode($jsonData) . $apiKey);
+
+            $response = Http::withHeaders([
+                'merchant' => $merchantId,
+                'sign' => $sign,
+                'Content-Type' => 'application/json'
+            ])->post('https://api.heleket.com/v1/payment/status', $data);
+
+            $result = $response->json();
+
+            // status === 'paid' means it's successful
+            if ($response->successful() && isset($result['result']['status']) && $result['result']['status'] === 'paid') {
+                $amount = (float) $result['result']['amount'];
+                $refParts = explode('_', $reference);
+                $userId = $refParts[count($refParts)-1] ?? 0;
+                $user = User::find($userId);
+
+                if ($user) {
+                    $this->processSuccessfulHeleketPayment($user, $amount, $reference);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Manual Heleket Verification Failed for {$reference}: " . $e->getMessage());
         }
     }
 
@@ -459,14 +491,29 @@ class PaymentController extends Controller
         $merchantId = config('services.heleket.merchant_id');
         $apiKey = config('services.heleket.key');
 
+        $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
+
         $data = [
             'amount' => number_format($amountInUsd, 2, '.', ''),
             'currency' => 'USD',
-            'order_id' => 'DEP_CRYP_' . time() . '_' . $user->id,
+            'order_id' => $reference,
             'email' => $user->email,
+            'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
+            'fail_url' => route('wallet.index') . '?status=error',
         ];
 
-        // Heleket Signature Algorithm: md5(base64_encode(json_encode($data)) . $API_KEY)
+        // Create a pending payment record so we can track it even if webhook fails
+        \App\Models\Payment::create([
+            'user_id' => $user->id,
+            'amount' => $amountInUsd,
+            'currency' => 'USD',
+            'amount_usd' => $amountInUsd,
+            'reference' => $reference,
+            'status' => 'pending',
+            'method' => 'Heleket'
+        ]);
+
+        // Heleket Signature Algorithm
         $jsonData = json_encode($data);
         $sign = md5(base64_encode($jsonData) . $apiKey);
 
@@ -501,6 +548,8 @@ class PaymentController extends Controller
     public function heleketWebhook(Request $request)
     {
         $data = $request->all();
+        Log::info('Heleket Webhook Received:', $data);
+        
         $receivedSign = $data['sign'] ?? '';
         
         $verificationData = $data;
@@ -508,19 +557,34 @@ class PaymentController extends Controller
         
         $apiKey = config('services.heleket.key');
         
+        // Re-encoding for verification
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_UNICODE);
         $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
 
         if ($receivedSign !== $calculatedSign) {
-            Log::warning('Invalid Heleket Webhook Signature detected.');
+            Log::warning('Invalid Heleket Webhook Signature detected.', [
+                'received' => $receivedSign,
+                'calculated' => $calculatedSign,
+                'payload_used' => $jsonString
+            ]);
             return response()->json(['status' => 'invalid signature'], 400);
         }
+
+        Log::info('Heleket Signature Verified Successfully.');
+
+        Log::info('Heleket Status Check:', [
+            'status' => $data['status'] ?? 'N/A',
+            'is_final' => $data['is_final'] ?? 'N/A'
+        ]);
 
         if ($data['status'] === 'paid' && $data['is_final'] === true) {
             $reference = $data['order_id'];
             $amountInUsd = (float) $data['amount'];
             
+            Log::info("Processing Heleket Payment for Reference: {$reference}");
+
             if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
+                Log::info("Heleket Payment already processed: {$reference}");
                 return response()->json(['status' => 'already processed']);
             }
 
@@ -533,12 +597,17 @@ class PaymentController extends Controller
                 if ($user) {
                     $this->processSuccessfulHeleketPayment($user, $amountInUsd, $reference);
                     DB::commit();
+                    Log::info("Heleket Payment Successful: {$reference}");
+                } else {
+                    Log::error("Heleket Webhook: User not found for Reference: {$reference}");
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error("Failed to process Heleket webhook for {$reference}: " . $e->getMessage());
                 return response()->json(['status' => 'database error'], 500);
             }
+        } else {
+            Log::info("Heleket Payment not ready or failed: " . ($data['status'] ?? 'N/A'));
         }
 
         return response()->json(['status' => 'success']);
