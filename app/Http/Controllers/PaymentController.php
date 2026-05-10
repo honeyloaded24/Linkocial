@@ -569,6 +569,53 @@ class PaymentController extends Controller
         }
     }
 
+    public function triggerHeleketTest(Request $request)
+    {
+        // Only allow in local environment or with a specific secure key for safety
+        if (config('app.env') === 'production') {
+            return response()->json(['error' => 'Not allowed in production'], 403);
+        }
+
+        $reference = $request->query('reference');
+        if (!$reference) {
+            return response()->json(['error' => 'Reference required'], 400);
+        }
+
+        $merchantId = config('services.heleket.merchant_id');
+        $apiKey = config('services.heleket.key');
+
+        $payload = [
+            'order_id' => $reference,
+            'status' => 'paid',
+            'is_final' => true,
+            'amount' => 1.00,
+            'currency' => 'USDT',
+            'network' => 'trc20',
+            'url_callback' => url('/api/webhooks/heleket')
+        ];
+
+        ksort($payload);
+        $jsonData = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $sign = md5(base64_encode($jsonData) . $apiKey);
+
+        try {
+            $response = Http::withHeaders([
+                'merchant' => $merchantId,
+                'sign' => $sign,
+                'Content-Type' => 'application/json'
+            ])->withBody($jsonData, 'application/json')
+              ->post('https://api.heleket.com/v1/test-webhook/payment');
+
+            return response()->json([
+                'message' => 'Test trigger sent to Heleket',
+                'heleket_response' => $response->json(),
+                'payload_sent' => $payload
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     /**
      * Handle Heleket Webhook
      */
