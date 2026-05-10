@@ -506,6 +506,7 @@ class PaymentController extends Controller
             'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
             'fail_url' => route('wallet.index') . '?status=error',
             'return_url' => route('wallet.index') . '?status=success&reference=' . $reference,
+            'callback_url' => url('/api/webhooks/heleket'), // The server-to-server webhook
         ]);
 
         // Create a pending payment record
