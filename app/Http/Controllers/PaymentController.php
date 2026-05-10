@@ -501,12 +501,14 @@ class PaymentController extends Controller
             'email' => $user->email,
         ];
 
-        // 2. Extended Data for redirection
+        // 2. Extended Data for redirection (Strictly following Heleket Docs)
         $fullData = array_merge($coreData, [
+            'url_success' => route('wallet.index') . '?status=success&reference=' . $reference,
+            'url_callback' => url('/api/webhooks/heleket'),
+            // Aliases for legacy/alternative versions
             'success_url' => route('wallet.index') . '?status=success&reference=' . $reference,
-            'fail_url' => route('wallet.index') . '?status=error',
+            'callback_url' => url('/api/webhooks/heleket'),
             'return_url' => route('wallet.index') . '?status=success&reference=' . $reference,
-            'callback_url' => url('/api/webhooks/heleket'), // The server-to-server webhook
         ]);
 
         // Create a pending payment record
