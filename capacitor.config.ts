@@ -7,7 +7,8 @@ const config: CapacitorConfig = {
   server: {
     url: 'https://linkocial.com',
     cleartext: true
-  }
+  },
+  appendUserAgent: 'LinkocialApp'
 };
 
 export default config;
