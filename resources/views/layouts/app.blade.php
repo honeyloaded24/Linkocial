@@ -218,6 +218,9 @@
                 <a href="{{ route('wallet.history') }}" class="nav-link {{ request()->routeIs('wallet.history') ? 'active' : '' }}">
                     <i class="fa-solid fa-receipt"></i> Transactions
                 </a>
+                <a href="{{ route('services.virtual-numbers') }}" class="nav-link {{ request()->routeIs('services.virtual-numbers') ? 'active' : '' }}">
+                    <i class="fa-solid fa-phone-volume"></i> Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span>
+                </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates
                 </a>
@@ -229,9 +232,6 @@
                 </a>
 
                 <h6 class="text-muted small fw-bold text-uppercase mt-4 mb-3 px-3" style="letter-spacing: 1px;">Add-ons</h6>
-                <a href="{{ route('services.virtual-numbers') }}" class="nav-link {{ request()->routeIs('services.virtual-numbers') ? 'active' : '' }}">
-                    <i class="fa-solid fa-phone-volume"></i> Virtual Numbers
-                </a>
                 <a href="{{ route('services.gift-cards') }}" class="nav-link {{ request()->routeIs('services.gift-cards') ? 'active' : '' }}">
                     <i class="fa-solid fa-gift"></i> Buy Gift Cards
                 </a>
