@@ -20,7 +20,7 @@ class FiveSimService
      */
     protected function client()
     {
-        return Http::withHeaders([
+        return Http::timeout(15)->withHeaders([
             'Authorization' => 'Bearer ' . $this->token,
             'Accept' => 'application/json',
         ]);

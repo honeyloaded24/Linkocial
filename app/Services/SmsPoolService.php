@@ -21,7 +21,7 @@ class SmsPoolService
      */
     public function getBalance(): array
     {
-        $response = Http::get("{$this->baseUrl}/request/balance", [
+        $response = Http::timeout(15)->get("{$this->baseUrl}/request/balance", [
             'key' => $this->apiKey,
         ]);
 
@@ -39,7 +39,7 @@ class SmsPoolService
      */
     public function getCountries(): array
     {
-        $response = Http::get("{$this->baseUrl}/country/retrieve_all");
+        $response = Http::timeout(15)->get("{$this->baseUrl}/country/retrieve_all");
 
         if ($response->failed()) {
             Log::error('SMSPool getCountries failed', ['response' => $response->body()]);
@@ -57,7 +57,7 @@ class SmsPoolService
      */
     public function getPricesForCountry(string|int $country): array
     {
-        $response = Http::asForm()->post("{$this->baseUrl}/request/pricing", [
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/request/pricing", [
             'country' => $country,
             'key' => $this->apiKey,
         ]);
@@ -76,7 +76,7 @@ class SmsPoolService
      */
     public function buyNumber(string|int $country, string|int $service): array
     {
-        $response = Http::asForm()->post("{$this->baseUrl}/purchase/sms", [
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", [
             'country' => $country,
             'service' => $service,
             'key' => $this->apiKey,
@@ -105,7 +105,7 @@ class SmsPoolService
      */
     public function checkOrder(string $orderId): array
     {
-        $response = Http::asForm()->post("{$this->baseUrl}/sms/check", [
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/sms/check", [
             'orderid' => $orderId,
             'key' => $this->apiKey,
         ]);
@@ -124,7 +124,7 @@ class SmsPoolService
      */
     public function cancelOrder(string $orderId): array
     {
-        $response = Http::asForm()->post("{$this->baseUrl}/sms/cancel", [
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/sms/cancel", [
             'orderid' => $orderId,
             'key' => $this->apiKey,
         ]);

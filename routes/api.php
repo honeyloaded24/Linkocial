@@ -31,9 +31,11 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/webhooks/korapay', [PaymentController::class, 'korapayWebhook']);
 Route::post('/webhooks/heleket', [PaymentController::class, 'heleketWebhook']);
 
-// Standard SMM Reseller API (v1)
-Route::post('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
-Route::get('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
+// Standard SMM Reseller API (v1) - Rate Limited
+Route::middleware('throttle:api')->group(function () {
+    Route::post('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
+    Route::get('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
+});
 
 // Public Marketing API (v1)
 Route::get('/v1/public-stats', [App\Http\Controllers\Api\PublicStatsController::class, 'index'])->name('api.public-stats');
