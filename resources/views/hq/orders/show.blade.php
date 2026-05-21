@@ -60,11 +60,11 @@
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">User Charge</label>
-                        <p class="fw-bold mb-0 text-dark fs-5">₦ {{ number_format((float)$order->charge, 2) }}</p>
+                        <p class="fw-bold mb-0 text-dark fs-5">{{ money((float)$order->charge, true, 'USD') }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Gross Margin</label>
-                        <p class="fw-bold mb-0 text-success fs-5">₦ {{ number_format((float)$order->charge, 2) }} <span class="text-muted" style="font-size: 0.8rem;">/ ${{ number_format((float)$order->provider_cost, 2) }}</span></p>
+                        <p class="fw-bold mb-0 text-success fs-5">{{ money((float)$order->charge, true, 'USD') }} <span class="text-muted" style="font-size: 0.8rem;">/ {{ money((float)$order->provider_cost, true, 'USD') }}</span></p>
                     </div>
                 </div>
 
