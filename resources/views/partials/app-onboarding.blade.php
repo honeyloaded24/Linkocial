@@ -126,14 +126,39 @@
         color: rgba(255, 255, 255, 0.7) !important;
     }
     
-    #btn-get-started {
+    .auth-buttons-container {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-auth-primary {
         background: white;
         color: #312e81;
         box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         border: none;
+        border-radius: 50px;
+        padding: 0.8rem;
+        font-weight: bold;
+        flex: 1;
+        transition: transform 0.2s;
     }
-    #btn-get-started:active {
-        transform: scale(0.98);
+    .btn-auth-primary:active {
+        transform: scale(0.95);
+    }
+    
+    .btn-auth-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        border-radius: 50px;
+        padding: 0.8rem;
+        font-weight: bold;
+        flex: 1;
+        transition: background 0.2s;
+    }
+    .btn-auth-secondary:active {
+        background: rgba(255, 255, 255, 0.2);
     }
 </style>
 
@@ -168,9 +193,12 @@
                 <h2 class="onboarding-title">Start Growing Today</h2>
                 <p class="onboarding-text">Join thousands of users achieving their social media goals instantly.</p>
                 
-                <div class="mt-5 w-100 px-3">
-                    <button class="btn rounded-pill w-100 py-3 fw-bold fs-5" id="btn-get-started">
-                        Get Started <i class="fa-solid fa-arrow-right ms-2"></i>
+                <div class="mt-5 w-100 px-3 auth-buttons-container">
+                    <button class="btn btn-auth-secondary" id="btn-sign-in">
+                        Sign In
+                    </button>
+                    <button class="btn btn-auth-primary" id="btn-sign-up">
+                        Sign Up
                     </button>
                 </div>
             </div>
@@ -224,9 +252,13 @@
             };
 
             document.getElementById('btn-skip-onboarding').addEventListener('click', completeOnboarding);
-            document.getElementById('btn-get-started').addEventListener('click', () => {
+            document.getElementById('btn-sign-up').addEventListener('click', () => {
                 completeOnboarding();
                 if(window.location.pathname === '/') window.location.href = '/register';
+            });
+            document.getElementById('btn-sign-in').addEventListener('click', () => {
+                completeOnboarding();
+                if(window.location.pathname === '/') window.location.href = '/login';
             });
         }
     });
