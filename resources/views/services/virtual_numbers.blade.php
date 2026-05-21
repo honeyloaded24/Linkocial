@@ -15,7 +15,7 @@
     [data-theme="dark"] .ts-dropdown .active { background: #334155; color: #fff; }
 </style>
 <div class="row g-4">
-    <div class="col-12 col-lg-6 col-xl-5">
+    <div class="col-12 col-lg-6 col-xl-6">
         <!-- Main Form Card -->
         <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--surface-bg);">
             <div class="d-flex align-items-center mb-4">
@@ -69,7 +69,7 @@
                             <span class="text-decoration-line-through text-white-50 small d-none" id="vn-original-cost">$0.00</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-light rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn" style="color: var(--bs-primary);">
+                    <button type="submit" class="btn btn-light rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn" style="color: var(--bs-primary); white-space: nowrap;">
                         Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
                     </button>
                 </div>
@@ -81,7 +81,7 @@
     </div>
 
     <!-- Active Orders Sidebar -->
-    <div class="col-12 col-lg-6 col-xl-7">
+    <div class="col-12 col-lg-6 col-xl-6">
         <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--surface-bg);">
             <h5 class="fw-bold mb-4" style="font-family: var(--heading-font);">
                 <i class="fa-solid fa-tower-cell text-primary-custom me-2"></i> Active Verifications
