@@ -29,56 +29,6 @@ class PaymentController extends Controller
         return view('wallet.index', compact('isForeigner', 'cfCountry'));
     }
 
-    /**
-     * Initialize a Paystack Deposit (Naira)
-     */
-    public function initializeDeposit(Request $request)
-    {
-        $request->validate([
-            'amount' => 'required|numeric|min:0.01', 
-        ]);
-
-        $user = $request->user();
-        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
-        
-        // 1. Convert the user-provided amount into NGN for Paystack
-        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
-        
-        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
-        if ($amountInUsd < 1) {
-            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
-        }
-
-        $amountInNgn = $amountInUsd * $ngnCurrency->exchange_rate;
-        $amountInKobo = round($amountInNgn * 100); 
-
-        try {
-            $response = Http::withToken(config('services.paystack.secret'))
-                ->post('https://api.paystack.co/transaction/initialize', [
-                    'email' => $user->email,
-                    'amount' => $amountInKobo,
-                    'reference' => 'DEP_' . time() . '_' . $user->id,
-                    'callback_url' => route('wallet.index') . '?status=success',
-                ]);
-
-            $result = $response->json();
-
-            if ($response->successful() && $result['status']) {
-                return response()->json([
-                    'authorization_url' => $result['data']['authorization_url'],
-                    'reference' => $result['data']['reference']
-                ]);
-            }
-
-            Log::error('Paystack Initialization Failed: ' . $response->body());
-            return response()->json(['error' => 'Failed to initialize payment gateway.'], 500);
-
-        } catch (\Exception $e) {
-            Log::error('Paystack Exception: ' . $e->getMessage());
-            return response()->json(['error' => 'An error occurred communicating with the payment gateway.'], 500);
-        }
-    }
 
     /**
      * Initialize a Korapay Deposit (Naira)
@@ -158,7 +108,7 @@ class PaymentController extends Controller
         } elseif (str_starts_with($reference, 'DEP_CRYP_')) {
             $this->verifyHeleketTransaction($reference);
         } else {
-            $this->verifyPaystackTransaction($reference);
+            Log::warning('Unknown payment reference format: ' . $reference);
         }
     }
 
@@ -212,28 +162,6 @@ class PaymentController extends Controller
         }
     }
 
-    private function verifyPaystackTransaction($reference)
-    {
-        try {
-            $response = Http::withToken(config('services.paystack.secret'))
-                ->get("https://api.paystack.co/transaction/verify/{$reference}");
-
-            $result = $response->json();
-
-            if ($response->successful() && $result['status'] && $result['data']['status'] === 'success') {
-                $data = $result['data'];
-                $amountInNaira = $data['amount'] / 100;
-                $customerEmail = $data['customer']['email'];
-                $user = User::where('email', $customerEmail)->first();
-
-                if ($user) {
-                    $this->processSuccessfulPayment($user, $amountInNaira, $reference, 'Paystack');
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error("Manual Paystack Verification Failed for {$reference}: " . $e->getMessage());
-        }
-    }
 
     private function verifyKorapayTransaction($reference)
     {
@@ -259,53 +187,6 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Handle Paystack Webhook for successful payments
-     */
-    public function webhook(Request $request)
-    {
-        // 1. Verify webhook signature for security
-        $signature = $request->header('x-paystack-signature');
-        $payload = $request->getContent();
-        
-        $expectedSignature = hash_hmac('sha512', $payload, config('services.paystack.secret'));
-        
-        if ($signature !== $expectedSignature) {
-            Log::warning('Invalid Paystack Webhook Signature detected.');
-            return response()->json(['status' => 'invalid signature'], 400);
-        }
-
-        $event = json_decode($payload, true);
-
-        // 2. Process only successful charge events
-        if ($event['event'] === 'charge.success') {
-            $data = $event['data'];
-            $reference = $data['reference'];
-            $amountInNaira = $data['amount'] / 100;
-            $customerEmail = $data['customer']['email'];
-
-            // Don't re-process if already handled by manual verification
-            if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
-                return response()->json(['status' => 'already processed']);
-            }
-
-            DB::beginTransaction();
-            try {
-                $user = User::where('email', $customerEmail)->first();
-                if ($user) {
-                    $this->processSuccessfulPayment($user, $amountInNaira, $reference);
-                    DB::commit();
-                }
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("Failed to process Paystack webhook for {$reference}: " . $e->getMessage());
-                return response()->json(['status' => 'database error'], 500);
-            }
-        }
-
-        // Always return 200 OK to Paystack so they stop retrying the webhook
-        return response()->json(['status' => 'success']);
-    }
 
     /**
      * Handle Korapay Webhook
@@ -355,7 +236,7 @@ class PaymentController extends Controller
     /**
      * Shared logic to credit wallet and award commissions
      */
-    private function processSuccessfulPayment($user, $amount, $reference, $method = 'Paystack', $currencyCode = 'NGN')
+    private function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN')
     {
         // Get the exchange rate for the currency used in the transaction to convert to USD Master
         $transactionCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? (object)['exchange_rate' => 1450.0];

@@ -33,6 +33,11 @@ class LandingController extends Controller
         return view('landing', compact('stats', 'channels'));
     }
 
+    public function virtualNumbers()
+    {
+        return view('landing.virtual_numbers');
+    }
+
     /**
      * Show a dedicated page for a specific social media platform.
      */

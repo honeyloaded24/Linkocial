@@ -25,6 +25,8 @@ Route::get('/download', function() {
     return view('download');
 })->name('download');
 
+Route::get('/buy-virtual-numbers', [LandingController::class, 'virtualNumbers'])->name('services.vn-marketing');
+
 
 // Specialized Instagram SEO Pages
 Route::get('/buy-instagram-followers', [LandingController::class, 'instagramFollowers'])->name('services.ig-followers');
@@ -133,9 +135,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/affiliate/withdraw', [App\Http\Controllers\AffiliateController::class, 'requestWithdrawal'])->name('affiliate.withdraw');
 
     // New Coming Soon Services
-    Route::get('/virtual-numbers', function() {
-        return view('services.coming_soon', ['title' => 'Virtual Number Verification', 'icon' => 'fa-phone-volume']);
-    })->name('services.virtual-numbers');
+    Route::get('/virtual-numbers', [\App\Http\Controllers\VirtualNumberController::class, 'index'])->name('services.virtual-numbers');
+    Route::get('/api/virtual-numbers/countries', [\App\Http\Controllers\VirtualNumberController::class, 'getCountries']);
+    Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
+    Route::post('/api/virtual-numbers/coupon/validate', [\App\Http\Controllers\VirtualNumberController::class, 'validateCoupon']);
+    Route::post('/api/virtual-numbers/purchase', [\App\Http\Controllers\VirtualNumberController::class, 'purchase']);
+    Route::get('/api/virtual-numbers/{id}/check', [\App\Http\Controllers\VirtualNumberController::class, 'checkStatus']);
+    Route::post('/api/virtual-numbers/{id}/cancel', [\App\Http\Controllers\VirtualNumberController::class, 'cancelOrder']);
     
     Route::get('/gift-cards', function() {
         return view('services.coming_soon', ['title' => 'Buy Gift Cards', 'icon' => 'fa-gift']);
@@ -193,6 +199,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/orders/{id}/refill', [AdminController::class, 'refillOrder'])->name('hq.orders.refill');
 
         Route::get('/providers', [AdminController::class, 'providers'])->name('hq.providers');
+
+        Route::get('/virtual-numbers', [\App\Http\Controllers\AdminVirtualNumberController::class, 'index'])->name('hq.virtual-numbers');
+        Route::post('/virtual-numbers/{id}/refund', [\App\Http\Controllers\AdminVirtualNumberController::class, 'refund'])->name('hq.virtual-numbers.refund');
         Route::post('/providers', [AdminController::class, 'storeProvider'])->name('hq.providers.store');
         Route::patch('/providers/{id}/toggle', [AdminController::class, 'toggleProviderStatus'])->name('hq.providers.toggle');
         Route::delete('/providers/{id}', [AdminController::class, 'destroyProvider'])->name('hq.providers.destroy');
@@ -224,6 +233,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/currencies', [\App\Http\Controllers\CurrencyController::class, 'store'])->name('hq.currencies.store');
         Route::put('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'update'])->name('hq.currencies.update');
         Route::delete('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'destroy'])->name('hq.currencies.destroy');
+
+        // Coupon Management
+        Route::get('/coupons', [\App\Http\Controllers\AdminCouponController::class, 'index'])->name('hq.coupons.index');
+        Route::post('/coupons', [\App\Http\Controllers\AdminCouponController::class, 'store'])->name('hq.coupons.store');
+        Route::post('/coupons/{coupon}/toggle', [\App\Http\Controllers\AdminCouponController::class, 'toggle'])->name('hq.coupons.toggle');
+        Route::delete('/coupons/{coupon}', [\App\Http\Controllers\AdminCouponController::class, 'destroy'])->name('hq.coupons.destroy');
     });
 });
 

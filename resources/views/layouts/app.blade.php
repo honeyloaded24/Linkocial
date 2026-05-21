@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ \App\Models\Setting::get('site_name', 'Linkocial') }} - @yield('header_title', 'Dashboard')</title>
     
     @include('partials.tracking')
@@ -137,6 +138,12 @@
                                 </a>
                                 <a href="{{ route('hq.orders') }}" class="nav-link mb-2 {{ request()->routeIs('hq.orders*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-box-open"></i> Orders
+                                </a>
+                                <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.virtual-numbers*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-phone-volume"></i> Virtual Numbers
+                                </a>
+                                <a href="{{ route('hq.coupons.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.coupons*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-ticket"></i> Coupons
                                 </a>
                                 <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-pen-to-square"></i> Blog Manager

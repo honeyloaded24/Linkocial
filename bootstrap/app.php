@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Exempt payment webhooks from CSRF protection
         $middleware->preventRequestForgery(except: [
-            '/api/webhooks/paystack',
+
             '/api/webhooks/korapay',
             '/api/webhooks/heleket',
         ]);

@@ -56,6 +56,7 @@
             <div class="col-lg-3">
                 <h6 class="fw-bold mb-4">Best Sellers</h6>
                 <ul class="list-unstyled footer-links">
+                    <li><a href="{{ route('services.vn-marketing') }}">Buy Virtual Numbers <span class="badge bg-danger rounded-pill ms-1" style="font-size: 0.6rem;">NEW</span></a></li>
                     <li><a href="{{ route('services.ig-followers') }}">Buy Instagram Followers</a></li>
                     <li><a href="{{ route('services.fb-followers') }}">Buy Facebook Followers</a></li>
                     <li><a href="{{ route('services.tk-followers') }}">Buy TikTok Followers</a></li>

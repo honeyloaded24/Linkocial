@@ -27,7 +27,6 @@
                         <span class="input-group-text bg-transparent text-muted border-end-0" style="border-color: var(--border-color);"><i class="fa-solid fa-credit-card"></i></span>
                         <select id="selectedGateway" name="gateway" class="form-select border-start-0 ps-0" onchange="updateConversion()" required style="background-color: transparent; color: var(--text-main); border-color: var(--border-color); font-size: 0.95rem;">
                             @if(!$isForeigner)
-                                <option value="paystack" selected>🇳🇬 Paystack [NGN Card & Transfer]</option>
                                 <option value="korapay">🌍 Kora [Local Africa: GHS, KES, NGN, ZAR]</option>
                                 <option value="heleket">💳 Crypto [Global: BTC, USDT, ETH]</option>
                             @else
@@ -52,9 +51,6 @@
                         $currentRate = $currentCurrency->exchange_rate;
                     @endphp
                     <div class="form-text mt-2" id="conversionHint">
-                        @if($currentCurrency->code !== 'NGN')
-                            Paystack charge: <span class="fw-bold text-primary-custom" id="ngnEquivalent">₦0.00</span>
-                        @endif
                     </div>
                 </div>
 
@@ -81,17 +77,7 @@
             <div class="payment-instructions">
                 <h6 class="fw-bold text-muted small text-uppercase mb-4">Payment Guide & Scenarios</h6>
                 
-                <div class="d-flex gap-3 mb-4">
-                    <div class="flex-shrink-0">
-                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                            <i class="fa-solid fa-bolt"></i>
-                        </div>
-                    </div>
-                    <div>
-                        <div class="fw-bold small">Paystack (Recommended for Nigeria)</div>
-                        <p class="text-muted small mb-0">Use this if you are in **Nigeria**. Best for Bank Transfers, USSD, Naira Cards, and Fintechs like Opay, Kuda, or Palmpay.</p>
-                    </div>
-                </div>
+
 
                 <div class="d-flex gap-3 mb-4">
                     <div class="flex-shrink-0">
@@ -139,10 +125,7 @@
         let displayAmount = "";
         let btnIcon = "fa-lock";
 
-        if (gateway === 'paystack') {
-            const paystackNgn = currentCode === 'NGN' ? amount : (amount / currentRate) * ngnRate;
-            displayAmount = `₦${paystackNgn.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
-        } else if (gateway === 'korapay') {
+        if (gateway === 'korapay') {
             const supportedKora = ['NGN', 'GHS', 'KES', 'ZAR'];
             const symbols = {'NGN': '₦', 'GHS': 'GH₵', 'KES': 'KSh', 'ZAR': 'R'};
             let koraAmount = 0;
@@ -216,7 +199,7 @@
             return;
         }
         
-        let url = '/api/payments/deposit';
+        let url = '';
         if (gateway === 'korapay') url = '/api/payments/korapay';
         if (gateway === 'heleket') url = '/api/payments/heleket';
         

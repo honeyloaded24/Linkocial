@@ -82,28 +82,10 @@
 
         const countdownEl = document.getElementById('promoCountdown');
         
-        // 24-Hour Cooldown Logic
-        const cooldownHours = 24;
-        const lastShown = localStorage.getItem('promo_last_shown');
-        const now = new Date().getTime();
-        
-        let showPopup = true;
-        
-        // Check if permanently dismissed or in cooldown period
-        if (localStorage.getItem('promo_dismissed') === 'true') {
-            showPopup = false;
-        } else if (lastShown) {
-            const hoursSinceLastShown = (now - parseInt(lastShown)) / (1000 * 60 * 60);
-            if (hoursSinceLastShown < cooldownHours) {
-                showPopup = false;
-            }
-        }
-
-        if (showPopup) {
+        // Show modal on every page for testing, or if not dismissed
+        if (!localStorage.getItem('promo_dismissed')) {
             setTimeout(() => {
                 promoModal.show();
-                // Log exactly when we showed it to start the 24-hour cooldown
-                localStorage.setItem('promo_last_shown', now.toString());
             }, 1000);
         }
 

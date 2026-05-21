@@ -22,15 +22,29 @@ class AdminController extends Controller
         $totalReferrals = User::whereNotNull('referred_by')->count();
         $totalUserBalance = User::sum('balance'); // Unused deposits
 
-        // Order Metrics
-        $totalOrders = Order::count();
-        $pendingOrders = Order::where('status', 'pending')->count();
-        $completedOrders = Order::where('status', 'completed')->count();
+        // Order Metrics (Aggregated SMM + Virtual Numbers)
+        $totalOrders = Order::count() + \App\Models\VirtualNumberOrder::count();
+        $pendingOrders = Order::where('status', 'pending')->count() + \App\Models\VirtualNumberOrder::where('status', 'pending')->count();
+        $completedOrders = Order::where('status', 'completed')->count() + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count();
 
         // Financial Metrics (All reporting in USD Master)
-        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount_usd');
-        $totalSpent = Order::whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
-        $totalCost = Order::whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('provider_cost');
+        $totalDeposited = \App\Models\Transaction::where('transaction_type', 'deposit')->where('type', 'credit')->sum('amount');
+        
+        // SMM Spent (including all active non-refunded orders)
+        $smmSpent = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
+            ->where('is_refunded', false)
+            ->sum('charge');
+            
+        $smmCost = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
+            ->where('is_refunded', false)
+            ->sum('provider_cost');
+        
+        // Virtual Numbers Spent (including active non-refunded)
+        $vnSpent = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('cost');
+        $vnCost = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('provider_cost');
+
+        $totalSpent = $smmSpent + $vnSpent;
+        $totalCost = $smmCost + $vnCost;
         $totalProfit = $totalSpent - $totalCost;
 
         // Affiliate Metrics

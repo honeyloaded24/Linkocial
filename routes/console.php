@@ -22,3 +22,9 @@ Schedule::command('smm:check-orders')->everyFiveMinutes()->withoutOverlapping();
 
 // Schedule Automated Currency Updates daily at 10 AM (with a 4% margin buffer)
 Schedule::command('currency:update-rates --buffer=4')->dailyAt('10:00')->withoutOverlapping();
+
+// Schedule background check for abandoned virtual number orders every minute
+Schedule::command('vn:check-expired')->everyMinute()->withoutOverlapping();
+
+// Schedule SMSPool balance check every hour
+Schedule::command('smspool:check-balance')->hourly()->withoutOverlapping();

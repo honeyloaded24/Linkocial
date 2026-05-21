@@ -27,7 +27,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public Webhook Routes
 // Note: Ensure this route is excluded from VerifyCsrfToken middleware in bootstrap/app.php or app/Http/Middleware/VerifyCsrfToken.php
-Route::post('/webhooks/paystack', [PaymentController::class, 'webhook'])->name('payment.callback');
+// Route::post('/webhooks/paystack', [PaymentController::class, 'webhook'])->name('payment.callback');
 Route::post('/webhooks/korapay', [PaymentController::class, 'korapayWebhook']);
 Route::post('/webhooks/heleket', [PaymentController::class, 'heleketWebhook']);
 

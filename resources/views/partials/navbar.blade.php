@@ -34,6 +34,16 @@
                                 </a>
                             </li>
                         @endforeach
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('services.vn-marketing') }}">
+                                <i class="fa-solid fa-phone" style="color: #6366f1; width: 20px;"></i>
+                                <div class="d-flex flex-column py-1">
+                                    <span class="fw-bold lh-base">Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span></span>
+                                    <span class="text-muted small opacity-75 lh-sm" style="white-space: normal;">Bypass SMS Verifications</span>
+                                </div>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
@@ -62,6 +72,10 @@
                         <div class="mega-col">
                             <h6 class="mega-title"><i class="fa-solid fa-fire me-2 text-danger"></i>Best Sellers</h6>
                             <div class="mega-list">
+                                <a href="{{ route('services.vn-marketing') }}" class="mega-item">
+                                    <div class="mega-icon-sm text-white" style="background-color: #6366f1;"><i class="fa-solid fa-phone"></i></div>
+                                    <span>Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span></span>
+                                </a>
                                 <a href="{{ route('services.ig-followers') }}" class="mega-item">
                                     <div class="mega-icon-sm bg-danger-soft text-danger"><i class="fa-brands fa-instagram"></i></div>
                                     <span>Instagram Followers</span>
