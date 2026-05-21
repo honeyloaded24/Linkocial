@@ -2,18 +2,33 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
 
 <style>
-    /* Native App Onboarding Overlay Styles */
+    /* Premium Animated Gradient Background */
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+    }
+
     #app-onboarding-overlay {
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
-        background-color: var(--bs-body-bg);
+        /* Rich mesh gradient */
+        background: linear-gradient(-45deg, #1e1b4b, #4338ca, #312e81, #1e40af);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
         z-index: 99999;
-        display: flex;
-        flex-direction: column;
         display: none; /* Hidden by default */
+        flex-direction: column;
+        color: white;
     }
 
     .onboarding-swiper {
@@ -26,55 +41,63 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 2rem;
+        padding: 2.5rem;
         text-align: center;
     }
 
+    /* Glassmorphism Icon Wrapper */
     .onboarding-icon-wrapper {
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 2rem;
-        background: var(--bs-primary-bg-subtle);
-        color: var(--bs-primary);
-        font-size: 3rem;
+        margin-bottom: 2.5rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        font-size: 3.5rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        animation: float 4s ease-in-out infinite;
     }
 
     .onboarding-title {
         font-family: var(--heading-font, inherit);
-        font-weight: 800;
-        font-size: 1.75rem;
+        font-weight: 900;
+        font-size: 2rem;
         margin-bottom: 1rem;
-        color: var(--bs-heading-color);
+        color: white;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
     .onboarding-text {
-        font-size: 1.1rem;
-        color: var(--bs-secondary-color);
-        line-height: 1.5;
-        max-width: 80%;
+        font-size: 1.15rem;
+        color: rgba(255, 255, 255, 0.85);
+        line-height: 1.6;
+        max-width: 90%;
     }
 
+    /* Custom Pagination */
     .swiper-pagination-bullet {
         width: 10px;
         height: 10px;
-        background: var(--bs-primary);
-        opacity: 0.3;
+        background: rgba(255, 255, 255, 0.4);
+        opacity: 1;
     }
     
     .swiper-pagination-bullet-active {
-        opacity: 1;
-        width: 25px;
+        background: white;
+        width: 30px;
         border-radius: 5px;
         transition: width 0.3s;
+        box-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
 
     .onboarding-footer {
         position: absolute;
-        bottom: 2rem;
+        bottom: 2.5rem;
         left: 0;
         width: 100%;
         padding: 0 2rem;
@@ -82,6 +105,35 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+    }
+
+    /* Glass buttons */
+    .btn-glass-next {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white !important;
+        border-radius: 50px;
+        padding: 0.6rem 1.5rem;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    .btn-glass-next:active {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-skip {
+        color: rgba(255, 255, 255, 0.7) !important;
+    }
+    
+    #btn-get-started {
+        background: white;
+        color: #312e81;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        border: none;
+    }
+    #btn-get-started:active {
+        transform: scale(0.98);
     }
 </style>
 
@@ -101,7 +153,7 @@
 
             <!-- Slide 2 -->
             <div class="swiper-slide">
-                <div class="onboarding-icon-wrapper" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                <div class="onboarding-icon-wrapper" style="animation-delay: 1s;">
                     <i class="fa-solid fa-phone-volume"></i>
                 </div>
                 <h2 class="onboarding-title">Virtual Numbers</h2>
@@ -110,14 +162,14 @@
 
             <!-- Slide 3 -->
             <div class="swiper-slide">
-                <div class="onboarding-icon-wrapper" style="background: rgba(25, 135, 84, 0.1); color: #198754;">
+                <div class="onboarding-icon-wrapper" style="animation-delay: 2s;">
                     <i class="fa-solid fa-chart-line"></i>
                 </div>
                 <h2 class="onboarding-title">Start Growing Today</h2>
                 <p class="onboarding-text">Join thousands of users achieving their social media goals instantly.</p>
                 
-                <div class="mt-5 w-100">
-                    <button class="btn btn-primary rounded-pill w-100 py-3 fw-bold fs-5 shadow" id="btn-get-started">
+                <div class="mt-5 w-100 px-3">
+                    <button class="btn rounded-pill w-100 py-3 fw-bold fs-5" id="btn-get-started">
                         Get Started <i class="fa-solid fa-arrow-right ms-2"></i>
                     </button>
                 </div>
@@ -125,11 +177,11 @@
 
         </div>
         
-        <div class="swiper-pagination mb-5 pb-3"></div>
+        <div class="swiper-pagination mb-5 pb-4"></div>
         
         <div class="onboarding-footer">
-            <button class="btn btn-link text-muted text-decoration-none fw-bold" id="btn-skip-onboarding">Skip</button>
-            <button class="btn btn-light rounded-pill px-4 text-primary fw-bold" id="btn-next-slide">Next</button>
+            <button class="btn btn-link text-decoration-none fw-bold btn-skip" id="btn-skip-onboarding">Skip</button>
+            <button class="btn btn-glass-next" id="btn-next-slide">Next</button>
         </div>
     </div>
 </div>
@@ -138,26 +190,18 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // 1. Check if user is on the App (via User-Agent)
         const isApp = navigator.userAgent.includes('LinkocialApp');
-        
-        // 2. Check if they have already seen the onboarding
         const hasOnboarded = localStorage.getItem('app_onboarded') === 'true';
         
-        // 3. Only show if it's the app AND they haven't onboarded
+        // Debug override: remove `isApp &&` if you want to test in normal browser temporarily
         if (isApp && !hasOnboarded) {
             const overlay = document.getElementById('app-onboarding-overlay');
-            overlay.style.display = 'flex'; // Show it
+            overlay.style.display = 'flex';
             
-            // Initialize Swiper
             const swiper = new Swiper(".onboarding-swiper", {
-                pagination: {
-                    el: ".swiper-pagination",
-                    clickable: true,
-                },
+                pagination: { el: ".swiper-pagination", clickable: true },
                 on: {
                     slideChange: function () {
-                        // Hide footer buttons on the last slide
                         const footer = document.querySelector('.onboarding-footer');
                         if (this.isEnd) {
                             footer.style.opacity = '0';
@@ -170,25 +214,19 @@
                 }
             });
 
-            // Button Event Listeners
-            document.getElementById('btn-next-slide').addEventListener('click', () => {
-                swiper.slideNext();
-            });
+            document.getElementById('btn-next-slide').addEventListener('click', () => swiper.slideNext());
 
             const completeOnboarding = () => {
                 localStorage.setItem('app_onboarded', 'true');
                 overlay.style.opacity = '0';
                 overlay.style.transition = 'opacity 0.4s ease';
-                setTimeout(() => overlay.remove(), 400); // fade out and remove
+                setTimeout(() => overlay.remove(), 400);
             };
 
             document.getElementById('btn-skip-onboarding').addEventListener('click', completeOnboarding);
             document.getElementById('btn-get-started').addEventListener('click', () => {
                 completeOnboarding();
-                // If they are on the landing page, redirect to register
-                if(window.location.pathname === '/') {
-                    window.location.href = '/register';
-                }
+                if(window.location.pathname === '/') window.location.href = '/register';
             });
         }
     });
