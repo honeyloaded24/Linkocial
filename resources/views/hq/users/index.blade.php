@@ -57,7 +57,7 @@
                             <td>{{ $user->email }}</td>
                             <td>
                                 <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">
-                                    ₦ {{ number_format((float)$user->balance, 2) }}
+                                    $ {{ number_format((float)$user->balance, 2) }}
                                 </span>
                             </td>
                             <td>{{ $user->created_at->format('M d, Y') }}</td>
@@ -100,7 +100,7 @@
                 <div class="modal-body p-4">
                     <div class="mb-4 text-center">
                         <small class="text-muted uppercase fw-bold d-block mb-1">CURRENT BALANCE</small>
-                        <h3 class="fw-bold text-success">₦ {{ number_format((float)$user->balance, 2) }}</h3>
+                        <h3 class="fw-bold text-success">$ {{ number_format((float)$user->balance, 2) }}</h3>
                     </div>
 
                     <div class="mb-3">
@@ -112,7 +112,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small text-muted fw-bold">AMOUNT (₦)</label>
+                        <label class="form-label small text-muted fw-bold">AMOUNT ($)</label>
                         <input type="number" name="amount" class="form-control bg-transparent border-secondary" step="0.01" required placeholder="0.00" style="color: var(--text-main);">
                     </div>
                 </div>
