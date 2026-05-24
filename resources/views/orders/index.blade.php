@@ -57,7 +57,7 @@
                         </a>
                     </td>
                     <td class="fw-bold">{{ number_format($order->quantity) }}</td>
-                    <td><i class="fa-solid fa-naira-sign"></i> {{ number_format((float)$order->charge, 2) }}</td>
+                    <td>{{ \App\Models\Setting::get('currency_symbol', '$') }} {{ number_format((float)$order->charge, 2) }}</td>
                     <td>
                         @php
                             $cleanStatus = strtolower(str_replace(' ', '_', $order->status));
