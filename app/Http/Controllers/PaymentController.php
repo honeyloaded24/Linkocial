@@ -74,7 +74,7 @@ class PaymentController extends Controller
                     'redirect_url' => route('wallet.index') . '?status=success&reference=' . $reference,
                     'customer' => [
                         'email' => $user->email,
-                        'name' => $user->username,
+                        'name' => trim($user->first_name . ' ' . $user->last_name) ?: $user->username,
                     ],
                     'merchant_bears_cost' => false
                 ]);
