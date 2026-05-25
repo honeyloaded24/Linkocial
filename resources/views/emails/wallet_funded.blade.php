@@ -16,12 +16,12 @@
             </tr>
             <tr>
                 <td style="padding-bottom: 10px; color: #64748b; font-size: 14px;">Amount Credited:</td>
-                <td style="padding-bottom: 10px; text-align: right; font-weight: 700; color: #10b981;">₦ {{ number_format($amount, 2) }}</td>
+                <td style="padding-bottom: 10px; text-align: right; font-weight: 700; color: #10b981;">{{ money($amount) }}</td>
             </tr>
             @if(isset($bonus) && $bonus > 0)
             <tr>
                 <td style="color: #64748b; font-size: 14px;">Promo Bonus (+):</td>
-                <td style="text-align: right; font-weight: 700; color: #6366f1;">₦ {{ number_format($bonus, 2) }}</td>
+                <td style="text-align: right; font-weight: 700; color: #6366f1;">{{ money($bonus) }}</td>
             </tr>
             @endif
         </table>

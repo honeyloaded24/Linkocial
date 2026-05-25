@@ -20,7 +20,7 @@
             </tr>
             <tr>
                 <td style="color: #64748b; font-size: 14px;">Charge:</td>
-                <td style="text-align: right; font-weight: 700; color: #6366f1;">₦ {{ number_format($amount, 2) }}</td>
+                <td style="text-align: right; font-weight: 700; color: #6366f1;">{{ money($amount) }}</td>
             </tr>
         </table>
     </div>
