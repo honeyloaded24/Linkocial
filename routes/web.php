@@ -21,9 +21,7 @@ Route::get('/{platform}-promotion', [LandingController::class, 'platform'])
     ->where('platform', 'instagram|tiktok|youtube|facebook|x|telegram|spotify|audiomack')
     ->name('platform');
 
-Route::get('/download', function() {
-    return view('download');
-})->name('download');
+
 
 Route::get('/buy-virtual-numbers', [LandingController::class, 'virtualNumbers'])->name('services.vn-marketing');
 

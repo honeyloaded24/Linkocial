@@ -35,7 +35,7 @@
                     <li><a href="{{ route('info.blog') }}">Growth Blog</a></li>
                     <li><a href="{{ route('info.contact') }}">Contact</a></li>
                     <li><a href="{{ route('legal.terms') }}">Terms of Service</a></li>
-                    <li><a href="{{ route('download') }}" class="fw-bold text-primary"><i class="fa-solid fa-mobile-screen-button me-1"></i> Download App</a></li>
+
                 </ul>
 
             </div>

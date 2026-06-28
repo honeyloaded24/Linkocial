@@ -176,6 +176,6 @@
         });
     </script>
     @stack('scripts')
-    @include('partials.app-onboarding')
+
 </body>
 </html>
