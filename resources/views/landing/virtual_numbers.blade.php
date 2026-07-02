@@ -197,7 +197,7 @@
                         <i class="fa-solid fa-message"></i>
                     </div>
                     <h4 class="fw-bold mb-3">3. Receive SMS Code</h4>
-                    <p class="text-muted small mb-0">The temporary number will receive the SMS code instantly on your dashboard. Use it to complete registration!</p>
+                    <p class="text-muted small mb-0">The virtual number will receive the SMS code instantly on your dashboard. Use it to complete registration!</p>
                 </div>
             </div>
         </div>

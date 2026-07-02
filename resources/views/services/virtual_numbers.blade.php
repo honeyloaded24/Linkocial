@@ -24,7 +24,7 @@
                 </div>
                 <div>
                     <h4 class="mb-0 fw-bold" style="font-family: var(--heading-font);">Get Virtual Number</h4>
-                    <p class="text-muted small mb-0">Temporary numbers for SMS verification (WhatsApp, Telegram, etc.)</p>
+                    <p class="text-muted small mb-0">Virtual numbers for SMS verification (WhatsApp, Telegram, etc.)</p>
                 </div>
             </div>
 
