@@ -177,5 +177,6 @@
     </script>
     @stack('scripts')
 
+    @include('partials.telegram-sticky')
 </body>
 </html>

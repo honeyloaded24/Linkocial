@@ -99,6 +99,20 @@
 
                             <div class="row g-4 mb-4">
                                 <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-3 border-bottom pb-2" style="letter-spacing: 1px;">Telegram & Community Links</h6>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase"><i class="fa-brands fa-telegram text-info me-1"></i> Telegram Channel URL</label>
+                                    <input type="text" name="telegram_channel_url" class="form-control border-secondary bg-transparent py-2" placeholder="https://t.me/yourchannel" value="{{ \App\Models\Setting::get('telegram_channel_url', 'https://t.me/linkocial') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase"><i class="fa-solid fa-comments text-primary me-1"></i> Telegram Direct Chat URL</label>
+                                    <input type="text" name="telegram_chat_url" class="form-control border-secondary bg-transparent py-2" placeholder="https://t.me/yourusername" value="{{ \App\Models\Setting::get('telegram_chat_url', 'https://t.me/linkocial_support') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
                                     <h6 class="text-primary small fw-bold text-uppercase mb-3 border-bottom pb-2" style="letter-spacing: 1px;">Financial Parameters</h6>
                                 </div>
                                 <div class="col-md-2">
