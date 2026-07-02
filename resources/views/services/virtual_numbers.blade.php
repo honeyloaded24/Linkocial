@@ -45,20 +45,6 @@
                         <select class="form-select form-select-lg rounded-3 border-0 bg-light shadow-sm" id="vn-service" required disabled>
                             <option value="">Select country first</option>
                         </select>
-                    </div>
-                    <!-- Coupon Code Input -->
-                    <div class="col-12 mt-3">
-                        <label class="form-label fw-bold small text-muted">Have a Coupon?</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control form-control-lg rounded-start-3 border-0 bg-light shadow-sm" id="vn-coupon-code" placeholder="Enter coupon code" style="text-transform: uppercase;">
-                            <button class="btn btn-outline-secondary border-0 bg-light shadow-sm px-3 d-none" type="button" id="vn-coupon-clear-btn" style="color: var(--text-muted);">
-                                <i class="fa-solid fa-xmark"></i>
-                            </button>
-                            <button class="btn btn-primary-custom px-4" type="button" id="vn-coupon-apply-btn">Apply</button>
-                        </div>
-                        <div class="form-text small text-success mt-1 d-none fw-bold" id="vn-coupon-success-msg"></div>
-                        <div class="form-text small text-danger mt-1 d-none fw-bold" id="vn-coupon-error-msg"></div>
-                    </div>
                 </div>
                 
                 <div class="mt-4 p-3 p-sm-4 rounded-4 bg-primary-custom text-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center d-none shadow" id="vn-price-box">
@@ -145,29 +131,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorBox = document.getElementById('vn-error');
     const buyBtn = document.getElementById('vn-buy-btn');
 
-    // Coupon Elements
-    const couponInput = document.getElementById('vn-coupon-code');
-    const couponApplyBtn = document.getElementById('vn-coupon-apply-btn');
-    const couponClearBtn = document.getElementById('vn-coupon-clear-btn');
-    const couponSuccessMsg = document.getElementById('vn-coupon-success-msg');
-    const couponErrorMsg = document.getElementById('vn-coupon-error-msg');
     const originalCostDisplay = document.getElementById('vn-original-cost');
     let currentOriginalPrice = 0.00;
-    let appliedCouponCode = null;
-
-    function resetCouponState() {
-        appliedCouponCode = null;
-        couponInput.value = '';
-        couponInput.disabled = false;
-        couponApplyBtn.disabled = false;
-        couponClearBtn.classList.add('d-none');
-        couponSuccessMsg.classList.add('d-none');
-        couponErrorMsg.classList.add('d-none');
-        originalCostDisplay.classList.add('d-none');
-        if (currentOriginalPrice > 0) {
-            costDisplay.textContent = `$${currentOriginalPrice.toFixed(2)}`;
-        }
-    }
     
     // Load Tom Select Script dynamically
     const script = document.createElement('script');
@@ -215,7 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
             serviceTs.clearOptions();
             serviceTs.clear();
             priceBox.classList.add('d-none');
-            resetCouponState();
             
             if (countryId) {
                 serviceTs.disable();
@@ -243,7 +207,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // On service select, show price and buy button
         serviceTs.on('change', function(val) {
-            resetCouponState();
             if (val) {
                 const option = serviceTs.options[val];
                 if (option && option.price) {
@@ -259,69 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Coupon Apply
-    couponApplyBtn.addEventListener('click', function() {
-        const code = couponInput.value.trim();
-        const country = countrySelect.value;
-        const product = serviceSelect.value;
-
-        couponSuccessMsg.classList.add('d-none');
-        couponErrorMsg.classList.add('d-none');
-
-        if (!code) {
-            couponErrorMsg.textContent = 'Please enter a coupon code.';
-            couponErrorMsg.classList.remove('d-none');
-            return;
-        }
-
-        if (!country || !product) {
-            couponErrorMsg.textContent = 'Please select a country and service first.';
-            couponErrorMsg.classList.remove('d-none');
-            return;
-        }
-
-        couponApplyBtn.disabled = true;
-        couponApplyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-
-        fetch('/api/virtual-numbers/coupon/validate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-            },
-            body: JSON.stringify({ coupon_code: code, country, product })
-        })
-        .then(res => res.json())
-        .then(res => {
-            couponApplyBtn.disabled = false;
-            couponApplyBtn.innerHTML = 'Apply';
-
-            if (res.error) {
-                couponErrorMsg.textContent = res.error;
-                couponErrorMsg.classList.remove('d-none');
-            } else if (res.success) {
-                appliedCouponCode = res.coupon_code;
-                couponInput.disabled = true;
-                couponApplyBtn.disabled = true;
-                couponClearBtn.classList.remove('d-none');
-                
-                couponSuccessMsg.textContent = `Coupon applied! Discount: $${parseFloat(res.discount).toFixed(2)}`;
-                couponSuccessMsg.classList.remove('d-none');
-
-                costDisplay.textContent = `$${parseFloat(res.final_price).toFixed(2)}`;
-                originalCostDisplay.textContent = `$${parseFloat(res.original_price).toFixed(2)}`;
-                originalCostDisplay.classList.remove('d-none');
-            }
-        })
-        .catch(err => {
-            couponApplyBtn.disabled = false;
-            couponApplyBtn.innerHTML = 'Apply';
-            couponErrorMsg.textContent = 'A network error occurred. Please try again.';
-            couponErrorMsg.classList.remove('d-none');
-        });
-    });
-
-    couponClearBtn.addEventListener('click', resetCouponState);
 
 
     // Handle Form Submit (Purchase)
@@ -341,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 country: countrySelect.value,
                 product: serviceSelect.value,
-                coupon_code: appliedCouponCode
+                coupon_code: null
             })
         })
         .then(res => res.json())
