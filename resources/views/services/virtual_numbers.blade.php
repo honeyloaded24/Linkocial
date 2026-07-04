@@ -17,7 +17,7 @@
 <div class="row g-4">
     <div class="col-12 col-lg-6 col-xl-6">
         <!-- Main Form Card -->
-        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface);">
+        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface); overflow: visible !important;">
             <div class="d-flex align-items-center mb-4">
                 <div class="bg-primary-custom bg-opacity-10 rounded-circle p-3 me-3 text-primary-custom shadow-sm">
                     <i class="fa-solid fa-phone-volume fs-4"></i>
