@@ -365,9 +365,15 @@
                                     <input type="text" name="smspool_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smspool_api_key') }}" style="color: var(--text-main);">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Multiplier</label>
-                                    <input type="number" step="0.01" min="1.00" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('vn_markup', '1.65') }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 1.65 represents a 65% markup.</small>
+                                    @php
+                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 65);
+                                        if ($rawMarkup < 10) {
+                                            $rawMarkup = ($rawMarkup - 1) * 100;
+                                        }
+                                    @endphp
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Percentage (%)</label>
+                                    <input type="number" step="0.1" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ $rawMarkup }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 65 represents a 65% markup on cost.</small>
                                 </div>
                             </div>
 

@@ -64,10 +64,10 @@ class VirtualNumberController extends Controller
             return response()->json(['error' => 'Country ID is required.'], 400);
         }
 
-        $markupMultiplier = (float) \App\Models\Setting::get('vn_markup', 1.65);
+        $markupMultiplier = $this->getMarkupMultiplier();
         $cacheKey = "smspool_prices_" . $country;
-        try {
-            $data = Cache::remember($cacheKey, 300, function () use ($country, $markupMultiplier) {
+        $data = Cache::remember($cacheKey, 300, function () use ($country, $markupMultiplier) {
+            try {
                 $pricesData = $this->smspool->getPricesForCountry($country);
                 
                 // Group by service ID/name and choose the lowest price across different pools
@@ -92,13 +92,13 @@ class VirtualNumberController extends Controller
                 }
                 
                 return array_values($grouped);
-            });
+            } catch (\Exception $e) {
+                Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
+                return [];
+            }
+        });
 
-            return response()->json($data);
-        } catch (\Exception $e) {
-            Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
-            return response()->json(['error' => $e->getMessage()], 400);
-        }
+        return response()->json($data);
     }
 
     /**
@@ -160,7 +160,7 @@ class VirtualNumberController extends Controller
                 return response()->json(['success' => false, 'error' => 'Product not available for this country.'], 400);
             }
 
-            $markupMultiplier = (float) \App\Models\Setting::get('vn_markup', 1.65);
+            $markupMultiplier = $this->getMarkupMultiplier();
             $userCostUsd = $cheapestPrice * $markupMultiplier;
 
             if ($coupon->min_spend > 0 && $userCostUsd < $coupon->min_spend) {
@@ -228,7 +228,7 @@ class VirtualNumberController extends Controller
             }
 
             // Calculate estimated user cost (SMSPool is natively in USD)
-            $markupMultiplier = (float) \App\Models\Setting::get('vn_markup', 1.65);
+            $markupMultiplier = $this->getMarkupMultiplier(); 
             $userCostUsd = $cheapestPrice * $markupMultiplier; 
 
             // Validate Coupon if applied
@@ -461,5 +461,18 @@ class VirtualNumberController extends Controller
                 }
             }
         });
+    }
+
+    /**
+     * Get the markup multiplier calculated from setting percentage.
+     */
+    protected function getMarkupMultiplier(): float
+    {
+        $markupSetting = (float) \App\Models\Setting::get('vn_markup', 65);
+        if ($markupSetting < 10) {
+            // Convert legacy multiplier (e.g. 1.65) to percentage (e.g. 65)
+            $markupSetting = ($markupSetting - 1) * 100;
+        }
+        return 1 + ($markupSetting / 100);
     }
 }
