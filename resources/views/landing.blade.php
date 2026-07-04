@@ -161,16 +161,17 @@
         <div class="row align-items-center">
             <div class="col-lg-6 text-center text-lg-start">
                 <span class="hero-badge mb-3 d-inline-block">
-                    🚀 High-Performance Growth
+                    🚀 High-Performance Growth & SMS Verification
                 </span>
-                <h1 class="hero-title" data-aos="fade-up" data-aos-delay="100">Buy <span class="text-instagram">Instagram</span>, <span class="text-tiktok">TikTok</span> Followers, <span class="text-youtube">YouTube</span> Subscribers, And More In Minutes.</h1>
-                <p class="hero-subtitle mx-auto mx-lg-0" data-aos="fade-up" data-aos-delay="200">With <span class="text-gradient">Linkocial</span>, you can buy hundreds of real <span class="text-tiktok">TikTok</span> & <span class="text-instagram">Instagram</span> Followers, Comments, Likes, Views, and <span class="text-youtube">YouTube</span> Subscribers from real accounts.</p>
+                <h1 class="hero-title" data-aos="fade-up" data-aos-delay="100">Buy <span class="text-instagram">Instagram</span>, <span class="text-tiktok">TikTok</span> Followers, <span class="text-youtube">YouTube</span> Subscribers, <span style="color: #06b6d4;">SMS Verification</span>, And More In Minutes.</h1>
+                <p class="hero-subtitle mx-auto mx-lg-0" data-aos="fade-up" data-aos-delay="200">With <span class="text-gradient">Linkocial</span>, you can buy real <span class="text-tiktok">TikTok</span> & <span class="text-instagram">Instagram</span> Followers, Likes, Views, <span class="text-youtube">YouTube</span> Subscribers, and instant <span style="color: #06b6d4; font-weight: 600;">Virtual Numbers for SMS Verification</span>.</p>
                 <div class="d-flex flex-wrap justify-content-center justify-content-lg-start gap-3" data-aos="fade-up" data-aos-delay="300">
                     @auth
                         <a href="{{ route('dashboard') }}" class="btn btn-premium btn-lg">Go to Dashboard</a>
                     @else
                         <a href="{{ route('register') }}" class="btn btn-premium btn-lg">Register Now</a>
                     @endauth
+                    <a href="{{ route('services.vn-marketing') }}" class="btn btn-lg text-white shadow-sm d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0284c7, #06b6d4); border: none; border-radius: 50rem; padding: 0.8rem 1.8rem; font-weight: 700;"><i class="fa-solid fa-mobile-screen-button"></i> SMS Verification</a>
                     <a href="#features" class="btn btn-outline-premium btn-lg">Explore Features</a>
                 </div>
                 
