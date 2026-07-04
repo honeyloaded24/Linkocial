@@ -303,6 +303,81 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Tab 4: APIs & Services -->
+                        <div class="tab-pane fade" id="api-panel" role="tabpanel">
+                            <!-- Korapay -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Korapay (Fiat Payments)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up and get your API keys at <a href="https://korapay.com" target="_blank">korapay.com</a>.</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Environment Mode</label>
+                                    <select name="korapay_mode" class="form-select border-secondary bg-transparent py-2" style="color: var(--text-main);">
+                                        <option value="test" {{ \App\Models\Setting::get('korapay_mode') === 'test' ? 'selected' : '' }}>Test Mode</option>
+                                        <option value="live" {{ \App\Models\Setting::get('korapay_mode') === 'live' ? 'selected' : '' }}>Live Mode</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 m-0"></div> <!-- Break line -->
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Test Public Key</label>
+                                    <input type="text" name="korapay_test_public_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('korapay_test_public_key') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Test Secret Key</label>
+                                    <input type="text" name="korapay_test_secret_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('korapay_test_secret_key') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Live Public Key</label>
+                                    <input type="text" name="korapay_live_public_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('korapay_live_public_key') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Live Secret Key</label>
+                                    <input type="text" name="korapay_live_secret_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('korapay_live_secret_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <!-- Heleket -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Heleket (Crypto Payments)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up and get your Merchant ID & API Key at <a href="https://heleket.com" target="_blank">heleket.com</a>.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Merchant ID</label>
+                                    <input type="text" name="heleket_merchant_id" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('heleket_merchant_id') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">API Key (Secret)</label>
+                                    <input type="text" name="heleket_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('heleket_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <!-- SMSPool -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">SMSPool (Virtual Numbers)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up and get your API Key at <a href="https://smspool.net" target="_blank">smspool.net</a>.</small>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">SMSPool API Key</label>
+                                    <input type="text" name="smspool_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smspool_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <!-- Exchange Rate API -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Exchange Rate API (Currency Sync)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up for a free API key at <a href="https://exchangerate-api.com" target="_blank">exchangerate-api.com</a>.</small>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">ExchangeRate-API Key</label>
+                                    <input type="text" name="exchangerate_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('exchangerate_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
