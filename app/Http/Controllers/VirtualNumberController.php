@@ -66,8 +66,8 @@ class VirtualNumberController extends Controller
 
         $markupMultiplier = (float) \App\Models\Setting::get('vn_markup', 1.65);
         $cacheKey = "smspool_prices_" . $country;
-        $data = Cache::remember($cacheKey, 300, function () use ($country, $markupMultiplier) {
-            try {
+        try {
+            $data = Cache::remember($cacheKey, 300, function () use ($country, $markupMultiplier) {
                 $pricesData = $this->smspool->getPricesForCountry($country);
                 
                 // Group by service ID/name and choose the lowest price across different pools
@@ -92,13 +92,13 @@ class VirtualNumberController extends Controller
                 }
                 
                 return array_values($grouped);
-            } catch (\Exception $e) {
-                Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
-                return [];
-            }
-        });
+            });
 
-        return response()->json($data);
+            return response()->json($data);
+        } catch (\Exception $e) {
+            Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
     }
 
     /**

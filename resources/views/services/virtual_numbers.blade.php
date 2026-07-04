@@ -187,8 +187,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 serviceTs.settings.placeholder = 'Loading services...';
                 
                 fetch(`/api/virtual-numbers/products?country=${countryId}`)
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) {
+                            return res.json().then(data => { throw new Error(data.error || 'Failed to load services'); });
+                        }
+                        return res.json();
+                    })
                     .then(services => {
+                        errorBox.classList.add('d-none');
                         services.sort((a, b) => a.name.localeCompare(b.name));
                         services.forEach(s => {
                             serviceTs.addOption({value: s.id, text: `${s.name} — $${s.price.toFixed(2)}`, price: s.price});
@@ -198,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                     .catch(err => {
                         serviceTs.settings.placeholder = 'Failed to load services';
+                        errorBox.textContent = err.message;
+                        errorBox.classList.remove('d-none');
                         console.error('Failed to load services', err);
                     });
             } else {
