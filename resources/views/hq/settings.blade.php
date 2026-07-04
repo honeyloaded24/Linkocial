@@ -6,28 +6,28 @@
 <div class="container-fluid">
     <!-- Top Stats/Info Row -->
     <div class="row g-4 mb-4">
-        <div class="col-xl-9">
+        <div class="col-xl-10">
             <div class="premium-card p-0 shadow-sm border-0 overflow-hidden">
                 <!-- Nav Tabs -->
                 <ul class="nav nav-tabs nav-fill border-0 bg-light bg-opacity-10" id="settingsTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active py-3 fw-bold border-0" id="global-tab" data-bs-toggle="tab" data-bs-target="#global-panel" type="button" role="tab">
-                            <i class="fa-solid fa-earth-africa me-2"></i> Global Configuration
+                            <i class="fa-solid fa-earth-africa me-1"></i> Global
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link py-3 fw-bold border-0" id="platform-tab" data-bs-toggle="tab" data-bs-target="#platform-panel" type="button" role="tab">
-                            <i class="fa-solid fa-puzzle-piece me-2"></i> User Instructions
+                            <i class="fa-solid fa-puzzle-piece me-1"></i> Instructions
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link py-3 fw-bold border-0" id="promo-tab" data-bs-toggle="tab" data-bs-target="#promo-panel" type="button" role="tab">
-                            <i class="fa-solid fa-fire me-2"></i> Marketing Popup
+                            <i class="fa-solid fa-fire me-1"></i> Marketing
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link py-3 fw-bold border-0" id="api-tab" data-bs-toggle="tab" data-bs-target="#api-panel" type="button" role="tab">
-                            <i class="fa-solid fa-key me-2"></i> APIs & Integrations
+                            <i class="fa-solid fa-key me-1"></i> APIs & Services
                         </button>
                     </li>
                 </ul>
