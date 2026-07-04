@@ -65,9 +65,12 @@ class PaymentController extends Controller
         try {
             $reference = 'DEP_KORA_' . time() . '_' . $user->id;
             
-            $koraSecret = (\App\Models\Setting::get('korapay_mode', 'test') === 'live' 
+            $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' 
                 ? \App\Models\Setting::get('korapay_live_secret_key') 
-                : \App\Models\Setting::get('korapay_test_secret_key')) ?: config('services.korapay.secret');
+                : \App\Models\Setting::get('korapay_test_secret_key');
+            if (empty($koraSecret)) {
+                return response()->json(['error' => 'Korapay payment gateway is not configured. Please enter your Korapay keys in HQ Settings -> APIs & Services.'], 400);
+            }
             $response = Http::withToken($koraSecret)
                 ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
                     'amount' => $chargeAmount,
@@ -124,8 +127,12 @@ class PaymentController extends Controller
         }
 
         try {
-            $merchantId = \App\Models\Setting::get('heleket_merchant_id') ?: config('services.heleket.merchant_id');
-            $apiKey = \App\Models\Setting::get('heleket_api_key') ?: config('services.heleket.key');
+            $merchantId = \App\Models\Setting::get('heleket_merchant_id');
+            $apiKey = \App\Models\Setting::get('heleket_api_key');
+            if (empty($merchantId) || empty($apiKey)) {
+                Log::warning('Heleket verification skipped because Heleket keys are not configured in settings.');
+                return;
+            }
 
             $data = ['order_id' => $reference];
             $jsonData = json_encode($data);
@@ -200,9 +207,13 @@ class PaymentController extends Controller
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
         
-        $koraSecret = (\App\Models\Setting::get('korapay_mode', 'test') === 'live' 
+        $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' 
             ? \App\Models\Setting::get('korapay_live_secret_key') 
-            : \App\Models\Setting::get('korapay_test_secret_key')) ?: config('services.korapay.secret');
+            : \App\Models\Setting::get('korapay_test_secret_key');
+        if (empty($koraSecret)) {
+            Log::warning('Korapay webhook rejected because Korapay keys are not configured in settings.');
+            return response()->json(['status' => 'unconfigured'], 400);
+        }
         $expectedSignature = hash_hmac('sha256', $payload, $koraSecret);
         
         if ($signature !== $expectedSignature) {
@@ -394,8 +405,11 @@ class PaymentController extends Controller
             return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
         }
 
-        $merchantId = \App\Models\Setting::get('heleket_merchant_id') ?: config('services.heleket.merchant_id');
-        $apiKey = \App\Models\Setting::get('heleket_api_key') ?: config('services.heleket.key');
+        $merchantId = \App\Models\Setting::get('heleket_merchant_id');
+        $apiKey = \App\Models\Setting::get('heleket_api_key');
+        if (empty($merchantId) || empty($apiKey)) {
+            return response()->json(['error' => 'Heleket Crypto gateway is not configured. Please enter your Heleket Merchant ID and API Key in HQ Settings -> APIs & Services.'], 400);
+        }
 
         $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
 
@@ -478,7 +492,11 @@ class PaymentController extends Controller
         
         // Removed strict Merchant ID check because Heleket does not include it in the webhook payload.
         // We rely on the cryptographic signature validation below for security.
-        $apiKey = \App\Models\Setting::get('heleket_api_key') ?: config('services.heleket.key');
+        $apiKey = \App\Models\Setting::get('heleket_api_key');
+        if (empty($apiKey)) {
+            Log::warning('Heleket webhook verification failed because API key is not configured in settings.');
+            return response()->json(['status' => 'unconfigured'], 400);
+        }
         
         // 1. Signature Verification: Heleket signs webhooks in the exact order received (DO NOT SORT)
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
