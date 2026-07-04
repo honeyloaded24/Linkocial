@@ -377,6 +377,46 @@
                                     <input type="text" name="exchangerate_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('exchangerate_api_key') }}" style="color: var(--text-main);">
                                 </div>
                             </div>
+
+                            <!-- SMTP Settings -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">SMTP Mail Settings (Email Deliverability)</h6>
+                                    <small class="text-muted d-block mb-3">Configure SMTP settings to ensure emails (verification, reset, notifications) are delivered reliably.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">SMTP Host</label>
+                                    <input type="text" name="mail_host" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. smtp.gmail.com" value="{{ \App\Models\Setting::get('mail_host') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">SMTP Port</label>
+                                    <input type="number" name="mail_port" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. 587" value="{{ \App\Models\Setting::get('mail_port') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Encryption</label>
+                                    <select name="mail_encryption" class="form-select border-secondary bg-transparent py-2" style="color: var(--text-main);">
+                                        <option value="tls" {{ \App\Models\Setting::get('mail_encryption') === 'tls' ? 'selected' : '' }}>TLS</option>
+                                        <option value="ssl" {{ \App\Models\Setting::get('mail_encryption') === 'ssl' ? 'selected' : '' }}>SSL</option>
+                                        <option value="none" {{ \App\Models\Setting::get('mail_encryption') === 'none' ? 'selected' : '' }}>None</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Username</label>
+                                    <input type="text" name="mail_username" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. your_email@gmail.com" value="{{ \App\Models\Setting::get('mail_username') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Password</label>
+                                    <input type="password" name="mail_password" class="form-control border-secondary bg-transparent py-2" placeholder="••••••••" value="{{ \App\Models\Setting::get('mail_password') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Sender Email (From Address)</label>
+                                    <input type="email" name="mail_from_address" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. noreply@yourdomain.com" value="{{ \App\Models\Setting::get('mail_from_address') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Sender Name (From Name)</label>
+                                    <input type="text" name="mail_from_name" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. Linkocial" value="{{ \App\Models\Setting::get('mail_from_name') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
