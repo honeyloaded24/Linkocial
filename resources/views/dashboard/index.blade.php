@@ -49,7 +49,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="premium-card border-0 shadow-sm position-relative overflow-hidden" 
-                 style="border-radius: 35px; background: #ffffff; border: 1px solid rgba(0,0,0,0.03) !important;">
+                 style="border-radius: 35px; border: 1px solid var(--border-color) !important;">
                 
                 <!-- Soft Glow Backgrounds -->
                 <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.05), transparent 50%); pointer-events: none;"></div>
@@ -94,7 +94,7 @@
     <div class="row g-3 mb-4">
         <!-- Stat Cards -->
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex align-items-center gap-3 mb-2">
                     <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.1); color: #6366f1;">
                         <i class="fa-solid fa-money-bill-wave small"></i>
@@ -113,7 +113,7 @@
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex align-items-center gap-3 mb-2">
                     <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
                         <i class="fa-solid fa-spinner fa-spin-slow small"></i>
@@ -128,7 +128,7 @@
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex align-items-center gap-3 mb-2">
                     <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
                         <i class="fa-solid fa-circle-check small"></i>
@@ -143,7 +143,7 @@
         </div>
 
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px; background: #ffffff;">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex align-items-center gap-3 mb-2">
                     <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
                         <i class="fa-solid fa-ticket small"></i>

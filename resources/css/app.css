@@ -20,7 +20,7 @@
     --glass-bg: rgba(255, 255, 255, 0.8);
 }
 
-[data-bs-theme="dark"] {
+[data-bs-theme="dark"], [data-theme="dark"] {
     /* Dark Mode Variables */
     --bg-body: #0b0f1a;
     --bg-surface: #151b2d;
@@ -30,6 +30,20 @@
     --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     --glass-bg: rgba(21, 27, 45, 0.7);
+}
+
+[data-bs-theme="dark"] .bg-white, [data-theme="dark"] .bg-white {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+}
+
+[data-bs-theme="dark"] .bg-light, [data-theme="dark"] .bg-light {
+    background-color: rgba(255,255,255,0.03) !important;
+    color: var(--text-main) !important;
+}
+
+[data-bs-theme="dark"] .text-dark, [data-theme="dark"] .text-dark {
+    color: var(--text-main) !important;
 }
 
 body {

@@ -12,7 +12,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Users</h6>
-                            <h3 class="fw-bold mb-0 text-dark">{{ number_format($totalUsers) }}</h3>
+                            <h3 class="fw-bold mb-0 text-main">{{ number_format($totalUsers) }}</h3>
                         </div>
                         <div class="bg-primary bg-opacity-10 p-3 rounded-3 text-primary">
                             <i class="fa-solid fa-users fa-xl"></i>
@@ -27,7 +27,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Orders</h6>
-                            <h3 class="fw-bold mb-0 text-dark">{{ number_format($totalOrders) }}</h3>
+                            <h3 class="fw-bold mb-0 text-main">{{ number_format($totalOrders) }}</h3>
                         </div>
                         <div class="bg-info bg-opacity-10 p-3 rounded-3 text-info">
                             <i class="fa-solid fa-cart-shopping fa-xl"></i>
@@ -42,7 +42,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted small fw-bold text-uppercase mb-1">Pending Orders</h6>
-                            <h3 class="fw-bold mb-0 text-dark">{{ number_format($pendingOrders) }}</h3>
+                            <h3 class="fw-bold mb-0 text-main">{{ number_format($pendingOrders) }}</h3>
                         </div>
                         <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning">
                             <i class="fa-solid fa-clock fa-xl"></i>
@@ -57,7 +57,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted small fw-bold text-uppercase mb-1">Completed Orders</h6>
-                            <h3 class="fw-bold mb-0 text-dark">{{ number_format($completedOrders) }}</h3>
+                            <h3 class="fw-bold mb-0 text-main">{{ number_format($completedOrders) }}</h3>
                         </div>
                         <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success">
                             <i class="fa-solid fa-circle-check fa-xl"></i>

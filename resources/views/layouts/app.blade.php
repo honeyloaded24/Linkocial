@@ -22,8 +22,10 @@
             var theme = localStorage.getItem('theme');
             if (theme) {
                 document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.setAttribute('data-bs-theme', theme);
             } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
             }
         })();
     </script>
@@ -482,6 +484,7 @@
 
         if (currentTheme) {
             document.documentElement.setAttribute('data-theme', currentTheme);
+            document.documentElement.setAttribute('data-bs-theme', currentTheme);
             if (currentTheme === 'dark') {
                 toggleSwitch.checked = false;
             }
@@ -490,9 +493,11 @@
         function switchTheme(e) {
             if (e.target.checked) {
                 document.documentElement.setAttribute('data-theme', 'light');
+                document.documentElement.setAttribute('data-bs-theme', 'light');
                 localStorage.setItem('theme', 'light');
             } else {
                 document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
                 localStorage.setItem('theme', 'dark');
             }    
         }
