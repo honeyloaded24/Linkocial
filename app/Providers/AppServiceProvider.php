@@ -28,16 +28,20 @@ class AppServiceProvider extends ServiceProvider
         // Dynamic SMTP overrides from Database Settings
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {
-                $encryption = \App\Models\Setting::get('mail_encryption');
-                config([
-                    'mail.mailers.smtp.host' => \App\Models\Setting::get('mail_host', config('mail.mailers.smtp.host')),
-                    'mail.mailers.smtp.port' => \App\Models\Setting::get('mail_port', config('mail.mailers.smtp.port')),
-                    'mail.mailers.smtp.username' => \App\Models\Setting::get('mail_username', config('mail.mailers.smtp.username')),
-                    'mail.mailers.smtp.password' => \App\Models\Setting::get('mail_password', config('mail.mailers.smtp.password')),
-                    'mail.mailers.smtp.encryption' => ($encryption === 'none' ? null : $encryption) ?? config('mail.mailers.smtp.encryption'),
-                    'mail.from.address' => \App\Models\Setting::get('mail_from_address', config('mail.from.address')),
-                    'mail.from.name' => \App\Models\Setting::get('mail_from_name', config('mail.from.name')),
-                ]);
+                $host = \App\Models\Setting::get('mail_host');
+                if (!empty($host)) {
+                    $encryption = \App\Models\Setting::get('mail_encryption');
+                    config([
+                        'mail.default' => 'smtp',
+                        'mail.mailers.smtp.host' => $host,
+                        'mail.mailers.smtp.port' => \App\Models\Setting::get('mail_port', config('mail.mailers.smtp.port')),
+                        'mail.mailers.smtp.username' => \App\Models\Setting::get('mail_username', config('mail.mailers.smtp.username')),
+                        'mail.mailers.smtp.password' => \App\Models\Setting::get('mail_password', config('mail.mailers.smtp.password')),
+                        'mail.mailers.smtp.encryption' => ($encryption === 'none' ? null : $encryption) ?? config('mail.mailers.smtp.encryption'),
+                        'mail.from.address' => \App\Models\Setting::get('mail_from_address', config('mail.from.address')),
+                        'mail.from.name' => \App\Models\Setting::get('mail_from_name', config('mail.from.name')),
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
             // Safe fallback to prevent app crashing during installations/migrations
