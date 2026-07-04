@@ -335,10 +335,20 @@ class AdminController extends Controller
      */
     public function destroyProvider($id)
     {
-        $provider = Provider::findOrFail($id);
-        $provider->delete();
+        try {
+            $provider = Provider::findOrFail($id);
 
-        return back()->with('success', 'Provider deleted successfully.');
+            \DB::transaction(function () use ($provider) {
+                // Dissociate from orders to prevent foreign key constraint violations
+                \App\Models\Order::where('provider_id', $provider->id)->update(['provider_id' => null]);
+                
+                $provider->delete();
+            });
+
+            return back()->with('success', 'Provider deleted successfully.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Failed to delete provider: ' . $e->getMessage());
+        }
     }
 
 
