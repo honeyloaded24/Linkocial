@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <!-- Top Stats/Info Row -->
     <div class="row g-4 mb-4">
-        <div class="col-xl-10">
+        <div class="col-xl-12">
             <div class="premium-card p-0 shadow-sm border-0 overflow-hidden">
                 <!-- Nav Tabs -->
                 <ul class="nav nav-tabs nav-fill border-0 bg-light bg-opacity-10" id="settingsTabs" role="tablist">
@@ -428,22 +428,24 @@
             </div>
         </div>
 
-        <!-- System Actions Sidebar -->
-        <div class="col-xl-3">
-            <div class="premium-card p-4 shadow-sm bg-primary bg-opacity-10 border-0 mb-4">
+        <!-- System Actions below Settings -->
+        <div class="col-xl-6 col-md-12">
+            <div class="premium-card p-4 shadow-sm bg-primary bg-opacity-10 border-0 mb-4 h-100">
                 <h6 class="fw-bold text-primary mb-3">Platform Maintenance</h6>
                 <p class="small text-muted mb-4">Running a critical update or changing prices? Use maintenance mode to prevent conflicts.</p>
-                <div class="d-grid gap-2">
-                    <button class="btn btn-outline-primary border-0 bg-white shadow-sm text-start py-2" onclick="location.reload()">
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary border-0 bg-white shadow-sm text-start py-2 px-3 fw-bold rounded-pill" onclick="location.reload()">
                         <i class="fa-solid fa-arrows-rotate me-2"></i> Refresh Variables
                     </button>
-                    <a href="{{ route('hq.logs') }}" class="btn btn-outline-secondary border-0 bg-white shadow-sm text-start py-2 text-decoration-none">
+                    <a href="{{ route('hq.logs') }}" class="btn btn-outline-secondary border-0 bg-white shadow-sm text-start py-2 px-3 fw-bold text-decoration-none rounded-pill">
                         <i class="fa-solid fa-history me-2 text-primary"></i> Review System Audit
                     </a>
                 </div>
             </div>
+        </div>
 
-            <div class="premium-card p-4 shadow-sm border-0">
+        <div class="col-xl-6 col-md-12">
+            <div class="premium-card p-4 shadow-sm border-0 mb-4 h-100">
                 <h6 class="fw-bold mb-3">Configuration Guide</h6>
                 <div class="small text-muted">
                     <div class="mb-3">
