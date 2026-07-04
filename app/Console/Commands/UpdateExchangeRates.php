@@ -30,7 +30,7 @@ class UpdateExchangeRates extends Command
     {
         $this->info('Starting automated currency update...');
         
-        $apiKey = config('services.exchangerate.key') ?: 'PASTE_YOUR_API_KEY_HERE';
+        $apiKey = \App\Models\Setting::get('exchangerate_api_key') ?: 'PASTE_YOUR_API_KEY_HERE';
         $buffer = (float) $this->option('buffer');
         
         // Use a reliable free API endpoint (Free tier allows 1,500 requests/month)

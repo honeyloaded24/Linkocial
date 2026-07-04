@@ -25,6 +25,11 @@
                             <i class="fa-solid fa-fire me-2"></i> Marketing Popup
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-3 fw-bold border-0" id="api-tab" data-bs-toggle="tab" data-bs-target="#api-panel" type="button" role="tab">
+                            <i class="fa-solid fa-key me-2"></i> APIs & Integrations
+                        </button>
+                    </li>
                 </ul>
 
                 <form action="{{ route('hq.settings.update') }}" method="POST" enctype="multipart/form-data">

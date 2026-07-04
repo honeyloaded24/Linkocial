@@ -65,7 +65,8 @@ class PaymentController extends Controller
         try {
             $reference = 'DEP_KORA_' . time() . '_' . $user->id;
             
-            $response = Http::withToken(config('services.korapay.secret'))
+            $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+            $response = Http::withToken($koraSecret)
                 ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
                     'amount' => $chargeAmount,
                     'currency' => $chargeCurrency,
@@ -121,8 +122,8 @@ class PaymentController extends Controller
         }
 
         try {
-            $merchantId = config('services.heleket.merchant_id');
-            $apiKey = config('services.heleket.key');
+            $merchantId = \App\Models\Setting::get('heleket_merchant_id');
+            $apiKey = \App\Models\Setting::get('heleket_api_key');
 
             $data = ['order_id' => $reference];
             $jsonData = json_encode($data);
@@ -166,7 +167,8 @@ class PaymentController extends Controller
     private function verifyKorapayTransaction($reference)
     {
         try {
-            $response = Http::withToken(config('services.korapay.secret'))
+            $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+            $response = Http::withToken($koraSecret)
                 ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
 
             $result = $response->json();
@@ -196,7 +198,8 @@ class PaymentController extends Controller
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
         
-        $expectedSignature = hash_hmac('sha256', $payload, config('services.korapay.secret'));
+        $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+        $expectedSignature = hash_hmac('sha256', $payload, $koraSecret);
         
         if ($signature !== $expectedSignature) {
             Log::warning('Invalid Korapay Webhook Signature detected.');
@@ -387,8 +390,8 @@ class PaymentController extends Controller
             return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
         }
 
-        $merchantId = config('services.heleket.merchant_id');
-        $apiKey = config('services.heleket.key');
+        $merchantId = \App\Models\Setting::get('heleket_merchant_id');
+        $apiKey = \App\Models\Setting::get('heleket_api_key');
 
         $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
 
@@ -471,7 +474,7 @@ class PaymentController extends Controller
         
         // Removed strict Merchant ID check because Heleket does not include it in the webhook payload.
         // We rely on the cryptographic signature validation below for security.
-        $apiKey = config('services.heleket.key');
+        $apiKey = \App\Models\Setting::get('heleket_api_key');
         
         // 1. Signature Verification: Heleket signs webhooks in the exact order received (DO NOT SORT)
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

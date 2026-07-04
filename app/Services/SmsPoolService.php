@@ -12,7 +12,7 @@ class SmsPoolService
 
     public function __construct()
     {
-        $this->apiKey = env('SMSPOOL_API_KEY');
+        $this->apiKey = \App\Models\Setting::get('smspool_api_key');
     }
 
     /**
