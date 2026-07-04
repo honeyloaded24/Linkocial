@@ -389,6 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(res => res.json())
         .then(data => {
+            if (data.error) {
+                alert(data.error);
+                cardNode.querySelector('.cancel-btn').disabled = false;
+                cardNode.querySelector('.cancel-btn').textContent = 'Cancel & Refund';
+                return;
+            }
             if (activePolls[id]) {
                 clearInterval(activePolls[id]);
                 delete activePolls[id];
