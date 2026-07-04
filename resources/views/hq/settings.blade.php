@@ -416,6 +416,11 @@
                                     <label class="form-label text-muted small fw-bold text-uppercase">Sender Name (From Name)</label>
                                     <input type="text" name="mail_from_name" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. Linkocial" value="{{ \App\Models\Setting::get('mail_from_name') }}" style="color: var(--text-main);">
                                 </div>
+                                <div class="col-12 mt-3 text-end">
+                                    <button type="button" class="btn btn-outline-primary px-4 py-2 fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#testEmailModal">
+                                        <i class="fa-solid fa-paper-plane me-2"></i> Send Test Email
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -513,4 +518,32 @@
     }
 </script>
 @endpush
+
+<!-- Test Email Modal -->
+<div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4" style="background-color: var(--card-bg); color: var(--text-main);">
+            <form action="{{ route('hq.settings.test-email') }}" method="POST">
+                @csrf
+                <div class="modal-header border-0 bg-light bg-opacity-50 p-4">
+                    <h5 class="modal-title fw-bold" id="testEmailModalLabel">
+                        <i class="fa-solid fa-envelope-circle-check text-primary me-2"></i> Test SMTP Configuration
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="small text-muted mb-4">Make sure you have clicked <strong>"Save Changes"</strong> to save your current SMTP credentials before sending the test email.</p>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold text-uppercase">Recipient Email Address</label>
+                        <input type="email" name="test_email" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. admin@yourdomain.com" required style="color: var(--text-main);">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 bg-light bg-opacity-50">
+                    <button type="button" class="btn btn-secondary px-4 py-2 rounded-pill fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-custom px-4 py-2 rounded-pill fw-bold">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

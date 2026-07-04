@@ -1004,6 +1004,23 @@ class AdminController extends Controller
         return back()->with('success', 'Settings updated successfully.');
     }
 
+    public function hqSendTestEmail(Request $request)
+    {
+        $request->validate([
+            'test_email' => 'required|email'
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($request->test_email)->send(new \App\Mail\TestSmtpMail());
+            
+            \App\Models\ActivityLog::log("Sent a test SMTP email to " . $request->test_email, auth()->user());
+
+            return back()->with('success', 'Test email sent successfully to ' . $request->test_email . '! Please check your inbox (and spam folder).');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'SMTP test email failed! Error: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Show background queue status, failed jobs, and scheduled tasks
      */
