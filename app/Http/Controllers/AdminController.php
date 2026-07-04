@@ -28,7 +28,7 @@ class AdminController extends Controller
         $completedOrders = Order::where('status', 'completed')->count() + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count();
 
         // Financial Metrics (All reporting in USD Master)
-        $totalDeposited = \App\Models\Transaction::where('transaction_type', 'deposit')->where('type', 'credit')->sum('amount');
+        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount_usd');
         
         // SMM Spent (including all active non-refunded orders)
         $smmSpent = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
