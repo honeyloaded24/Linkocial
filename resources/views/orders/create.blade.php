@@ -339,9 +339,9 @@
                         </div>
                     </div>
                     
-                    <div class="mt-2 p-3 bg-light bg-opacity-50 rounded-4 border border-warning border-opacity-25">
-                        <p class="mb-0 small text-muted">
-                            <i class="fa-solid fa-circle-exclamation text-warning me-2"></i> 
+                    <div class="mt-2 p-3 bg-warning bg-opacity-10 rounded-4 border border-warning border-opacity-25">
+                        <p class="mb-0 small text-warning">
+                            <i class="fa-solid fa-circle-exclamation me-2"></i> 
                             <strong>Note:</strong> Engagement is not guaranteed. Cheap services may slow down during peak load.
                         </p>
                     </div>

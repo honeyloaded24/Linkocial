@@ -17,7 +17,7 @@
 <div class="row g-4">
     <div class="col-12 col-lg-6 col-xl-6">
         <!-- Main Form Card -->
-        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--surface-bg);">
+        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface);">
             <div class="d-flex align-items-center mb-4">
                 <div class="bg-primary-custom bg-opacity-10 rounded-circle p-3 me-3 text-primary-custom shadow-sm">
                     <i class="fa-solid fa-phone-volume fs-4"></i>
@@ -34,7 +34,7 @@
                     <!-- Country Select -->
                     <div class="col-12">
                         <label class="form-label fw-bold small text-muted">Select Country</label>
-                        <select class="form-select form-select-lg rounded-3 border-0 bg-light shadow-sm" id="vn-country" required disabled>
+                        <select class="form-select form-select-lg rounded-3" id="vn-country" required disabled>
                             <option value="">Loading countries...</option>
                         </select>
                     </div>
@@ -42,10 +42,11 @@
                     <!-- Service Select -->
                     <div class="col-12">
                         <label class="form-label fw-bold small text-muted">Select Service</label>
-                        <select class="form-select form-select-lg rounded-3 border-0 bg-light shadow-sm" id="vn-service" required disabled>
+                        <select class="form-select form-select-lg rounded-3" id="vn-service" required disabled>
                             <option value="">Select country first</option>
                         </select>
-                </div>
+                    </div>
+                </div> <!-- Closes row g-3 -->
                 
                 <div class="mt-4 p-3 p-sm-4 rounded-4 bg-primary-custom text-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center d-none shadow" id="vn-price-box">
                     <div class="mb-3 mb-sm-0 text-center text-sm-start">
@@ -68,7 +69,7 @@
 
     <!-- Active Orders Sidebar -->
     <div class="col-12 col-lg-6 col-xl-6">
-        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--surface-bg);">
+        <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface);">
             <h5 class="fw-bold mb-4" style="font-family: var(--heading-font);">
                 <i class="fa-solid fa-tower-cell text-primary-custom me-2"></i> Active Verifications
             </h5>
