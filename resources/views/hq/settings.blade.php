@@ -360,9 +360,14 @@
                                     <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">SMSPool (Virtual Numbers)</h6>
                                     <small class="text-muted d-block mb-3">Sign up and get your API Key at <a href="https://smspool.net" target="_blank">smspool.net</a>.</small>
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-md-8">
                                     <label class="form-label text-muted small fw-bold text-uppercase">SMSPool API Key</label>
                                     <input type="text" name="smspool_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smspool_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Multiplier</label>
+                                    <input type="number" step="0.01" min="1.00" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('vn_markup', '1.65') }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 1.65 represents a 65% markup.</small>
                                 </div>
                             </div>
 
