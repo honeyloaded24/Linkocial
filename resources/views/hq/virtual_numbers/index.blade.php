@@ -98,7 +98,7 @@
                         <div class="small text-muted text-uppercase">{{ $order->country }} ({{ $order->operator }})</div>
                     </td>
                     <td>
-                        <span class="fw-bold font-monospace bg-light px-2 py-1 rounded">{{ $order->phone_number }}</span>
+                        <span class="fw-bold font-monospace px-2 py-1 rounded" style="background: rgba(255,255,255,0.05); color: var(--text-main);">{{ $order->phone_number }}</span>
                     </td>
                     <td>
                         @if($order->sms_code || $order->sms_text)
@@ -109,7 +109,7 @@
                         @endif
                     </td>
                     <td>
-                        <div class="fw-bold text-dark">${{ number_format($order->cost, 2) }}</div>
+                        <div class="fw-bold">${{ number_format($order->cost, 2) }}</div>
                         @if($order->coupon_code)
                             <div class="small text-success fw-bold"><i class="fa-solid fa-tag"></i> {{ $order->coupon_code }} (-${{ number_format($order->discount, 2) }})</div>
                         @endif
@@ -145,7 +145,7 @@
                             <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">Cancel & Refund</button>
                         </form>
                         @else
-                        <button class="btn btn-sm btn-light rounded-pill px-3 text-muted" disabled>Closed</button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" disabled>Closed</button>
                         @endif
                     </td>
                 </tr>
