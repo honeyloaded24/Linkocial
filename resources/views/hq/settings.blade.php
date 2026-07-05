@@ -366,14 +366,14 @@
                                 </div>
                                 <div class="col-md-4">
                                     @php
-                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 65);
-                                        if ($rawMarkup < 10) {
-                                            $rawMarkup = ($rawMarkup - 1) * 100;
+                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
+                                        if ($rawMarkup > 5.0 || ($rawMarkup > 1.0 && $rawMarkup < 2.0)) {
+                                            $rawMarkup = 1.00;
                                         }
                                     @endphp
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Percentage (%)</label>
-                                    <input type="number" step="0.1" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ $rawMarkup }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 65 represents a 65% markup on cost.</small>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Fee (USD)</label>
+                                    <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format($rawMarkup, 2) }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 1.00 adds a flat $1.00 fee to SMSPool cost.</small>
                                 </div>
                             </div>
 
