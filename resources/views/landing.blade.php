@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
-@section('title', $siteName . ' - World\'s #1 Social Media Marketing Platform for Followers, Likes, Comments')
-@section('meta_description', 'Linkocial is the world\'s most reliable SMM platform. Get viral-speed delivery on Instagram, TikTok, and YouTube services at unbeatable prices. Register today for professional growth.')
+@section('title', $siteName . ' - World\'s #1 SMM & SMS Virtual Numbers Verification Platform')
+@section('meta_description', 'Linkocial is the world\'s most reliable SMM and SMS verification platform. Get instant virtual numbers and viral-speed social media services at unbeatable prices.')
 
 @push('styles')
 <style>
