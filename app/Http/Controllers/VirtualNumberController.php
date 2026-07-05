@@ -34,6 +34,18 @@ class VirtualNumberController extends Controller
     }
 
     /**
+     * Show dedicated virtual numbers history/archive page.
+     */
+    public function history()
+    {
+        $orders = VirtualNumberOrder::where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        return view('services.virtual_numbers_history', compact('orders'));
+    }
+
+    /**
      * API: Get cached countries list from SMSPool.
      */
     public function getCountries()

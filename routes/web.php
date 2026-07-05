@@ -134,6 +134,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // New Coming Soon Services
     Route::get('/virtual-numbers', [\App\Http\Controllers\VirtualNumberController::class, 'index'])->name('services.virtual-numbers');
+    Route::get('/virtual-numbers/history', [\App\Http\Controllers\VirtualNumberController::class, 'history'])->name('services.virtual-numbers.history');
     Route::get('/api/virtual-numbers/countries', [\App\Http\Controllers\VirtualNumberController::class, 'getCountries']);
     Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
     Route::post('/api/virtual-numbers/coupon/validate', [\App\Http\Controllers\VirtualNumberController::class, 'validateCoupon']);

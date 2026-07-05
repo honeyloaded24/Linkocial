@@ -14,6 +14,15 @@
     [data-theme="dark"] .ts-dropdown { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
     [data-theme="dark"] .ts-dropdown .active { background: #334155; color: #fff; }
 </style>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+        <p class="text-muted small mb-0">Order phone numbers and receive verification codes dynamically.</p>
+    </div>
+    <a href="{{ route('services.virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">
+        <i class="fa-solid fa-clock-rotate-left me-1"></i> Order History & Logs
+    </a>
+</div>
+
 <div class="row g-4">
     <div class="col-12 col-lg-6 col-xl-6">
         <!-- Main Form Card -->
