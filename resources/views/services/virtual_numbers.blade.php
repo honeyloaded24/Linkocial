@@ -7,7 +7,7 @@
 <style>
     .ts-control { border-radius: 0.5rem !important; padding: 0.75rem 1rem !important; border: 0 !important; background: #f8f9fa !important; box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important; font-size: 1.125rem !important; }
     .ts-wrapper.form-select-lg .ts-control { min-height: 3.5rem; display: flex; align-items: center; }
-    .ts-dropdown { border-radius: 0.5rem; border: 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+    .ts-dropdown { border-radius: 0.5rem; border: 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); z-index: 2000 !important; }
     .ts-dropdown .ts-dropdown-content { max-height: 250px; }
     [data-theme="dark"] .ts-control { background: #1e293b !important; color: #f8fafc; border: 1px solid #334155 !important; }
     [data-theme="dark"] .ts-control input { color: #f8fafc; }
@@ -24,7 +24,7 @@
 </div>
 
 <div class="row g-4">
-    <div class="col-12 col-lg-6 col-xl-6">
+    <div class="col-12 col-lg-6 col-xl-6" style="position: relative; z-index: 10;">
         <!-- Main Form Card -->
         <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface); overflow: visible !important;">
             <div class="d-flex align-items-center mb-4">
