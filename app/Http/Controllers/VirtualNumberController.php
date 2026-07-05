@@ -93,17 +93,27 @@ class VirtualNumberController extends Controller
                         continue;
                     }
 
-                    // Keep the cheapest price for each unique service
-                    if (!isset($grouped[$serviceName]) || $price < $grouped[$serviceName]['price']) {
+                    // Keep the cheapest price for each unique service (comparing raw wholesale prices)
+                    if (!isset($grouped[$serviceName]) || $price < $grouped[$serviceName]['raw_price']) {
                         $grouped[$serviceName] = [
                             'id' => $serviceId,
                             'name' => $serviceName,
-                            'price' => round($price + $markupFee, 2)
+                            'raw_price' => $price
                         ];
                     }
                 }
                 
-                return array_values($grouped);
+                // Map to final array with markup fee applied
+                $finalServices = [];
+                foreach ($grouped as $service) {
+                    $finalServices[] = [
+                        'id' => $service['id'],
+                        'name' => $service['name'],
+                        'price' => round($service['raw_price'] + $markupFee, 2)
+                    ];
+                }
+                
+                return $finalServices;
             } catch (\Exception $e) {
                 Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
                 return [];
