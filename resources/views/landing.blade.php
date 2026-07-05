@@ -172,7 +172,6 @@
                         <a href="{{ route('register') }}" class="btn btn-premium btn-lg">Register Now</a>
                     @endauth
                     <a href="{{ route('services.vn-marketing') }}" class="btn btn-lg text-white shadow-sm d-inline-flex align-items-center gap-2" style="background: linear-gradient(135deg, #0284c7, #06b6d4); border: none; border-radius: 50rem; padding: 0.8rem 1.8rem; font-weight: 700;"><i class="fa-solid fa-mobile-screen-button"></i> SMS Verification</a>
-                    <a href="#features" class="btn btn-outline-premium btn-lg">Explore Features</a>
                 </div>
                 
                 <!-- Stats - Hidden on Mobile -->

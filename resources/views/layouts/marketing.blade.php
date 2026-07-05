@@ -35,16 +35,10 @@
     @endif
 
     <script>
-        // Apply theme IMMEDIATELY to prevent flash of wrong colors
+        // Force light theme on marketing pages to keep visuals consistent
         (function() {
-            var theme = localStorage.getItem('theme');
-            if (theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-                document.documentElement.setAttribute('data-bs-theme', theme);
-            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
-            }
+            document.documentElement.setAttribute('data-theme', 'light');
+            document.documentElement.setAttribute('data-bs-theme', 'light');
         })();
     </script>
 

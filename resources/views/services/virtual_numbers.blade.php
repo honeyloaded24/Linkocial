@@ -94,6 +94,89 @@
     </div>
 </div>
 
+    <!-- Virtual Numbers Guide Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="premium-card p-4 p-md-5 border-0 shadow-sm rounded-4" style="background-color: var(--bg-surface);">
+                <div class="d-flex align-items-center mb-4 border-bottom pb-3">
+                    <i class="fa-solid fa-book-open text-primary-custom fs-3 me-3"></i>
+                    <h3 class="fw-bold mb-0" style="font-family: var(--heading-font);">SMS Virtual Numbers Guide</h3>
+                </div>
+
+                <div class="accordion accordion-flush promo-accordion" id="vnGuideAccordion">
+                    <div class="row g-3">
+                        <!-- Left Column -->
+                        <div class="col-md-6">
+                            <!-- Rule 1 -->
+                            <div class="accordion-item border rounded-4 mb-3 overflow-hidden" style="border-color: var(--border-color) !important; background: transparent;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-bold py-3 text-main" type="button" data-bs-toggle="collapse" data-bs-target="#guide-how-it-works" style="background: transparent;">
+                                        <i class="fa-solid fa-circle-info text-primary-custom me-2"></i> How it works
+                                    </button>
+                                </h2>
+                                <div id="guide-how-it-works" class="accordion-collapse collapse" data-bs-parent="#vnGuideAccordion">
+                                    <div class="accordion-body text-muted small">
+                                        Select a country and service, then click purchase. Copy the allocated phone number and paste it into the app or website you want to verify. Send the verification code from the target app, and wait for the code to display here.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rule 2 -->
+                            <div class="accordion-item border rounded-4 mb-3 overflow-hidden" style="border-color: var(--border-color) !important; background: transparent;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-bold py-3 text-main" type="button" data-bs-toggle="collapse" data-bs-target="#guide-refund-policy" style="background: transparent;">
+                                        <i class="fa-solid fa-rotate-left text-primary-custom me-2"></i> Refund Policy
+                                    </button>
+                                </h2>
+                                <div id="guide-refund-policy" class="accordion-collapse collapse" data-bs-parent="#vnGuideAccordion">
+                                    <div class="accordion-body text-muted small">
+                                        If no SMS is received within the 20-minute countdown, you will not be charged. The system automatically cancels the order and refunds your wallet balance. You can also manually cancel the order for an immediate refund if the lockout cooldown has passed.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column -->
+                        <div class="col-md-6">
+                            <!-- Rule 3 -->
+                            <div class="accordion-item border rounded-4 mb-3 overflow-hidden" style="border-color: var(--border-color) !important; background: transparent;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-bold py-3 text-main" type="button" data-bs-toggle="collapse" data-bs-target="#guide-one-time" style="background: transparent;">
+                                        <i class="fa-solid fa-mobile-screen text-primary-custom me-2"></i> One-time use numbers
+                                    </button>
+                                </h2>
+                                <div id="guide-one-time" class="accordion-collapse collapse" data-bs-parent="#vnGuideAccordion">
+                                    <div class="accordion-body text-muted small">
+                                        These numbers are strictly temporary and intended for one-time verification. You cannot reuse the number to receive subsequent SMS codes or verify additional accounts once the session is completed or canceled.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rule 4 -->
+                            <div class="accordion-item border rounded-4 mb-3 overflow-hidden" style="border-color: var(--border-color) !important; background: transparent;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed fw-bold py-3 text-main" type="button" data-bs-toggle="collapse" data-bs-target="#guide-troubleshooting" style="background: transparent;">
+                                        <i class="fa-solid fa-triangle-exclamation text-primary-custom me-2"></i> Troubleshooting
+                                    </button>
+                                </h2>
+                                <div id="guide-troubleshooting" class="accordion-collapse collapse" data-bs-parent="#vnGuideAccordion">
+                                    <div class="accordion-body text-muted small">
+                                        If you aren't receiving the SMS code:
+                                        <ul class="ps-3 mt-2 mb-0">
+                                            <li>Ensure you sent the SMS from your app to the correct number with the country code.</li>
+                                            <li>Try a different country or server route if a specific carrier/pool is congested.</li>
+                                            <li>Make sure your target service doesn't block virtual/VoIP numbers.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <!-- Active Order Template (Hidden) -->
 <template id="vn-order-template">
     <div class="card border-0 bg-light shadow-sm rounded-4 mb-3 vn-order-item" data-id="">
