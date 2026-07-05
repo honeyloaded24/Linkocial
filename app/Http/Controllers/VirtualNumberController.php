@@ -76,9 +76,8 @@ class VirtualNumberController extends Controller
             return response()->json(['error' => 'Country ID is required.'], 400);
         }
 
-        $markupFee = $this->getMarkupFee();
         $cacheKey = "smspool_prices_" . $country;
-        $data = Cache::remember($cacheKey, 300, function () use ($country, $markupFee) {
+        $data = Cache::remember($cacheKey, 300, function () use ($country) {
             try {
                 $pricesData = $this->smspool->getPricesForCountry($country);
                 
@@ -98,7 +97,7 @@ class VirtualNumberController extends Controller
                         $grouped[$serviceName] = [
                             'id' => $serviceId,
                             'name' => $serviceName,
-                            'price' => round($price + $markupFee, 2)
+                            'price' => $this->calculateUserPrice($price)
                         ];
                     }
                 }
@@ -172,8 +171,7 @@ class VirtualNumberController extends Controller
                 return response()->json(['success' => false, 'error' => 'Product not available for this country.'], 400);
             }
 
-            $markupFee = $this->getMarkupFee();
-            $userCostUsd = $cheapestPrice + $markupFee;
+            $userCostUsd = $this->calculateUserPrice($cheapestPrice);
 
             if ($coupon->min_spend > 0 && $userCostUsd < $coupon->min_spend) {
                 return response()->json(['success' => false, 'error' => 'Minimum spend for this coupon is $' . number_format($coupon->min_spend, 2) . '.'], 400);
@@ -240,8 +238,8 @@ class VirtualNumberController extends Controller
             }
 
             // Calculate estimated user cost (SMSPool is natively in USD)
-            $markupFee = $this->getMarkupFee(); 
-            $userCostUsd = $cheapestPrice + $markupFee;  
+            $userCostUsd = $this->calculateUserPrice($cheapestPrice); 
+
 
             // Validate Coupon if applied
             $coupon = null;
@@ -295,7 +293,7 @@ class VirtualNumberController extends Controller
             }
             
             // Recalculate final user cost based on the real deducted price
-            $realUserCostUsd = $actualCostUsd + $markupFee;
+            $realUserCostUsd = $this->calculateUserPrice($actualCostUsd);
             
             // Recalculate discount based on actual cost in case it shifted (percentage)
             if ($coupon && $coupon->type === 'percentage') {
@@ -476,18 +474,22 @@ class VirtualNumberController extends Controller
     }
 
     /**
-     * Get the markup flat fee.
+     * Calculate user price based on markup type settings.
      */
-    protected function getMarkupFee(): float
+    protected function calculateUserPrice(float $basePrice): float
     {
-        $markupSetting = (float) \App\Models\Setting::get('vn_markup', 1.00);
-        
-        // If the legacy value was a percentage (e.g. 65 or 200) or multiplier (e.g. 1.65),
-        // we should fallback to a safe default markup fee (like 1.00) to prevent pricing breaks
-        if ($markupSetting > 5.0 || ($markupSetting > 1.0 && $markupSetting < 2.0)) {
-            $markupSetting = 1.00;
+        $type = \App\Models\Setting::get('vn_markup_type', 'percentage');
+        $value = (float) \App\Models\Setting::get('vn_markup', 65);
+
+        // Handle legacy multiplier fallback
+        if ($type === 'percentage' && $value < 10) {
+            $value = ($value - 1) * 100;
         }
-        
-        return $markupSetting;
+
+        if ($type === 'percentage') {
+            return round($basePrice * (1 + ($value / 100)), 2);
+        } else {
+            return round($basePrice + $value, 2);
+        }
     }
 }
