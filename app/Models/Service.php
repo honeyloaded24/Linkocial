@@ -103,8 +103,11 @@ class Service extends Model
         }
 
         foreach ($platforms as $channel) {
-            if (stripos($this->name, $channel) !== false || stripos($this->category, $channel) !== false) {
-                return $channel;
+            $search = ($channel === 'X' || $channel === 'Twitter') ? '(?:X|Twitter)' : preg_quote($channel, '/');
+            $pattern = '/\b' . $search . '\b/i';
+            
+            if (preg_match($pattern, $this->name) || preg_match($pattern, $this->category)) {
+                return ($channel === 'Twitter') ? 'X' : $channel;
             }
         }
         return 'Default';
