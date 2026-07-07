@@ -201,7 +201,10 @@
                 
                 <div class="sms-result d-none">
                     <span class="d-block small text-muted mb-1 sms-sender"></span>
-                    <h3 class="fw-bold text-success mb-0 tracking-widest sms-code"></h3>
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        <h3 class="fw-bold text-success mb-0 tracking-widest sms-code"></h3>
+                        <button class="btn btn-sm btn-link text-muted copy-sms-btn p-0" type="button" title="Copy Verification Code"><i class="fa-regular fa-copy" style="font-size: 0.95rem;"></i></button>
+                    </div>
                 </div>
             </div>
             
@@ -421,6 +424,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const icon = this.querySelector('i');
             icon.className = 'fa-solid fa-check text-success';
             setTimeout(() => { icon.className = 'fa-solid fa-copy'; }, 2000);
+        });
+
+        // Copy SMS Code btn
+        card.querySelector('.copy-sms-btn').addEventListener('click', function() {
+            const smsCode = card.querySelector('.sms-code').textContent;
+            if (smsCode) {
+                navigator.clipboard.writeText(smsCode);
+                const icon = this.querySelector('i');
+                icon.className = 'fa-solid fa-check text-success';
+                setTimeout(() => { icon.className = 'fa-regular fa-copy text-muted'; }, 2000);
+            }
         });
         
         // Cancel btn

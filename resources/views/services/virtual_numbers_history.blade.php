@@ -37,11 +37,23 @@
                                 <div class="fw-bold">{{ $order->product }}</div>
                                 <small class="text-muted">{{ $order->country }}</small>
                             </td>
-                            <td class="fw-bold">{{ $order->phone_number }}</td>
+                            <td class="fw-bold">
+                                <span class="font-monospace">{{ $order->phone_number }}</span>
+                                <button class="btn btn-link text-muted p-0 ms-1" onclick="navigator.clipboard.writeText('{{ $order->phone_number }}'); const icon = this.querySelector('i'); icon.className = 'fa-solid fa-check text-success'; setTimeout(() => { icon.className = 'fa-regular fa-copy text-muted'; }, 2000);" style="border: none; background: transparent; text-decoration: none;" title="Copy Phone Number">
+                                    <i class="fa-regular fa-copy" style="font-size: 0.8rem;"></i>
+                                </button>
+                            </td>
                             <td>
                                 @if($order->status === 'received' || $order->status === 'finished')
-                                    <div class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1 rounded">
-                                        {{ $order->sms_code ?: 'Received' }}
+                                    <div class="d-inline-flex align-items-center gap-2">
+                                        <div class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1 rounded">
+                                            {{ $order->sms_code ?: 'Received' }}
+                                        </div>
+                                        @if($order->sms_code)
+                                            <button class="btn btn-link text-muted p-0" onclick="navigator.clipboard.writeText('{{ $order->sms_code }}'); const icon = this.querySelector('i'); icon.className = 'fa-solid fa-check text-success'; setTimeout(() => { icon.className = 'fa-regular fa-copy text-muted'; }, 2000);" style="border: none; background: transparent; text-decoration: none;" title="Copy Code">
+                                                <i class="fa-regular fa-copy" style="font-size: 0.8rem;"></i>
+                                            </button>
+                                        @endif
                                     </div>
                                     @if($order->sms_text)
                                         <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">{{ $order->sms_text }}</small>
