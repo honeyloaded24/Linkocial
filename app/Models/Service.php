@@ -65,7 +65,7 @@ class Service extends Model
      */
     public static function getChannels()
     {
-        return \Illuminate\Support\Facades\Cache::remember('service_channels_v2', 600, function() {
+        return \Illuminate\Support\Facades\Cache::remember('service_channels_v3', 600, function() {
             $channels = [
                 ['name' => 'Instagram', 'icon' => 'fa-brands fa-instagram', 'color' => '#E1306C', 'description' => 'Buy Followers, Likes, Comments, Shares, Views, and more to scale your profile.'],
                 ['name' => 'TikTok', 'icon' => 'fa-brands fa-tiktok', 'color' => '#000000', 'description' => 'Buy Followers, Views, Likes, Shares, and tailored engagement for viral growth.'],
@@ -75,15 +75,32 @@ class Service extends Model
                 ['name' => 'Telegram', 'icon' => 'fa-brands fa-telegram', 'color' => '#0088cc', 'description' => 'Buy Members, Views, Reactions, and Votes to grow your community and influence.'],
                 ['name' => 'Spotify', 'icon' => 'fa-brands fa-spotify', 'color' => '#1DB954', 'description' => 'Buy Plays, Followers, Saves, and Playlist Placements to get your music heard.'],
                 ['name' => 'Audiomack', 'icon' => 'fa-solid fa-music', 'color' => '#FFA200', 'description' => 'Buy Plays, Followers, and Re-ups to boost your music\'s visibility and climb the Audiomack charts instantly.'],
+                ['name' => 'Others', 'icon' => 'fa-solid fa-folder-open', 'color' => '#6b7280', 'description' => 'Uncategorized and other miscellaneous services.'],
             ];
 
             foreach ($channels as &$channel) {
-                $channel['count'] = self::withActiveProvider()
-                    ->where(function($q) use ($channel) {
-                        $q->where('name', 'like', '%' . $channel['name'] . '%')
-                          ->orWhere('category', 'like', '%' . $channel['name'] . '%');
-                    })
-                    ->count();
+                if ($channel['name'] === 'Others') {
+                    $channel['count'] = self::withActiveProvider()
+                        ->get()
+                        ->filter(function($service) {
+                            return $service->getChannelName() === 'Others';
+                        })
+                        ->count();
+                } else {
+                    $channel['count'] = self::withActiveProvider()
+                        ->where(function($q) use ($channel) {
+                            if ($channel['name'] === 'X') {
+                                $q->where('name', 'like', '%X%')
+                                  ->orWhere('category', 'like', '%X%')
+                                  ->orWhere('name', 'like', '%Twitter%')
+                                  ->orWhere('category', 'like', '%Twitter%');
+                            } else {
+                                $q->where('name', 'like', '%' . $channel['name'] . '%')
+                                  ->orWhere('category', 'like', '%' . $channel['name'] . '%');
+                            }
+                        })
+                        ->count();
+                }
             }
 
             return $channels;
@@ -110,6 +127,6 @@ class Service extends Model
                 return ($channel === 'Twitter') ? 'X' : $channel;
             }
         }
-        return 'Default';
+        return 'Others';
     }
 }
