@@ -77,50 +77,46 @@ class VirtualNumberController extends Controller
         }
 
         $markupFee = $this->getMarkupFee();
-        $cacheKey = "smspool_prices_" . $country . "_" . str_replace('.', '_', (string)$markupFee);
-        $data = Cache::remember($cacheKey, 300, function () use ($country, $markupFee) {
-            try {
-                $pricesData = $this->smspool->getPricesForCountry($country);
-                
-                // Group by service ID/name and choose the lowest price across different pools
-                $grouped = [];
-                foreach ($pricesData as $item) {
-                    $serviceId = $item['service'] ?? null;
-                    $serviceName = $item['service_name'] ?? null;
-                    $price = isset($item['price']) ? (float)$item['price'] : null;
+        
+        try {
+            $pricesData = $this->smspool->getPricesForCountry($country);
+            
+            // Group by service ID/name and choose the lowest price across different pools
+            $grouped = [];
+            foreach ($pricesData as $item) {
+                $serviceId = $item['service'] ?? null;
+                $serviceName = $item['service_name'] ?? null;
+                $price = isset($item['price']) ? (float)$item['price'] : null;
 
-                    if (!$serviceId || !$serviceName || $price === null) {
-                        continue;
-                    }
-
-                    // Keep the cheapest price for each unique service (comparing raw wholesale prices)
-                    if (!isset($grouped[$serviceName]) || $price < $grouped[$serviceName]['raw_price']) {
-                        $grouped[$serviceName] = [
-                            'id' => $serviceId,
-                            'name' => $serviceName,
-                            'raw_price' => $price
-                        ];
-                    }
+                if (!$serviceId || !$serviceName || $price === null) {
+                    continue;
                 }
-                
-                // Map to final array with markup fee applied
-                $finalServices = [];
-                foreach ($grouped as $service) {
-                    $finalServices[] = [
-                        'id' => $service['id'],
-                        'name' => $service['name'],
-                        'price' => round($service['raw_price'] + $markupFee, 2)
+
+                // Keep the cheapest price for each unique service (comparing raw wholesale prices)
+                if (!isset($grouped[$serviceName]) || $price < $grouped[$serviceName]['raw_price']) {
+                    $grouped[$serviceName] = [
+                        'id' => $serviceId,
+                        'name' => $serviceName,
+                        'raw_price' => $price
                     ];
                 }
-                
-                return $finalServices;
-            } catch (\Exception $e) {
-                Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
-                return [];
             }
-        });
-
-        return response()->json($data);
+            
+            // Map to final array with markup fee applied
+            $finalServices = [];
+            foreach ($grouped as $service) {
+                $finalServices[] = [
+                    'id' => $service['id'],
+                    'name' => $service['name'],
+                    'price' => round($service['raw_price'] + $markupFee, 2)
+                ];
+            }
+            
+            return response()->json($finalServices);
+        } catch (\Exception $e) {
+            Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
+            return response()->json([]);
+        }
     }
 
     /**
