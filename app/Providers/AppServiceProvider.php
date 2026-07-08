@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
                         'mail.from.address' => \App\Models\Setting::get('mail_from_address', config('mail.from.address')),
                         'mail.from.name' => \App\Models\Setting::get('mail_from_name', config('mail.from.name')),
                     ]);
+                    \Illuminate\Support\Facades\Mail::purge('smtp');
                 }
             }
         } catch (\Throwable $e) {
