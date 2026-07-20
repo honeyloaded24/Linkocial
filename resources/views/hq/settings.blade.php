@@ -365,23 +365,15 @@
                                     <input type="text" name="smspool_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smspool_api_key') }}" style="color: var(--text-main);">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Type</label>
-                                    <select name="vn_markup_type" class="form-select border-secondary bg-transparent py-2" style="color: var(--text-main); background-color: var(--bg-surface);">
-                                        <option value="percentage" {{ \App\Models\Setting::get('vn_markup_type', 'percentage') === 'percentage' ? 'selected' : '' }} style="background-color: var(--bg-surface); color: var(--text-main);">Percentage (%)</option>
-                                        <option value="flat" {{ \App\Models\Setting::get('vn_markup_type', 'percentage') === 'flat' ? 'selected' : '' }} style="background-color: var(--bg-surface); color: var(--text-main);">Flat Fee (USD)</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
                                     @php
-                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 65);
-                                        $type = \App\Models\Setting::get('vn_markup_type', 'percentage');
-                                        if ($type === 'flat' && ($rawMarkup > 5.0 || ($rawMarkup > 1.0 && $rawMarkup < 2.0))) {
+                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
+                                        if ($rawMarkup > 5.0 || ($rawMarkup > 1.0 && $rawMarkup < 2.0)) {
                                             $rawMarkup = 1.00;
                                         }
                                     @endphp
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Value</label>
-                                    <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ $rawMarkup }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 20 represents 20% markup, or 0.50 represents flat $0.50 fee.</small>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Fee (USD)</label>
+                                    <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format($rawMarkup, 2) }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 1.00 adds a flat $1.00 fee to SMSPool cost.</small>
                                 </div>
                             </div>
 

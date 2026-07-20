@@ -335,20 +335,10 @@ class AdminController extends Controller
      */
     public function destroyProvider($id)
     {
-        try {
-            $provider = Provider::findOrFail($id);
+        $provider = Provider::findOrFail($id);
+        $provider->delete();
 
-            \DB::transaction(function () use ($provider) {
-                // Dissociate from orders to prevent foreign key constraint violations
-                \App\Models\Order::where('provider_id', $provider->id)->update(['provider_id' => null]);
-                
-                $provider->delete();
-            });
-
-            return back()->with('success', 'Provider deleted successfully.');
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Failed to delete provider: ' . $e->getMessage());
-        }
+        return back()->with('success', 'Provider deleted successfully.');
     }
 
 
@@ -386,7 +376,7 @@ class AdminController extends Controller
             'new_balance' => $user->balance
         ]);
 
-        return back()->with('success', "User balance updated successfully. New balance: ₦" . number_format((float) $user->balance, 2));
+        return back()->with('success', "User balance updated successfully. New balance: " . money($user->balance, true, $user->currency_code));
     }
 
     /**

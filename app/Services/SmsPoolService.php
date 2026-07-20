@@ -12,7 +12,7 @@ class SmsPoolService
 
     public function __construct()
     {
-        $this->apiKey = \App\Models\Setting::get('smspool_api_key') ?: config('services.smspool.key');
+        $this->apiKey = \App\Models\Setting::get('smspool_api_key');
     }
 
     /**
@@ -50,17 +50,20 @@ class SmsPoolService
     }
 
     /**
-     * Get pricing for services in a specific country.
+     * Get pricing for services in a specific country, or all countries if null.
      * Endpoint: POST /request/pricing
-     * WARNING: We must specify the country parameter to avoid fetching the entire database
-     * which exceeds the PHP memory limit.
      */
-    public function getPricesForCountry(string|int $country): array
+    public function getPricesForCountry(string|int|null $country = null): array
     {
-        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/request/pricing", [
-            'country' => $country,
+        $params = [
             'key' => $this->apiKey,
-        ]);
+        ];
+
+        if ($country !== null) {
+            $params['country'] = $country;
+        }
+
+        $response = Http::asForm()->timeout(180)->post("{$this->baseUrl}/request/pricing", $params);
 
         if ($response->failed()) {
             Log::error('SMSPool getPricesForCountry failed', ['country' => $country, 'response' => $response->body()]);
@@ -74,13 +77,19 @@ class SmsPoolService
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */
-    public function buyNumber(string|int $country, string|int $service): array
+    public function buyNumber(string|int $country, string|int $service, ?float $maxPrice = null): array
     {
-        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", [
+        $params = [
             'country' => $country,
             'service' => $service,
             'key' => $this->apiKey,
-        ]);
+        ];
+
+        if ($maxPrice !== null) {
+            $params['max_price'] = $maxPrice;
+        }
+
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", $params);
 
         if ($response->failed()) {
             Log::error('SMSPool buyNumber failed', ['country' => $country, 'service' => $service, 'response' => $response->body()]);

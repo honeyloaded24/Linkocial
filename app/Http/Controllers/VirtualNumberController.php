@@ -79,7 +79,10 @@ class VirtualNumberController extends Controller
         $markupFee = $this->getMarkupFee();
         
         try {
-            $pricesData = $this->smspool->getPricesForCountry($country);
+            $cacheKey = "smspool_prices_{$country}";
+            $pricesData = Cache::remember($cacheKey, 600, function () use ($country) {
+                return $this->smspool->getPricesForCountry($country);
+            });
             
             // Group by service ID/name and choose the lowest price across different pools
             $grouped = [];
@@ -225,8 +228,11 @@ class VirtualNumberController extends Controller
         $user = Auth::user();
 
         try {
-            // Retrieve pricing for this country to estimate cost
-            $pricesData = $this->smspool->getPricesForCountry($country);
+            // Retrieve pricing for this country to estimate cost (check cache first)
+            $cacheKey = "smspool_prices_{$country}";
+            $pricesData = Cache::remember($cacheKey, 600, function () use ($country) {
+                return $this->smspool->getPricesForCountry($country);
+            });
             
             $cheapestPrice = null;
             $serviceName = null;
@@ -280,14 +286,48 @@ class VirtualNumberController extends Controller
                 }
             }
 
-            // Ensure user has enough balance
+            // Ensure user has enough balance and reserve it before the slow external API call
             $finalCheckCost = max(0.00, $userCostUsd - $discount);
-            if ($user->balance < $finalCheckCost) {
-                return response()->json(['error' => 'Insufficient wallet balance.'], 402);
+
+            DB::beginTransaction();
+            try {
+                // Lock the user record to prevent concurrent check-out race conditions
+                $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+
+                if ($lockedUser->balance < $finalCheckCost) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Insufficient wallet balance.'], 402);
+                }
+
+                // Reserve the estimated balance immediately
+                $lockedUser->decrement('balance', $finalCheckCost);
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
 
             // Execute Purchase
-            $buyResponse = $this->smspool->buyNumber($country, $productId);
+            try {
+                // Pass cheapestPrice as the maxPrice parameter to avoid paying more if pool prices spike
+                $buyResponse = $this->smspool->buyNumber($country, $productId, $cheapestPrice);
+            } catch (\Exception $e) {
+                // Refund the reserved balance if purchase fails
+                DB::beginTransaction();
+                try {
+                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                    $refundUser->increment('balance', $finalCheckCost);
+                    DB::commit();
+                } catch (\Exception $ex) {
+                    DB::rollBack();
+                    Log::error('Failed to refund reserved balance after failed purchase', [
+                        'user_id' => $user->id,
+                        'amount' => $finalCheckCost,
+                        'error' => $ex->getMessage()
+                    ]);
+                }
+                throw $e;
+            }
 
             // Extract order details
             $apiOrderId = $buyResponse['order_id'] ?? null;
@@ -297,10 +337,18 @@ class VirtualNumberController extends Controller
             $serviceName = $buyResponse['service'] ?? $serviceName;
 
             if (!$apiOrderId) {
+                DB::beginTransaction();
+                try {
+                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                    $refundUser->increment('balance', $finalCheckCost);
+                    DB::commit();
+                } catch (\Exception $ex) {
+                    DB::rollBack();
+                }
                 return response()->json(['error' => 'Failed to obtain an order ID from SMSPool.'], 500);
             }
             
-            // Recalculate final user cost based on the real deducted price
+            // Recalculate final user cost based on the real price returned by SMSPool
             $realUserCostUsd = $actualCostUsd + $markupFee;
             
             // Recalculate discount based on actual cost in case it shifted (percentage)
@@ -314,60 +362,69 @@ class VirtualNumberController extends Controller
 
             // Database Transaction
             DB::beginTransaction();
+            try {
+                $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-            // Deduct balance
-            $user->decrement('balance', $finalUserCostUsd);
+                // Adjust balance based on the actual final cost vs our estimate
+                $costDifference = $finalUserCostUsd - $finalCheckCost;
+                if ($costDifference > 0) {
+                    $lockedUser->decrement('balance', $costDifference);
+                } elseif ($costDifference < 0) {
+                    $lockedUser->increment('balance', abs($costDifference));
+                }
 
-            // Record Financial Transaction
-            if ($finalUserCostUsd > 0) {
-                Transaction::add(
-                    $user->id, 
-                    $finalUserCostUsd, 
-                    'debit', 
-                    'virtual_number', 
-                    "Virtual Number Purchase ({$serviceName} - {$countryName})" . ($coupon ? " [Coupon: {$coupon->code}]" : "")
-                );
-            }
+                // Record Financial Transaction
+                if ($finalUserCostUsd > 0) {
+                    Transaction::add(
+                        $lockedUser->id, 
+                        $finalUserCostUsd, 
+                        'debit', 
+                        'virtual_number', 
+                        "Virtual Number Purchase ({$serviceName} - {$countryName})" . ($coupon ? " [Coupon: {$coupon->code}]" : "")
+                    );
+                }
 
-            $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
-            
-            // Create Order Record
-            $order = VirtualNumberOrder::create([
-                'user_id' => $user->id,
-                'api_order_id' => $apiOrderId,
-                'phone_number' => $phoneNumber,
-                'country' => $countryName,
-                'operator' => 'SMSPool',
-                'product' => $serviceName,
-                'cost' => $finalUserCostUsd,
-                'provider_cost' => $actualCostUsd,
-                'status' => 'pending',
-                'coupon_code' => $coupon ? $coupon->code : null,
-                'discount' => $discount,
-                'expires_at' => now()->addSeconds((int)$expiresInSeconds)
-            ]);
-
-            // Record Coupon Usage
-            if ($coupon) {
-                \App\Models\CouponUsage::create([
-                    'coupon_id' => $coupon->id,
-                    'user_id' => $user->id,
-                    'virtual_number_order_id' => $order->id,
-                    'discount_amount' => $discount,
+                $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
+                
+                // Create Order Record
+                $order = VirtualNumberOrder::create([
+                    'user_id' => $lockedUser->id,
+                    'api_order_id' => $apiOrderId,
+                    'phone_number' => $phoneNumber,
+                    'country' => $countryName,
+                    'operator' => 'SMSPool',
+                    'product' => $serviceName,
+                    'cost' => $finalUserCostUsd,
+                    'provider_cost' => $actualCostUsd,
+                    'status' => 'pending',
+                    'coupon_code' => $coupon ? $coupon->code : null,
+                    'discount' => $discount,
+                    'expires_at' => now()->addSeconds((int)$expiresInSeconds)
                 ]);
-                $coupon->increment('usage_count');
+
+                // Record Coupon Usage
+                if ($coupon) {
+                    \App\Models\CouponUsage::create([
+                        'coupon_id' => $coupon->id,
+                        'user_id' => $lockedUser->id,
+                        'virtual_number_order_id' => $order->id,
+                        'discount_amount' => $discount,
+                    ]);
+                    $coupon->increment('usage_count');
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'order' => $order
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'order' => $order
-            ]);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            
             // Log the actual error for admin review
             Log::error('Virtual Number Purchase Exception', [
                 'user_id' => $user->id,

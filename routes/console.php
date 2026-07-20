@@ -28,3 +28,7 @@ Schedule::command('vn:check-expired')->everyMinute()->withoutOverlapping();
 
 // Schedule SMSPool balance check every hour
 Schedule::command('smspool:check-balance')->hourly()->withoutOverlapping();
+
+// Schedule SMSPool price update every 5 minutes
+Schedule::command('smspool:update-prices')->everyFiveMinutes()->withoutOverlapping();
+
