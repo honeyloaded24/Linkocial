@@ -461,11 +461,19 @@ class VirtualNumberController extends Controller
             $status = isset($checkData['status']) ? (int)$checkData['status'] : 1;
 
             if ($status === 3) {
-                $order->update([
-                    'status' => 'received',
-                    'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '',
-                    'sms_code' => $checkData['sms'] ?? ''
-                ]);
+                DB::transaction(function () use ($order, $checkData) {
+                    $lockedOrder = VirtualNumberOrder::where('id', $order->id)
+                        ->lockForUpdate()
+                        ->first();
+                    
+                    if ($lockedOrder && $lockedOrder->status === 'pending') {
+                        $lockedOrder->update([
+                            'status' => 'received',
+                            'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '',
+                            'sms_code' => $checkData['sms'] ?? ''
+                        ]);
+                    }
+                });
             } elseif ($status === 5 || $status === 6) {
                 // Refund the user if it failed
                 $this->refundOrder($order);
@@ -506,28 +514,34 @@ class VirtualNumberController extends Controller
      */
     protected function refundOrder(VirtualNumberOrder $order)
     {
-        if ($order->status !== 'pending') return;
-
         DB::transaction(function () use ($order) {
-            $order->update(['status' => 'canceled']);
-            $order->user->increment('balance', $order->cost);
+            $lockedOrder = VirtualNumberOrder::where('id', $order->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedOrder || $lockedOrder->status !== 'pending') {
+                return;
+            }
+
+            $lockedOrder->update(['status' => 'canceled']);
+            $lockedOrder->user->increment('balance', $lockedOrder->cost);
             
-            if ($order->cost > 0) {
+            if ($lockedOrder->cost > 0) {
                 Transaction::add(
-                    $order->user_id, 
-                    $order->cost, 
+                    $lockedOrder->user_id, 
+                    $lockedOrder->cost, 
                     'credit', 
                     'refund', 
-                    "Refund for canceled Virtual Number ({$order->product})"
+                    "Refund for canceled Virtual Number ({$lockedOrder->product})"
                 );
             }
 
             // Rollback coupon usage if applicable
-            if ($order->coupon_code) {
-                $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
+            if ($lockedOrder->coupon_code) {
+                $coupon = \App\Models\Coupon::where('code', $lockedOrder->coupon_code)->first();
                 if ($coupon) {
                     $usage = \App\Models\CouponUsage::where('coupon_id', $coupon->id)
-                        ->where('virtual_number_order_id', $order->id)
+                        ->where('virtual_number_order_id', $lockedOrder->id)
                         ->first();
                     if ($usage) {
                         $usage->delete();
@@ -536,9 +550,10 @@ class VirtualNumberController extends Controller
                 }
             }
         });
-    }
 
-    /**
+        // Sync local object status
+        $order->status = 'canceled';
+    }
      * Get the markup flat fee.
      */
     protected function getMarkupFee(): float

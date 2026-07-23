@@ -56,14 +56,18 @@ class AdminVirtualNumberController extends Controller
      */
     public function refund($id, SmsPoolService $smspool)
     {
-        $order = VirtualNumberOrder::with('user')->findOrFail($id);
-
-        if ($order->status === 'canceled') {
-            return back()->with('error', 'That order is already canceled and refunded.');
-        }
-
         try {
             DB::beginTransaction();
+
+            $order = VirtualNumberOrder::with('user')
+                ->where('id', $id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($order->status === 'canceled') {
+                DB::rollBack();
+                return back()->with('error', 'That order is already canceled and refunded.');
+            }
 
             // Attempt to tell SMSPool to cancel it so we get our API money back too, if it's pending.
             if ($order->status === 'pending' || $order->status === 'received') {
