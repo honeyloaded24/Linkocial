@@ -57,17 +57,22 @@
                     </div>
                 </div> <!-- Closes row g-3 -->
                 
-                <div class="mt-4 p-3 p-sm-4 rounded-4 bg-primary-custom text-white d-flex flex-column flex-sm-row justify-content-between align-items-sm-center d-none shadow" id="vn-price-box">
-                    <div class="mb-3 mb-sm-0 text-center text-sm-start">
-                        <span class="text-white-50 small fw-bold d-block text-uppercase tracking-widest">Estimated Cost</span>
-                        <div class="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mt-1">
-                            <span class="fs-3 fw-bold text-white" id="vn-cost">$0.00</span>
-                            <span class="text-decoration-line-through text-white-50 small d-none" id="vn-original-cost">$0.00</span>
+                <div class="mt-4 p-3 p-sm-4 rounded-4 bg-primary-custom text-white d-flex flex-column d-none shadow" id="vn-price-box">
+                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center w-100">
+                        <div class="mb-3 mb-sm-0 text-center text-sm-start">
+                            <span class="text-white-50 small fw-bold d-block text-uppercase tracking-widest">Estimated Cost</span>
+                            <div class="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mt-1">
+                                <span class="fs-3 fw-bold text-white" id="vn-cost">$0.00</span>
+                                <span class="text-decoration-line-through text-white-50 small d-none" id="vn-original-cost">$0.00</span>
+                            </div>
                         </div>
+                        <button type="submit" class="btn btn-light rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn" style="color: var(--bs-primary); white-space: nowrap;">
+                            Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
+                        </button>
                     </div>
-                    <button type="submit" class="btn btn-light rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn" style="color: var(--bs-primary); white-space: nowrap;">
-                        Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
-                    </button>
+                    <div class="mt-3 text-center text-sm-start w-100">
+                        <small class="text-white-50 d-block" style="font-size: 0.75rem;">* Final price may slightly vary depending on real-time market rates.</small>
+                    </div>
                 </div>
                 
                 <!-- Error Alert -->
@@ -336,8 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 country: countrySelect.value,
-                product: serviceSelect.value,
-                coupon_code: null
+                product: serviceSelect.value
             })
         })
         .then(res => res.json())

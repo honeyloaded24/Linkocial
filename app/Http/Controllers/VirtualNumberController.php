@@ -122,95 +122,6 @@ class VirtualNumberController extends Controller
         }
     }
 
-    /**
-     * API: Validate coupon code for virtual number purchase.
-     */
-    public function validateCoupon(Request $request)
-    {
-        $request->validate([
-            'coupon_code' => 'required|string',
-            'country' => 'required',
-            'product' => 'required',
-        ]);
-
-        $code = strtoupper($request->coupon_code);
-        $country = $request->country;
-        $product = $request->product;
-        $user = Auth::user();
-
-        $coupon = \App\Models\Coupon::where('code', $code)->first();
-
-        if (!$coupon) {
-            return response()->json(['success' => false, 'error' => 'Invalid coupon code.'], 404);
-        }
-
-        if (!$coupon->status) {
-            return response()->json(['success' => false, 'error' => 'This coupon is inactive.'], 400);
-        }
-
-        if ($coupon->expires_at && $coupon->expires_at->isPast()) {
-            return response()->json(['success' => false, 'error' => 'This coupon has expired.'], 400);
-        }
-
-        if ($coupon->usage_limit !== null && $coupon->usage_count >= $coupon->usage_limit) {
-            return response()->json(['success' => false, 'error' => 'This coupon has reached its usage limit.'], 400);
-        }
-
-        $userUsageCount = \App\Models\CouponUsage::where('coupon_id', $coupon->id)
-            ->where('user_id', $user->id)
-            ->count();
-
-        if ($userUsageCount >= $coupon->user_limit) {
-            return response()->json(['success' => false, 'error' => 'You have already used this coupon the maximum number of times.'], 400);
-        }
-
-        try {
-            $pricesData = $this->smspool->getPricesForCountry($country);
-            
-            $cheapestPrice = null;
-            foreach ($pricesData as $item) {
-                if ((string)$item['service'] === (string)$product || strtolower($item['service_name']) === strtolower($product)) {
-                    $price = (float)$item['price'];
-                    if ($cheapestPrice === null || $price < $cheapestPrice) {
-                        $cheapestPrice = $price;
-                    }
-                }
-            }
-
-            if ($cheapestPrice === null) {
-                return response()->json(['success' => false, 'error' => 'Product not available for this country.'], 400);
-            }
-
-            $markupFee = $this->getMarkupFee();
-            $userCostUsd = $cheapestPrice + $markupFee;
-
-            if ($coupon->min_spend > 0 && $userCostUsd < $coupon->min_spend) {
-                return response()->json(['success' => false, 'error' => 'Minimum spend for this coupon is $' . number_format($coupon->min_spend, 2) . '.'], 400);
-            }
-
-            $discount = 0.00;
-            if ($coupon->type === 'fixed') {
-                $discount = (float)$coupon->value;
-            } elseif ($coupon->type === 'percentage') {
-                $discount = $userCostUsd * ($coupon->value / 100);
-            }
-
-            $discount = min($discount, $userCostUsd);
-            $finalPrice = max(0.00, $userCostUsd - $discount);
-
-            return response()->json([
-                'success' => true,
-                'coupon_code' => $coupon->code,
-                'original_price' => $userCostUsd,
-                'discount' => $discount,
-                'final_price' => $finalPrice
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Coupon validation failed', ['error' => $e->getMessage()]);
-            return response()->json(['success' => false, 'error' => 'Failed to validate coupon: ' . $e->getMessage()], 500);
-        }
-    }
 
     /**
      * Process the purchase of a virtual number
@@ -220,7 +131,6 @@ class VirtualNumberController extends Controller
         $request->validate([
             'country' => 'required',
             'product' => 'required',
-            'coupon_code' => 'nullable|string'
         ]);
 
         $country = $request->country; // Country ID
@@ -255,39 +165,8 @@ class VirtualNumberController extends Controller
             $markupFee = $this->getMarkupFee(); 
             $userCostUsd = $cheapestPrice + $markupFee;  
 
-            // Validate Coupon if applied
-            $coupon = null;
-            $discount = 0.00;
-            if ($request->filled('coupon_code')) {
-                $coupon = \App\Models\Coupon::where('code', strtoupper($request->coupon_code))->first();
-                if ($coupon && $coupon->status && (!$coupon->expires_at || !$coupon->expires_at->isPast())) {
-                    if (($coupon->usage_limit === null || $coupon->usage_count < $coupon->usage_limit) && 
-                        ($coupon->min_spend == 0 || $userCostUsd >= $coupon->min_spend)) {
-                        
-                        $userUsageCount = \App\Models\CouponUsage::where('coupon_id', $coupon->id)
-                            ->where('user_id', $user->id)
-                            ->count();
-
-                        if ($userUsageCount < $coupon->user_limit) {
-                            if ($coupon->type === 'fixed') {
-                                $discount = (float)$coupon->value;
-                            } else {
-                                $discount = $userCostUsd * ($coupon->value / 100);
-                            }
-                            $discount = min($discount, $userCostUsd);
-                        } else {
-                            $coupon = null; // Revert if user limit reached
-                        }
-                    } else {
-                        $coupon = null;
-                    }
-                } else {
-                    $coupon = null;
-                }
-            }
-
             // Ensure user has enough balance and reserve it before the slow external API call
-            $finalCheckCost = max(0.00, $userCostUsd - $discount);
+            $finalCheckCost = max(0.00, $userCostUsd);
 
             DB::beginTransaction();
             try {
@@ -347,18 +226,11 @@ class VirtualNumberController extends Controller
                 }
                 return response()->json(['error' => 'Failed to obtain an order ID from SMSPool.'], 500);
             }
-            
+
             // Recalculate final user cost based on the real price returned by SMSPool
             $realUserCostUsd = $actualCostUsd + $markupFee;
             
-            // Recalculate discount based on actual cost in case it shifted (percentage)
-            if ($coupon && $coupon->type === 'percentage') {
-                $discount = min($realUserCostUsd * ($coupon->value / 100), $realUserCostUsd);
-            } elseif ($coupon && $coupon->type === 'fixed') {
-                $discount = min((float)$coupon->value, $realUserCostUsd);
-            }
-
-            $finalUserCostUsd = max(0.00, $realUserCostUsd - $discount);
+            $finalUserCostUsd = max(0.00, $realUserCostUsd);
 
             // Database Transaction
             DB::beginTransaction();
@@ -380,13 +252,12 @@ class VirtualNumberController extends Controller
                         $finalUserCostUsd, 
                         'debit', 
                         'virtual_number', 
-                        "Virtual Number Purchase ({$serviceName} - {$countryName})" . ($coupon ? " [Coupon: {$coupon->code}]" : "")
+                        "Virtual Number Purchase ({$serviceName} - {$countryName})"
                     );
                 }
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
                 
-                // Create Order Record
                 $order = VirtualNumberOrder::create([
                     'user_id' => $lockedUser->id,
                     'api_order_id' => $apiOrderId,
@@ -397,21 +268,10 @@ class VirtualNumberController extends Controller
                     'cost' => $finalUserCostUsd,
                     'provider_cost' => $actualCostUsd,
                     'status' => 'pending',
-                    'coupon_code' => $coupon ? $coupon->code : null,
-                    'discount' => $discount,
+                    'coupon_code' => null,
+                    'discount' => 0.00,
                     'expires_at' => now()->addSeconds((int)$expiresInSeconds)
                 ]);
-
-                // Record Coupon Usage
-                if ($coupon) {
-                    \App\Models\CouponUsage::create([
-                        'coupon_id' => $coupon->id,
-                        'user_id' => $lockedUser->id,
-                        'virtual_number_order_id' => $order->id,
-                        'discount_amount' => $discount,
-                    ]);
-                    $coupon->increment('usage_count');
-                }
 
                 DB::commit();
 
@@ -427,15 +287,14 @@ class VirtualNumberController extends Controller
         } catch (\Exception $e) {
             // Log the actual error for admin review
             Log::error('Virtual Number Purchase Exception', [
-                'user_id' => $user->id,
-                'country' => $country,
-                'product' => $product,
+                'user_id' => Auth::id(),
+                'country' => $country ?? 'Unknown',
+                'product' => $product ?? 'Unknown',
                 'error' => $e->getMessage()
             ]);
             
-            // Determine what error message to show based on user role
             $ticketsUrl = route('tickets.index');
-            $errorMessage = $user->is_admin 
+            $errorMessage = (Auth::user() && Auth::user()->is_admin)
                 ? "<strong>Admin Debug:</strong> " . htmlspecialchars($e->getMessage())
                 : "This service is currently unavailable or out of stock. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Open a ticket</a> if error persists.";
                 
@@ -525,35 +384,20 @@ class VirtualNumberController extends Controller
 
             $lockedOrder->update(['status' => 'canceled']);
             $lockedOrder->user->increment('balance', $lockedOrder->cost);
-            
+
             if ($lockedOrder->cost > 0) {
                 Transaction::add(
                     $lockedOrder->user_id, 
                     $lockedOrder->cost, 
                     'credit', 
                     'refund', 
-                    "Refund for canceled Virtual Number ({$lockedOrder->product})"
+                    "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})"
                 );
             }
-
-            // Rollback coupon usage if applicable
-            if ($lockedOrder->coupon_code) {
-                $coupon = \App\Models\Coupon::where('code', $lockedOrder->coupon_code)->first();
-                if ($coupon) {
-                    $usage = \App\Models\CouponUsage::where('coupon_id', $coupon->id)
-                        ->where('virtual_number_order_id', $lockedOrder->id)
-                        ->first();
-                    if ($usage) {
-                        $usage->delete();
-                        $coupon->decrement('usage_count');
-                    }
-                }
-            }
         });
-
-        // Sync local object status
-        $order->status = 'canceled';
     }
+
+    /**
      * Get the markup flat fee.
      */
     protected function getMarkupFee(): float
