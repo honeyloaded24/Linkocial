@@ -103,9 +103,9 @@ Route::post('/two-factor', [AuthController::class, 'verifyTwoFactor'])->name('tw
 Route::get('/two-factor/resend', [AuthController::class, 'resendTwoFactor'])->name('two-factor.resend');
 
 
-// --- PROTECTED APP ROUTES (Dashboard, Orders, etc.) ---
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/hq/users/leave-impersonation', [AdminController::class, 'leaveImpersonation'])->name('hq.users.leave-impersonation');
 
     // Order Routes
     Route::get('/orders/new', [App\Http\Controllers\OrderController::class, 'create'])->name('orders.create');
@@ -179,7 +179,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/{id}/transactions', [AdminController::class, 'userTransactions'])->name('hq.users.transactions');
         Route::post('/users/{id}/balance', [AdminController::class, 'updateUserBalance'])->name('hq.users.balance');
         Route::post('/users/{id}/role', [AdminController::class, 'updateRole'])->name('hq.users.role');
-        Route::get('/users/leave-impersonation', [AdminController::class, 'leaveImpersonation'])->name('hq.users.leave-impersonation');
         Route::patch('/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('hq.users.toggle-status');
         
         // Admin Blog Management
