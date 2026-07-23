@@ -241,134 +241,151 @@ class PaymentController extends Controller
      */
     private function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN')
     {
-        // Get the exchange rate for the currency used in the transaction to convert to USD Master
-        $transactionCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? (object)['exchange_rate' => 1450.0];
-        $rate = $transactionCurrency->exchange_rate;
-        $amountInUsd = $amount / $rate;
+        // 1. Check if this payment reference has already been successfully processed (concurrency check)
+        $alreadySuccess = \App\Models\Payment::where('reference', $reference)
+            ->where('status', 'success')
+            ->exists();
 
-        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-        $ngnRate = $ngnCurrency->exchange_rate;
-        $amountInNaira = $amountInUsd * $ngnRate;
+        if ($alreadySuccess) {
+            Log::info("Payment reference {$reference} already processed successfully. Skipping duplicate credit.");
+            return;
+        }
 
-        // 1. Record the payment history (idempotent update)
-        \App\Models\Payment::updateOrCreate(
-            ['reference' => $reference],
-            [
-                'user_id' => $user->id,
-                'amount' => $amount,
-                'currency' => $currencyCode,
-                'amount_usd' => $amountInUsd,
-                'status' => 'success',
-            ]
-        );
+        DB::transaction(function () use ($user, $amount, $reference, $method, $currencyCode) {
+            // Re-verify under lock to prevent any race condition double-writes
+            $lockedPayment = \App\Models\Payment::where('reference', $reference)
+                ->lockForUpdate()
+                ->first();
 
-        // 2. Credit the user's wallet with USD value
-        $user->increment('balance', $amountInUsd);
-
-        // --- Promo Bonus Logic (Calculated in USD base) ---
-        $promoEnabled = \App\Models\Setting::get('promo_enabled') == '1';
-        $promoExpiry = \App\Models\Setting::get('promo_expires_at');
-        $promoMinNgn = (float) \App\Models\Setting::get('promo_min_amount', 1000);
-        $promoPercent = (float) \App\Models\Setting::get('promo_bonus_percent', 10);
-        
-        if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
-            if ($amountInNaira >= $promoMinNgn) {
-                $bonusAmountUsd = ($amountInUsd * $promoPercent) / 100;
-                $user->increment('balance', $bonusAmountUsd);
-                
-                \App\Models\Transaction::add(
-                    $user->id, 
-                    $bonusAmountUsd, 
-                    'credit', 
-                    'deposit', 
-                    "Promo Bonus (+{$promoPercent}%) for deposit"
-                );
+            if ($lockedPayment && $lockedPayment->status === 'success') {
+                return;
             }
-        }
 
-        // 3. Record in Financial Ledger (in USD base)
-        \App\Models\Transaction::add(
-            $user->id, 
-            $amountInUsd, 
-            'credit', 
-            'deposit', 
-            "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
-            $reference
-        );
+            // Get the exchange rate for the currency used in the transaction to convert to USD Master
+            $transactionCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? (object)['exchange_rate' => 1450.0];
+            $rate = $transactionCurrency->exchange_rate;
+            $amountInUsd = $amount / $rate;
 
-        // 4. Send Notification & Email to user (Formatted in their local currency)
-        \App\Models\Notification::send(
-            $user->id,
-            "Wallet Funded Successfully",
-            "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
-            'success',
-            route('wallet.history')
-        );
+            $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
+            $ngnRate = $ngnCurrency->exchange_rate;
+            $amountInNaira = $amountInUsd * $ngnRate;
 
-        // Send Wallet Funded Email
-        try {
-            Mail::send('emails.wallet_funded', [
-                'transaction_id' => 'TXN-' . time(),
-                'method' => $method,
-                'amount' => $amountInNaira, // Email still shows NGN as that's what they paid
-                'bonus' => isset($bonusAmountUsd) ? ($bonusAmountUsd * $ngnRate) : 0
-            ], function($message) use ($user) {
-                $message->to($user->email)->subject("Wallet Funded Successfully! 💰");
-            });
-        } catch (\Exception $e) {
-            Log::error("Deposit email failed: " . $e->getMessage());
-        }
+            // Record/Update the payment history (idempotent update)
+            \App\Models\Payment::updateOrCreate(
+                ['reference' => $reference],
+                [
+                    'user_id' => $user->id,
+                    'amount' => $amount,
+                    'currency' => $currencyCode,
+                    'amount_usd' => $amountInUsd,
+                    'status' => 'success',
+                ]
+            );
 
-        // 5. Referral Commission Logic (Tiered: First vs Recurring)
-        if ($user->referred_by) {
-            $referrer = User::find($user->referred_by);
-            if ($referrer) {
-                // Check if this is the user's first successful payment
-                // We count successful payments. If count == 1 (this one), it's the first.
-                $paymentCount = \App\Models\Payment::where('user_id', $user->id)->where('status', 'success')->count();
-                
-                if ($paymentCount <= 1) {
-                    $rate = (float) \App\Models\Setting::get('affiliate_commission_first', 10);
-                    $typeLabel = "First Deposit";
-                } else {
-                    $rate = (float) \App\Models\Setting::get('affiliate_commission_recurring', 5);
-                    $typeLabel = "Recurring";
+            // Lock and Credit the user's wallet with USD value
+            $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+            $lockedUser->increment('balance', $amountInUsd);
+
+            // --- Promo Bonus Logic (Calculated in USD base) ---
+            $promoEnabled = \App\Models\Setting::get('promo_enabled') == '1';
+            $promoExpiry = \App\Models\Setting::get('promo_expires_at');
+            $promoMinNgn = (float) \App\Models\Setting::get('promo_min_amount', 1000);
+            $promoPercent = (float) \App\Models\Setting::get('promo_bonus_percent', 10);
+            
+            if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
+                if ($amountInNaira >= $promoMinNgn) {
+                    $bonusAmountUsd = ($amountInUsd * $promoPercent) / 100;
+                    $lockedUser->increment('balance', $bonusAmountUsd);
+                    
+                    \App\Models\Transaction::add(
+                        $lockedUser->id, 
+                        $bonusAmountUsd, 
+                        'credit', 
+                        'deposit', 
+                        "Promo Bonus (+{$promoPercent}%) for deposit"
+                    );
                 }
-
-                $commissionRate = $rate / 100;
-                $commissionAmountUsd = $amountInUsd * $commissionRate;
-
-                $referrer->increment('commission_balance', $commissionAmountUsd);
-                $referrer->increment('total_earned_commission', $commissionAmountUsd);
-                
-                \App\Models\AffiliateTransaction::log(
-                    $referrer->id, 
-                    $commissionAmountUsd, 
-                    'credit', 
-                    "{$typeLabel} Commission from {$user->username}"
-                );
-
-                // Send Commission Email (Show in their preferred currency if possible, or just NGN for now as hint)
-                try {
-                    Mail::send('emails.affiliate_commission', [
-                        'amount' => ($commissionAmountUsd * $ngnRate), // Show NGN value for clarity
-                        'from_user' => $user->username
-                    ], function($message) use ($referrer) {
-                        $message->to($referrer->email)->subject("You just earned money! 💸");
-                    });
-                } catch (\Exception $e) {
-                    Log::error("Commission email failed: " . $e->getMessage());
-                }
-
-                \App\Models\ActivityLog::log("Awarded referral commission", $referrer, [
-                    'from_user' => $user->username,
-                    'deposit_amount_usd' => $amountInUsd,
-                    'commission_usd' => $commissionAmountUsd
-                ]);
             }
-        }
-        
-        Log::info("Payment Processed: Credited " . number_format($amountInUsd, 4) . " USD to User ID {$user->id}");
+
+            // 3. Record in Financial Ledger (in USD base)
+            \App\Models\Transaction::add(
+                $lockedUser->id, 
+                $amountInUsd, 
+                'credit', 
+                'deposit', 
+                "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
+                $reference
+            );
+
+            // 4. Send Notification & Email to user
+            \App\Models\Notification::send(
+                $lockedUser->id,
+                "Wallet Funded Successfully",
+                "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
+                'success',
+                route('wallet.history')
+            );
+
+            // Send Wallet Funded Email
+            try {
+                Mail::send('emails.wallet_funded', [
+                    'transaction_id' => 'TXN-' . time(),
+                    'method' => $method,
+                    'amount' => $amountInNaira,
+                    'bonus' => isset($bonusAmountUsd) ? ($bonusAmountUsd * $ngnRate) : 0
+                ], function($message) use ($lockedUser) {
+                    $message->to($lockedUser->email)->subject("Wallet Funded Successfully! 💰");
+                });
+            } catch (\Exception $e) {
+                Log::error("Deposit email failed: " . $e->getMessage());
+            }
+
+            // 5. Referral Commission Logic (Tiered: First vs Recurring)
+            if ($lockedUser->referred_by) {
+                $referrer = User::find($lockedUser->referred_by);
+                if ($referrer) {
+                    $paymentCount = \App\Models\Payment::where('user_id', $lockedUser->id)->where('status', 'success')->count();
+                    
+                    if ($paymentCount <= 1) {
+                        $rate = (float) \App\Models\Setting::get('affiliate_commission_first', 10);
+                        $typeLabel = "First Deposit";
+                    } else {
+                        $rate = (float) \App\Models\Setting::get('affiliate_commission_recurring', 5);
+                        $typeLabel = "Recurring";
+                    }
+
+                    $commissionRate = $rate / 100;
+                    $commissionAmountUsd = $amountInUsd * $commissionRate;
+
+                    $referrer->increment('commission_balance', $commissionAmountUsd);
+                    $referrer->increment('total_earned_commission', $commissionAmountUsd);
+                    
+                    \App\Models\AffiliateTransaction::log(
+                        $referrer->id, 
+                        $commissionAmountUsd, 
+                        'credit', 
+                        "{$typeLabel} Commission from {$lockedUser->username}"
+                    );
+
+                    try {
+                        Mail::send('emails.affiliate_commission', [
+                            'amount' => ($commissionAmountUsd * $ngnRate),
+                            'from_user' => $lockedUser->username
+                        ], function($message) use ($referrer) {
+                            $message->to($referrer->email)->subject("You just earned money! 💸");
+                        });
+                    } catch (\Exception $e) {
+                        Log::error("Commission email failed: " . $e->getMessage());
+                    }
+
+                    \App\Models\ActivityLog::log("Awarded referral commission", $referrer, [
+                        'from_user' => $lockedUser->username,
+                        'deposit_amount_usd' => $amountInUsd,
+                        'commission_usd' => $commissionAmountUsd
+                    ]);
+                }
+            }
+        });
     }
 
     /**
