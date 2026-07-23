@@ -606,7 +606,7 @@ class AdminController extends Controller
 
         // Stats
         $totalSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
-        $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount');
+        $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount_usd');
         $totalOrders = Order::where('user_id', $id)->count();
         $totalTransactions = $totalOrders + \App\Models\Payment::where('user_id', $id)->count();
 
