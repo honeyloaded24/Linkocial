@@ -21,6 +21,10 @@ class DashboardController extends Controller
             ->where('is_refunded', false)
             ->sum('charge');
 
+        $totalDeposits = \App\Models\Payment::where('user_id', $user->id)
+            ->where('status', 'success')
+            ->sum('amount_usd');
+
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
             ->count();
@@ -58,6 +62,7 @@ class DashboardController extends Controller
 
         return view('dashboard.index', compact(
             'totalSpent', 
+            'totalDeposits',
             'activeOrders', 
             'completedOrders', 
             'recentOrders',

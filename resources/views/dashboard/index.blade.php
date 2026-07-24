@@ -115,6 +115,21 @@
         <div class="col-12 col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                        <i class="fa-solid fa-wallet small"></i>
+                    </div>
+                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Total Deposits</h6>
+                </div>
+                <div class="d-flex align-items-baseline gap-2">
+                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ money($totalDeposits) }}</h4>
+                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Added</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-3">
+            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="d-flex align-items-center gap-3 mb-2">
                     <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
                         <i class="fa-solid fa-spinner fa-spin-slow small"></i>
                     </div>
@@ -138,21 +153,6 @@
                 <div class="d-flex align-items-baseline gap-2">
                     <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($completedOrders) }}</h4>
                     <span class="text-muted fw-bold" style="font-size: 0.65rem;">Total</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                        <i class="fa-solid fa-ticket small"></i>
-                    </div>
-                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Support</h6>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($user->tickets()->count()) }}</h4>
-                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Tickets</span>
                 </div>
             </div>
         </div>
