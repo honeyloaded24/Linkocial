@@ -188,8 +188,8 @@ class VirtualNumberController extends Controller
 
             // Execute Purchase
             try {
-                // Pass cheapestPrice as the maxPrice parameter to avoid paying more if pool prices spike
-                $buyResponse = $this->smspool->buyNumber($country, $productId, $cheapestPrice);
+                // Do not pass max_price parameter so SMSPool can fulfill from any available pool
+                $buyResponse = $this->smspool->buyNumber($country, $productId);
             } catch (\Exception $e) {
                 // Refund the reserved balance if purchase fails
                 DB::beginTransaction();
