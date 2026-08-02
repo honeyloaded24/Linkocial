@@ -200,11 +200,16 @@ class AuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink($request->only('email'));
+        try {
+            $status = Password::sendResetLink($request->only('email'));
 
-        return $status === Password::RESET_LINK_SENT
-                    ? back()->with(['success' => __($status)])
-                    : back()->withErrors(['email' => __($status)]);
+            return $status === Password::RESET_LINK_SENT
+                        ? back()->with(['success' => __($status)])
+                        : back()->withErrors(['email' => __($status)]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Password reset email failed: " . $e->getMessage());
+            return back()->withErrors(['email' => 'Failed to send password reset email. Please check SMTP settings or try again later.']);
+        }
     }
 
     public function showResetPassword(Request $request, $token)

@@ -19,6 +19,11 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold py-3 rounded-3" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#all-transactions" type="button" role="tab">
+                        <i class="fa-solid fa-list-check me-2"></i> Ledger Logs
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
                     <button class="nav-link fw-bold py-3 rounded-3" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab">
                         <i class="fa-solid fa-cart-shopping me-2"></i> Recent Orders
                     </button>
@@ -45,7 +50,7 @@
                             <tr>
                                 <td class="px-4 py-3 small">{{ $payment->created_at->format('M d, Y h:i A') }}</td>
                                 <td class="py-3 fw-bold text-success">₦ {{ number_format($payment->amount, 2) }}</td>
-                                <td class="py-3 small text-muted text-uppercase">{{ str_replace('_', ' ', $payment->payment_method ?? 'paystack') }}</td>
+                                <td class="py-3 small text-muted text-uppercase">{{ str_replace('_', ' ', $payment->payment_method ?? 'gateway') }}</td>
                                 <td class="px-4 py-3 text-end">
                                     <div class="text-muted small mb-1" style="font-size: 0.7rem;">{{ $payment->reference }}</div>
                                     <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($payment->status) }}</span>
@@ -56,6 +61,50 @@
                                 <td colspan="4" class="text-center py-5 text-muted small">
                                     <div class="opacity-20 mb-2"><i class="fa-solid fa-folder-open fa-3x"></i></div>
                                     No deposits found for this user.
+                                </td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ledger Logs Pane -->
+            <div class="tab-pane fade" id="all-transactions" role="tabpanel" aria-labelledby="transactions-tab">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light bg-opacity-10">
+                            <tr>
+                                <th class="px-4 py-3 text-muted small fw-bold">DATE / REF</th>
+                                <th class="py-3 text-muted small fw-bold">TYPE</th>
+                                <th class="py-3 text-muted small fw-bold">AMOUNT</th>
+                                <th class="py-3 text-muted small fw-bold">BALANCE AFTER</th>
+                                <th class="px-4 py-3 text-muted small fw-bold">DESCRIPTION</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($transactions ?? [] as $tx)
+                            <tr>
+                                <td class="px-4 py-3">
+                                    <div class="fw-bold small">{{ $tx->created_at->format('M d, Y h:i A') }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">{{ $tx->reference }}</div>
+                                </td>
+                                <td class="py-3">
+                                    <span class="badge bg-{{ $tx->type === 'credit' ? 'success' : 'danger' }} bg-opacity-10 text-{{ $tx->type === 'credit' ? 'success' : 'danger' }} px-3 py-1 rounded-pill" style="font-size: 0.65rem;">
+                                        {{ strtoupper($tx->type) }} ({{ strtoupper($tx->transaction_type) }})
+                                    </span>
+                                </td>
+                                <td class="py-3 fw-bold text-{{ $tx->type === 'credit' ? 'success' : 'danger' }}">
+                                    {{ $tx->type === 'credit' ? '+' : '-' }}$ {{ number_format($tx->amount, 2) }}
+                                </td>
+                                <td class="py-3 small fw-bold">$ {{ number_format($tx->balance_after, 2) }}</td>
+                                <td class="px-4 py-3 small text-muted">{{ $tx->description }}</td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted small">
+                                    <div class="opacity-20 mb-2"><i class="fa-solid fa-receipt fa-3x"></i></div>
+                                    No ledger transactions recorded yet.
                                 </td>
                             </tr>
                             @endforelse

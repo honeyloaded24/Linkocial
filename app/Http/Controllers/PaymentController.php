@@ -177,11 +177,21 @@ class PaymentController extends Controller
                 $data = $result['data'];
                 $amount = $data['amount'];
                 $currency = $data['currency'] ?? 'NGN';
-                $customerEmail = $data['customer']['email'];
-                $user = User::where('email', $customerEmail)->first();
+                $customerEmail = $data['customer']['email'] ?? null;
+
+                // Priority 1: Match by reference in Payment record
+                $payment = \App\Models\Payment::where('reference', $reference)->first();
+                $user = $payment ? User::find($payment->user_id) : null;
+
+                // Priority 2: Fallback to customer email lookup
+                if (!$user && $customerEmail) {
+                    $user = User::where('email', $customerEmail)->first();
+                }
 
                 if ($user) {
                     $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
+                } else {
+                    Log::error("Korapay Verification: Could not find user for ref {$reference} or email {$customerEmail}");
                 }
             }
         } catch (\Exception $e) {
@@ -208,12 +218,12 @@ class PaymentController extends Controller
 
         $event = json_decode($payload, true);
 
-        if ($event['event'] === 'charge.success' && $event['data']['status'] === 'success') {
+        if (($event['event'] ?? '') === 'charge.success' && ($event['data']['status'] ?? '') === 'success') {
             $data = $event['data'];
             $reference = $data['reference'];
             $amount = $data['amount'];
             $currency = $data['currency'] ?? 'NGN';
-            $customerEmail = $data['customer']['email'];
+            $customerEmail = $data['customer']['email'] ?? null;
 
             if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
                 return response()->json(['status' => 'already processed']);
@@ -221,10 +231,22 @@ class PaymentController extends Controller
 
             DB::beginTransaction();
             try {
-                $user = User::where('email', $customerEmail)->first();
+                // Priority 1: Match by reference in Payment record
+                $payment = \App\Models\Payment::where('reference', $reference)->first();
+                $user = $payment ? User::find($payment->user_id) : null;
+
+                // Priority 2: Fallback to customer email lookup
+                if (!$user && $customerEmail) {
+                    $user = User::where('email', $customerEmail)->first();
+                }
+
                 if ($user) {
                     $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
                     DB::commit();
+                } else {
+                    DB::rollBack();
+                    Log::error("Korapay Webhook: Could not find user for ref {$reference} or email {$customerEmail}");
+                    return response()->json(['status' => 'user not found'], 404);
                 }
             } catch (\Exception $e) {
                 DB::rollBack();

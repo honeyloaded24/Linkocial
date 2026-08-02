@@ -356,6 +356,17 @@ class AdminController extends Controller
 
         if ($request->type === 'add') {
             $user->balance += $request->amount;
+
+            // Record as a Payment so it accumulates in total deposits and financial metrics
+            $ref = 'DEP_MANUAL_' . strtoupper(\Illuminate\Support\Str::random(10));
+            \App\Models\Payment::create([
+                'user_id' => $user->id,
+                'amount' => $request->amount,
+                'currency' => $user->currency_code ?? 'USD',
+                'amount_usd' => $request->amount,
+                'reference' => $ref,
+                'status' => 'success',
+            ]);
         } else {
             $user->balance -= $request->amount;
         }
@@ -367,7 +378,8 @@ class AdminController extends Controller
             $request->amount,
             $request->type === 'add' ? 'credit' : 'debit',
             'manual',
-            "Admin adjustment (" . ($request->type === 'add' ? 'Added' : 'Deducted') . ")"
+            "Admin adjustment (" . ($request->type === 'add' ? 'Added' : 'Deducted') . ")",
+            $ref ?? null
         );
 
         \App\Models\ActivityLog::log("Manually updated user balance", $user, [
@@ -691,8 +703,9 @@ class AdminController extends Controller
 
         $deposits = \App\Models\Payment::where('user_id', $id)->latest()->get();
         $orders = Order::where('user_id', $id)->with('service')->latest()->get();
+        $transactions = \App\Models\Transaction::where('user_id', $id)->latest()->get();
 
-        return view('hq.users.transactions', compact('user', 'deposits', 'orders'));
+        return view('hq.users.transactions', compact('user', 'deposits', 'orders', 'transactions'));
     }
 
     /**
