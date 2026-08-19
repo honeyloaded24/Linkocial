@@ -111,7 +111,8 @@ class VirtualNumberController extends Controller
                 $finalServices[] = [
                     'id' => $service['id'],
                     'name' => $service['name'],
-                    'price' => round($service['raw_price'] + $markupFee, 2)
+                    'price' => round($service['raw_price'] + $markupFee, 2),
+                    'formatted_price' => money(round($service['raw_price'] + $markupFee, 2))
                 ];
             }
             

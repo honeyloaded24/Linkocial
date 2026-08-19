@@ -50,7 +50,7 @@
                             </td>
                             <td>
                                 @if($coupon->type === 'fixed')
-                                    <span class="badge bg-primary-custom bg-opacity-10 text-primary-custom">${{ number_format($coupon->value, 2) }}</span>
+                                    <span class="badge bg-primary-custom bg-opacity-10 text-primary-custom">{{ money($coupon->value) }}</span>
                                 @else
                                     <span class="badge bg-info bg-opacity-10 text-info">{{ number_format($coupon->value, 0) }}% Off</span>
                                 @endif
@@ -63,7 +63,7 @@
                             </td>
                             <td>
                                 @if($coupon->min_spend > 0)
-                                    <span class="small fw-bold">${{ number_format($coupon->min_spend, 2) }}</span>
+                                    <span class="small fw-bold">{{ money($coupon->min_spend) }}</span>
                                 @else
                                     <span class="small text-muted fst-italic">None</span>
                                 @endif

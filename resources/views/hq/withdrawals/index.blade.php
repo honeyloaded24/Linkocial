@@ -34,9 +34,9 @@
                     <tr>
                         <td class="px-3">
                             <div class="fw-bold" style="font-size: 0.85rem;">{{ $w->user->username }}</div>
-                            <small class="text-muted" style="font-size: 0.75rem;">Bal: ₦{{ number_format($w->user->commission_balance, 2) }}</small>
+                            <small class="text-muted" style="font-size: 0.75rem;">Bal: {{ money($w->user->commission_balance) }}</small>
                         </td>
-                        <td class="fw-bold text-success">₦ {{ number_format($w->amount, 2) }}</td>
+                        <td class="fw-bold text-success">{{ money($w->amount) }}</td>
                         <td>
                             <span class="badge bg-{{ $w->status === 'approved' ? 'success' : ($w->status === 'declined' ? 'danger' : 'warning') }} bg-opacity-10 text-{{ $w->status === 'approved' ? 'success' : ($w->status === 'declined' ? 'danger' : 'warning') }} px-2 py-1 rounded-pill text-uppercase" style="font-size: 0.7rem;">
                                 {{ $w->status }}
@@ -63,7 +63,7 @@
                                         <div class="modal-body">
                                             <div class="alert alert-info border-0 small mb-4">
                                                 <strong>User Details:</strong> {{ $w->user->username }} ({{ $w->user->email }})<br>
-                                                <strong>Amount:</strong> ₦ {{ number_format($w->amount, 2) }}<br>
+                                                <strong>Amount:</strong> {{ money($w->amount) }}<br>
                                                 <hr>
                                                 <strong>Payment Instructions:</strong><br>
                                                 {{ $w->bank_details }}

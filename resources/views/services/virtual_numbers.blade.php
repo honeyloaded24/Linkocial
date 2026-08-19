@@ -192,6 +192,7 @@
             </div>
             
             <div class="input-group mb-3">
+                <span class="input-group-text fw-bold text-primary-custom bg-light service-name-inline" style="font-size: 0.85rem;"></span>
                 <input type="text" class="form-control fw-bold fs-5 text-center phone-number" value="" readonly style="letter-spacing: 2px;">
                 <button class="btn btn-primary-custom copy-btn" type="button"><i class="fa-solid fa-copy"></i></button>
             </div>
@@ -291,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(services => {
                         services.sort((a, b) => a.name.localeCompare(b.name));
                         services.forEach(s => {
-                            serviceTs.addOption({value: s.id, text: `${s.name} — $${s.price.toFixed(2)}`, price: s.price});
+                            serviceTs.addOption({value: s.id, text: `${s.name} — ${s.formatted_price}`, formatted_price: s.formatted_price});
                         });
                         serviceTs.settings.placeholder = 'Select Service';
                         serviceTs.enable();
@@ -310,10 +311,8 @@ document.addEventListener('DOMContentLoaded', function() {
         serviceTs.on('change', function(val) {
             if (val) {
                 const option = serviceTs.options[val];
-                if (option && option.price) {
-                    const price = parseFloat(option.price);
-                    currentOriginalPrice = price;
-                    costDisplay.textContent = `$${price.toFixed(2)}`;
+                if (option && option.formatted_price) {
+                    costDisplay.textContent = option.formatted_price;
                     priceBox.classList.remove('d-none');
                 }
             } else {
@@ -386,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         card.setAttribute('data-id', order.id);
         card.querySelector('.service-name').textContent = order.product;
+        card.querySelector('.service-name-inline').textContent = order.product;
         card.querySelector('.country-name').textContent = order.country;
         card.querySelector('.phone-number').value = order.phone_number;
         

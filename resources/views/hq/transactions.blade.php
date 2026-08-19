@@ -80,11 +80,11 @@
                             </span>
                         </td>
                         <td class="fw-bold text-{{ $tx->type === 'credit' ? 'success' : 'danger' }}">
-                            {{ $tx->type === 'credit' ? '+' : '-' }} ₦ {{ number_format($tx->amount, 2) }}
+                            {{ $tx->type === 'credit' ? '+' : '-' }} {{ money($tx->amount) }}
                         </td>
                         <td class="small">
-                            <div class="text-muted" style="font-size: 0.7rem;">Before: ₦ {{ number_format($tx->balance_before, 2) }}</div>
-                            <div class="fw-bold">After: ₦ {{ number_format($tx->balance_after, 2) }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Before: {{ money($tx->balance_before) }}</div>
+                            <div class="fw-bold">After: {{ money($tx->balance_after) }}</div>
                         </td>
                     </tr>
                     @empty

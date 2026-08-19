@@ -617,7 +617,9 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         // Stats
-        $totalSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
+        $smmSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
+        $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $id)->whereIn('status', ['received', 'finished'])->sum('cost');
+        $totalSpent = $smmSpent + $vnSpent;
         $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount_usd');
         $totalOrders = Order::where('user_id', $id)->count();
         $totalTransactions = $totalOrders + \App\Models\Payment::where('user_id', $id)->count();

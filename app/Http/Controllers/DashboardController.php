@@ -16,10 +16,16 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // 1. Calculate stats
-        $totalSpent = Order::where('user_id', $user->id)
+        $smmSpent = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'partial'])
             ->where('is_refunded', false)
             ->sum('charge');
+
+        $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            ->whereIn('status', ['received', 'finished'])
+            ->sum('cost');
+
+        $totalSpent = $smmSpent + $vnSpent;
 
         $totalDeposits = \App\Models\Payment::where('user_id', $user->id)
             ->where('status', 'success')
@@ -41,17 +47,31 @@ class DashboardController extends Controller
             ->get();
 
         // 3. Calculate growth (simplified for demo)
-        $thisWeekSpent = Order::where('user_id', $user->id)
+        $thisWeekSmmSpent = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'partial'])
             ->where('is_refunded', false)
             ->where('created_at', '>=', now()->startOfWeek())
             ->sum('charge');
+
+        $thisWeekVnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            ->whereIn('status', ['received', 'finished'])
+            ->where('created_at', '>=', now()->startOfWeek())
+            ->sum('cost');
+
+        $thisWeekSpent = $thisWeekSmmSpent + $thisWeekVnSpent;
         
-        $lastWeekSpent = Order::where('user_id', $user->id)
+        $lastWeekSmmSpent = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'partial'])
             ->where('is_refunded', false)
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->sum('charge');
+
+        $lastWeekVnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            ->whereIn('status', ['received', 'finished'])
+            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
+            ->sum('cost');
+
+        $lastWeekSpent = $lastWeekSmmSpent + $lastWeekVnSpent;
 
         $growth = 0;
         if ($lastWeekSpent > 0) {

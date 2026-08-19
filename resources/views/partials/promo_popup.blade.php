@@ -32,7 +32,7 @@
                     </p>
                     
                     <div class="p-3 rounded-4 mb-3 border-0 shadow-sm" style="background: linear-gradient(135deg, var(--primary-color), #8b5cf6);">
-                        <p class="text-white text-opacity-75 small mb-1 fw-medium">Add ₦{{ number_format(\App\Models\Setting::get('promo_min_amount', 1000)) }}+ and get an extra</p>
+                        <p class="text-white text-opacity-75 small mb-1 fw-medium">Add {{ money(\App\Models\Setting::get('promo_min_amount', 1000), true, 'USD') }}+ and get an extra</p>
                         <h4 class="fw-bold text-white mb-0"><i class="fa-solid fa-gift me-2 text-white-50"></i>+{{ \App\Models\Setting::get('promo_bonus_percent', 10) }}% Bonus</h4>
                     </div>
                     

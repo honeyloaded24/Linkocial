@@ -69,7 +69,7 @@
                                     <span class="text-muted small">{{ ucfirst($order->status) }}</span>
                                 @endif
                             </td>
-                            <td class="fw-bold">${{ number_format($order->cost, 2) }}</td>
+                            <td class="fw-bold">{{ money($order->cost) }}</td>
                             <td class="pe-4">
                                 @php
                                     $statusClasses = [

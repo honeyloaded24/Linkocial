@@ -132,10 +132,10 @@
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-4">
                             <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Provider Cost</label>
-                            <p class="fw-bold mb-0 text-dark">$ {{ number_format((float)$order->provider_cost, 2) }}</p>
+                            <p class="fw-bold mb-0 text-dark">{{ money((float)$order->provider_cost) }}</p>
                             <small class="text-muted" style="font-size: 0.65rem;">
                                 for {{ number_format($order->quantity) }} units 
-                                <span class="d-block mt-1">(${{ number_format(((float)$order->provider_cost / $order->quantity) * 1000, 2) }}/1k rate)</span>
+                                <span class="d-block mt-1">({{ money(((float)$order->provider_cost / $order->quantity) * 1000) }}/1k rate)</span>
                             </small>
                         </div>
                     </div>

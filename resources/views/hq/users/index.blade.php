@@ -57,7 +57,7 @@
                             <td>{{ $user->email }}</td>
                             <td>
                                 <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">
-                                    $ {{ number_format((float)$user->balance, 2) }}
+                                    {{ money((float)$user->balance) }}
                                 </span>
                             </td>
                             <td>{{ $user->created_at->format('M d, Y') }}</td>
@@ -100,7 +100,7 @@
                 <div class="modal-body p-4">
                     <div class="mb-4 text-center">
                         <small class="text-muted uppercase fw-bold d-block mb-1">CURRENT BALANCE</small>
-                        <h3 class="fw-bold text-success">$ {{ number_format((float)$user->balance, 2) }}</h3>
+                        <h3 class="fw-bold text-success">{{ money((float)$user->balance) }}</h3>
                     </div>
 
                     <div class="mb-3">

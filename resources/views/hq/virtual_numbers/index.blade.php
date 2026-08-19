@@ -47,8 +47,8 @@
                 <i class="fa-solid fa-chart-line fs-4"></i>
             </div>
             <div>
-                <p class="text-muted small mb-0 fw-bold text-uppercase">Total Profit (USD)</p>
-                <h4 class="mb-0 fw-bold">${{ number_format($vnStats['total_revenue'] - $vnStats['total_cost'], 2) }}</h4>
+                <p class="text-muted small mb-0 fw-bold text-uppercase">Total Profit</p>
+                <h4 class="mb-0 fw-bold">{{ money($vnStats['total_revenue'] - $vnStats['total_cost']) }}</h4>
             </div>
         </div>
     </div>
@@ -109,11 +109,11 @@
                         @endif
                     </td>
                     <td>
-                        <div class="fw-bold">${{ number_format($order->cost, 2) }}</div>
+                        <div class="fw-bold">{{ money($order->cost) }}</div>
                         @if($order->coupon_code)
-                            <div class="small text-success fw-bold"><i class="fa-solid fa-tag"></i> {{ $order->coupon_code }} (-${{ number_format($order->discount, 2) }})</div>
+                            <div class="small text-success fw-bold"><i class="fa-solid fa-tag"></i> {{ $order->coupon_code }} (-{{ money($order->discount) }})</div>
                         @endif
-                        <div class="small text-muted">Cost: ${{ number_format($order->provider_cost, 2) }}</div>
+                        <div class="small text-muted">Cost: {{ money($order->provider_cost) }}</div>
                     </td>
                     <td>
                         @php

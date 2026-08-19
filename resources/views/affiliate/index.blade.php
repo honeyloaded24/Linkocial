@@ -120,11 +120,11 @@
                         </td>
                         <td>
                             <div class="fw-bold {{ $tx->type === 'credit' ? 'text-success' : 'text-danger' }}">
-                                {{ $tx->type === 'credit' ? '+' : '-' }} ₦{{ number_format($tx->amount, 2) }}
+                                {{ $tx->type === 'credit' ? '+' : '-' }} {{ money($tx->amount) }}
                             </div>
                         </td>
                         <td>
-                            <div class="text-muted small">₦{{ number_format($tx->balance_after, 2) }}</div>
+                            <div class="text-muted small">{{ money($tx->balance_after) }}</div>
                         </td>
                         <td class="pe-4 text-end text-muted small">
                             {{ $tx->created_at->format('M d, Y') }}<br>
@@ -158,8 +158,8 @@
             </div>
             <div class="modal-body p-4">
                 <div class="alert alert-info border-0 bg-primary bg-opacity-10 small mb-4">
-                    <strong>Current Balance:</strong> ₦{{ number_format($user->commission_balance, 2) }}<br>
-                    <strong>Minimum Payout:</strong> ₦1,000.00
+                    <strong>Current Balance:</strong> {{ money($user->commission_balance) }}<br>
+                    <strong>Minimum Payout:</strong> {{ money(10) }}
                 </div>
 
                 <form action="{{ route('affiliate.withdraw') }}" method="POST">
@@ -167,7 +167,7 @@
                     <div class="mb-4">
                         <label class="form-label text-muted small fw-bold text-uppercase">Amount to Withdraw</label>
                         <div class="input-group">
-                            <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
+                            <span class="input-group-text border-secondary bg-transparent text-muted">{{ get_currency_symbol() }}</span>
                             <input type="number" name="amount" class="form-control" placeholder="1000" min="1000" max="{{ $user->commission_balance }}" step="0.01" required>
                         </div>
                     </div>

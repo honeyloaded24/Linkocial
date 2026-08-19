@@ -413,7 +413,7 @@
                             <div class="d-flex justify-content-between align-items-center mt-auto">
                                 <div>
                                     <span class="text-muted small d-block">Starting from</span>
-                                    <span class="price-badge">${{ number_format($service->selling_price, 2) }}</span>
+                                    <span class="price-badge">{{ money($service->selling_price) }}</span>
                                     <span class="text-muted small">/ 1k</span>
                                 </div>
                                 <a href="{{ auth()->check() ? route('orders.create', ['platform' => $name]) : route('register') }}" class="btn btn-premium btn-sm">

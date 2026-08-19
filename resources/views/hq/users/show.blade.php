@@ -28,7 +28,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block fw-bold" style="font-size: 0.8rem;">Balance</small>
-                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">$ {{ number_format((float)$user->balance, 2) }}</h5>
+                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">{{ money((float)$user->balance) }}</h5>
                     </div>
                     <i class="fa-solid fa-chevron-right ms-auto text-muted small" style="font-size: 0.6rem;"></i>
                 </div>
@@ -42,7 +42,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block fw-bold" style="font-size: 0.8rem;">Deposits</small>
-                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">$ {{ number_format($totalDeposits, 2) }}</h5>
+                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">{{ money($totalDeposits) }}</h5>
                     </div>
                     <i class="fa-solid fa-chevron-right ms-auto text-muted small" style="font-size: 0.6rem;"></i>
                 </div>
@@ -56,7 +56,7 @@
                     </div>
                     <div>
                         <small class="text-muted d-block fw-bold" style="font-size: 0.8rem;">Total Spent</small>
-                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">$ {{ number_format($totalSpent, 2) }}</h5>
+                        <h5 class="fw-bold mb-0" style="font-size: 1.1rem;">{{ money($totalSpent) }}</h5>
                     </div>
                     <i class="fa-solid fa-chevron-right ms-auto text-muted small" style="font-size: 0.6rem;"></i>
                 </div>

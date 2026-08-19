@@ -49,7 +49,7 @@
                             @forelse($deposits as $payment)
                             <tr>
                                 <td class="px-4 py-3 small">{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                <td class="py-3 fw-bold text-success">₦ {{ number_format($payment->amount, 2) }}</td>
+                                <td class="py-3 fw-bold text-success">{{ money($payment->amount) }}</td>
                                 <td class="py-3 small text-muted text-uppercase">{{ str_replace('_', ' ', $payment->payment_method ?? 'gateway') }}</td>
                                 <td class="px-4 py-3 text-end">
                                     <div class="text-muted small mb-1" style="font-size: 0.7rem;">{{ $payment->reference }}</div>
@@ -95,9 +95,9 @@
                                     </span>
                                 </td>
                                 <td class="py-3 fw-bold text-{{ $tx->type === 'credit' ? 'success' : 'danger' }}">
-                                    {{ $tx->type === 'credit' ? '+' : '-' }}$ {{ number_format($tx->amount, 2) }}
+                                    {{ $tx->type === 'credit' ? '+' : '-' }} {{ money($tx->amount) }}
                                 </td>
-                                <td class="py-3 small fw-bold">$ {{ number_format($tx->balance_after, 2) }}</td>
+                                <td class="py-3 small fw-bold">{{ money($tx->balance_after) }}</td>
                                 <td class="px-4 py-3 small text-muted">{{ $tx->description }}</td>
                             </tr>
                             @empty
@@ -137,7 +137,7 @@
                                     <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill" style="font-size: 0.6rem;">{{ strtoupper($order->status) }}</span>
                                 </td>
                                 <td class="py-3 small">{{ number_format($order->quantity) }}</td>
-                                <td class="px-4 py-3 text-end fw-bold">₦ {{ number_format($order->charge, 2) }}</td>
+                                <td class="px-4 py-3 text-end fw-bold">{{ money($order->charge) }}</td>
                             </tr>
                             @empty
                             <tr>
