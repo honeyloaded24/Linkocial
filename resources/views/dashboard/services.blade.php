@@ -15,7 +15,7 @@
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
             <!-- Airtime -->
             <div class="col">
-                <a href="#" class="text-decoration-none">
+                <a href="{{ route('vtu.airtime') }}" class="text-decoration-none">
                     <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
                         <div class="card-body p-4 d-flex align-items-start gap-3">
                             <div class="rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
@@ -32,7 +32,7 @@
             </div>
             <!-- Mobile Data -->
             <div class="col">
-                <a href="#" class="text-decoration-none">
+                <a href="{{ route('vtu.data') }}" class="text-decoration-none">
                     <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
                         <div class="card-body p-4 d-flex align-items-start gap-3">
                             <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
@@ -66,7 +66,7 @@
             </div>
             <!-- Electricity -->
             <div class="col">
-                <a href="#" class="text-decoration-none">
+                <a href="{{ route('vtu.electricity') }}" class="text-decoration-none">
                     <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
                         <div class="card-body p-4 d-flex align-items-start gap-3">
                             <div class="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
@@ -125,16 +125,39 @@
                     </div>
                 </a>
             </div>
+            <!-- Logs & Accounts Marketplace -->
+            <div class="col">
+                <a href="{{ route('logs.index') }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
+                        <div class="card-body p-4 d-flex align-items-start gap-3">
+                            <div class="rounded-3" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fa-solid fa-box-open fs-5"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0">Logs & Accounts</h6>
+                                    <span class="badge bg-danger" style="font-size: 0.65rem;">HOT</span>
+                                </div>
+                                <p class="text-muted small mb-0 lh-sm">Buy verified accounts, software licenses & digital logs.</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-muted small mt-1"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
             <!-- Promote Brand -->
             <div class="col">
-                <a href="#" class="text-decoration-none">
+                <a href="{{ route('services.promote-brand') }}" class="text-decoration-none">
                     <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
                         <div class="card-body p-4 d-flex align-items-start gap-3">
                             <div class="rounded-3 bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
                                 <i class="fa-solid fa-bullseye fs-5"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-1">Promote Brand</h6>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0">Promote Brand</h6>
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary" style="font-size: 0.65rem;">Soon</span>
+                                </div>
                                 <p class="text-muted small mb-0 lh-sm">Promote your brand with a dashboard banner.</p>
                             </div>
                             <i class="fa-solid fa-chevron-right text-muted small mt-1"></i>
@@ -144,14 +167,17 @@
             </div>
             <!-- Residential Proxy -->
             <div class="col">
-                <a href="#" class="text-decoration-none">
+                <a href="{{ route('services.residential-proxy') }}" class="text-decoration-none">
                     <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
                         <div class="card-body p-4 d-flex align-items-start gap-3">
                             <div class="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px;">
                                 <i class="fa-solid fa-shield-halved fs-5"></i>
                             </div>
                             <div class="flex-grow-1">
-                                <h6 class="fw-bold mb-1">Residential Proxy</h6>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0">Residential Proxy</h6>
+                                    <span class="badge bg-secondary bg-opacity-25 text-secondary" style="font-size: 0.65rem;">Soon</span>
+                                </div>
                                 <p class="text-muted small mb-0 lh-sm">Purchase secure residential proxy packages.</p>
                             </div>
                             <i class="fa-solid fa-chevron-right text-muted small mt-1"></i>

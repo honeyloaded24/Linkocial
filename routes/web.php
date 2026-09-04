@@ -174,6 +174,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return view('services.coming_soon', ['title' => 'Buy eSim', 'icon' => 'fa-sim-card']);
     })->name('services.buy-esim');
 
+    Route::get('/promote-brand', function() {
+        return view('services.coming_soon', ['title' => 'Promote Brand & Ads', 'icon' => 'fa-bullseye']);
+    })->name('services.promote-brand');
+
+    Route::get('/residential-proxy', function() {
+        return view('services.coming_soon', ['title' => 'Residential Proxies', 'icon' => 'fa-shield-halved']);
+    })->name('services.residential-proxy');
+
 
 
 

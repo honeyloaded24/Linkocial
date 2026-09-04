@@ -23,6 +23,9 @@
                 <a href="{{ route('dashboard') }}" class="btn btn-lg bg-light bg-opacity-10 text-main rounded-4 fw-bold px-4 border-0 shadow-sm">
                     <i class="fa-solid fa-arrow-left me-2"></i> Back to Dashboard
                 </a>
+                <a href="{{ route('tickets.create') }}" class="btn btn-lg btn-primary rounded-4 fw-bold px-4 border-0 shadow-sm">
+                    <i class="fa-solid fa-headset me-2"></i> Inquire / Contact Support
+                </a>
             </div>
 
         </div>
