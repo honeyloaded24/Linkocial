@@ -89,10 +89,10 @@
                                 <i class="fa-solid fa-file-invoice text-warning me-1"></i>
                                 {{ $order->product_name ?? ($order->product->name ?? 'Account Log') }}
                             </div>
-                            <small class="text-muted">Quantity: <strong>{{ $order->quantity }}</strong> &times; {{ money((float)$order->unit_cost, true, 'USD') }}</small>
+                            <small class="text-muted">Quantity: <strong>{{ $order->quantity }}</strong> &times; {{ money((float)$order->unit_cost, true, 'NGN') }}</small>
                         </td>
                         <td class="fw-bold text-dark">
-                            {{ money((float)$order->total_cost, true, 'USD') }}
+                            {{ money((float)$order->total_cost, true, 'NGN') }}
                         </td>
                         <td>
                             @php

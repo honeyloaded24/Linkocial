@@ -77,7 +77,7 @@
                         <th>Product Name</th>
                         <th>Category</th>
                         <th>Cost (API)</th>
-                        <th>Our Price</th>
+                        <th>Our Price (₦)</th>
                         <th>Stock</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -110,8 +110,11 @@
                         <td>
                             <form action="{{ route('hq.logs.price', $product->id) }}" method="POST" class="d-flex align-items-center">
                                 @csrf
-                                <input type="number" step="0.01" name="our_price" value="{{ $product->our_price }}" class="form-control form-control-sm me-2" style="width: 100px;">
-                                <button type="submit" class="btn btn-sm btn-success"><i class="fa-solid fa-save"></i></button>
+                                <div class="input-group input-group-sm me-2" style="width: 135px;">
+                                    <span class="input-group-text fw-bold">₦</span>
+                                    <input type="number" step="0.01" name="our_price" value="{{ $product->our_price }}" class="form-control form-control-sm" placeholder="0.00" min="0">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-success" title="Save Price"><i class="fa-solid fa-save"></i></button>
                             </form>
                         </td>
                         <td class="fw-bold">
@@ -223,8 +226,12 @@
                     <textarea class="form-control" name="description" rows="3"></textarea>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Our Price (₦)</label>
-                    <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="0">
+                    <label class="form-label fw-bold small">Our Price (₦)</label>
+                    <div class="input-group">
+                        <span class="input-group-text fw-bold">₦</span>
+                        <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="0" placeholder="0.00">
+                    </div>
+                    <div class="form-text small">Price in Nigerian Naira (₦).</div>
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
@@ -266,7 +273,11 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Our Price (₦)</label>
-                        <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="{{ $product->our_price }}">
+                        <div class="input-group">
+                            <span class="input-group-text fw-bold">₦</span>
+                            <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="{{ $product->our_price }}" placeholder="0.00">
+                        </div>
+                        <div class="form-text small">Price in Nigerian Naira (₦).</div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">

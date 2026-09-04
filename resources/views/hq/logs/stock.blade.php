@@ -7,7 +7,15 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0">Manage Stock: {{ $product->name }}</h4>
-            <p class="text-muted mb-0">Total Available Stock: <strong class="text-success">{{ $product->in_stock }}</strong> accounts</p>
+            <div class="d-flex align-items-center gap-3 mt-1 flex-wrap">
+                <span class="text-muted small">Total Available Stock: <strong class="text-success">{{ $product->in_stock }}</strong> accounts</span>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-1 rounded-pill fw-bold">
+                    Price: {{ money($product->our_price, true, 'NGN') }}
+                </span>
+                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#editStockPriceModal">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Edit Price
+                </button>
+            </div>
         </div>
         <a href="{{ route('hq.logs.index') }}" class="btn btn-outline-secondary rounded-pill px-3">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to Products
@@ -235,6 +243,35 @@
     </div>
 </div>
 @endforeach
+
+<!-- Edit Product Price Modal -->
+<div class="modal fade" id="editStockPriceModal" tabindex="-1" aria-labelledby="editStockPriceLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.price', $product->id) }}" method="POST">
+            @csrf
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="editStockPriceLabel">Update Selling Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Our Price (₦) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text fw-bold">₦</span>
+                        <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="{{ $product->our_price }}" placeholder="0.00">
+                    </div>
+                    <div class="form-text small">Price in Nigerian Naira (₦) for <strong>{{ $product->name }}</strong>.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary-custom px-4 fw-bold">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Price
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
