@@ -238,7 +238,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Logs Marketplace Admin
         Route::get('/logs', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'index'])->name('hq.logs.index');
-        Route::post('/logs/sync', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'sync'])->name('hq.logs.sync');
+        Route::match(['get', 'post'], '/logs/sync', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'sync'])->name('hq.logs.sync');
         Route::post('/logs/{id}/price', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updatePrice'])->name('hq.logs.price');
         Route::post('/logs/{id}/toggle', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'toggleStatus'])->name('hq.logs.toggle');
         Route::get('/logs/orders', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'orders'])->name('hq.logs.orders');

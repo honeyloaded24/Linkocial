@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use App\Models\Setting;
+
+class FaddedApi
+{
+    protected $baseUrl;
+    protected $apiKey;
+
+    public function __construct()
+    {
+        $this->baseUrl = config('services.fadded.url', 'https://fadded.net/api');
+        $this->apiKey = Setting::get('fadded_api_key', config('services.fadded.key'));
+    }
+
+    /**
+     * Check whether API credentials are set
+     */
+    public function isConfigured(): bool
+    {
+        return !empty($this->apiKey);
+    }
+
+    /**
+     * Fetch products list from Fadded
+     */
+    public function getProducts(): array
+    {
+        if (!$this->isConfigured()) {
+            return [
+                'success' => false,
+                'message' => 'Fadded API key is not configured in Settings.'
+            ];
+        }
+
+        try {
+            $response = Http::timeout(15)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Accept' => 'application/json',
+                ])
+                ->get($this->baseUrl . '/products');
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return [
+                    'success' => true,
+                    'data' => $data['data'] ?? $data ?? []
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => 'Fadded API returned status ' . $response->status() . ': ' . ($response->json('message') ?? 'Unknown error')
+            ];
+        } catch (\Exception $e) {
+            Log::error('Fadded getProducts error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Unable to connect to Fadded: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Place order for a digital log item
+     */
+    public function order(string $productKey, int $quantity, string $orderId): array
+    {
+        if (!$this->isConfigured()) {
+            return [
+                'success' => false,
+                'message' => 'Fadded API key is not configured in Settings.'
+            ];
+        }
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ])
+                ->post($this->baseUrl . '/order', [
+                    'product_key' => $productKey,
+                    'quantity' => $quantity,
+                    'custom_id' => $orderId
+                ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [
+                'success' => false,
+                'message' => $response->json('message') ?? ('Provider error ' . $response->status())
+            ];
+        } catch (\Exception $e) {
+            Log::error('Fadded order error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Connection to Fadded failed: ' . $e->getMessage()
+            ];
+        }
+    }
+}

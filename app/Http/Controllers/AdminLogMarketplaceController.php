@@ -42,10 +42,27 @@ class AdminLogMarketplaceController extends Controller
         return view('hq.logs.index', compact('products', 'categories', 'counts'));
     }
 
-    public function sync()
+    public function sync(Request $request)
     {
-        Artisan::call('fadded:sync');
-        return back()->with('success', 'Sync completed: ' . Artisan::output());
+        $apiKey = \App\Models\Setting::get('fadded_api_key');
+
+        if (empty($apiKey)) {
+            return redirect()->route('hq.logs.index')->with('error', 'Fadded API key is not configured. Please set your API key in Settings first.');
+        }
+
+        try {
+            $exitCode = Artisan::call('fadded:sync');
+            $output = trim(Artisan::output());
+
+            if ($exitCode !== 0) {
+                return redirect()->route('hq.logs.index')->with('error', $output ?: 'Failed to sync products from Fadded provider.');
+            }
+
+            return redirect()->route('hq.logs.index')->with('success', $output ?: 'API Products synchronized successfully.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Fadded sync error: ' . $e->getMessage());
+            return redirect()->route('hq.logs.index')->with('error', 'Sync encountered an error: ' . $e->getMessage());
+        }
     }
 
     public function updatePrice(Request $request, $id)
