@@ -152,37 +152,53 @@ class AdminLogMarketplaceController extends Controller
 
     public function updateProduct(Request $request, $id)
     {
-        $request->validate([
-            'log_category_id' => 'required|exists:log_categories,id',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'our_price' => 'required|numeric|min:0'
-        ]);
+        try {
+            $request->validate([
+                'log_category_id' => 'required|exists:log_categories,id',
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'our_price' => 'required|numeric|min:0'
+            ]);
 
-        $product = LogProduct::where('type', 'local')->findOrFail($id);
-        $product->update([
-            'log_category_id' => $request->log_category_id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'unit_price' => $request->our_price,
-            'our_price' => $request->our_price,
-        ]);
+            $product = LogProduct::findOrFail($id);
+            $product->update([
+                'log_category_id' => $request->log_category_id,
+                'name' => $request->name,
+                'description' => $request->description,
+                'unit_price' => $request->our_price,
+                'our_price' => $request->our_price,
+            ]);
 
-        return back()->with('success', 'Local product updated successfully.');
+            return back()->with('success', 'Product updated successfully.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withErrors($e->validator)->withInput()->with('error', 'Validation error: ' . implode(', ', $e->validator->errors()->all()));
+        } catch (\Exception $e) {
+            Log::error("Update Log Product Error: " . $e->getMessage());
+            return back()->with('error', 'Could not update product: ' . $e->getMessage());
+        }
     }
 
     public function deleteProduct($id)
     {
-        $prod = LogProduct::findOrFail($id);
-        foreach ($prod->items as $item) {
-            if ($item->file_path) {
-                $cleanPath = str_replace('/storage/', '', $item->file_path);
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+        try {
+            $prod = LogProduct::findOrFail($id);
+
+            // Nullify order references so foreign key constraints don't block deletion
+            \App\Models\LogOrder::where('log_product_id', $prod->id)->update(['log_product_id' => null]);
+
+            foreach ($prod->items as $item) {
+                if ($item->file_path) {
+                    $cleanPath = str_replace('/storage/', '', $item->file_path);
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+                }
+                $item->delete();
             }
-            $item->delete();
+            $prod->delete();
+            return back()->with('success', 'Product and its inventory deleted successfully.');
+        } catch (\Exception $e) {
+            Log::error("Delete Log Product Error: " . $e->getMessage());
+            return back()->with('error', 'Could not delete product: ' . $e->getMessage());
         }
-        $prod->delete();
-        return back()->with('success', 'Product and its inventory deleted.');
     }
 
     public function stock($id)

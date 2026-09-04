@@ -129,65 +129,25 @@
                         </td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end gap-1">
-                                <form action="{{ route('hq.logs.toggle', $product->id) }}" method="POST">
+                                <form action="{{ route('hq.logs.toggle', $product->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @if($product->is_active)
-                                        <button class="btn btn-sm btn-outline-danger">Disable</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Disable Product">Disable</button>
                                     @else
-                                        <button class="btn btn-sm btn-outline-success">Enable</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Enable Product">Enable</button>
                                     @endif
                                 </form>
-                                @if($product->type === 'local')
+                                @if($product->type === 'local' || empty($product->type) || empty($product->api_product_key))
                                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProductModal{{ $product->id }}" title="Edit Product">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
-
-                                    <!-- Edit Local Product Modal -->
-                                    <div class="modal fade" id="editProductModal{{ $product->id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.product.update', $product->id) }}" method="POST">
-                                                @csrf
-                                                @method('PUT')
-                                                <div class="modal-header border-0 pb-0">
-                                                    <h5 class="modal-title fw-bold">Edit Local Product</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body py-3">
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold small">Category</label>
-                                                        <select class="form-select" name="log_category_id" required>
-                                                            @foreach($categories as $cat)
-                                                                <option value="{{ $cat->id }}" {{ $product->log_category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                                            @endforeach
-                                                        </select>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold small">Product Name</label>
-                                                        <input type="text" class="form-control" name="name" required value="{{ $product->name }}">
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold small">Description (Optional)</label>
-                                                        <textarea class="form-control" name="description" rows="3">{{ $product->description }}</textarea>
-                                                    </div>
-                                                    <div class="mb-3">
-                                                        <label class="form-label fw-bold small">Our Price (₦)</label>
-                                                        <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="{{ $product->our_price }}">
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer border-0 pt-0">
-                                                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-primary-custom px-4">Update Product</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-
-                                    <form action="{{ route('hq.logs.product.delete', $product->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this local product? All stock will be deleted too.')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-sm btn-danger" title="Delete Product"><i class="fa-solid fa-trash"></i></button>
-                                    </form>
                                 @endif
+
+                                <form action="{{ route('hq.logs.product.delete', $product->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this product? All its inventory will be deleted too.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Product"><i class="fa-solid fa-trash"></i></button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -274,4 +234,49 @@
         </form>
     </div>
 </div>
+
+<!-- Edit Product Modals (Rendered outside of table for proper Bootstrap 5 backdrop, stacking & form submission) -->
+@foreach($products as $product)
+    @if($product->type === 'local' || empty($product->type) || empty($product->api_product_key))
+    <div class="modal fade" id="editProductModal{{ $product->id }}" tabindex="-1" aria-labelledby="editProductLabel{{ $product->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.product.update', $product->id) }}" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="editProductLabel{{ $product->id }}">Edit Product #{{ $product->id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-3">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Category</label>
+                        <select class="form-select" name="log_category_id" required>
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->id }}" {{ $product->log_category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Product Name</label>
+                        <input type="text" class="form-control" name="name" required value="{{ $product->name }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Description (Optional)</label>
+                        <textarea class="form-control" name="description" rows="3">{{ $product->description }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small">Our Price (₦)</label>
+                        <input type="number" step="0.01" class="form-control" name="our_price" required min="0" value="{{ $product->our_price }}">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-custom px-4">Update Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+@endforeach
+
 @endsection
