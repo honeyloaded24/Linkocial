@@ -18,7 +18,7 @@
     <div>
         <p class="text-muted small mb-0">Order phone numbers and receive verification codes dynamically.</p>
     </div>
-    <a href="{{ route('services.virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">
+    <a href="{{ route('virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">
         <i class="fa-solid fa-clock-rotate-left me-1"></i> Order History & Logs
     </a>
 </div>

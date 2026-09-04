@@ -22,10 +22,21 @@ class AdminController extends Controller
         $totalReferrals = User::whereNotNull('referred_by')->count();
         $totalUserBalance = User::sum('balance'); // Unused deposits
 
-        // Order Metrics (Aggregated SMM + Virtual Numbers)
-        $totalOrders = Order::count() + \App\Models\VirtualNumberOrder::count();
-        $pendingOrders = Order::where('status', 'pending')->count() + \App\Models\VirtualNumberOrder::where('status', 'pending')->count();
-        $completedOrders = Order::where('status', 'completed')->count() + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count();
+        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs)
+        $totalOrders = Order::count() 
+            + \App\Models\VirtualNumberOrder::count()
+            + \App\Models\VtuOrder::count()
+            + \App\Models\LogOrder::count();
+
+        $pendingOrders = Order::where('status', 'pending')->count() 
+            + \App\Models\VirtualNumberOrder::where('status', 'pending')->count()
+            + \App\Models\VtuOrder::whereIn('status', ['pending', 'processing'])->count()
+            + \App\Models\LogOrder::where('status', 'pending')->count();
+
+        $completedOrders = Order::where('status', 'completed')->count() 
+            + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count()
+            + \App\Models\VtuOrder::where('status', 'completed')->count()
+            + \App\Models\LogOrder::where('status', 'completed')->count();
 
         // Financial Metrics (All reporting in USD Master)
         $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount_usd');
@@ -43,8 +54,18 @@ class AdminController extends Controller
         $vnSpent = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('cost');
         $vnCost = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('provider_cost');
 
-        $totalSpent = $smmSpent + $vnSpent;
-        $totalCost = $smmCost + $vnCost;
+        // VTU Spent
+        $vtuSpent = \App\Models\VtuOrder::whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
+        $vtuCost = 0; // Local / direct VTU provider
+        
+        // Logs Spent
+        $logSpent = \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])->sum('total_cost');
+        $logCost = \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
+            ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
+            ->sum(\Illuminate\Support\Facades\DB::raw('log_orders.quantity * log_products.base_api_price'));
+
+        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
+        $totalCost = $smmCost + $vnCost + $vtuCost + $logCost;
         $totalProfit = $totalSpent - $totalCost;
 
         // Affiliate Metrics
@@ -64,7 +85,12 @@ class AdminController extends Controller
             $date = now()->subDays($i)->format('Y-m-d');
             $days[] = now()->subDays($i)->format('M d');
 
-            $orderData[] = Order::whereDate('created_at', $date)->count();
+            $orderCount = Order::whereDate('created_at', $date)->count()
+                + \App\Models\VirtualNumberOrder::whereDate('created_at', $date)->count()
+                + \App\Models\VtuOrder::whereDate('created_at', $date)->count()
+                + \App\Models\LogOrder::whereDate('created_at', $date)->count();
+
+            $orderData[] = $orderCount;
             $profitData[] = Order::whereDate('created_at', $date)->sum('profit');
             $userData[] = User::whereDate('created_at', $date)->count();
         }
@@ -75,6 +101,81 @@ class AdminController extends Controller
             'profits' => $profitData,
             'users' => $userData,
         ];
+
+        // --- RECENT PLATFORM ORDERS (Unified across all products & users) ---
+        $recentSmm = Order::with(['user', 'service'])->latest()->take(10)->get()->map(function ($order) {
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#' . $order->id,
+                'type' => 'Social Boost',
+                'type_key' => 'smm',
+                'user' => $order->user,
+                'service_name' => $order->service->name ?? 'Social Boost Service',
+                'detail' => $order->quantity ? number_format($order->quantity) . ' qty' : null,
+                'charge' => (float) $order->charge,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+                'url' => route('hq.orders.show', $order->id),
+            ];
+        });
+
+        $recentVn = \App\Models\VirtualNumberOrder::with('user')->latest()->take(10)->get()->map(function ($order) {
+            $serviceName = ($order->country ? $order->country . ' - ' : '') . ($order->product ?? 'SMS Verification');
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VN-' . $order->id,
+                'type' => 'Virtual Number',
+                'type_key' => 'vn',
+                'user' => $order->user,
+                'service_name' => $serviceName,
+                'detail' => $order->phone_number ?: null,
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+                'url' => route('hq.virtual-numbers'),
+            ];
+        });
+
+        $recentVtu = \App\Models\VtuOrder::with('user')->latest()->take(10)->get()->map(function ($order) {
+            $serviceType = ucfirst($order->service_type ?? 'Utility');
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VTU-' . $order->id,
+                'type' => "VTU {$serviceType}",
+                'type_key' => 'vtu',
+                'user' => $order->user,
+                'service_name' => "VTU {$serviceType}",
+                'detail' => $order->phone_or_meter ?: null,
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+                'url' => route('hq.vtu'),
+            ];
+        });
+
+        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#LOG-' . $order->id,
+                'type' => 'Logs & Accounts',
+                'type_key' => 'logs',
+                'user' => $order->user,
+                'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
+                'detail' => $order->quantity ? $order->quantity . ' item' . ($order->quantity > 1 ? 's' : '') : null,
+                'charge' => (float) $order->total_cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+                'url' => route('hq.logs.orders'),
+            ];
+        });
+
+        $recentOrders = $recentSmm
+            ->concat($recentVn)
+            ->concat($recentVtu)
+            ->concat($recentLogs)
+            ->sortByDesc('created_at')
+            ->values()
+            ->take(10);
 
         return view('hq.dashboard', compact(
             'totalUsers',
@@ -91,7 +192,8 @@ class AdminController extends Controller
             'totalCommissionWithdrawn',
             'pendingCommission',
             'pendingServices',
-            'chartData'
+            'chartData',
+            'recentOrders'
         ));
     }
 
@@ -197,9 +299,21 @@ class AdminController extends Controller
     /**
      * List users and balances
      */
-    public function users()
+    public function users(Request $request)
     {
-        $users = User::latest()->paginate(20);
+        $query = User::latest();
+        
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('email', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%");
+            });
+        }
+        
+        $users = $query->paginate(20)->withQueryString();
         return view('hq.users.index', compact('users'));
     }
 

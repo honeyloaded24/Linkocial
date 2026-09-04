@@ -105,6 +105,7 @@ Route::get('/two-factor/resend', [AuthController::class, 'resendTwoFactor'])->na
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/services', [App\Http\Controllers\DashboardController::class, 'services'])->name('dashboard.services');
     Route::get('/hq/users/leave-impersonation', [AdminController::class, 'leaveImpersonation'])->name('hq.users.leave-impersonation');
 
     // Order Routes
@@ -133,9 +134,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/affiliate/withdraw', [App\Http\Controllers\AffiliateController::class, 'requestWithdrawal'])->name('affiliate.withdraw');
 
     // New Coming Soon Services
-    Route::get('/virtual-numbers', [\App\Http\Controllers\VirtualNumberController::class, 'index'])->name('services.virtual-numbers');
-    Route::get('/virtual-numbers/history', [\App\Http\Controllers\VirtualNumberController::class, 'history'])->name('services.virtual-numbers.history');
+    Route::get('/orders/virtual-numbers', [App\Http\Controllers\VirtualNumberController::class, 'index'])->name('services.virtual-numbers');
+    Route::post('/orders/virtual-numbers/purchase', [App\Http\Controllers\VirtualNumberController::class, 'purchase'])->name('virtual-numbers.purchase');
+    Route::get('/orders/virtual-numbers/history', [App\Http\Controllers\VirtualNumberController::class, 'history'])->name('virtual-numbers.history');
     Route::get('/api/virtual-numbers/countries', [\App\Http\Controllers\VirtualNumberController::class, 'getCountries']);
+
+    // VTU Services (Airtime, Data, Electricity)
+    Route::get('/vtu/airtime', [App\Http\Controllers\VtuController::class, 'airtime'])->name('vtu.airtime');
+    Route::post('/vtu/airtime/purchase', [App\Http\Controllers\VtuController::class, 'purchaseAirtime'])->name('vtu.airtime.purchase');
+    
+    Route::get('/vtu/data', [App\Http\Controllers\VtuController::class, 'data'])->name('vtu.data');
+    Route::post('/vtu/data/purchase', [App\Http\Controllers\VtuController::class, 'purchaseData'])->name('vtu.data.purchase');
+    
+    Route::get('/vtu/electricity', [App\Http\Controllers\VtuController::class, 'electricity'])->name('vtu.electricity');
+    Route::post('/vtu/electricity/validate', [App\Http\Controllers\VtuController::class, 'validateMeter'])->name('vtu.electricity.validate');
+    Route::post('/vtu/electricity/purchase', [App\Http\Controllers\VtuController::class, 'purchaseElectricity'])->name('vtu.electricity.purchase');
+    
+    Route::get('/vtu/cable', [App\Http\Controllers\VtuController::class, 'cable'])->name('vtu.cable');
+    Route::post('/vtu/cable/validate', [App\Http\Controllers\VtuController::class, 'validateIUC'])->name('vtu.cable.validate');
+    Route::post('/vtu/cable/purchase', [App\Http\Controllers\VtuController::class, 'purchaseCable'])->name('vtu.cable.purchase');
+    
+    // Logs Marketplace
+    Route::get('/logs', [\App\Http\Controllers\LogMarketplaceController::class, 'index'])->name('logs.index');
+    Route::get('/logs/product/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'show'])->name('logs.show');
+    Route::post('/logs/purchase', [\App\Http\Controllers\LogMarketplaceController::class, 'purchase'])->name('logs.purchase');
+    Route::get('/logs/order/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'showOrder'])->name('logs.order');
+
     Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
     Route::post('/api/virtual-numbers/coupon/validate', [\App\Http\Controllers\VirtualNumberController::class, 'validateCoupon']);
     Route::post('/api/virtual-numbers/purchase', [\App\Http\Controllers\VirtualNumberController::class, 'purchase']);
@@ -170,8 +194,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services', [AdminController::class, 'services'])->name('hq.services');
         Route::post('/services/bulk-update', [AdminController::class, 'bulkUpdateServices'])->name('hq.services.bulk-update');
         Route::post('/services/sync', [AdminController::class, 'triggerServiceSync'])->name('hq.services.sync');
-        
         Route::get('/users', [AdminController::class, 'users'])->name('hq.users');
+        Route::get('/users-list', [AdminController::class, 'users'])->name('hq.users.index');
         Route::get('/users/{id}', [AdminController::class, 'showUser'])->name('hq.users.show');
         Route::put('/users/{id}', [AdminController::class, 'updateUserDetails'])->name('hq.users.update');
         Route::get('/users/{id}/impersonate', [AdminController::class, 'impersonate'])->name('hq.users.impersonate');
@@ -200,13 +224,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/virtual-numbers', [\App\Http\Controllers\AdminVirtualNumberController::class, 'index'])->name('hq.virtual-numbers');
         Route::post('/virtual-numbers/{id}/refund', [\App\Http\Controllers\AdminVirtualNumberController::class, 'refund'])->name('hq.virtual-numbers.refund');
+
+        Route::get('/vtu', [\App\Http\Controllers\AdminVtuController::class, 'index'])->name('hq.vtu');
+        Route::post('/vtu/{id}/refund', [\App\Http\Controllers\AdminVtuController::class, 'refund'])->name('hq.vtu.refund');
+
+        // Logs Marketplace Admin
+        Route::get('/logs', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'index'])->name('hq.logs.index');
+        Route::post('/logs/sync', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'sync'])->name('hq.logs.sync');
+        Route::post('/logs/{id}/price', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updatePrice'])->name('hq.logs.price');
+        Route::post('/logs/{id}/toggle', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'toggleStatus'])->name('hq.logs.toggle');
+        Route::get('/logs/orders', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'orders'])->name('hq.logs.orders');
+        
+        // Local Logs Routes
+        Route::post('/logs/categories', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'storeCategory'])->name('hq.logs.category.store');
+        Route::delete('/logs/categories/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'deleteCategory'])->name('hq.logs.category.delete');
+        Route::post('/logs/products', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'storeProduct'])->name('hq.logs.product.store');
+        Route::put('/logs/products/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updateProduct'])->name('hq.logs.product.update');
+        Route::delete('/logs/products/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'deleteProduct'])->name('hq.logs.product.delete');
+        Route::get('/logs/products/{id}/stock', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'stock'])->name('hq.logs.stock');
+        Route::post('/logs/products/{id}/stock', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'addStock'])->name('hq.logs.stock.add');
+        Route::delete('/logs/stock/item/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'deleteStockItem'])->name('hq.logs.stock.item.delete');
+        Route::put('/logs/stock/item/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updateStockItem'])->name('hq.logs.stock.item.update');
+
         Route::post('/providers', [AdminController::class, 'storeProvider'])->name('hq.providers.store');
         Route::patch('/providers/{id}/toggle', [AdminController::class, 'toggleProviderStatus'])->name('hq.providers.toggle');
         Route::delete('/providers/{id}', [AdminController::class, 'destroyProvider'])->name('hq.providers.destroy');
         Route::get('/providers/{id}/balance', [AdminController::class, 'providerBalance']);
         Route::get('/providers/{id}/services-count', [AdminController::class, 'providerServicesCount']);
         Route::get('/providers/{id}/debug-sync', [AdminController::class, 'debugProviderSync'])->name('hq.providers.debug');
-        Route::get('/logs', [AdminController::class, 'activityLogs'])->name('hq.logs');
+        Route::get('/activity-logs', [AdminController::class, 'activityLogs'])->name('hq.activity-logs');
         Route::get('/queues', [AdminController::class, 'queueStatus'])->name('hq.queues');
         Route::get('/financial-transactions', [AdminController::class, 'allTransactions'])->name('hq.transactions');
         

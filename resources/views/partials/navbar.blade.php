@@ -23,25 +23,47 @@
                         Services
                     </a>
                     <ul class="dropdown-menu border-0 shadow-sm bg-light w-100 mb-3">
-                        @foreach($channels as $channel)
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('platform', ['platform' => strtolower($channel['name'] == 'X' ? 'x' : $channel['name'])]) }}">
-                                    <i class="{{ $channel['icon'] }}" style="color: {{ $channel['color'] }}; width: 20px;"></i>
-                                    <div class="d-flex flex-column py-1">
-                                        <span class="fw-bold lh-base">{{ $channel['name'] }}</span>
-                                        <span class="text-muted small opacity-75 lh-sm" style="white-space: normal;">{{ $channel['description'] }}</span>
-                                    </div>
-                                </a>
-                            </li>
-                        @endforeach
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('vtu.airtime') }}">
+                                <i class="fa-solid fa-mobile-screen" style="color: #10b981; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Airtime Top-up</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('vtu.data') }}">
+                                <i class="fa-solid fa-wifi" style="color: #3b82f6; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Data Subscriptions</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('vtu.electricity') }}">
+                                <i class="fa-solid fa-lightbulb" style="color: #f59e0b; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Electricity Bills</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('vtu.cable') }}">
+                                <i class="fa-solid fa-tv" style="color: #64748b; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Cable TV</span>
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('logs.index') }}">
+                                <i class="fa-solid fa-box-open" style="color: #0ea5e9; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Logs & Accounts <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">HOT</span></span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('orders.create') }}">
+                                <i class="fa-solid fa-bullhorn" style="color: #ef4444; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Social Boost</span>
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('services.vn-marketing') }}">
-                                <i class="fa-solid fa-phone" style="color: #6366f1; width: 20px;"></i>
-                                <div class="d-flex flex-column py-1">
-                                    <span class="fw-bold lh-base">Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span></span>
-                                    <span class="text-muted small opacity-75 lh-sm" style="white-space: normal;">Bypass SMS Verifications</span>
-                                </div>
+                                <i class="fa-solid fa-sim-card" style="color: #6366f1; width: 20px;"></i>
+                                <span class="fw-bold lh-base">Virtual Numbers</span>
                             </a>
                         </li>
                     </ul>
@@ -53,18 +75,46 @@
                         Services <i class="fa-solid fa-chevron-down small opacity-50" style="font-size: 0.7rem;"></i>
                     </a>
                     <div class="mega-menu">
-                        <!-- Column 1: Platforms -->
+                        <!-- Column 1: Our Services -->
                         <div class="mega-col border-end">
-                            <h6 class="mega-title"><i class="fa-solid fa-layer-group me-2 text-primary"></i>Platforms</h6>
+                            <h6 class="mega-title"><i class="fa-solid fa-layer-group me-2 text-primary"></i>Our Services</h6>
                             <div class="mega-list">
-                                @foreach(collect($channels)->take(6) as $channel)
-                                    <a href="{{ route('platform', ['platform' => strtolower($channel['name'] == 'X' ? 'x' : $channel['name'])]) }}" class="mega-item">
-                                        <div class="mega-icon-sm" style="background: {{ $channel['color'] }}11; color: {{ $channel['color'] }};">
-                                            <i class="{{ $channel['icon'] }}"></i>
-                                        </div>
-                                        <span>{{ $channel['name'] }} Promotions</span>
-                                    </a>
-                                @endforeach
+                                <a href="{{ route('vtu.airtime') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #10b98111; color: #10b981;">
+                                        <i class="fa-solid fa-mobile-screen"></i>
+                                    </div>
+                                    <span>Airtime Top-up</span>
+                                </a>
+                                <a href="{{ route('vtu.data') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #3b82f611; color: #3b82f6;">
+                                        <i class="fa-solid fa-wifi"></i>
+                                    </div>
+                                    <span>Data Subscriptions</span>
+                                </a>
+                                <a href="{{ route('vtu.electricity') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #f59e0b11; color: #f59e0b;">
+                                        <i class="fa-solid fa-lightbulb"></i>
+                                    </div>
+                                    <span>Electricity Bills</span>
+                                </a>
+                                <a href="{{ route('vtu.cable') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #64748b11; color: #64748b;">
+                                        <i class="fa-solid fa-tv"></i>
+                                    </div>
+                                    <span>Cable TV</span>
+                                </a>
+                                <a href="{{ route('logs.index') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #0ea5e911; color: #0ea5e9;">
+                                        <i class="fa-solid fa-box-open"></i>
+                                    </div>
+                                    <span>Logs & Accounts</span>
+                                </a>
+                                <a href="{{ route('orders.create') }}" class="mega-item">
+                                    <div class="mega-icon-sm" style="background: #ef444411; color: #ef4444;">
+                                        <i class="fa-solid fa-bullhorn"></i>
+                                    </div>
+                                    <span>Social Boost (SMM)</span>
+                                </a>
                             </div>
                         </div>
 

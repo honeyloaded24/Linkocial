@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('header_title', 'HQ: Financial Ledger')
+@section('header_title', 'HQ: Transactions')
 
 @section('content')
 <div class="container-fluid">

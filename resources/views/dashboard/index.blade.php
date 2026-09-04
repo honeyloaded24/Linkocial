@@ -46,146 +46,162 @@
     @endif
 
     <!-- Balance Hero Section -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="border-0 shadow-sm position-relative overflow-hidden" 
+                 style="border-radius: 16px; background: linear-gradient(135deg, #090e36 0%, #030617 100%);">
+                
+                <div class="p-3 p-md-4 d-flex flex-column flex-md-row align-items-start justify-content-between position-relative" style="z-index: 1;">
+                    <div class="text-start mb-0">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <h6 class="text-white-50 small fw-medium mb-0" style="font-size: 0.75rem; letter-spacing: 0.5px;">Available Balance</h6>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <h1 class="fs-2 fw-medium mb-0 text-white" style="font-family: var(--heading-font); letter-spacing: -0.5px;">
+                                <span id="actual-balance">{{ money($user->balance) }}</span>
+                                <span id="hidden-balance" style="display: none;">🤑🤑🤑🤑</span>
+                                <i class="fa-solid fa-eye-slash fa-xs text-white-50 ms-2" id="toggle-balance-icon" style="font-size: 0.4em; cursor: pointer;" onclick="toggleBalance()"></i>
+                            </h1>
+                        </div>
+                        
+                        <a href="{{ route('wallet.index') }}" class="btn btn-sm bg-white text-dark rounded-pill px-3 py-1 mt-3 fw-bold d-inline-flex align-items-center gap-2 shadow-sm" style="font-size: 0.85rem; transition: transform 0.2s;">
+                            <i class="fa-solid fa-plus-circle" style="color: #090e36;"></i> Add Funds
+                        </a>
+                    </div>
+                    
+                    <!-- Decorative Right Side -->
+                    <div class="d-none d-md-flex align-items-center justify-content-center position-absolute end-0 top-50 translate-middle-y pe-4" style="pointer-events: none;">
+                        <i class="fa-solid fa-wallet text-white opacity-10" style="font-size: 5rem; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); transform: rotate(-15deg);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Our Services -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="premium-card border-0 shadow-sm position-relative overflow-hidden" 
-                 style="border-radius: 35px; border: 1px solid var(--border-color) !important;">
+            <div class="premium-card p-4 bg-white border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="fw-bold mb-0">Our Services</h6>
+                    <a href="{{ route('dashboard.services') }}" class="text-primary text-decoration-none small fw-bold">View All</a>
+                </div>
                 
-                <!-- Soft Glow Backgrounds -->
-                <div class="position-absolute top-0 start-0 w-100 h-100" style="background: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.05), transparent 50%); pointer-events: none;"></div>
-                <div class="position-absolute bottom-0 end-0 w-100 h-100" style="background: radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.05), transparent 50%); pointer-events: none;"></div>
-
-                <div class="p-4 p-md-5 d-flex flex-column flex-md-row align-items-center justify-content-between position-relative" style="z-index: 1;">
-                    <div class="text-center text-md-start mb-4 mb-md-0">
-                        <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-2 mb-3">
-                            <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                <i class="fa-solid fa-wallet small"></i>
+                <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
+                    <div class="col">
+                        <a href="{{ route('vtu.airtime') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-mobile-screen fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Airtime</span>
                             </div>
-                            <h6 class="text-uppercase small text-muted fw-bold mb-0" style="letter-spacing: 2px; font-size: 0.7rem;">Account Liquidity</h6>
-                        </div>
-                        <div class="d-flex align-items-center justify-content-center justify-content-md-start gap-3">
-                        <h1 class="display-4 fw-bold mb-0" style="color: var(--text-main); font-family: var(--heading-font); letter-spacing: -1px;">{{ money($user->balance) }}</h1>
-                        </div>
-                        <p class="text-muted mt-3 mb-0 small fw-medium">
-                            <i class="fa-solid fa-circle-check text-success me-1"></i> Verified & Protected Funds
-                        </p>
-                    </div>
-                    <div class="d-flex flex-column align-items-center align-items-md-end gap-3">
-                        <a href="{{ route('wallet.index') }}" class="btn btn-premium btn-lg rounded-pill px-5 shadow-lg d-flex align-items-center gap-2" style="background: #1e293b; border: none; font-size: 0.95rem; padding-top: 0.9rem; padding-bottom: 0.9rem; color: #ffffff !important;">
-                            <span class="text-white">Fund Your Wallet</span>
-                            <i class="fa-solid fa-arrow-right small opacity-50 text-white"></i>
                         </a>
-                        <div class="d-flex gap-4 mt-2">
-                            <div class="text-center">
-                                <div class="text-muted small fw-bold">Daily Limit</div>
-                                <div class="text-main fw-bold small">Unlimited</div>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('vtu.data') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-wifi fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Data</span>
                             </div>
-                            <div class="text-center">
-                                <div class="text-muted small fw-bold">Currency</div>
-                                <div class="text-main fw-bold small">{{ $currentCurrency->code }}</div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('vtu.electricity') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-lightbulb fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Electricity</span>
                             </div>
-                        </div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('vtu.cable') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-tv fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Cable TV</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('logs.index') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important; position: relative;">
+                                <span class="badge bg-danger position-absolute" style="top: -5px; right: -5px; font-size: 0.6rem;">HOT</span>
+                                <div class="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-box-open fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Logs & Accs</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('orders.create') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-bullhorn fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Social Boost</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col">
+                        <a href="{{ route('services.virtual-numbers') }}" class="text-decoration-none">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                                <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
+                                    <i class="fa-solid fa-sim-card fs-5"></i>
+                                </div>
+                                <span class="text-dark small fw-bold" style="font-size: 0.75rem;">Virtual Number</span>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Stat Cards -->
     <div class="row g-3 mb-4">
-        <!-- Stat Cards -->
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                        <i class="fa-solid fa-money-bill-wave small"></i>
-                    </div>
-                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Total Spent</h6>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ money($totalSpent) }}</h4>
-                    @if($growth > 0)
-                        <span class="text-success fw-bold" style="font-size: 0.65rem;"><i class="fa-solid fa-arrow-trend-up"></i> +{{ number_format($growth, 0) }}%</span>
-                    @elseif($growth < 0)
-                        <span class="text-danger fw-bold" style="font-size: 0.65rem;"><i class="fa-solid fa-arrow-trend-down"></i> {{ number_format($growth, 0) }}%</span>
-                    @endif
-                </div>
+            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+                <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Total Spent</h6>
+                <h4 class="fw-bold mb-0 text-dark">{{ money($totalSpent) }}</h4>
             </div>
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                        <i class="fa-solid fa-wallet small"></i>
-                    </div>
-                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Total Deposits</h6>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ money($totalDeposits) }}</h4>
-                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Added</span>
-                </div>
+            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+                <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Total Deposits</h6>
+                <h4 class="fw-bold mb-0 text-dark">{{ money($totalDeposits) }}</h4>
             </div>
         </div>
 
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
-                        <i class="fa-solid fa-spinner fa-spin-slow small"></i>
-                    </div>
-                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Active Orders</h6>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($activeOrders) }}</h4>
-                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Running</span>
-                </div>
+            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+                <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Active Orders</h6>
+                <h4 class="fw-bold mb-0 text-dark">{{ number_format($activeOrders) }}</h4>
             </div>
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="premium-card p-3 h-100 border-0 shadow-sm" style="border-radius: 20px;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px; background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                        <i class="fa-solid fa-circle-check small"></i>
-                    </div>
-                    <h6 class="text-muted mb-0 fw-bold small text-uppercase" style="letter-spacing: 1px; font-size: 0.65rem;">Completed</h6>
-                </div>
-                <div class="d-flex align-items-baseline gap-2">
-                    <h4 class="fw-bold mb-0" style="font-size: 1.2rem;">{{ number_format($completedOrders) }}</h4>
-                    <span class="text-muted fw-bold" style="font-size: 0.65rem;">Total</span>
-                </div>
+            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+                <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Completed Orders</h6>
+                <h4 class="fw-bold mb-0 text-dark">{{ number_format($completedOrders) }}</h4>
             </div>
-        </div>
-<!-- Channels Section -->
-<div class="row mb-4 pt-3">
-    <div class="col-12">
-        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
-            <h6 class="fw-bold mb-0 text-uppercase small text-muted" style="letter-spacing: 1px;">Service Channels</h6>
-        </div>
-        <div class="row g-2 g-md-3">
-            @foreach($channels as $channel)
-            <div class="col-6 col-md-auto">
-                <a href="{{ route('orders.create', ['channel' => $channel['name']]) }}" class="text-decoration-none">
-                    <div class="premium-card p-2 px-3 d-flex align-items-center gap-3 h-100" style="min-width: 100%; md-min-width: 160px; transition: all 0.3s ease; cursor: pointer; border-radius: 50px;" onmouseover="this.style.transform='scale(1.05)'; this.style.borderColor='var(--primary-color)'" onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--border-color)'">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 38px; height: 38px; background: {{ $channel['color'] }}15; color: {{ $channel['color'] }};">
-                            <i class="fa-brands {{ $channel['icon'] }} fa-lg"></i>
-                        </div>
-                        <div class="fw-bold small text-muted text-truncate">{{ $channel['name'] }}</div>
-                    </div>
-                </a>
-            </div>
-            @endforeach
         </div>
     </div>
-</div>
 
 <div class="row g-4">
-    <!-- Recent Orders Table -->
+    <!-- Recent Activities Table -->
     <div class="col-12">
         <div class="premium-card p-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h5 class="fw-bold mb-0">Recent Orders</h5>
-                <a href="{{ route('orders.index') }}" class="btn btn-sm bg-primary-custom text-white rounded-pill px-4 py-2 shadow-sm fw-bold">
+                <h5 class="fw-bold mb-0">Recent Activities</h5>
+                <a href="{{ route('wallet.history') }}" class="btn btn-sm bg-primary-custom text-white rounded-pill px-4 py-2 shadow-sm fw-bold">
                     View All
                 </a>
             </div>
@@ -194,57 +210,46 @@
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
-                            <th class="ps-4">Order ID</th>
-                            <th>Service</th>
-                            <th>Target Link</th>
-                            <th>Quantity</th>
-                            <th>Charge</th>
-                            <th class="pe-4 text-end">Status</th>
+                            <th class="ps-4">ID</th>
+                            <th>Date</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th class="pe-4 text-end">Type</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($recentOrders as $order)
+                        @forelse($recentActivities as $activity)
                         <tr>
-                            <td class="ps-4"><span class="text-muted fw-bold">#{{ $order->id }}</span></td>
+                            <td class="ps-4"><span class="text-muted fw-medium" style="font-size: 0.85rem;">#{{ $activity->reference }}</span></td>
                             <td>
-                                <div class="fw-bold small">{{ $order->service->name }}</div>
-                                <small class="text-muted" style="font-size: 0.7rem;">{{ $order->created_at->format('M d, Y') }}</small>
+                                <div class="fw-medium text-dark" style="font-size: 0.85rem;">{{ $activity->created_at->format('M d, Y') }}</div>
+                                <small class="text-muted" style="font-size: 0.7rem;">{{ $activity->created_at->format('h:i A') }}</small>
                             </td>
                             <td>
-                                <a href="{{ $order->link }}" target="_blank" class="text-decoration-none small" style="color: var(--primary-color)">
-                                    {{ Str::limit($order->link, 30) }} <i class="fa-solid fa-external-link ms-1" style="font-size: 0.6rem;"></i>
-                                </a>
+                                <span class="text-dark fw-medium" style="font-size: 0.85rem;">{{ $activity->description ?? ucfirst(str_replace('_', ' ', $activity->transaction_type)) }}</span>
                             </td>
-                            <td class="fw-bold small">{{ number_format($order->quantity) }}</td>
-                            <td class="fw-bold small">{{ money((float)$order->charge) }}</td>
+                            <td class="fw-medium {{ $activity->type === 'credit' ? 'text-success' : 'text-danger' }}" style="font-size: 0.85rem;">
+                                {{ $activity->type === 'credit' ? '+' : '-' }}{{ money((float)$activity->amount) }}
+                            </td>
                             <td class="pe-4 text-end">
-                                @php
-                                    $cleanStatus = strtolower(str_replace(' ', '_', $order->status));
-                                    $isActive = in_array($cleanStatus, ['processing', 'in_progress']);
-                                    
-                                    $statusClasses = [
-                                        'completed' => 'bg-success text-white',
-                                        'processing' => 'text-white',
-                                        'pending' => 'bg-warning text-dark',
-                                        'failed' => 'bg-danger text-white',
-                                        'canceled' => 'bg-secondary text-white',
-                                        'partial' => 'bg-warning text-white'
-                                    ];
-                                    $statusClass = $statusClasses[$cleanStatus] ?? 'bg-secondary text-white';
-                                @endphp
-                                <span class="badge {{ $statusClass }} rounded-pill px-3 py-2 fw-bold shadow-sm" 
-                                      style="{{ $isActive ? 'background-color: #ff8c00 !important; color: white !important;' : '' }} font-size: 0.65rem;">
-                                    {{ strtoupper(str_replace('_', ' ', $cleanStatus)) }}
-                                </span>
+                                @if($activity->type === 'credit')
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2 fw-bold shadow-sm" style="font-size: 0.65rem;">
+                                        CREDIT
+                                    </span>
+                                @else
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2 fw-bold shadow-sm" style="font-size: 0.65rem;">
+                                        DEBIT
+                                    </span>
+                                @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <div class="opacity-20 mb-3"><i class="fa-solid fa-box-open fa-3x"></i></div>
-                                <h6 class="text-muted fw-bold">No orders found yet.</h6>
-                                <p class="text-muted small">Your recent service orders will appear here.</p>
-                                <a href="{{ route('orders.create') }}" class="btn btn-sm bg-primary-custom text-white px-4 py-2 rounded-pill mt-2">Place First Order</a>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="opacity-20 mb-3"><i class="fa-solid fa-list fa-3x"></i></div>
+                                <h6 class="text-muted fw-bold">No activities found yet.</h6>
+                                <p class="text-muted small">Your recent account activities will appear here.</p>
+                                <a href="{{ route('orders.create') }}" class="btn btn-sm bg-primary-custom text-white px-4 py-2 rounded-pill mt-2">Explore Services</a>
                             </td>
                         </tr>
                         @endforelse
@@ -254,4 +259,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    function toggleBalance() {
+        const actualBalance = document.getElementById('actual-balance');
+        const hiddenBalance = document.getElementById('hidden-balance');
+        const icon = document.getElementById('toggle-balance-icon');
+        
+        if (actualBalance.style.display === 'none') {
+            actualBalance.style.display = 'inline';
+            hiddenBalance.style.display = 'none';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            actualBalance.style.display = 'none';
+            hiddenBalance.style.display = 'inline';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+</script>
 @endsection

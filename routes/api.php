@@ -30,6 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // Route::post('/webhooks/paystack', [PaymentController::class, 'webhook'])->name('payment.callback');
 Route::post('/webhooks/korapay', [PaymentController::class, 'korapayWebhook']);
 Route::post('/webhooks/heleket', [PaymentController::class, 'heleketWebhook']);
+Route::post('/webhooks/vtu', [\App\Http\Controllers\Api\VtuWebhookController::class, 'handle']);
 
 // Standard SMM Reseller API (v1) - Rate Limited
 Route::middleware('throttle:api')->group(function () {

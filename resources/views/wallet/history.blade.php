@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('header_title', 'Transaction Ledger')
+@section('header_title', 'Transactions')
 
 @section('content')
 <div class="container-fluid">

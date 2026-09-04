@@ -25,7 +25,15 @@ class DashboardController extends Controller
             ->whereIn('status', ['received', 'finished'])
             ->sum('cost');
 
-        $totalSpent = $smmSpent + $vnSpent;
+        $vtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->sum('cost');
+
+        $logSpent = \App\Models\LogOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->sum('total_cost');
+
+        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
 
         $totalDeposits = \App\Models\Payment::where('user_id', $user->id)
             ->where('status', 'success')
@@ -33,15 +41,32 @@ class DashboardController extends Controller
 
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
+            ->count() 
+            + \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->count()
+            + \App\Models\VtuOrder::where('user_id', $user->id)
+            ->where('status', 'processing')
+            ->count()
+            + \App\Models\LogOrder::where('user_id', $user->id)
+            ->where('status', 'pending')
             ->count();
 
         $completedOrders = Order::where('user_id', $user->id)
+            ->whereIn('status', ['completed', 'partial'])
+            ->count() 
+            + \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            ->whereIn('status', ['received', 'finished'])
+            ->count()
+            + \App\Models\VtuOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->count()
+            + \App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'completed')
             ->count();
 
-        // 2. Fetch recent orders
-        $recentOrders = Order::where('user_id', $user->id)
-            ->with('service')
+        // 2. Fetch recent activities
+        $recentActivities = \App\Models\Transaction::where('user_id', $user->id)
             ->latest()
             ->take(5)
             ->get();
@@ -58,7 +83,17 @@ class DashboardController extends Controller
             ->where('created_at', '>=', now()->startOfWeek())
             ->sum('cost');
 
-        $thisWeekSpent = $thisWeekSmmSpent + $thisWeekVnSpent;
+        $thisWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->where('created_at', '>=', now()->startOfWeek())
+            ->sum('cost');
+
+        $thisWeekLogSpent = \App\Models\LogOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->where('created_at', '>=', now()->startOfWeek())
+            ->sum('total_cost');
+
+        $thisWeekSpent = $thisWeekSmmSpent + $thisWeekVnSpent + $thisWeekVtuSpent + $thisWeekLogSpent;
         
         $lastWeekSmmSpent = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'partial'])
@@ -71,7 +106,17 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->sum('cost');
 
-        $lastWeekSpent = $lastWeekSmmSpent + $lastWeekVnSpent;
+        $lastWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
+            ->sum('cost');
+
+        $lastWeekLogSpent = \App\Models\LogOrder::where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
+            ->sum('total_cost');
+
+        $lastWeekSpent = $lastWeekSmmSpent + $lastWeekVnSpent + $lastWeekVtuSpent + $lastWeekLogSpent;
 
         $growth = 0;
         if ($lastWeekSpent > 0) {
@@ -85,9 +130,13 @@ class DashboardController extends Controller
             'totalDeposits',
             'activeOrders', 
             'completedOrders', 
-            'recentOrders',
+            'recentActivities',
             'growth',
             'channels'
         ));
+    }
+    public function services()
+    {
+        return view('dashboard.services');
     }
 }

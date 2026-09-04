@@ -30,6 +30,11 @@
                             <i class="fa-solid fa-key me-1"></i> APIs & Services
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-3 fw-bold border-0" id="fees-tab" data-bs-toggle="tab" data-bs-target="#fees-panel" type="button" role="tab">
+                            <i class="fa-solid fa-percent me-1"></i> Fees & Markups
+                        </button>
+                    </li>
                 </ul>
 
                 <form action="{{ route('hq.settings.update') }}" method="POST" enctype="multipart/form-data">
@@ -377,6 +382,30 @@
                                 </div>
                             </div>
 
+                            <!-- Fadded Logs Marketplace -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Fadded.net (Logs Marketplace)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up and get your API key at <a href="https://fadded.net" target="_blank">fadded.net</a>.</small>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Fadded API Key</label>
+                                    <input type="text" name="fadded_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('fadded_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
+                            <!-- Gongozconcept VTU -->
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Gongozconcept (VTU Services)</h6>
+                                    <small class="text-muted d-block mb-3">Sign up and get your API key at <a href="https://gongozconcept.com" target="_blank">gongozconcept.com</a>.</small>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Gongozconcept API Key</label>
+                                    <input type="text" name="gongozconcept_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('gongozconcept_api_key') }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+
                             <!-- Exchange Rate API -->
                             <div class="row g-4 mb-4">
                                 <div class="col-12">
@@ -434,6 +463,36 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Tab 5: Fees & Markups -->
+                        <div class="tab-pane fade" id="fees-panel" role="tabpanel">
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Service Markups (Percentage %)</h6>
+                                    <small class="text-muted d-block mb-3">Define the percentage markup added to the base cost for each service. For example, setting <b>5</b> means a 5% markup is applied to the base price.</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Logs Marketplace (%)</label>
+                                    <input type="number" step="0.01" min="0" name="markup_logs_market" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_logs_market', 20) }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">VTU Airtime (%)</label>
+                                    <input type="number" step="0.01" min="0" name="markup_vtu_airtime" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_vtu_airtime', 0) }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">VTU Data (%)</label>
+                                    <input type="number" step="0.01" min="0" name="markup_vtu_data" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_vtu_data', 0) }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Cable TV (%)</label>
+                                    <input type="number" step="0.01" min="0" name="markup_vtu_cable" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_vtu_cable', 0) }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Electricity (%)</label>
+                                    <input type="number" step="0.01" min="0" name="markup_vtu_electricity" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_vtu_electricity', 0) }}" style="color: var(--text-main);">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -448,7 +507,7 @@
                     <button class="btn btn-outline-primary border-0 bg-white shadow-sm text-start py-2 px-3 fw-bold rounded-pill" onclick="location.reload()">
                         <i class="fa-solid fa-arrows-rotate me-2"></i> Refresh Variables
                     </button>
-                    <a href="{{ route('hq.logs') }}" class="btn btn-outline-secondary border-0 bg-white shadow-sm text-start py-2 px-3 fw-bold text-decoration-none rounded-pill">
+                    <a href="{{ route('hq.activity-logs') }}" class="btn btn-outline-secondary border-0 bg-white shadow-sm text-start py-2 px-3 fw-bold text-decoration-none rounded-pill">
                         <i class="fa-solid fa-history me-2 text-primary"></i> Review System Audit
                     </a>
                 </div>

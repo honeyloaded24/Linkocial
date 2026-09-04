@@ -6,11 +6,19 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="premium-card p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
                 <div>
                     <h5 class="fw-bold mb-1">Registered Users</h5>
                     <p class="text-muted small mb-0">Manage user accounts and manual balance adjustments.</p>
                 </div>
+                <form action="{{ route('hq.users') }}" method="GET" class="d-flex" style="max-width: 400px; width: 100%;">
+                    <div class="input-group shadow-sm">
+                        <input type="text" name="search" class="form-control bg-transparent border-secondary" placeholder="Search email, name, username..." value="{{ request('search') }}" style="color: var(--text-main);">
+                        <button class="btn btn-primary-custom text-white" type="submit">
+                            <i class="fa-solid fa-search"></i> Search
+                        </button>
+                    </div>
+                </form>
             </div>
 
             @if(session('success'))

@@ -75,7 +75,20 @@
 
         [data-theme="dark"] .logo-dark { display: block !important; }
         [data-theme="dark"] .logo-light { display: none !important; }
+
+        /* Ensure Bootstrap modals always layer above topbar and all elements */
+        .modal {
+            z-index: 2050 !important;
+        }
+        .modal-backdrop {
+            z-index: 2040 !important;
+        }
+        body.modal-open {
+            padding-right: 0 !important;
+            overflow-y: auto !important;
+        }
     </style>
+    @stack('styles')
 </head>
 <body>
 
@@ -144,6 +157,12 @@
                                 <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.virtual-numbers*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-phone-volume"></i> Virtual Numbers
                                 </a>
+                                <a href="{{ route('hq.vtu') }}" class="nav-link mb-2 {{ request()->routeIs('hq.vtu*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-mobile-screen"></i> VTU Orders
+                                </a>
+                                <a href="{{ route('hq.logs.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.logs*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-box-open"></i> Logs & Accounts
+                                </a>
                                 <a href="{{ route('hq.coupons.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.coupons*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-ticket"></i> Coupons
                                 </a>
@@ -175,7 +194,7 @@
                                 <a href="{{ route('hq.tickets') }}" class="nav-link mb-2 {{ request()->routeIs('hq.tickets*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-headset"></i> Support
                                 </a>
-                                <a href="{{ route('hq.logs') }}" class="nav-link mb-2 {{ request()->routeIs('hq.logs*') ? 'active' : '' }}">
+                                <a href="{{ route('hq.activity-logs') }}" class="nav-link mb-2 {{ request()->routeIs('hq.activity-logs*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
                                 </a>
                                 <a href="{{ route('hq.queues') }}" class="nav-link mb-2 {{ request()->routeIs('hq.queues*') ? 'active' : '' }}">
@@ -223,6 +242,9 @@
                 <a href="{{ route('services.virtual-numbers') }}" class="nav-link {{ request()->routeIs('services.virtual-numbers') ? 'active' : '' }}">
                     <i class="fa-solid fa-phone-volume"></i> Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span>
                 </a>
+                <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-box-open"></i> Logs Marketplace <span class="badge bg-success ms-1" style="font-size: 0.6rem;">HOT</span>
+                </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates
                 </a>
@@ -233,13 +255,7 @@
                     <i class="fa-solid fa-life-ring"></i> Support Tickets
                 </a>
 
-                <h6 class="text-muted small fw-bold text-uppercase mt-4 mb-3 px-3" style="letter-spacing: 1px;">Add-ons</h6>
-                <a href="{{ route('services.gift-cards') }}" class="nav-link {{ request()->routeIs('services.gift-cards') ? 'active' : '' }}">
-                    <i class="fa-solid fa-gift"></i> Buy Gift Cards
-                </a>
-                <a href="{{ route('services.buy-esim') }}" class="nav-link {{ request()->routeIs('services.buy-esim') ? 'active' : '' }}">
-                    <i class="fa-solid fa-sim-card"></i> Buy eSim
-                </a>
+
 @endif
 
 
@@ -300,24 +316,32 @@
             </div>
         @endif
         <!-- Topbar -->
-        <header class="topbar" style="position: relative; z-index: 1060;">
-            <div class="d-flex align-items-center">
-                <button class="btn d-lg-none me-3 p-0 border-0 text-muted" id="sidebarToggle">
+        <header class="topbar" style="position: relative; z-index: 100;">
+            <div class="d-flex align-items-center pe-2">
+                <button class="btn d-lg-none me-3 p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle">
                     <i class="fa-solid fa-bars-staggered fs-4"></i>
                 </button>
-                <h4 class="mb-0 fw-bold">@yield('header_title', 'Dashboard')</h4>
             </div>
             
             <div class="d-flex align-items-center gap-2 gap-md-3">
+                
+                <!-- Fund Wallet Button -->
+                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover me-1 pulse-hover">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span class="d-none d-md-inline">Fund Wallet</span>
+                </a>
+
                 <!-- Currency Switcher -->
                 <div class="dropdown me-md-2">
                     @php
                         $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                         $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
                     @endphp
-                    <button class="btn btn-sm bg-light bg-opacity-10 text-main fw-bold rounded-pill border-0 d-flex align-items-center gap-2 px-3 py-2 shadow-sm" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fa-solid fa-earth-africa opacity-50"></i>
-                        <span>{{ $currentCurrency->code }}</span>
+                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3);" title="Change Currency">
+                        <i class="fa-solid fa-coins text-primary" style="color: var(--primary-color);"></i>
+                        <span class="d-none d-sm-inline opacity-75 fw-normal small">Change:</span>
+                        <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
+                        <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.8em; color: var(--primary-color);"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdown" style="z-index: 2001; max-height: 300px; overflow-y: auto;">
                         @foreach($activeCurrencies as $cur)

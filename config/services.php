@@ -51,4 +51,9 @@ return [
         'secret' => env('KORAPAY_SECRET_KEY'),
     ],
 
+    'gongozconcept' => [
+        'api_key' => env('GONGOZ_API_KEY'),
+        'api_url' => env('GONGOZ_API_URL', 'https://www.gongozconcept.com/api'),
+    ],
+
 ];

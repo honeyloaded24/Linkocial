@@ -26,3 +26,8 @@ Homestead.yaml
 Thumbs.db
 /database/*.sqlite
 /database/*.sqlite-journal
+/scratch
+*.json.tmp
+postman.json
+postman_new.json
+vtu_api.json
