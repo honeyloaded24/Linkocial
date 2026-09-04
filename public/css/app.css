@@ -41,10 +41,53 @@
     --accent-color: #5eead4;
 }
 
-/* Explicitly target text-muted to break Bootstrap's opacity rules */
+/* Explicitly target text colors & components to break Bootstrap rules in dark mode */
+[data-theme="dark"] .text-dark, [data-bs-theme="dark"] .text-dark {
+    color: var(--text-main) !important;
+    --bs-text-opacity: 1 !important;
+}
+
 [data-theme="dark"] .text-muted, [data-bs-theme="dark"] .text-muted {
     color: var(--text-muted) !important;
     --bs-text-opacity: 1 !important;
+}
+
+[data-theme="dark"] .bg-white, [data-bs-theme="dark"] .bg-white {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .bg-light, [data-bs-theme="dark"] .bg-light {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .card, [data-bs-theme="dark"] .card,
+[data-theme="dark"] .premium-card, [data-bs-theme="dark"] .premium-card {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .table, [data-bs-theme="dark"] .table {
+    --bs-table-color: var(--text-main) !important;
+    --bs-table-bg: transparent !important;
+    --bs-table-border-color: var(--border-color) !important;
+    --bs-table-hover-color: var(--text-main) !important;
+    --bs-table-hover-bg: rgba(255, 255, 255, 0.03) !important;
+    color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .table th, [data-bs-theme="dark"] .table th {
+    color: var(--text-muted) !important;
+    border-bottom-color: var(--border-color) !important;
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table td, [data-bs-theme="dark"] .table td {
+    color: var(--text-main) !important;
+    border-bottom-color: var(--border-color) !important;
+    background-color: transparent !important;
 }
 
 /* Fix Table Hovers for Dark Mode specifically */

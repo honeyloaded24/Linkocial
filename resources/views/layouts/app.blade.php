@@ -60,13 +60,86 @@
             --body-font: 'Inter', sans-serif;
         }
 
-        [data-theme="dark"] {
+        [data-theme="dark"], [data-bs-theme="dark"] {
             --bg-body: #0f172a;
             --bg-surface: #1e293b;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border-color: #334155;
             --secondary-color: #1e293b;
+            --bs-body-color: #f8fafc;
+            --bs-body-bg: #0f172a;
+        }
+
+        /* Dark Theme Global Text & Component Overrides */
+        [data-theme="dark"] body, [data-bs-theme="dark"] body {
+            background-color: var(--bg-body) !important;
+            color: var(--text-main) !important;
+        }
+
+        [data-theme="dark"] .text-dark, [data-bs-theme="dark"] .text-dark {
+            color: var(--text-main) !important;
+            --bs-text-opacity: 1 !important;
+        }
+
+        [data-theme="dark"] .text-muted, [data-bs-theme="dark"] .text-muted {
+            color: var(--text-muted) !important;
+            --bs-text-opacity: 1 !important;
+        }
+
+        [data-theme="dark"] .bg-white, [data-bs-theme="dark"] .bg-white {
+            background-color: var(--bg-surface) !important;
+            color: var(--text-main) !important;
+        }
+
+        [data-theme="dark"] .bg-light, [data-bs-theme="dark"] .bg-light {
+            background-color: rgba(255, 255, 255, 0.04) !important;
+            color: var(--text-main) !important;
+        }
+
+        [data-theme="dark"] .card, [data-bs-theme="dark"] .card,
+        [data-theme="dark"] .premium-card, [data-bs-theme="dark"] .premium-card {
+            background-color: var(--bg-surface) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-main) !important;
+        }
+
+        [data-theme="dark"] .table, [data-bs-theme="dark"] .table {
+            --bs-table-color: var(--text-main) !important;
+            --bs-table-bg: transparent !important;
+            --bs-table-border-color: var(--border-color) !important;
+            --bs-table-hover-color: var(--text-main) !important;
+            --bs-table-hover-bg: rgba(255, 255, 255, 0.04) !important;
+            color: var(--text-main) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .table th, [data-bs-theme="dark"] .table th {
+            color: var(--text-muted) !important;
+            border-bottom-color: var(--border-color) !important;
+            background-color: transparent !important;
+        }
+
+        [data-theme="dark"] .table td, [data-bs-theme="dark"] .table td {
+            color: var(--text-main) !important;
+            border-bottom-color: var(--border-color) !important;
+            background-color: transparent !important;
+        }
+
+        [data-theme="dark"] .table-hover tbody tr:hover td {
+            background-color: rgba(99, 102, 241, 0.08) !important;
+            color: #ffffff !important;
+        }
+
+        [data-theme="dark"] .border {
+            border-color: var(--border-color) !important;
+        }
+
+        [data-theme="dark"] .form-control, [data-bs-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select, [data-bs-theme="dark"] .form-select {
+            background-color: var(--bg-surface) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-main) !important;
         }
 
         /* Logo Theme Switching */

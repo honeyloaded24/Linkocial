@@ -97,9 +97,9 @@
 
         <!-- Information / Instructions -->
         <div class="col-12 col-lg-5 mb-4">
-            <div class="card border-0 shadow-sm rounded-4" style="background: #f8f9fa;">
+            <div class="card border-0 shadow-sm rounded-4" style="background: var(--bg-surface); border: 1px solid var(--border-color) !important;">
                 <div class="card-body p-4">
-                    <p class="fs-5 text-dark mb-0 lh-lg" style="color: #4a5568 !important;">
+                    <p class="fs-5 mb-0 lh-lg" style="color: var(--text-main);">
                         <i class="fa-solid fa-lightbulb text-warning mb-3 fs-2"></i><br>
                         Verify your meter number before making payment. Your meter will be recharged <strong>instantly</strong> upon successful payment.
                     </p>

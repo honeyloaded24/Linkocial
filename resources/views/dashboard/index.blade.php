@@ -81,7 +81,7 @@
     <!-- Our Services -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="premium-card p-4 bg-white border-0 shadow-sm" style="border-radius: 20px;">
+            <div class="premium-card p-4 border-0 shadow-sm" style="border-radius: 20px;">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h6 class="fw-bold mb-0">Our Services</h6>
                     <a href="{{ route('dashboard.services') }}" class="text-primary text-decoration-none small fw-bold">View All</a>
@@ -90,72 +90,72 @@
                 <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
                     <div class="col">
                         <a href="{{ route('vtu.airtime') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-mobile-screen fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Airtime</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Airtime</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('vtu.data') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-wifi fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Data</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Data</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('vtu.electricity') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-warning bg-opacity-10 text-warning d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-lightbulb fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Electricity</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Electricity</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('vtu.cable') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-secondary bg-opacity-10 text-secondary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-tv fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Cable TV</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Cable TV</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('logs.index') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important; position: relative;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface); position: relative;">
                                 <span class="badge bg-danger position-absolute" style="top: -5px; right: -5px; font-size: 0.6rem;">HOT</span>
                                 <div class="rounded-3 bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-box-open fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Logs & Accs</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Logs & Accs</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('orders.create') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-bullhorn fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.8rem;">Social Boost</span>
+                                <span class="small fw-bold" style="font-size: 0.8rem; color: var(--text-main);">Social Boost</span>
                             </div>
                         </a>
                     </div>
                     <div class="col">
                         <a href="{{ route('services.virtual-numbers') }}" class="text-decoration-none">
-                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: #f1f5f9 !important;">
+                            <div class="border rounded-4 p-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover" style="border-color: var(--border-color) !important; background: var(--bg-surface);">
                                 <div class="rounded-3 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 45px; height: 45px;">
                                     <i class="fa-solid fa-sim-card fs-5"></i>
                                 </div>
-                                <span class="text-dark small fw-bold" style="font-size: 0.75rem;">Virtual Number</span>
+                                <span class="small fw-bold" style="font-size: 0.75rem; color: var(--text-main);">Virtual Number</span>
                             </div>
                         </a>
                     </div>
@@ -167,30 +167,30 @@
     <!-- Stat Cards -->
     <div class="row g-3 mb-4">
         <div class="col-12 col-md-3">
-            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+            <div class="premium-card p-3 h-100 shadow-sm" style="border-radius: 15px;">
                 <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Total Spent</h6>
-                <h4 class="fw-bold mb-0 text-dark">{{ money($totalSpent) }}</h4>
+                <h4 class="fw-bold mb-0" style="color: var(--text-main);">{{ money($totalSpent) }}</h4>
             </div>
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+            <div class="premium-card p-3 h-100 shadow-sm" style="border-radius: 15px;">
                 <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Total Deposits</h6>
-                <h4 class="fw-bold mb-0 text-dark">{{ money($totalDeposits) }}</h4>
+                <h4 class="fw-bold mb-0" style="color: var(--text-main);">{{ money($totalDeposits) }}</h4>
             </div>
         </div>
 
         <div class="col-12 col-md-3">
-            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+            <div class="premium-card p-3 h-100 shadow-sm" style="border-radius: 15px;">
                 <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Active Orders</h6>
-                <h4 class="fw-bold mb-0 text-dark">{{ number_format($activeOrders) }}</h4>
+                <h4 class="fw-bold mb-0" style="color: var(--text-main);">{{ number_format($activeOrders) }}</h4>
             </div>
         </div>
         
         <div class="col-12 col-md-3">
-            <div class="bg-white p-3 h-100 border shadow-sm" style="border-radius: 15px; border-color: rgba(0,0,0,0.05) !important;">
+            <div class="premium-card p-3 h-100 shadow-sm" style="border-radius: 15px;">
                 <h6 class="text-muted fw-bold small text-uppercase mb-2" style="font-size: 0.65rem;">Completed Orders</h6>
-                <h4 class="fw-bold mb-0 text-dark">{{ number_format($completedOrders) }}</h4>
+                <h4 class="fw-bold mb-0" style="color: var(--text-main);">{{ number_format($completedOrders) }}</h4>
             </div>
         </div>
     </div>
@@ -222,11 +222,11 @@
                         <tr>
                             <td class="ps-4"><span class="text-muted fw-medium" style="font-size: 0.85rem;">#{{ $activity->reference }}</span></td>
                             <td>
-                                <div class="fw-medium text-dark" style="font-size: 0.85rem;">{{ $activity->created_at->format('M d, Y') }}</div>
+                                <div class="fw-medium" style="font-size: 0.85rem; color: var(--text-main);">{{ $activity->created_at->format('M d, Y') }}</div>
                                 <small class="text-muted" style="font-size: 0.7rem;">{{ $activity->created_at->format('h:i A') }}</small>
                             </td>
                             <td>
-                                <span class="text-dark fw-medium" style="font-size: 0.85rem;">{{ $activity->description ?? ucfirst(str_replace('_', ' ', $activity->transaction_type)) }}</span>
+                                <span class="fw-medium" style="font-size: 0.85rem; color: var(--text-main);">{{ $activity->description ?? ucfirst(str_replace('_', ' ', $activity->transaction_type)) }}</span>
                             </td>
                             <td class="fw-medium {{ $activity->type === 'credit' ? 'text-success' : 'text-danger' }}" style="font-size: 0.85rem;">
                                 {{ $activity->type === 'credit' ? '+' : '-' }}{{ money((float)$activity->amount) }}
