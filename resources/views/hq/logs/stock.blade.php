@@ -31,34 +31,58 @@
     @endif
 
     <div class="row">
-        <!-- Add Single Account Form -->
+        <!-- Add Accounts Form -->
         <div class="col-lg-5 mb-4">
             <div class="premium-card p-4">
-                <div class="d-flex align-items-center gap-2 mb-3">
-                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
-                        <i class="fa-solid fa-plus"></i>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <h5 class="fw-bold mb-0">Add Stock</h5>
                     </div>
-                    <h5 class="fw-bold mb-0">Add Account Item</h5>
+                    <button type="button" class="btn btn-sm btn-primary-custom fw-bold px-3" id="topAddAnotherBtn" title="Queue another account">
+                        <i class="fa-solid fa-plus me-1"></i> Add Another (+)
+                    </button>
                 </div>
-                <p class="text-muted small">Each submission creates <strong>one individual account</strong> to be delivered to a buyer.</p>
+                <p class="text-muted small mb-3">Add accounts one by one or click <strong>"+ Add Another (+)"</strong> continuously to queue bulk accounts before submitting.</p>
 
-                <form action="{{ route('hq.logs.stock.add', $product->id) }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('hq.logs.stock.add', $product->id) }}" method="POST" enctype="multipart/form-data" id="stockAddForm">
                     @csrf
                     
+                    <div id="accountsQueue">
+                        <!-- Account #1 Block -->
+                        <div class="account-card p-3 rounded-4 mb-3 border position-relative" style="background: var(--bg-surface); border-color: var(--border-color) !important;" data-index="0">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 account-num-badge">
+                                    <i class="fa-solid fa-user-tag me-1"></i> Account #1
+                                </span>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none remove-acc-btn d-none" title="Remove this item">
+                                    <i class="fa-solid fa-trash-can"></i> Remove
+                                </button>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Account Details / Credentials / Instructions <span class="text-danger">*</span></label>
+                                <textarea class="form-control font-monospace" name="accounts[0][content]" rows="4" required placeholder="Email: user@example.com&#10;Password: secret123&#10;Recovery Info: code_xyz&#10;2FA Key: ABC12345..." style="font-size: 0.85rem;"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="form-label fw-bold small">Attachment File (Optional)</label>
+                                <input type="file" name="accounts[0][attachment]" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf,.txt,.zip,.doc,.docx">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Continuous Add Another Button -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Account Details / Credentials / Instructions <span class="text-danger">*</span></label>
-                        <textarea class="form-control font-monospace" name="content" rows="8" required placeholder="Email: user@example.com&#10;Password: secret123&#10;Recovery Info: code_xyz&#10;2FA Key: ABC12345&#10;Instructions: Use US IP proxy before login..." style="font-size: 0.85rem;"></textarea>
-                        <div class="form-text small">All lines above belong to this single account and will be delivered intact to the buyer.</div>
+                        <button type="button" class="btn btn-outline-primary w-100 py-2 fw-bold rounded-3" id="bottomAddAnotherBtn">
+                            <i class="fa-solid fa-circle-plus me-1"></i> Add Another Account (+)
+                        </button>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="form-label fw-bold small">Attach File (Optional)</label>
-                        <input type="file" name="attachment" class="form-control" accept=".jpg,.jpeg,.png,.pdf,.txt,.zip,.doc,.docx">
-                        <div class="form-text small">Attach JPG, PNG, PDF, TXT or ZIP (up to 25MB). Buyers will receive a download link upon purchase.</div>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold">
-                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Add Account to Stock
+                    <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold rounded-3 shadow-sm" id="submitAllBtn">
+                        <i class="fa-solid fa-cloud-arrow-up me-1"></i> Save to Stock (<span id="totalQueueBadge">1 Account</span>)
                     </button>
                 </form>
             </div>
@@ -211,4 +235,101 @@
     </div>
 </div>
 @endforeach
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let nextIndex = 1;
+    const queue = document.getElementById('accountsQueue');
+    const totalBadge = document.getElementById('totalQueueBadge');
+    const topBtn = document.getElementById('topAddAnotherBtn');
+    const bottomBtn = document.getElementById('bottomAddAnotherBtn');
+    const submitBtn = document.getElementById('submitAllBtn');
+    const form = document.getElementById('stockAddForm');
+
+    function updateQueueBadges() {
+        const cards = queue.querySelectorAll('.account-card');
+        cards.forEach((card, i) => {
+            const badge = card.querySelector('.account-num-badge');
+            if (badge) {
+                badge.innerHTML = `<i class="fa-solid fa-user-tag me-1"></i> Account #${i + 1}`;
+            }
+
+            const removeBtn = card.querySelector('.remove-acc-btn');
+            if (removeBtn) {
+                if (cards.length > 1) {
+                    removeBtn.classList.remove('d-none');
+                } else {
+                    removeBtn.classList.add('d-none');
+                }
+            }
+        });
+
+        const total = cards.length;
+        if (totalBadge) {
+            totalBadge.textContent = total === 1 ? '1 Account' : `${total} Accounts`;
+        }
+    }
+
+    function addAccountCard() {
+        const idx = nextIndex++;
+        const card = document.createElement('div');
+        card.className = 'account-card p-3 rounded-4 mb-3 border position-relative';
+        card.style.background = 'var(--bg-surface)';
+        card.style.borderColor = 'var(--border-color)';
+        card.dataset.index = idx;
+
+        card.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1 account-num-badge">
+                    <i class="fa-solid fa-user-tag me-1"></i> Account #${queue.children.length + 1}
+                </span>
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 text-decoration-none remove-acc-btn" title="Remove this item">
+                    <i class="fa-solid fa-trash-can"></i> Remove
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Account Details / Credentials / Instructions <span class="text-danger">*</span></label>
+                <textarea class="form-control font-monospace" name="accounts[${idx}][content]" rows="4" required placeholder="Email: user@example.com&#10;Password: secret123&#10;Recovery Info: code_xyz&#10;2FA Key: ABC12345..." style="font-size: 0.85rem;"></textarea>
+            </div>
+
+            <div>
+                <label class="form-label fw-bold small">Attachment File (Optional)</label>
+                <input type="file" name="accounts[${idx}][attachment]" class="form-control form-control-sm" accept=".jpg,.jpeg,.png,.pdf,.txt,.zip,.doc,.docx">
+            </div>
+        `;
+
+        queue.appendChild(card);
+        updateQueueBadges();
+
+        // Scroll into view & focus textarea
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const ta = card.querySelector('textarea');
+        if (ta) ta.focus();
+    }
+
+    topBtn?.addEventListener('click', addAccountCard);
+    bottomBtn?.addEventListener('click', addAccountCard);
+
+    queue.addEventListener('click', function(e) {
+        const removeBtn = e.target.closest('.remove-acc-btn');
+        if (removeBtn) {
+            const card = removeBtn.closest('.account-card');
+            if (card && queue.children.length > 1) {
+                card.remove();
+                updateQueueBadges();
+            }
+        }
+    });
+
+    form?.addEventListener('submit', function() {
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving Accounts...`;
+        }
+    });
+
+    updateQueueBadges();
+});
+</script>
 @endsection

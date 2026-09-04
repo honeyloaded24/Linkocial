@@ -210,35 +210,83 @@ class AdminLogMarketplaceController extends Controller
 
     public function addStock(Request $request, $id)
     {
-        $request->validate([
-            'content' => 'required|string',
-            'attachment' => 'nullable|file|max:25600|mimes:jpeg,png,jpg,pdf,txt,zip,doc,docx'
-        ]);
-        
-        $product = LogProduct::where('type', 'local')->findOrFail($id);
-        
-        $filePath = null;
-        $fileName = null;
+        $product = LogProduct::findOrFail($id);
 
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $fileName = $file->getClientOriginalName();
-            $path = $file->store('log_attachments', 'public');
-            $filePath = '/storage/' . $path;
+        $createdCount = 0;
+
+        try {
+            \Illuminate\Support\Facades\DB::beginTransaction();
+
+            // 1. If multiple accounts array submitted (from continuous '+' rows)
+            if ($request->has('accounts') && is_array($request->accounts)) {
+                foreach ($request->accounts as $index => $accData) {
+                    $content = trim($accData['content'] ?? '');
+                    if (empty($content)) {
+                        continue;
+                    }
+
+                    $filePath = null;
+                    $fileName = null;
+
+                    if ($request->hasFile("accounts.{$index}.attachment")) {
+                        $file = $request->file("accounts.{$index}.attachment");
+                        $fileName = $file->getClientOriginalName();
+                        $path = $file->store('log_attachments', 'public');
+                        $filePath = '/storage/' . $path;
+                    }
+
+                    \App\Models\LogItem::create([
+                        'log_product_id' => $product->id,
+                        'content' => $content,
+                        'file_path' => $filePath,
+                        'file_name' => $fileName,
+                        'is_sold' => false,
+                    ]);
+
+                    $createdCount++;
+                }
+            } elseif ($request->filled('content')) {
+                // 2. Single account submission
+                $filePath = null;
+                $fileName = null;
+
+                if ($request->hasFile('attachment')) {
+                    $file = $request->file('attachment');
+                    $fileName = $file->getClientOriginalName();
+                    $path = $file->store('log_attachments', 'public');
+                    $filePath = '/storage/' . $path;
+                }
+
+                \App\Models\LogItem::create([
+                    'log_product_id' => $product->id,
+                    'content' => trim($request->content),
+                    'file_path' => $filePath,
+                    'file_name' => $fileName,
+                    'is_sold' => false,
+                ]);
+
+                $createdCount++;
+            }
+
+            if ($createdCount === 0) {
+                \Illuminate\Support\Facades\DB::rollBack();
+                return back()->with('error', 'Please provide account details for at least one account.');
+            }
+
+            // Recalculate total available stock
+            $product->in_stock = \App\Models\LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
+            $product->save();
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            $msg = $createdCount === 1 ? '1 account successfully added to stock.' : "{$createdCount} accounts successfully added to stock!";
+            return back()->with('success', $msg);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error("Add Stock Error: " . $e->getMessage());
+            return back()->with('error', 'Failed to add accounts to stock: ' . $e->getMessage());
         }
-
-        \App\Models\LogItem::create([
-            'log_product_id' => $product->id,
-            'content' => trim($request->content),
-            'file_path' => $filePath,
-            'file_name' => $fileName,
-            'is_sold' => false,
-        ]);
-        
-        $product->in_stock = \App\Models\LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
-        $product->save();
-
-        return back()->with('success', "Account successfully added to stock.");
     }
 
     public function updateStockItem(Request $request, $id)
