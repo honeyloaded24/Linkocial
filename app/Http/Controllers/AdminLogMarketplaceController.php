@@ -26,7 +26,11 @@ class AdminLogMarketplaceController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $products = $query->latest()->paginate(20)->withQueryString();
+        $products = $query
+            ->orderByRaw("CASE WHEN type = 'local' THEN 0 ELSE 1 END ASC")
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
         $categories = LogCategory::all();
 
         $counts = [

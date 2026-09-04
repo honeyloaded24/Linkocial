@@ -27,11 +27,16 @@ class LogMarketplaceController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        $products = $query->orderBy('name', 'asc')->get();
+        $products = $query
+            ->orderByRaw("CASE WHEN type = 'local' THEN 0 ELSE 1 END ASC")
+            ->orderByRaw("CASE WHEN in_stock > 0 THEN 0 ELSE 1 END ASC")
+            ->orderBy('name', 'asc')
+            ->get();
 
-        // Hot products (most sold recently)
+        // Hot products (most sold recently, prioritizing local products)
         $hotProducts = LogProduct::where('is_active', true)
             ->withCount('logOrders as sales_count')
+            ->orderByRaw("CASE WHEN type = 'local' THEN 0 ELSE 1 END ASC")
             ->orderBy('sales_count', 'desc')
             ->take(3)
             ->get();
