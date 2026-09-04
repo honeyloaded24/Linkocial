@@ -56,4 +56,9 @@ return [
         'api_url' => env('GONGOZ_API_URL', 'https://www.gongozconcept.com/api'),
     ],
 
+    'fadded' => [
+        'key' => env('FADDED_API_KEY', env('FADDED_KEY', env('LOGS_API_KEY'))),
+        'url' => env('FADDED_API_URL', env('FADDED_URL', env('LOGS_API_URL', 'https://fadded.net/api'))),
+    ],
+
 ];

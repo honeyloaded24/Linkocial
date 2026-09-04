@@ -13,7 +13,7 @@ class FaddedApi
 
     public function __construct()
     {
-        $this->baseUrl = config('services.fadded.url', 'https://fadded.net/api');
+        $this->baseUrl = Setting::get('fadded_api_url', config('services.fadded.url', 'https://fadded.net/api'));
         $this->apiKey = Setting::get('fadded_api_key', config('services.fadded.key'));
     }
 
@@ -33,17 +33,23 @@ class FaddedApi
         if (!$this->isConfigured()) {
             return [
                 'success' => false,
-                'message' => 'Fadded API key is not configured in Settings.'
+                'message' => 'Fadded API key is not configured. Please set your API key in Settings or .env.'
             ];
         }
 
         try {
-            $response = Http::timeout(15)
+            $url = rtrim($this->baseUrl, '/');
+            if (!str_ends_with($url, '/products')) {
+                $url .= '/products';
+            }
+
+            $response = Http::timeout(20)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
+                    'X-Api-Key' => $this->apiKey,
                     'Accept' => 'application/json',
                 ])
-                ->get($this->baseUrl . '/products');
+                ->get($url);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -53,9 +59,10 @@ class FaddedApi
                 ];
             }
 
+            $msg = $response->json('message') ?? 'Unknown error';
             return [
                 'success' => false,
-                'message' => 'Fadded API returned status ' . $response->status() . ': ' . ($response->json('message') ?? 'Unknown error')
+                'message' => "Fadded API ({$url}) returned status {$response->status()}: {$msg}"
             ];
         } catch (\Exception $e) {
             Log::error('Fadded getProducts error: ' . $e->getMessage());

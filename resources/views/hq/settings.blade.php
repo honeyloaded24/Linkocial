@@ -388,9 +388,13 @@
                                     <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Fadded.net (Logs Marketplace)</h6>
                                     <small class="text-muted d-block mb-3">Sign up and get your API key at <a href="https://fadded.net" target="_blank">fadded.net</a>.</small>
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Fadded API Key</label>
-                                    <input type="text" name="fadded_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('fadded_api_key') }}" style="color: var(--text-main);">
+                                    <input type="text" name="fadded_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('fadded_api_key', config('services.fadded.key')) }}" style="color: var(--text-main);">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Fadded API URL / Endpoint</label>
+                                    <input type="text" name="fadded_api_url" class="form-control border-secondary bg-transparent py-2" placeholder="https://fadded.net/api" value="{{ \App\Models\Setting::get('fadded_api_url', config('services.fadded.url')) }}" style="color: var(--text-main);">
                                 </div>
                             </div>
 
