@@ -44,10 +44,11 @@ class AdminLogMarketplaceController extends Controller
 
     public function sync(Request $request)
     {
-        $apiKey = \App\Models\Setting::get('fadded_api_key');
+        $apiKey = \App\Models\Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $api = app(\App\Services\FaddedApi::class);
 
-        if (empty($apiKey)) {
-            return redirect()->route('hq.logs.index')->with('error', 'Fadded API key is not configured. Please set your API key in Settings first.');
+        if (empty($apiKey) && !$api->isConfigured()) {
+            return redirect()->route('hq.logs.index')->with('error', 'Fadded API key is not configured. Please set your API key in Settings or .env first.');
         }
 
         try {
