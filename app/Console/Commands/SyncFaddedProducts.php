@@ -50,24 +50,31 @@ class SyncFaddedProducts extends Command
 
         $synced = 0;
         foreach ($products as $item) {
-            if (!isset($item['id']) && !isset($item['product_key'])) {
+            if (!is_array($item)) {
                 continue;
             }
 
-            $key = $item['product_key'] ?? (string)$item['id'];
-            $name = $item['name'] ?? 'Product #' . $key;
-            $price = (float)($item['price'] ?? 0);
-            $stock = (int)($item['stock'] ?? $item['in_stock'] ?? 0);
+            $key = (string)($item['product_key'] ?? $item['key'] ?? $item['id'] ?? '');
+            if (empty($key)) {
+                continue;
+            }
+
+            $name = $item['name'] ?? $item['title'] ?? ('Product #' . $key);
+            $price = (float)($item['price'] ?? $item['amount'] ?? $item['unit_price'] ?? $item['rate'] ?? 0);
+            $stock = (int)($item['stock'] ?? $item['in_stock'] ?? $item['quantity'] ?? $item['available'] ?? 0);
             $desc = LogProduct::sanitizeDescription($item['description'] ?? '');
 
             // Find or create category if provided
             $categoryId = null;
             if (!empty($item['category'])) {
-                $cat = LogCategory::firstOrCreate(
-                    ['name' => trim($item['category'])],
-                    ['is_active' => true]
-                );
-                $categoryId = $cat->id;
+                $catName = is_array($item['category']) ? ($item['category']['name'] ?? 'General') : (string)$item['category'];
+                if (!empty(trim($catName))) {
+                    $cat = LogCategory::firstOrCreate(
+                        ['name' => trim($catName)],
+                        ['is_active' => true]
+                    );
+                    $categoryId = $cat->id;
+                }
             }
 
             LogProduct::updateOrCreate(

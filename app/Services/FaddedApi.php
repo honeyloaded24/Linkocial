@@ -13,8 +13,15 @@ class FaddedApi
 
     public function __construct()
     {
-        $this->baseUrl = Setting::get('fadded_api_url', config('services.fadded.url', 'https://fadded.net/api'));
-        $this->apiKey = Setting::get('fadded_api_key', config('services.fadded.key'));
+        $url = Setting::get('fadded_api_url') ?: config('services.fadded.url', 'https://fadded.net/api/v1/reseller');
+        
+        // Auto-correct legacy/wrong URLs
+        if (empty($url) || $url === 'https://fadded.net/api' || $url === 'https://fadded.net/api/') {
+            $url = 'https://fadded.net/api/v1/reseller';
+        }
+
+        $this->baseUrl = rtrim($url, '/');
+        $this->apiKey = Setting::get('fadded_api_key') ?: config('services.fadded.key');
     }
 
     /**
@@ -38,12 +45,12 @@ class FaddedApi
         }
 
         try {
-            $url = rtrim($this->baseUrl, '/');
+            $url = $this->baseUrl;
             if (!str_ends_with($url, '/products')) {
                 $url .= '/products';
             }
 
-            $response = Http::timeout(20)
+            $response = Http::timeout(25)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
                     'X-Api-Key' => $this->apiKey,
@@ -55,7 +62,7 @@ class FaddedApi
                 $data = $response->json();
                 return [
                     'success' => true,
-                    'data' => $data['data'] ?? $data ?? []
+                    'data' => $data['data'] ?? $data['products'] ?? $data ?? []
                 ];
             }
 
@@ -74,6 +81,54 @@ class FaddedApi
     }
 
     /**
+     * Fetch Reseller account balance from Fadded
+     */
+    public function getBalance(): array
+    {
+        if (!$this->isConfigured()) {
+            return [
+                'success' => false,
+                'message' => 'Fadded API key is not configured.'
+            ];
+        }
+
+        try {
+            $url = $this->baseUrl;
+            if (str_ends_with($url, '/products') || str_ends_with($url, '/order')) {
+                $url = dirname($url);
+            }
+            if (!str_ends_with($url, '/balance')) {
+                $url .= '/balance';
+            }
+
+            $response = Http::timeout(20)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'X-Api-Key' => $this->apiKey,
+                    'Accept' => 'application/json',
+                ])
+                ->get($url);
+
+            if ($response->successful()) {
+                return [
+                    'success' => true,
+                    'data' => $response->json()
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => $response->json('message') ?? ('Status ' . $response->status())
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Place order for a digital log item
      */
     public function order(string $productKey, int $quantity, string $orderId): array
@@ -86,13 +141,22 @@ class FaddedApi
         }
 
         try {
-            $response = Http::timeout(30)
+            $url = $this->baseUrl;
+            if (str_ends_with($url, '/products') || str_ends_with($url, '/balance')) {
+                $url = dirname($url);
+            }
+            if (!str_ends_with($url, '/order')) {
+                $url .= '/order';
+            }
+
+            $response = Http::timeout(35)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
+                    'X-Api-Key' => $this->apiKey,
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json'
                 ])
-                ->post($this->baseUrl . '/order', [
+                ->post($url, [
                     'product_key' => $productKey,
                     'quantity' => $quantity,
                     'custom_id' => $orderId
