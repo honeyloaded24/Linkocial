@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Services\FaddedApi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class LogMarketplaceController extends Controller
 {
@@ -121,6 +122,32 @@ class LogMarketplaceController extends Controller
             return back()->with('error', 'Insufficient wallet balance. You need ₦' . number_format($totalCostNgn, 2) . ' (~$' . number_format($amountUsd, 2) . ') to complete this purchase. Please fund your account.');
         }
 
+        // Auto-heal missing columns on production
+        if (Schema::hasTable('log_orders') && !Schema::hasColumn('log_orders', 'amount_usd')) {
+            try {
+                Schema::table('log_orders', function ($table) {
+                    $table->decimal('amount_usd', 10, 4)->nullable()->after('total_cost');
+                });
+            } catch (\Throwable $ignored) {}
+        }
+
+        if (Schema::hasTable('log_items')) {
+            if (!Schema::hasColumn('log_items', 'log_order_id')) {
+                try {
+                    Schema::table('log_items', function ($table) {
+                        $table->foreignId('log_order_id')->nullable()->constrained()->nullOnDelete();
+                    });
+                } catch (\Throwable $ignored) {}
+            }
+            if (!Schema::hasColumn('log_items', 'user_id')) {
+                try {
+                    Schema::table('log_items', function ($table) {
+                        $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+                    });
+                } catch (\Throwable $ignored) {}
+            }
+        }
+
         if ($product->type === 'local') {
             DB::beginTransaction();
             try {
@@ -148,31 +175,44 @@ class LogMarketplaceController extends Controller
                 );
 
                 $externalOrderId = 'LOG-' . auth()->id() . '-' . time() . rand(10, 99);
-                $order = LogOrder::create([
+                $hasAmountUsd = Schema::hasColumn('log_orders', 'amount_usd');
+
+                $orderData = [
                     'user_id' => $user->id,
                     'log_product_id' => $product->id,
-                    'api_product_key' => null,
+                    'api_product_key' => $product->api_product_key ?: ('local_' . $product->id),
                     'product_name' => $product->name,
                     'quantity' => $request->quantity,
                     'unit_cost' => $priceToChargeNgn,
                     'total_cost' => $totalCostNgn,
-                    'amount_usd' => $amountUsd,
                     'external_order_id' => $externalOrderId,
                     'status' => 'completed',
-                ]);
+                ];
+                if ($hasAmountUsd) {
+                    $orderData['amount_usd'] = $amountUsd;
+                }
+
+                $order = LogOrder::create($orderData);
 
                 $deliveredItems = [];
+                $hasUserId = Schema::hasColumn('log_items', 'user_id');
+                $hasLogOrderId = Schema::hasColumn('log_items', 'log_order_id');
+
                 foreach ($items as $item) {
                     $item->is_sold = true;
-                    $item->user_id = $user->id;
-                    $item->log_order_id = $order->id;
+                    if ($hasUserId) {
+                        $item->user_id = $user->id;
+                    }
+                    if ($hasLogOrderId) {
+                        $item->log_order_id = $order->id;
+                    }
                     $item->save();
                     
                     $deliveredItems[] = [
                         'details' => $item->content,
                         'content' => $item->content,
-                        'file_path' => $item->file_path,
-                        'file_name' => $item->file_name,
+                        'file_path' => $item->file_path ?? null,
+                        'file_name' => $item->file_name ?? null,
                     ];
                 }
 
@@ -186,8 +226,8 @@ class LogMarketplaceController extends Controller
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error("Logs Local Purchase Error: " . $e->getMessage());
-                return back()->with('error', 'An error occurred during transaction.');
+                Log::error("Logs Local Purchase Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+                return back()->with('error', 'Could not complete purchase: ' . $e->getMessage());
             }
         } else {
             // API Product Purchase
@@ -207,25 +247,30 @@ class LogMarketplaceController extends Controller
                 );
 
                 $externalOrderId = 'LOG-' . auth()->id() . '-' . time() . rand(10, 99);
+                $hasAmountUsd = Schema::hasColumn('log_orders', 'amount_usd');
 
-                $order = LogOrder::create([
+                $orderData = [
                     'user_id' => $user->id,
                     'log_product_id' => $product->id,
-                    'api_product_key' => $product->api_product_key,
+                    'api_product_key' => $product->api_product_key ?: ('api_' . $product->id),
                     'product_name' => $product->name,
                     'quantity' => $request->quantity,
                     'unit_cost' => $priceToChargeNgn,
                     'total_cost' => $totalCostNgn,
-                    'amount_usd' => $amountUsd,
                     'external_order_id' => $externalOrderId,
                     'status' => 'pending',
-                ]);
+                ];
+                if ($hasAmountUsd) {
+                    $orderData['amount_usd'] = $amountUsd;
+                }
+
+                $order = LogOrder::create($orderData);
 
                 DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error("Logs Marketplace Error: " . $e->getMessage());
-                return back()->with('error', 'An error occurred during transaction.');
+                Log::error("Logs Marketplace Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+                return back()->with('error', 'Could not complete purchase: ' . $e->getMessage());
             }
 
             // Call the provider API
