@@ -70,7 +70,7 @@
                             @endphp
                             @if($markup > 0)
                                 <small class="text-muted d-block mt-2">
-                                    Total charge: <strong class="text-primary fs-6" id="totalCharge">₦0.00</strong> <span style="font-size: 0.75rem;">(includes {{ $markup }}% markup)</span>
+                                    Total to pay: <strong class="text-primary fs-6" id="totalCharge">₦0.00</strong>
                                 </small>
                                 <script>
                                     document.getElementById('amount').addEventListener('input', function(e) {

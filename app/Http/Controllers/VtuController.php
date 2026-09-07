@@ -107,7 +107,8 @@ class VtuController extends Controller
     // ==========================================
     public function data()
     {
-        return view('vtu.data');
+        $plansJson = \App\Services\VtuDataService::getPlansJsonWithCustomerPrices();
+        return view('vtu.data', compact('plansJson'));
     }
 
     public function purchaseData(Request $request)
@@ -116,13 +117,14 @@ class VtuController extends Controller
             'network' => 'required|integer',
             'phone' => 'required|string|min:10',
             'plan' => 'required|integer',
-            'amount' => 'required|numeric', // passed from frontend for deduction
+            'amount' => 'required|numeric', // passed from frontend as customer price
         ]);
 
         $user = Auth::user();
-        $baseAmountNgn = (float) $request->amount;
-        $markupRate = (float) \App\Models\Setting::get('markup_vtu_data', 0);
-        $chargedAmountNgn = $baseAmountNgn * (1 + ($markupRate / 100));
+        
+        // Securely resolve the exact customer price on the server (wholesale price + admin markup)
+        $verifiedPrice = \App\Services\VtuDataService::getCustomerPrice($request->network, $request->plan);
+        $chargedAmountNgn = $verifiedPrice !== null ? $verifiedPrice : (float) $request->amount;
 
         $ngnRate = \App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00;
         $amountUsd = $chargedAmountNgn / $ngnRate;

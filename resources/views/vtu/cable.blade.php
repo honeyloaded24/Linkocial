@@ -60,16 +60,6 @@
 
                         <!-- Amount (Hidden, submitted based on selected plan) -->
                         <input type="hidden" name="amount" id="amount">
-                        @php
-                            $markup = (float) \App\Models\Setting::get('markup_vtu_cable', 0);
-                        @endphp
-                        @if($markup > 0)
-                            <div class="mb-4">
-                                <small class="text-muted d-block mt-1">
-                                    Total charge: <strong class="text-primary" id="totalCharge">₦0.00</strong> <span style="font-size: 0.75rem;">(includes {{ $markup }}% markup)</span>
-                                </small>
-                            </div>
-                        @endif
 
                         <!-- Submit Button -->
                         <div class="d-grid gap-2">
@@ -178,15 +168,8 @@
     // Update amount when plan changes
     cableplanSelect.addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
-        const markupRate = {{ (float) \App\Models\Setting::get('markup_vtu_cable', 0) }};
-        const multiplier = 1 + (markupRate / 100);
-
         if (selectedOption.dataset.amount) {
             amountInput.value = selectedOption.dataset.amount;
-            const totalChargeEl = document.getElementById('totalCharge');
-            if (totalChargeEl) {
-                totalChargeEl.innerText = '₦' + (selectedOption.dataset.amount * multiplier).toFixed(2);
-            }
         }
         resetValidation();
     });
