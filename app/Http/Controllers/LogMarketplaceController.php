@@ -19,8 +19,23 @@ class LogMarketplaceController extends Controller
         
         $query = LogProduct::with('category')->where('is_active', true);
 
-        if ($request->filled('category_id')) {
-            $query->where('log_category_id', $request->category_id);
+        $selectedCategory = null;
+
+        if ($request->filled('category')) {
+            $catParam = trim($request->category);
+            $selectedCategory = LogCategory::where('slug', $catParam)
+                ->orWhere('name', $catParam)
+                ->orWhere('id', is_numeric($catParam) ? (int)$catParam : 0)
+                ->first();
+
+            if ($selectedCategory) {
+                $query->where('log_category_id', $selectedCategory->id);
+            }
+        } elseif ($request->filled('category_id')) {
+            $selectedCategory = LogCategory::find($request->category_id);
+            if ($selectedCategory) {
+                $query->where('log_category_id', $selectedCategory->id);
+            }
         }
 
         if ($request->filled('search')) {
@@ -41,7 +56,7 @@ class LogMarketplaceController extends Controller
             ->take(3)
             ->get();
 
-        return view('logs.index', compact('categories', 'products', 'hotProducts'));
+        return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory'));
     }
 
     public function show($id)
