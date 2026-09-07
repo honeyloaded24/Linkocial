@@ -22,8 +22,19 @@ class AdminLogMarketplaceController extends Controller
             $query->where('type', $request->type);
         }
 
-        if ($request->filled('category_id')) {
-            $query->where('log_category_id', $request->category_id);
+        $catParam = trim($request->input('category_id', $request->input('category', '')));
+        if (!empty($catParam)) {
+            if (is_numeric($catParam)) {
+                $query->where('log_category_id', $catParam);
+            } else {
+                $cat = LogCategory::where('name', $catParam)->first();
+                if (!$cat && \Illuminate\Support\Facades\Schema::hasColumn('log_categories', 'slug')) {
+                    $cat = LogCategory::where('slug', $catParam)->first();
+                }
+                if ($cat) {
+                    $query->where('log_category_id', $cat->id);
+                }
+            }
         }
 
         if ($request->filled('search')) {

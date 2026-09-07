@@ -15,24 +15,43 @@ class LogMarketplaceController extends Controller
 {
     public function index(Request $request)
     {
-        $categories = LogCategory::where('is_active', true)->get();
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_categories') && !\Illuminate\Support\Facades\Schema::hasColumn('log_categories', 'slug')) {
+            try {
+                \Illuminate\Support\Facades\Schema::table('log_categories', function ($table) {
+                    $table->string('slug')->nullable()->after('name')->index();
+                });
+            } catch (\Throwable $ignored) {}
+        }
+
+        $categories = LogCategory::where('is_active', true)->orWhereNull('is_active')->get();
+        if ($categories->isEmpty()) {
+            $categories = LogCategory::all();
+        }
         
         $query = LogProduct::with('category')->where('is_active', true);
 
         $selectedCategory = null;
+        $catParam = trim($request->input('category', $request->input('category_id', '')));
 
-        if ($request->filled('category')) {
-            $catParam = trim($request->category);
-            $selectedCategory = LogCategory::where('slug', $catParam)
-                ->orWhere('name', $catParam)
-                ->orWhere('id', is_numeric($catParam) ? (int)$catParam : 0)
-                ->first();
+        if (!empty($catParam)) {
+            if (is_numeric($catParam)) {
+                $selectedCategory = LogCategory::find($catParam);
+            } else {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('log_categories', 'slug')) {
+                    $selectedCategory = LogCategory::where('slug', $catParam)->first();
+                }
 
-            if ($selectedCategory) {
-                $query->where('log_category_id', $selectedCategory->id);
+                if (!$selectedCategory) {
+                    $selectedCategory = $categories->first(function($c) use ($catParam) {
+                        $normalizedSlug = !empty($c->slug) ? $c->slug : \Illuminate\Support\Str::slug($c->name);
+                        return strcasecmp($c->name, $catParam) === 0
+                            || strcasecmp($c->name, str_replace('-', ' ', $catParam)) === 0
+                            || strcasecmp($normalizedSlug, $catParam) === 0
+                            || (string)$c->id === (string)$catParam;
+                    });
+                }
             }
-        } elseif ($request->filled('category_id')) {
-            $selectedCategory = LogCategory::find($request->category_id);
+
             if ($selectedCategory) {
                 $query->where('log_category_id', $selectedCategory->id);
             }

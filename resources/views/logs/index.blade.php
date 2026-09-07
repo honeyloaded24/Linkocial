@@ -58,13 +58,12 @@
                 <!-- Category Dropdown -->
                 <div style="min-width: 260px;">
                     <select class="form-select text-white fw-bold border-0" style="background-color: #3b3f45; border-radius: 8px; padding: 12px 15px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05);" onchange="window.location.href=this.value">
-                        <option value="{{ route('logs.index') }}" {{ !$selectedCategory ? 'selected' : '' }}>Shop by Categories / All</option>
+                        <option value="{{ route('logs.index', request()->except('category', 'category_id', 'page')) }}" {{ !$selectedCategory ? 'selected' : '' }}>Shop by Categories / All</option>
                         @foreach($categories as $category)
                             @php
-                                $catSlug = $category->slug ?: \Illuminate\Support\Str::slug($category->name);
                                 $isSelected = ($selectedCategory && $selectedCategory->id == $category->id);
                             @endphp
-                            <option value="{{ route('logs.index', ['category' => $catSlug]) }}" {{ $isSelected ? 'selected' : '' }}>
+                            <option value="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $category->id])) }}" {{ $isSelected ? 'selected' : '' }}>
                                 {{ strtoupper($category->name) }}
                             </option>
                         @endforeach
@@ -74,7 +73,7 @@
                 <!-- Search Bar -->
                 <form action="{{ route('logs.index') }}" method="GET" class="flex-grow-1">
                     @if($selectedCategory)
-                        <input type="hidden" name="category" value="{{ $selectedCategory->slug ?: \Illuminate\Support\Str::slug($selectedCategory->name) }}">
+                        <input type="hidden" name="category" value="{{ $selectedCategory->id }}">
                     @endif
                     <div class="input-group" style="border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1);">
                         <input type="text" name="search" class="form-control border-0" placeholder="Quick search products..." value="{{ request('search') }}" style="padding: 12px 20px;">
@@ -112,7 +111,7 @@
                     <!-- Search -->
                     <form action="{{ route('logs.index') }}" method="GET" class="mb-4">
                         @if($selectedCategory)
-                            <input type="hidden" name="category" value="{{ $selectedCategory->slug ?: \Illuminate\Support\Str::slug($selectedCategory->name) }}">
+                            <input type="hidden" name="category" value="{{ $selectedCategory->id }}">
                         @endif
                         <div class="input-group">
                             <input type="text" name="search" class="form-control bg-transparent border-secondary" placeholder="Quick search products..." value="{{ request('search') }}" style="color: var(--text-main);">

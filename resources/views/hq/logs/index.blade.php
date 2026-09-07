@@ -55,7 +55,7 @@
             <select name="category_id" class="form-select form-select-sm" style="max-width: 180px;" onchange="this.form.submit()">
                 <option value="">All Categories</option>
                 @foreach($categories as $cat)
-                    <option value="{{ $cat->id }}" {{ request('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
+                    <option value="{{ $cat->id }}" {{ (request('category_id') == $cat->id || request('category') == $cat->id) ? 'selected' : '' }}>{{ $cat->name }}</option>
                 @endforeach
             </select>
             <div class="input-group input-group-sm">
