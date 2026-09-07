@@ -165,6 +165,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/api/virtual-numbers/purchase', [\App\Http\Controllers\VirtualNumberController::class, 'purchase']);
     Route::get('/api/virtual-numbers/{id}/check', [\App\Http\Controllers\VirtualNumberController::class, 'checkStatus']);
     Route::post('/api/virtual-numbers/{id}/cancel', [\App\Http\Controllers\VirtualNumberController::class, 'cancelOrder']);
+    Route::post('/api/virtual-numbers/{id}/resend', [\App\Http\Controllers\VirtualNumberController::class, 'resendOrder'])->name('virtual-numbers.resend');
     
     Route::get('/gift-cards', function() {
         return view('services.coming_soon', ['title' => 'Buy Gift Cards', 'icon' => 'fa-gift']);

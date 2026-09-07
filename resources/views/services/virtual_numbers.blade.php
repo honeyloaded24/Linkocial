@@ -191,9 +191,9 @@
                 <span class="small text-muted fw-bold country-name">Country</span>
             </div>
             
-            <div class="input-group mb-3 shadow-sm rounded-3 overflow-hidden">
-                <input type="text" class="form-control text-center phone-number font-monospace fw-bold bg-white" value="" readonly style="font-size: clamp(0.82rem, 3.8vw, 1.05rem); letter-spacing: 0.5px; padding: 0.55rem 0.5rem;" title="Phone Number">
-                <button class="btn btn-primary-custom copy-btn px-3 flex-shrink-0" type="button" title="Copy Number"><i class="fa-solid fa-copy"></i></button>
+            <div class="input-group mb-3 shadow-sm rounded-3 overflow-hidden flex-nowrap">
+                <input type="text" class="form-control text-center phone-number font-monospace fw-bold bg-white" value="" readonly style="font-size: clamp(0.70rem, 3.2vw, 0.95rem); letter-spacing: -0.2px; padding: 0.5rem 0.25rem; min-width: 0;" title="Phone Number">
+                <button class="btn btn-primary-custom copy-btn px-2 px-sm-3 flex-shrink-0" type="button" title="Copy Number"><i class="fa-solid fa-copy"></i></button>
             </div>
             <span class="service-name-inline d-none"></span>
             
@@ -213,9 +213,14 @@
                     </div>
                 </div>
             </div>
+
+            <div class="resend-alert mt-2 text-center small text-danger d-none"></div>
             
-            <div class="mt-3 text-center">
+            <div class="mt-3 text-center d-flex justify-content-center align-items-center gap-2 flex-wrap action-buttons">
                 <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold cancel-btn">Cancel & Refund</button>
+                <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS / Reuse this number">
+                    <i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse
+                </button>
             </div>
         </div>
     </div>
@@ -376,6 +381,45 @@ document.addEventListener('DOMContentLoaded', function() {
     const emptyState = document.getElementById('vn-empty-state');
     const activePolls = {};
     
+    function showReceivedState(cardNode, smsCode) {
+        if (cardNode.dataset.timerId) clearInterval(cardNode.dataset.timerId);
+        const countdownEl = cardNode.querySelector('.countdown-timer');
+        if (countdownEl) countdownEl.classList.add('d-none');
+        
+        cardNode.querySelector('.waiting-spinner').classList.add('d-none');
+        cardNode.querySelector('.waiting-text').classList.add('d-none');
+        cardNode.querySelector('.sms-result').classList.remove('d-none');
+        cardNode.querySelector('.sms-code').textContent = smsCode;
+        
+        // Hide cancel button and show resend button
+        cardNode.querySelector('.cancel-btn').classList.add('d-none');
+        const resendBtn = cardNode.querySelector('.resend-btn');
+        if (resendBtn) {
+            resendBtn.classList.remove('d-none');
+            resendBtn.disabled = false;
+            resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+        }
+        
+        const smsArea = cardNode.querySelector('.sms-area');
+        smsArea.classList.remove('bg-white');
+        smsArea.classList.add('bg-success', 'bg-opacity-10');
+    }
+
+    function showWaitingState(cardNode, isResent = false) {
+        cardNode.querySelector('.waiting-spinner').classList.remove('d-none');
+        const waitingText = cardNode.querySelector('.waiting-text');
+        waitingText.classList.remove('d-none');
+        waitingText.textContent = isResent ? 'Waiting for next SMS (Resent)...' : 'Waiting for SMS...';
+        
+        const smsArea = cardNode.querySelector('.sms-area');
+        smsArea.classList.remove('bg-success', 'bg-opacity-10');
+        smsArea.classList.add('bg-white');
+        
+        cardNode.querySelector('.cancel-btn').classList.add('d-none');
+        const resendBtn = cardNode.querySelector('.resend-btn');
+        if (resendBtn) resendBtn.classList.add('d-none');
+    }
+
     function addOrderCard(order) {
         emptyState.classList.add('d-none');
         
@@ -389,13 +433,12 @@ document.addEventListener('DOMContentLoaded', function() {
         card.querySelector('.country-name').textContent = order.country;
         card.querySelector('.phone-number').value = order.phone_number;
         
-        // Setup countdown timer
-        if (order.expires_at) {
+        // Setup countdown timer for pending orders
+        if (order.expires_at && order.status === 'pending') {
             const countdownEl = card.querySelector('.countdown-timer');
             const timeLeftEl = card.querySelector('.time-left');
             countdownEl.classList.remove('d-none');
             
-            // Ensure proper parsing of the date string
             const expiresAt = new Date(order.expires_at).getTime();
             
             const timerInterval = setInterval(() => {
@@ -408,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     timeLeftEl.classList.replace('text-danger', 'text-muted');
                     // Automatically click cancel if it expires
                     const cancelBtn = card.querySelector('.cancel-btn');
-                    if (cancelBtn && !cancelBtn.disabled) {
+                    if (cancelBtn && !cancelBtn.disabled && !cancelBtn.classList.contains('d-none')) {
                         cancelBtn.click();
                     }
                 } else {
@@ -418,11 +461,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }, 1000);
             
-            // Store interval ID to clear it when done
             card.dataset.timerId = timerInterval;
         }
 
-        // Copy btn
+        // Copy phone button
         card.querySelector('.copy-btn').addEventListener('click', function() {
             navigator.clipboard.writeText(order.phone_number);
             const icon = this.querySelector('i');
@@ -447,11 +489,59 @@ document.addEventListener('DOMContentLoaded', function() {
             this.textContent = 'Canceling...';
             cancelOrder(order.id, card);
         });
+
+        // Resend / Reuse btn
+        const resendBtn = card.querySelector('.resend-btn');
+        if (resendBtn) {
+            resendBtn.addEventListener('click', function() {
+                const btn = this;
+                const alertBox = card.querySelector('.resend-alert');
+                alertBox.classList.add('d-none');
+                alertBox.textContent = '';
+                
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Requesting Resend...';
+                
+                fetch(`/api/virtual-numbers/${order.id}/resend`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+                        alertBox.textContent = data.error;
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+                    
+                    // Put into waiting state and restart polling
+                    showWaitingState(card, true);
+                    startPolling(order.id, card);
+                })
+                .catch(err => {
+                    console.error('Failed to request resend:', err);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+                    alertBox.textContent = 'Network error while requesting resend. Please try again.';
+                    alertBox.classList.remove('d-none');
+                });
+            });
+        }
         
         activeOrdersContainer.prepend(card);
         
-        // Start polling
-        startPolling(order.id, card);
+        // Check order status
+        if (order.status === 'received' || order.status === 'finished') {
+            showReceivedState(card, order.sms_code || order.sms_text || 'Received');
+        } else {
+            // Start polling for pending order
+            startPolling(order.id, card);
+        }
     }
     
     function startPolling(id, cardNode) {
@@ -464,19 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.order && (data.order.status === 'received' || data.order.status === 'finished')) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
-                        if (cardNode.dataset.timerId) clearInterval(cardNode.dataset.timerId);
-                        cardNode.querySelector('.countdown-timer').classList.add('d-none');
-                        
-                        // Show SMS
-                        cardNode.querySelector('.waiting-spinner').classList.add('d-none');
-                        cardNode.querySelector('.waiting-text').classList.add('d-none');
-                        cardNode.querySelector('.sms-result').classList.remove('d-none');
-                        cardNode.querySelector('.sms-code').textContent = data.order.sms_code || data.order.sms_text;
-                        
-                        // Hide Cancel button
-                        cardNode.querySelector('.cancel-btn').classList.add('d-none');
-                        cardNode.querySelector('.sms-area').classList.replace('bg-white', 'bg-success');
-                        cardNode.querySelector('.sms-area').classList.add('bg-opacity-10');
+                        showReceivedState(cardNode, data.order.sms_code || data.order.sms_text || 'Received');
                     } else if (data.order && data.order.status === 'canceled') {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];

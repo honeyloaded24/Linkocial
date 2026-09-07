@@ -147,6 +147,32 @@ class SmsPoolService
     }
 
     /**
+     * Resend / reuse an active number to receive another SMS code.
+     * Endpoint: POST /sms/resend
+     */
+    public function resendOrder(string $orderId): array
+    {
+        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/sms/resend", [
+            'orderid' => $orderId,
+            'key' => $this->apiKey,
+        ]);
+
+        if ($response->failed()) {
+            Log::error('SMSPool resendOrder failed', ['orderid' => $orderId, 'response' => $response->body()]);
+            $this->handleFailedResponse($response, 'Failed to request SMS resend from SMSPool');
+        }
+
+        $data = $response->json();
+
+        if (isset($data['success']) && (int)$data['success'] === 0) {
+            $msg = $data['message'] ?? 'Failed to resend SMS on SMSPool';
+            throw new \Exception(html_entity_decode(strip_tags($msg), ENT_QUOTES, 'UTF-8'));
+        }
+
+        return $data;
+    }
+
+    /**
      * Parse and throw a clean exception from a failed response.
      */
     protected function handleFailedResponse(\Illuminate\Http\Client\Response $response, string $defaultMessage): void

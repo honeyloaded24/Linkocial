@@ -26,7 +26,13 @@ class VirtualNumberController extends Controller
     public function index()
     {
         $activeOrders = VirtualNumberOrder::where('user_id', Auth::id())
-            ->where('status', 'pending')
+            ->where(function ($query) {
+                $query->where('status', 'pending')
+                      ->orWhere(function ($q) {
+                          $q->where('status', 'received')
+                            ->where('created_at', '>=', now()->subMinutes(20));
+                      });
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -366,6 +372,44 @@ class VirtualNumberController extends Controller
         } catch (\Exception $e) {
             Log::error('SMSPool cancelOrder failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Could not cancel the order at this time.'], 400);
+        }
+    }
+
+    /**
+     * Resend SMS / Reuse active number for another code.
+     */
+    public function resendOrder($id)
+    {
+        $order = VirtualNumberOrder::where('user_id', Auth::id())
+            ->whereIn('status', ['received', 'pending'])
+            ->findOrFail($id);
+
+        try {
+            // Call SMSPool resend endpoint
+            $resendData = $this->smspool->resendOrder($order->api_order_id);
+
+            // Set order status back to pending to wait for the next SMS
+            DB::transaction(function () use ($order) {
+                $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                if ($lockedOrder) {
+                    $lockedOrder->update([
+                        'status' => 'pending',
+                        'sms_code' => null,
+                    ]);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => $resendData['message'] ?? 'SMS resend requested successfully. Waiting for new code.',
+                'order' => $order->fresh(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('SMSPool resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'
+            ], 400);
         }
     }
 
