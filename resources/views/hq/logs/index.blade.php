@@ -145,11 +145,9 @@
                                         <button type="submit" class="btn btn-sm btn-outline-success" title="Enable Product">Enable</button>
                                     @endif
                                 </form>
-                                @if($product->type === 'local' || empty($product->type) || empty($product->api_product_key))
-                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProductModal{{ $product->id }}" title="Edit Product">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                @endif
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editProductModal{{ $product->id }}" title="Edit Product">
+                                    <i class="fa-solid fa-pen-to-square"></i>
+                                </button>
 
                                 <form action="{{ route('hq.logs.product.delete', $product->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this product? All its inventory will be deleted too.')">
                                     @csrf
@@ -255,7 +253,6 @@
 
 <!-- Edit Product Modals (Rendered outside of table for proper Bootstrap 5 backdrop, stacking & form submission) -->
 @foreach($products as $product)
-    @if($product->type === 'local' || empty($product->type) || empty($product->api_product_key))
     <div class="modal fade" id="editProductModal{{ $product->id }}" tabindex="-1" aria-labelledby="editProductLabel{{ $product->id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.product.update', $product->id) }}" method="POST" enctype="multipart/form-data">
@@ -268,7 +265,8 @@
                 <div class="modal-body py-3">
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Category</label>
-                        <select class="form-select" name="log_category_id" required>
+                        <select class="form-select" name="log_category_id">
+                            <option value="">-- No Category / General --</option>
                             @foreach($categories as $cat)
                                 <option value="{{ $cat->id }}" {{ $product->log_category_id == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
                             @endforeach
@@ -280,7 +278,7 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Product Icon (Optional)</label>
-                        @if($product->icon)
+                        @if(!empty($product->icon))
                             <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded bg-light border">
                                 <img src="{{ asset($product->icon) }}" class="rounded-circle object-fit-cover" style="width: 38px; height: 38px;">
                                 <span class="small text-muted flex-grow-1">Current custom icon</span>
@@ -316,7 +314,6 @@
             </form>
         </div>
     </div>
-    @endif
 @endforeach
 
 @endsection

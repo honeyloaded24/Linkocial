@@ -7,6 +7,10 @@ use App\Models\LogProduct;
 use App\Models\LogCategory;
 use App\Models\LogOrder;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class AdminLogMarketplaceController extends Controller
 {
@@ -160,11 +164,25 @@ class AdminLogMarketplaceController extends Controller
         return redirect()->route('hq.logs.index')->with('success', 'Local product created successfully.');
     }
 
+    public function showProductRedirect($id)
+    {
+        return redirect()->route('hq.logs.index');
+    }
+
     public function updateProduct(Request $request, $id)
     {
         try {
+            // Auto-heal missing icon column if migration was not yet run on live database
+            if (Schema::hasTable('log_products') && !Schema::hasColumn('log_products', 'icon')) {
+                try {
+                    Schema::table('log_products', function ($table) {
+                        $table->string('icon')->nullable()->after('description');
+                    });
+                } catch (\Throwable $ignored) {}
+            }
+
             $request->validate([
-                'log_category_id' => 'nullable|exists:log_categories,id',
+                'log_category_id' => 'nullable',
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
@@ -173,37 +191,55 @@ class AdminLogMarketplaceController extends Controller
 
             $product = LogProduct::findOrFail($id);
 
-            $iconPath = $product->icon;
+            $hasIconColumn = Schema::hasColumn('log_products', 'icon');
+            $iconPath = $hasIconColumn ? $product->icon : null;
+
             if ($request->boolean('remove_icon')) {
                 if ($iconPath && str_starts_with($iconPath, '/storage/')) {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
                 }
                 $iconPath = null;
             }
 
             if ($request->hasFile('icon')) {
                 if ($iconPath && str_starts_with($iconPath, '/storage/')) {
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
+                    Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
                 }
                 $file = $request->file('icon');
                 $path = $file->store('log_icons', 'public');
                 $iconPath = '/storage/' . $path;
             }
 
-            $product->update([
-                'log_category_id' => $request->log_category_id,
+            $updateData = [
                 'name' => $request->name,
                 'description' => $request->description,
-                'icon' => $iconPath,
                 'unit_price' => $request->our_price,
                 'our_price' => $request->our_price,
-            ]);
+            ];
 
-            return redirect()->route('hq.logs.index')->with('success', 'Product updated successfully.');
+            // Safely resolve category ID
+            if ($request->filled('log_category_id')) {
+                if (LogCategory::where('id', $request->log_category_id)->exists()) {
+                    $updateData['log_category_id'] = $request->log_category_id;
+                } else {
+                    $updateData['log_category_id'] = null;
+                }
+            } else {
+                $updateData['log_category_id'] = null;
+            }
+
+            if ($hasIconColumn) {
+                $updateData['icon'] = $iconPath;
+            }
+
+            $product->update($updateData);
+
+            return redirect()->route('hq.logs.index')->with('success', "Product #{$product->id} ('{$product->name}') updated successfully.");
         } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::warning("Update Log Product Validation Error: " . json_encode($e->validator->errors()->all()));
             return redirect()->route('hq.logs.index')->withErrors($e->validator)->withInput()->with('error', 'Validation error: ' . implode(', ', $e->validator->errors()->all()));
         } catch (\Throwable $e) {
-            Log::error("Update Log Product Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Update Log Product Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return redirect()->route('hq.logs.index')->with('error', 'Could not update product: ' . $e->getMessage());
         }
     }
@@ -216,21 +252,21 @@ class AdminLogMarketplaceController extends Controller
             // Nullify order references so foreign key constraints don't block deletion
             \App\Models\LogOrder::where('log_product_id', $prod->id)->update(['log_product_id' => null]);
 
-            if ($prod->icon && str_starts_with($prod->icon, '/storage/')) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $prod->icon));
+            if (Schema::hasColumn('log_products', 'icon') && $prod->icon && str_starts_with($prod->icon, '/storage/')) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $prod->icon));
             }
 
             foreach ($prod->items as $item) {
                 if ($item->file_path) {
                     $cleanPath = str_replace('/storage/', '', $item->file_path);
-                    \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+                    Storage::disk('public')->delete($cleanPath);
                 }
                 $item->delete();
             }
             $prod->delete();
             return redirect()->route('hq.logs.index')->with('success', 'Product and its inventory deleted successfully.');
         } catch (\Throwable $e) {
-            Log::error("Delete Log Product Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Delete Log Product Error: " . $e->getMessage());
             return redirect()->route('hq.logs.index')->with('error', 'Could not delete product: ' . $e->getMessage());
         }
     }
@@ -318,7 +354,7 @@ class AdminLogMarketplaceController extends Controller
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
-            Log::error("Add Stock Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Add Stock Error: " . $e->getMessage());
             return back()->with('error', 'Failed to add accounts to stock: ' . $e->getMessage());
         }
     }
