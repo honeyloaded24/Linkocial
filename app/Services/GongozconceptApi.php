@@ -134,4 +134,59 @@ class GongozconceptApi
         \Illuminate\Support\Facades\Log::info("Gongoz Validate Meter Response for $meterNumber ($disco): ", (array)$response);
         return $response;
     }
+
+    /**
+     * Validate Cable Smart Card / IUC Number
+     * 
+     * @param string $smartCardNumber
+     * @param int|string $cableName (1: GOTV, 2: DSTV, 3: STARTIME)
+     */
+    public function validateIUC($smartCardNumber, $cableName)
+    {
+        $cableMap = [
+            '1' => 'GOTV',
+            '2' => 'DSTV',
+            '3' => 'STARTIME',
+        ];
+
+        // First attempt with the provided cableName (e.g. 1, 2, 3 or GOTV, DSTV, STARTIME)
+        $url = 'validateiuc?smart_card_number=' . urlencode($smartCardNumber) . '&cablename=' . urlencode($cableName);
+        $response = $this->request('get', $url);
+        \Illuminate\Support\Facades\Log::info("Gongoz Validate IUC Response for $smartCardNumber ($cableName): ", (array)$response);
+
+        // If not successful and $cableName was numeric, also try text name, or vice-versa
+        $name = $response['name'] ?? ($response['Customer_Name'] ?? ($response['customer_name'] ?? null));
+        if (empty($name) || strtolower($name) === 'invalid') {
+            $altCable = $cableMap[(string) $cableName] ?? array_search(strtoupper($cableName), $cableMap);
+            if ($altCable) {
+                $altUrl = 'validateiuc?smart_card_number=' . urlencode($smartCardNumber) . '&cablename=' . urlencode($altCable);
+                $altResponse = $this->request('get', $altUrl);
+                \Illuminate\Support\Facades\Log::info("Gongoz Validate IUC Alt Response for $smartCardNumber ($altCable): ", (array)$altResponse);
+                $altName = $altResponse['name'] ?? ($altResponse['Customer_Name'] ?? ($altResponse['customer_name'] ?? null));
+                if (!empty($altName) && strtolower($altName) !== 'invalid') {
+                    return $altResponse;
+                }
+            }
+        }
+
+        return $response;
+    }
+
+    /**
+     * Buy Cable TV Subscription
+     * 
+     * @param int|string $cableName
+     * @param int|string $cablePlan
+     * @param string $smartCardNumber
+     */
+    public function buyCable($cableName, $cablePlan, $smartCardNumber)
+    {
+        $payload = [
+            'cablename' => $cableName,
+            'cableplan' => $cablePlan,
+            'smart_card_number' => $smartCardNumber,
+        ];
+
+        return $this->request('post', 'cablesub/', $payload);
+    }
 }

@@ -210,7 +210,16 @@
                 smart_card_number: iuc
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.message || 'Validation request failed');
+                }).catch(() => {
+                    throw new Error('Validation request failed with status ' + response.status);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 validationResult.style.display = 'block';
@@ -220,15 +229,30 @@
                 
                 validateBtn.style.display = 'none';
                 submitBtn.style.display = 'block';
+                submitBtn.className = 'btn btn-success btn-lg fw-bold';
+                submitBtn.innerText = 'Subscribe Now';
             } else {
                 validationResult.style.display = 'block';
                 customerName.textContent = data.message || 'Validation failed';
                 customerName.classList.remove('text-success');
                 customerName.classList.add('text-danger');
+                
+                // Allow user to proceed with subscription if validation unavailable
+                submitBtn.style.display = 'block';
+                submitBtn.className = 'btn btn-warning btn-lg fw-bold text-dark';
+                submitBtn.innerText = 'Proceed With Subscription';
             }
         })
         .catch(error => {
-            Swal.fire('Error', 'An error occurred during validation', 'error');
+            validationResult.style.display = 'block';
+            customerName.textContent = error.message || 'Validation service temporarily unavailable.';
+            customerName.classList.remove('text-success');
+            customerName.classList.add('text-danger');
+            
+            // Allow user to proceed with subscription
+            submitBtn.style.display = 'block';
+            submitBtn.className = 'btn btn-warning btn-lg fw-bold text-dark';
+            submitBtn.innerText = 'Proceed With Subscription';
         })
         .finally(() => {
             validateBtn.disabled = false;

@@ -303,19 +303,29 @@ class VtuController extends Controller
             'cablename' => 'required',
         ]);
 
-        $response = $this->vtuApi->validateIUC($request->smart_card_number, $request->cablename);
+        try {
+            $response = $this->vtuApi->validateIUC($request->smart_card_number, $request->cablename);
 
-        if (isset($response['name'])) {
+            $name = $response['name'] ?? ($response['Customer_Name'] ?? ($response['customer_name'] ?? null));
+            if (!empty($name) && strtolower($name) !== 'invalid' && strtolower($name) !== 'null') {
+                return response()->json([
+                    'success' => true,
+                    'name' => $name,
+                ]);
+            }
+
+            $message = $response['message'] ?? ($response['error'][0] ?? ($response['error'] ?? 'Invalid Smart Card number or could not validate.'));
             return response()->json([
-                'success' => true,
-                'name' => $response['name'],
+                'success' => false,
+                'message' => is_string($message) ? $message : 'Invalid Smart Card number or could not validate.'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('VTU Validate IUC error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to validate Smart Card right now. Please check the number and try again.'
             ]);
         }
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Invalid Smart Card number or could not validate.'
-        ]);
     }
 
     public function purchaseCable(Request $request)
