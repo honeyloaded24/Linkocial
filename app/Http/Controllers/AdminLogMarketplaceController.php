@@ -130,7 +130,7 @@ class AdminLogMarketplaceController extends Controller
     public function storeProduct(Request $request)
     {
         $request->validate([
-            'log_category_id' => 'required|exists:log_categories,id',
+            'log_category_id' => 'nullable|exists:log_categories,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
@@ -157,14 +157,14 @@ class AdminLogMarketplaceController extends Controller
             'in_stock' => 0,
         ]);
 
-        return back()->with('success', 'Local product created successfully.');
+        return redirect()->route('hq.logs.index')->with('success', 'Local product created successfully.');
     }
 
     public function updateProduct(Request $request, $id)
     {
         try {
             $request->validate([
-                'log_category_id' => 'required|exists:log_categories,id',
+                'log_category_id' => 'nullable|exists:log_categories,id',
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
@@ -199,12 +199,12 @@ class AdminLogMarketplaceController extends Controller
                 'our_price' => $request->our_price,
             ]);
 
-            return back()->with('success', 'Product updated successfully.');
+            return redirect()->route('hq.logs.index')->with('success', 'Product updated successfully.');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withErrors($e->validator)->withInput()->with('error', 'Validation error: ' . implode(', ', $e->validator->errors()->all()));
-        } catch (\Exception $e) {
+            return redirect()->route('hq.logs.index')->withErrors($e->validator)->withInput()->with('error', 'Validation error: ' . implode(', ', $e->validator->errors()->all()));
+        } catch (\Throwable $e) {
             Log::error("Update Log Product Error: " . $e->getMessage());
-            return back()->with('error', 'Could not update product: ' . $e->getMessage());
+            return redirect()->route('hq.logs.index')->with('error', 'Could not update product: ' . $e->getMessage());
         }
     }
 
@@ -228,10 +228,10 @@ class AdminLogMarketplaceController extends Controller
                 $item->delete();
             }
             $prod->delete();
-            return back()->with('success', 'Product and its inventory deleted successfully.');
-        } catch (\Exception $e) {
+            return redirect()->route('hq.logs.index')->with('success', 'Product and its inventory deleted successfully.');
+        } catch (\Throwable $e) {
             Log::error("Delete Log Product Error: " . $e->getMessage());
-            return back()->with('error', 'Could not delete product: ' . $e->getMessage());
+            return redirect()->route('hq.logs.index')->with('error', 'Could not delete product: ' . $e->getMessage());
         }
     }
 

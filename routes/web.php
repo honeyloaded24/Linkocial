@@ -248,7 +248,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/logs/categories', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'storeCategory'])->name('hq.logs.category.store');
         Route::delete('/logs/categories/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'deleteCategory'])->name('hq.logs.category.delete');
         Route::post('/logs/products', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'storeProduct'])->name('hq.logs.product.store');
-        Route::put('/logs/products/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updateProduct'])->name('hq.logs.product.update');
+        Route::match(['post', 'put'], '/logs/products/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updateProduct'])->name('hq.logs.product.update');
+        Route::get('/logs/products/{id}', function() {
+            return redirect()->route('hq.logs.index');
+        });
         Route::delete('/logs/products/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'deleteProduct'])->name('hq.logs.product.delete');
         Route::get('/logs/products/{id}/stock', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'stock'])->name('hq.logs.stock');
         Route::post('/logs/products/{id}/stock', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'addStock'])->name('hq.logs.stock.add');
