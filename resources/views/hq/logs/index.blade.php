@@ -94,10 +94,15 @@
                             @endif
                         </td>
                         <td>
-                            <div class="fw-bold" style="font-size: 0.85rem;">{{ $product->name }}</div>
-                            @if($product->type === 'api')
-                                <small class="text-muted" style="font-size: 0.75rem;">Key: {{ $product->api_product_key }}</small>
-                            @endif
+                            <div class="d-flex align-items-center gap-2">
+                                {!! $product->getIconHtml(36) !!}
+                                <div>
+                                    <div class="fw-bold" style="font-size: 0.85rem;">{{ $product->name }}</div>
+                                    @if($product->type === 'api')
+                                        <small class="text-muted" style="font-size: 0.75rem;">Key: {{ $product->api_product_key }}</small>
+                                    @endif
+                                </div>
+                            </div>
                         </td>
                         <td>{{ $product->category->name ?? 'General' }}</td>
                         <td class="fw-bold text-danger">
@@ -201,7 +206,7 @@
 <!-- Create Local Product Modal -->
 <div class="modal fade" id="createProductModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content border-0 rounded-4 shadow-lg" action="{{ route('hq.logs.product.store') }}" method="POST">
+        <form class="modal-content border-0 rounded-4 shadow-lg" action="{{ route('hq.logs.product.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
             <div class="modal-header border-0 pb-0">
                 <h5 class="modal-title fw-bold">Create Local Product</h5>
@@ -209,7 +214,7 @@
             </div>
             <div class="modal-body py-3">
                 <div class="mb-3">
-                    <label class="form-label">Category</label>
+                    <label class="form-label fw-bold small">Category</label>
                     <select class="form-select" name="log_category_id" required>
                         <option value="" disabled selected>Select Category</option>
                         @foreach($categories as $cat)
@@ -218,12 +223,18 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Product Name</label>
+                    <label class="form-label fw-bold small">Product Name</label>
                     <input type="text" class="form-control" name="name" required placeholder="e.g. Old US Gmails">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Description (Optional)</label>
-                    <textarea class="form-control" name="description" rows="3"></textarea>
+                    <label class="form-label fw-bold small">Product Icon (Optional)</label>
+                    <input type="file" class="form-control" name="icon" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+                    <div class="form-text small">Upload an image (PNG, JPG, SVG, WebP) or leave empty to automatically detect based on platform name (Instagram, FB, X, Gmail, etc.).</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Description (Optional)</label>
+                    <textarea class="form-control" name="description" rows="5" placeholder="Enter product instructions, details, rules... Links (e.g. https://...) and multiple paragraphs are supported and will be clickable."></textarea>
+                    <div class="form-text small">Supports multiple paragraphs and clickable URLs for buyers.</div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Our Price (₦)</label>
@@ -247,7 +258,7 @@
     @if($product->type === 'local' || empty($product->type) || empty($product->api_product_key))
     <div class="modal fade" id="editProductModal{{ $product->id }}" tabindex="-1" aria-labelledby="editProductLabel{{ $product->id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.product.update', $product->id) }}" method="POST">
+            <form class="modal-content border-0 rounded-4 shadow-lg text-start" action="{{ route('hq.logs.product.update', $product->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="modal-header border-0 pb-0">
@@ -268,8 +279,26 @@
                         <input type="text" class="form-control" name="name" required value="{{ $product->name }}">
                     </div>
                     <div class="mb-3">
+                        <label class="form-label fw-bold small">Product Icon (Optional)</label>
+                        @if($product->icon)
+                            <div class="d-flex align-items-center gap-2 mb-2 p-2 rounded bg-light border">
+                                <img src="{{ asset($product->icon) }}" class="rounded-circle object-fit-cover" style="width: 38px; height: 38px;">
+                                <span class="small text-muted flex-grow-1">Current custom icon</span>
+                                <div class="form-check m-0">
+                                    <input class="form-check-input" type="checkbox" name="remove_icon" value="1" id="removeIcon{{ $product->id }}">
+                                    <label class="form-check-label text-danger small fw-bold" for="removeIcon{{ $product->id }}">
+                                        Remove icon
+                                    </label>
+                                </div>
+                            </div>
+                        @endif
+                        <input type="file" class="form-control" name="icon" accept="image/png,image/jpeg,image/svg+xml,image/webp">
+                        <div class="form-text small">Upload to replace icon, or leave empty to keep current / auto-detect.</div>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label fw-bold small">Description (Optional)</label>
-                        <textarea class="form-control" name="description" rows="3">{{ $product->description }}</textarea>
+                        <textarea class="form-control" name="description" rows="5" placeholder="Enter product instructions, details, rules... Links (e.g. https://...) and multiple paragraphs are supported and will be clickable.">{{ $product->description }}</textarea>
+                        <div class="form-text small">Supports multiple paragraphs and clickable URLs for buyers.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Our Price (₦)</label>

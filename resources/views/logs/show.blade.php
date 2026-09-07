@@ -30,39 +30,19 @@
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         
                         <div class="d-flex align-items-center mb-4 p-3 rounded" style="background: rgba(0,0,0,0.2);">
-                            <div class="bg-primary shadow-sm me-3 flex-shrink-0 d-flex align-items-center justify-content-center text-white" style="width: 50px; height: 50px; border-radius: 50%; font-size: 1.5rem;">
-                                @if(stripos($product->name, 'instagram') !== false || stripos($product->name, 'ig') !== false)
-                                    <i class="fa-brands fa-instagram"></i>
-                                @elseif(stripos($product->name, 'facebook') !== false || stripos($product->name, 'fb') !== false)
-                                    <i class="fa-brands fa-facebook"></i>
-                                @elseif(stripos($product->name, 'twitter') !== false || stripos($product->name, 'x') !== false)
-                                    <i class="fa-brands fa-x-twitter"></i>
-                                @elseif(stripos($product->name, 'tiktok') !== false)
-                                    <i class="fa-brands fa-tiktok"></i>
-                                @elseif(stripos($product->name, 'linkedin') !== false)
-                                    <i class="fa-brands fa-linkedin"></i>
-                                @elseif(stripos($product->name, 'snapchat') !== false)
-                                    <i class="fa-brands fa-snapchat"></i>
-                                @elseif(stripos($product->name, 'vpn') !== false)
-                                    <i class="fa-solid fa-shield-halved"></i>
-                                @elseif(stripos($product->name, 'proxy') !== false)
-                                    <i class="fa-solid fa-server"></i>
-                                @else
-                                    <i class="fa-solid fa-key"></i>
-                                @endif
-                            </div>
+                            {!! $product->getIconHtml(50, 'me-3') !!}
                             <div>
                                 <div class="fw-bold text-primary fs-5">{{ $product->name }}</div>
-                                <div class="text-muted d-block mt-1" style="font-size: 0.9em;">{!! nl2br(e($product->description)) !!}</div>
+                                <div class="text-muted d-block mt-1" style="font-size: 0.9em;">{!! $product->renderDescriptionHtml() !!}</div>
                             </div>
                         </div>
 
                         @php
                             $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
                             $multiplier = 1 + ($markupRate / 100);
-                            $price = $product->our_price > 0 ? $product->our_price : ($product->unit_price * $multiplier);
-                            $priceFormatted = money($price, true, 'NGN');
-                            $priceNgnRaw = money($price, false, 'NGN');
+                            $price = $product->our_price > 0 ? (float)$product->our_price : ((float)$product->unit_price * $multiplier);
+                            $priceFormatted = '₦' . number_format($price, 2);
+                            $priceNgnRaw = number_format($price, 2, '.', '');
                         @endphp
 
                         <div class="mb-3">

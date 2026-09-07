@@ -1,34 +1,13 @@
 @php
     $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
     $multiplier = 1 + ($markupRate / 100);
-    $price = $product->our_price > 0 ? $product->our_price : ($product->unit_price * $multiplier);
-    $priceFormatted = money($price, true, 'NGN');
-    $priceNgnRaw = money($price, false, 'NGN');
+    $price = $product->our_price > 0 ? (float)$product->our_price : ((float)$product->unit_price * $multiplier);
+    $priceFormatted = '₦' . number_format($price, 2);
 @endphp
 <div class="log-card p-3 mb-3 d-flex align-items-center justify-content-between">
     <div class="d-flex align-items-center">
         <!-- Icon -->
-        <div class="product-icon bg-primary shadow-sm me-3 flex-shrink-0" style="width: 45px; height: 45px; font-size: 1.3rem;">
-            @if(stripos($product->name, 'instagram') !== false || stripos($product->name, 'ig') !== false)
-                <i class="fa-brands fa-instagram"></i>
-            @elseif(stripos($product->name, 'facebook') !== false || stripos($product->name, 'fb') !== false)
-                <i class="fa-brands fa-facebook"></i>
-            @elseif(stripos($product->name, 'twitter') !== false || stripos($product->name, 'x') !== false)
-                <i class="fa-brands fa-x-twitter"></i>
-            @elseif(stripos($product->name, 'tiktok') !== false)
-                <i class="fa-brands fa-tiktok"></i>
-            @elseif(stripos($product->name, 'linkedin') !== false)
-                <i class="fa-brands fa-linkedin"></i>
-            @elseif(stripos($product->name, 'snapchat') !== false)
-                <i class="fa-brands fa-snapchat"></i>
-            @elseif(stripos($product->name, 'vpn') !== false)
-                <i class="fa-solid fa-shield-halved"></i>
-            @elseif(stripos($product->name, 'proxy') !== false)
-                <i class="fa-solid fa-server"></i>
-            @else
-                <i class="fa-solid fa-key"></i>
-            @endif
-        </div>
+        {!! $product->getIconHtml(45, 'me-3') !!}
         
         <!-- Info -->
         <div>

@@ -133,14 +133,23 @@ class AdminLogMarketplaceController extends Controller
             'log_category_id' => 'required|exists:log_categories,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
             'our_price' => 'required|numeric|min:0'
         ]);
+
+        $iconPath = null;
+        if ($request->hasFile('icon')) {
+            $file = $request->file('icon');
+            $path = $file->store('log_icons', 'public');
+            $iconPath = '/storage/' . $path;
+        }
 
         LogProduct::create([
             'type' => 'local',
             'log_category_id' => $request->log_category_id,
             'name' => $request->name,
             'description' => $request->description,
+            'icon' => $iconPath,
             'base_api_price' => 0,
             'unit_price' => $request->our_price,
             'our_price' => $request->our_price,
@@ -158,14 +167,34 @@ class AdminLogMarketplaceController extends Controller
                 'log_category_id' => 'required|exists:log_categories,id',
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
+                'icon' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
                 'our_price' => 'required|numeric|min:0'
             ]);
 
             $product = LogProduct::findOrFail($id);
+
+            $iconPath = $product->icon;
+            if ($request->boolean('remove_icon')) {
+                if ($iconPath && str_starts_with($iconPath, '/storage/')) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
+                }
+                $iconPath = null;
+            }
+
+            if ($request->hasFile('icon')) {
+                if ($iconPath && str_starts_with($iconPath, '/storage/')) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $iconPath));
+                }
+                $file = $request->file('icon');
+                $path = $file->store('log_icons', 'public');
+                $iconPath = '/storage/' . $path;
+            }
+
             $product->update([
                 'log_category_id' => $request->log_category_id,
                 'name' => $request->name,
                 'description' => $request->description,
+                'icon' => $iconPath,
                 'unit_price' => $request->our_price,
                 'our_price' => $request->our_price,
             ]);
@@ -186,6 +215,10 @@ class AdminLogMarketplaceController extends Controller
 
             // Nullify order references so foreign key constraints don't block deletion
             \App\Models\LogOrder::where('log_product_id', $prod->id)->update(['log_product_id' => null]);
+
+            if ($prod->icon && str_starts_with($prod->icon, '/storage/')) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete(str_replace('/storage/', '', $prod->icon));
+            }
 
             foreach ($prod->items as $item) {
                 if ($item->file_path) {

@@ -75,11 +75,16 @@ class LogMarketplaceController extends Controller
 
         $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
         $markupMultiplier = 1 + ($markupRate / 100);
-        $priceToCharge = $product->our_price > 0 ? $product->our_price : $product->unit_price * $markupMultiplier;
-        $totalCostUsd = $priceToCharge * $request->quantity;
 
-        if ($user->balance < $totalCostUsd) {
-            return back()->with('error', 'Insufficient balance. Please fund your account.');
+        // Prices are denominated in Nigerian Naira (₦ / NGN)
+        $priceToChargeNgn = (float) ($product->our_price > 0 ? $product->our_price : $product->unit_price * $markupMultiplier);
+        $totalCostNgn = $priceToChargeNgn * $request->quantity;
+
+        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00);
+        $amountUsd = $totalCostNgn / $ngnRate;
+
+        if ($user->balance < $amountUsd) {
+            return back()->with('error', 'Insufficient wallet balance. You need ₦' . number_format($totalCostNgn, 2) . ' (~$' . number_format($amountUsd, 2) . ') to complete this purchase. Please fund your account.');
         }
 
         if ($product->type === 'local') {
@@ -97,10 +102,16 @@ class LogMarketplaceController extends Controller
                     return back()->with('error', 'Not enough stock available at this moment. Please try a lower quantity.');
                 }
 
-                // Deduct balance
-                $user->balance -= $totalCostUsd;
+                // Deduct balance (USD base)
+                $user->balance -= $amountUsd;
                 $user->save();
-                Transaction::add($user->id, $totalCostUsd, 'debit', 'log_purchase', "Purchased {$request->quantity}x {$product->name}");
+                Transaction::add(
+                    $user->id, 
+                    $amountUsd, 
+                    'debit', 
+                    'log_purchase', 
+                    "Purchased {$request->quantity}x {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
+                );
 
                 $externalOrderId = 'LOG-' . auth()->id() . '-' . time() . rand(10, 99);
                 $order = LogOrder::create([
@@ -109,8 +120,9 @@ class LogMarketplaceController extends Controller
                     'api_product_key' => null,
                     'product_name' => $product->name,
                     'quantity' => $request->quantity,
-                    'unit_cost' => $priceToCharge,
-                    'total_cost' => $totalCostUsd,
+                    'unit_cost' => $priceToChargeNgn,
+                    'total_cost' => $totalCostNgn,
+                    'amount_usd' => $amountUsd,
                     'external_order_id' => $externalOrderId,
                     'status' => 'completed',
                 ]);
@@ -148,11 +160,17 @@ class LogMarketplaceController extends Controller
             DB::beginTransaction();
 
             try {
-                // Deduct from user balance
-                $user->balance -= $totalCostUsd;
+                // Deduct from user balance (USD base)
+                $user->balance -= $amountUsd;
                 $user->save();
 
-                Transaction::add($user->id, $totalCostUsd, 'debit', 'log_purchase', "Purchased {$request->quantity}x {$product->name}");
+                Transaction::add(
+                    $user->id, 
+                    $amountUsd, 
+                    'debit', 
+                    'log_purchase', 
+                    "Purchased {$request->quantity}x {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
+                );
 
                 $externalOrderId = 'LOG-' . auth()->id() . '-' . time() . rand(10, 99);
 
@@ -162,8 +180,9 @@ class LogMarketplaceController extends Controller
                     'api_product_key' => $product->api_product_key,
                     'product_name' => $product->name,
                     'quantity' => $request->quantity,
-                    'unit_cost' => $priceToCharge,
-                    'total_cost' => $totalCostUsd,
+                    'unit_cost' => $priceToChargeNgn,
+                    'total_cost' => $totalCostNgn,
+                    'amount_usd' => $amountUsd,
                     'external_order_id' => $externalOrderId,
                     'status' => 'pending',
                 ]);
@@ -191,9 +210,15 @@ class LogMarketplaceController extends Controller
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
             } else {
                 // Refund
-                $user->balance += $totalCostUsd;
+                $user->balance += $amountUsd;
                 $user->save();
-                Transaction::add($user->id, $totalCostUsd, 'credit', 'log_refund', "Refund for failed log purchase: {$product->name}");
+                Transaction::add(
+                    $user->id, 
+                    $amountUsd, 
+                    'credit', 
+                    'log_refund', 
+                    "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
+                );
 
                 $order->update([
                     'status' => 'failed',

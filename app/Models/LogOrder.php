@@ -8,7 +8,7 @@ class LogOrder extends Model
 {
     protected $fillable = [
         'user_id', 'log_product_id', 'api_product_key', 'product_name',
-        'quantity', 'unit_cost', 'total_cost', 'external_order_id', 
+        'quantity', 'unit_cost', 'total_cost', 'amount_usd', 'external_order_id', 
         'status', 'delivered_items'
     ];
 

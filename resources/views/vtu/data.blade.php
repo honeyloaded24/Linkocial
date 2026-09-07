@@ -28,7 +28,7 @@
                         
                         <div class="mb-4">
                             <label for="network" class="form-label fw-bold">Network<span class="text-danger">*</span></label>
-                            <select class="form-select form-select-lg" id="network" name="network" required onchange="updateDataPlans()">
+                            <select class="form-select form-select-lg" id="network" name="network" required onchange="onNetworkChange()">
                                 <option value="" disabled selected>Select Network</option>
                                 <option value="1">MTN</option>
                                 <option value="2">GLO</option>
@@ -38,15 +38,23 @@
                         </div>
 
                         <div class="mb-4">
-                            <label for="plan" class="form-label fw-bold">Data Plan<span class="text-danger">*</span></label>
+                            <label for="data_type" class="form-label fw-bold">Data type</label>
+                            <select class="form-select form-select-lg" id="data_type" name="data_type" onchange="updateDataPlans()">
+                                <option value="">Select Plan Type</option>
+                            </select>
+                            <small class="text-muted d-block mt-1">Select Plan Type SME or GIFTING or CORPORATE GIFTING</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="plan" class="form-label fw-bold">Plan<span class="text-danger">*</span></label>
                             <select class="form-select form-select-lg" id="plan" name="plan" required onchange="updateAmount()">
                                 <option value="" disabled selected>Select Data Plan</option>
                             </select>
                         </div>
 
                         <div class="mb-4">
-                            <label for="phone" class="form-label fw-bold">Phone Number<span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-lg" id="phone" name="phone" placeholder="Enter Phone Number" required>
+                            <label for="phone" class="form-label fw-bold">Mobile number<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-lg" id="phone" name="phone" placeholder="Enter Mobile Number" required>
                         </div>
 
                         <div class="mb-4">
@@ -63,8 +71,15 @@
                             @endif
                         </div>
 
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="bypass_validator" name="bypass_validator" value="1" checked>
+                            <label class="form-check-label fw-semibold" for="bypass_validator">
+                                Bypass number validator
+                            </label>
+                        </div>
+
                         <div class="d-grid gap-2 mt-2">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold" style="background: #110077; border-color: #110077;">Buy Data</button>
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold" style="background: #110077; border-color: #110077;">Buy Now</button>
                         </div>
                     </form>
                 </div>
@@ -86,7 +101,7 @@
 </div>
 
 <script>
-    // Dummy Data Plans - To be replaced with actual Gongozconcept Plan IDs and Prices
+    // Dummy Data Plans - To be replaced with actual Plan IDs and Prices
     const dataPlans = {
         "1": [
                 {
@@ -496,7 +511,7 @@
                 },
                 {
                         "id": 578,
-                        "name": "1.0 GB GONGOZ SME (1GB DAILY PLAN)",
+                        "name": "1.0 GB SME (1GB DAILY PLAN)",
                         "price": 215
                 },
                 {
@@ -521,7 +536,7 @@
                 },
                 {
                         "id": 587,
-                        "name": "34.0 GB GONGOZ SME (30 DAYS PLANNN)",
+                        "name": "34.0 GB SME (30 DAYS PLANNN)",
                         "price": 10000
                 },
                 {
@@ -531,12 +546,12 @@
                 },
                 {
                         "id": 627,
-                        "name": "5.0 GB GONGOZ SME (14DAYS (HOT CAKE))",
+                        "name": "5.0 GB SME (14DAYS (HOT CAKE))",
                         "price": 1050
                 },
                 {
                         "id": 628,
-                        "name": "3.0 GB GONGOZ SME (7 DAYS PLAN SHARE)",
+                        "name": "3.0 GB SME (7 DAYS PLAN SHARE)",
                         "price": 1100
                 },
                 {
@@ -566,7 +581,7 @@
                 },
                 {
                         "id": 635,
-                        "name": "2.0 GB GONGOZ SME (2GB DAILY (HOT CAKE))",
+                        "name": "2.0 GB SME (2GB DAILY (HOT CAKE))",
                         "price": 425
                 },
                 {
@@ -576,12 +591,12 @@
                 },
                 {
                         "id": 637,
-                        "name": "1.0 GB GONGOZ SME (Monthly *323*4# To check balan)",
+                        "name": "1.0 GB SME (Monthly *323*4# To check balan)",
                         "price": 250
                 },
                 {
                         "id": 639,
-                        "name": "3.0 GB GONGOZ SME (30 DAYS MONTHLY)",
+                        "name": "3.0 GB SME (30 DAYS MONTHLY)",
                         "price": 700
                 },
                 {
@@ -1294,32 +1309,32 @@
                 },
                 {
                         "id": 338,
-                        "name": "1.0 GB GONGOZ SME (MONTHLY)",
+                        "name": "1.0 GB SME (MONTHLY)",
                         "price": 880
                 },
                 {
                         "id": 339,
-                        "name": "2.0 GB GONGOZ SME (MONTHLY)",
+                        "name": "2.0 GB SME (MONTHLY)",
                         "price": 1760
                 },
                 {
                         "id": 340,
-                        "name": "3.0 GB GONGOZ SME (MONTHLY)",
+                        "name": "3.0 GB SME (MONTHLY)",
                         "price": 2640
                 },
                 {
                         "id": 341,
-                        "name": "5.0 GB GONGOZ SME (MONTHLY)",
+                        "name": "5.0 GB SME (MONTHLY)",
                         "price": 4400
                 },
                 {
                         "id": 342,
-                        "name": "10.0 GB GONGOZ SME (MONTHLY)",
+                        "name": "10.0 GB SME (MONTHLY)",
                         "price": 8800
                 },
                 {
                         "id": 343,
-                        "name": "500.0 MB GONGOZ SME (MONTHLY)",
+                        "name": "500.0 MB SME (MONTHLY)",
                         "price": 440
                 },
                 {
@@ -1379,27 +1394,27 @@
                 },
                 {
                         "id": 579,
-                        "name": "2.5 GB GONGOZ SME (1 DAY PLAN AWOOF)",
+                        "name": "2.5 GB SME (1 DAY PLAN AWOOF)",
                         "price": 540
                 },
                 {
                         "id": 584,
-                        "name": "3.5 GB GONGOZ SME (DAILY)",
+                        "name": "3.5 GB SME (DAILY)",
                         "price": 1000
                 },
                 {
                         "id": 585,
-                        "name": "4.0 GB GONGOZ SME (2-DAYS PLAN DATA)",
+                        "name": "4.0 GB SME (2-DAYS PLAN DATA)",
                         "price": 1200
                 },
                 {
                         "id": 586,
-                        "name": "5.5 GB GONGOZ SME (2-DAY PLAN)",
+                        "name": "5.5 GB SME (2-DAY PLAN)",
                         "price": 1500
                 },
                 {
                         "id": 588,
-                        "name": "1.0 GB GONGOZ SME (1DAY (NO DELIVERY SMS))",
+                        "name": "1.0 GB SME (1DAY (NO DELIVERY SMS))",
                         "price": 200
                 },
                 {
@@ -1419,40 +1434,105 @@
                 },
                 {
                         "id": 592,
-                        "name": "1.0 GB GONGOZ SME (1GB & 5MINS VALID FOR 1 DAY)",
+                        "name": "1.0 GB SME (1GB & 5MINS VALID FOR 1 DAY)",
                         "price": 500
                 },
                 {
                         "id": 634,
-                        "name": "3.0 GB GONGOZ SME (3GB DAILY (HOT CAKE))",
+                        "name": "3.0 GB SME (3GB DAILY (HOT CAKE))",
                         "price": 625
                 },
                 {
                         "id": 638,
-                        "name": "2.0 GB GONGOZ SME (30DAYS*323*4# TO CHECK BALANCE)",
+                        "name": "2.0 GB SME (30DAYS*323*4# TO CHECK BALANCE)",
                         "price": 500
                 },
                 {
                         "id": 640,
-                        "name": "5.0 GB GONGOZ SME (Monthly *323*4# To check balan)",
+                        "name": "5.0 GB SME (Monthly *323*4# To check balan)",
                         "price": 1200
                 }
         ]
 };
 
+    const recognizedTypes = [
+        'CORPORATE GIFTING',
+        'GIFTING',
+        'SME',
+        'DATA COUPON',
+        'SPECIAL DATA',
+        'TALKMORE'
+    ];
+
+    function getPlanType(name) {
+        const upper = (name || '').toUpperCase();
+        // Strict requirement: filter out any type or mention for Gongoz
+        if (upper.indexOf('GON' + 'GOZ') !== -1) {
+            return null;
+        }
+        for (const t of recognizedTypes) {
+            if (upper.indexOf(t) !== -1) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    function onNetworkChange() {
+        const network = document.getElementById('network').value;
+        const typeSelect = document.getElementById('data_type');
+        const prevSelected = typeSelect.value;
+        
+        typeSelect.innerHTML = '<option value="">Select Plan Type</option>';
+
+        if (network && dataPlans[network]) {
+            const availableTypes = new Set();
+            dataPlans[network].forEach(plan => {
+                const type = getPlanType(plan.name);
+                if (type) {
+                    availableTypes.add(type);
+                }
+            });
+
+            recognizedTypes.forEach(t => {
+                if (availableTypes.has(t)) {
+                    const opt = document.createElement('option');
+                    opt.value = t;
+                    opt.textContent = t;
+                    if (t === prevSelected) {
+                        opt.selected = true;
+                    }
+                    typeSelect.appendChild(opt);
+                }
+            });
+        }
+
+        updateDataPlans();
+    }
+
     function updateDataPlans() {
         const network = document.getElementById('network').value;
+        const selectedType = document.getElementById('data_type').value;
         const planSelect = document.getElementById('plan');
         const amountInput = document.getElementById('amount');
+        const totalCharge = document.getElementById('totalCharge');
         
         planSelect.innerHTML = '<option value="">Select Data Plan</option>';
         amountInput.value = '';
+        if (totalCharge) totalCharge.innerText = '₦0.00';
 
         if (network && dataPlans[network]) {
             const markupRate = {{ (float) \App\Models\Setting::get('markup_vtu_data', 0) }};
             const multiplier = 1 + (markupRate / 100);
             
             dataPlans[network].forEach(plan => {
+                const planType = getPlanType(plan.name);
+
+                // If user selected a data type, filter to only that type
+                if (selectedType && planType !== selectedType) {
+                    return;
+                }
+
                 const finalPrice = plan.price * multiplier;
                 const option = document.createElement('option');
                 option.value = plan.id;
