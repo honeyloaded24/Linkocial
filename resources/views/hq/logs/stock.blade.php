@@ -10,7 +10,7 @@
             <div class="d-flex align-items-center gap-3 mt-1 flex-wrap">
                 <span class="text-muted small">Total Available Stock: <strong class="text-success">{{ $product->in_stock }}</strong> accounts</span>
                 <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-1 rounded-pill fw-bold">
-                    Price: {{ money($product->our_price, true, 'NGN') }}
+                    Price: ₦{{ number_format((float)$product->our_price, 2) }}
                 </span>
                 <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-primary fw-bold" data-bs-toggle="modal" data-bs-target="#editStockPriceModal">
                     <i class="fa-solid fa-pen-to-square me-1"></i> Edit Price

@@ -107,7 +107,7 @@
                         <td>{{ $product->category->name ?? 'General' }}</td>
                         <td class="fw-bold text-danger">
                             @if($product->type === 'api')
-                                {{ money($product->base_api_price, true, 'NGN') }}
+                                ₦{{ number_format((float)$product->base_api_price, 2) }}
                             @else
                                 -
                             @endif
