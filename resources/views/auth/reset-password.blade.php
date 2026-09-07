@@ -170,7 +170,7 @@
                 <div class="mb-3">
                     <label class="form-label text-white opacity-75 fw-bold small text-uppercase mb-2 ps-1"
                         style="letter-spacing: 1.5px;">Email Address</label>
-                    <input type="email" name="email" class="form-control" placeholder="name@example.com" value="{{ $email ?? old('email') }}" required readonly>
+                    <input type="email" name="email" class="form-control" placeholder="name@example.com" value="{{ old('email', $email) }}" required {{ !empty($email) ? 'readonly' : '' }}>
                 </div>
 
                 <div class="mb-3">

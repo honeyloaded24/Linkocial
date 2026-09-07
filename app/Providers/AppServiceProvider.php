@@ -62,10 +62,17 @@ class AppServiceProvider extends ServiceProvider
 
         // Custom Password Reset Email
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
-            $url = url(route('password.reset', [
+            $baseUrl = request()->root();
+            if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
+                $baseUrl = config('app.url');
+            }
+
+            $relativePath = route('password.reset', [
                 'token' => $token,
                 'email' => $notifiable->getEmailForPasswordReset(),
-            ], false));
+            ], false);
+
+            $url = rtrim($baseUrl, '/') . $relativePath;
 
             return (new MailMessage)
                 ->subject('Reset Your Linkocial Password 🔒')

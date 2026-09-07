@@ -37,8 +37,8 @@
                                 <div class="fw-bold">{{ $order->product }}</div>
                                 <small class="text-muted">{{ $order->country }}</small>
                             </td>
-                            <td class="fw-bold">
-                                <span class="font-monospace">{{ $order->phone_number }}</span>
+                            <td class="fw-bold text-nowrap">
+                                <span class="font-monospace" style="font-size: 0.88rem;">{{ $order->phone_number }}</span>
                                 <button class="btn btn-link text-muted p-0 ms-1" onclick="navigator.clipboard.writeText('{{ $order->phone_number }}'); const icon = this.querySelector('i'); icon.className = 'fa-solid fa-check text-success'; setTimeout(() => { icon.className = 'fa-regular fa-copy text-muted'; }, 2000);" style="border: none; background: transparent; text-decoration: none;" title="Copy Phone Number">
                                     <i class="fa-regular fa-copy" style="font-size: 0.8rem;"></i>
                                 </button>

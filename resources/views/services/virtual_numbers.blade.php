@@ -191,11 +191,11 @@
                 <span class="small text-muted fw-bold country-name">Country</span>
             </div>
             
-            <div class="input-group mb-3">
-                <span class="input-group-text fw-bold text-primary-custom bg-light service-name-inline" style="font-size: 0.85rem;"></span>
-                <input type="text" class="form-control fw-bold fs-5 text-center phone-number" value="" readonly style="letter-spacing: 2px;">
-                <button class="btn btn-primary-custom copy-btn" type="button"><i class="fa-solid fa-copy"></i></button>
+            <div class="input-group mb-3 shadow-sm rounded-3 overflow-hidden">
+                <input type="text" class="form-control text-center phone-number font-monospace fw-bold bg-white" value="" readonly style="font-size: clamp(0.82rem, 3.8vw, 1.05rem); letter-spacing: 0.5px; padding: 0.55rem 0.5rem;" title="Phone Number">
+                <button class="btn btn-primary-custom copy-btn px-3 flex-shrink-0" type="button" title="Copy Number"><i class="fa-solid fa-copy"></i></button>
             </div>
+            <span class="service-name-inline d-none"></span>
             
             <!-- SMS Code Area -->
             <div class="text-center p-3 rounded-3 bg-white border border-light sms-area">

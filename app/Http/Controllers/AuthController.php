@@ -198,6 +198,7 @@ class AuthController extends Controller
 
     public function sendResetLinkEmail(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->email))]);
         $request->validate(['email' => 'required|email']);
 
         try {
@@ -214,11 +215,13 @@ class AuthController extends Controller
 
     public function showResetPassword(Request $request, $token)
     {
-        return view('auth.reset-password', ['token' => $token, 'email' => $request->email]);
+        $email = $request->email ? strtolower(trim((string) $request->email)) : null;
+        return view('auth.reset-password', ['token' => $token, 'email' => $email]);
     }
 
     public function resetPassword(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->email))]);
         $request->validate([
             'token' => 'required',
             'email' => 'required|email',
