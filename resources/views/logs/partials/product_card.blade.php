@@ -13,11 +13,6 @@
         <div>
             <div class="fw-bold text-primary mb-1 d-flex align-items-center flex-wrap gap-2" style="font-size: 0.95rem;">
                 <span>{{ $product->name }}</span>
-                @if($product->type === 'local')
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 rounded-pill" style="font-size: 0.65rem;">
-                        <i class="fa-solid fa-bolt me-1"></i> Direct Stock
-                    </span>
-                @endif
             </div>
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-dark px-3 py-1 rounded-pill fw-bold fs-6">{{ $priceFormatted }}</span>
