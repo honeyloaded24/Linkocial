@@ -50,11 +50,13 @@ class FaddedApi
                 $url .= '/products';
             }
 
-            $response = Http::timeout(25)
+            $response = Http::timeout(45)
+                ->retry(2, 500)
                 ->withHeaders([
                     'Authorization' => 'Bearer ' . $this->apiKey,
                     'X-Api-Key' => $this->apiKey,
                     'Accept' => 'application/json',
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 ])
                 ->get($url);
 
@@ -70,6 +72,12 @@ class FaddedApi
             return [
                 'success' => false,
                 'message' => "Fadded API ({$url}) returned status {$response->status()}: {$msg}"
+            ];
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('Fadded getProducts timeout/connection error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Unable to connect to Fadded (Timeout). The provider’s server (fadded.net) took too long to respond or is temporarily unreachable. Please try again in a few moments.'
             ];
         } catch (\Exception $e) {
             Log::error('Fadded getProducts error: ' . $e->getMessage());
