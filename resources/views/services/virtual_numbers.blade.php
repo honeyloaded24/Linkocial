@@ -187,7 +187,7 @@
     <div class="card border-0 bg-light shadow-sm rounded-4 mb-3 vn-order-item" data-id="">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="badge bg-primary-custom bg-opacity-10 text-primary-custom rounded-pill service-name">Service</span>
+                <span class="badge rounded-pill px-3 py-1 fw-bold service-name text-white" style="background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; color: #ffffff !important; font-size: 0.78rem; letter-spacing: 0.3px; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.25);">Service</span>
                 <span class="small text-muted fw-bold country-name">Country</span>
             </div>
             
@@ -428,8 +428,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const card = clone.querySelector('.vn-order-item');
         
         card.setAttribute('data-id', order.id);
-        card.querySelector('.service-name').textContent = order.product;
-        card.querySelector('.service-name-inline').textContent = order.product;
+        const serviceName = order.product || order.service || 'Service';
+        card.querySelector('.service-name').textContent = serviceName;
+        card.querySelector('.service-name-inline').textContent = serviceName;
         card.querySelector('.country-name').textContent = order.country;
         card.querySelector('.phone-number').value = order.phone_number;
         
