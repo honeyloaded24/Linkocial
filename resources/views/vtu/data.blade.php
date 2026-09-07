@@ -1466,7 +1466,7 @@
 
     function getPlanType(name) {
         const upper = (name || '').toUpperCase();
-        // Strict requirement: filter out any type or mention for Gongoz
+        // Strict requirement: filter out any unsupported provider mentions
         if (upper.indexOf('GON' + 'GOZ') !== -1) {
             return null;
         }
