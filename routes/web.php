@@ -205,6 +205,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/sync', [AdminController::class, 'triggerServiceSync'])->name('hq.services.sync');
         Route::get('/users', [AdminController::class, 'users'])->name('hq.users');
         Route::get('/users-list', [AdminController::class, 'users'])->name('hq.users.index');
+        Route::get('/users/export', [AdminController::class, 'exportUsersCsv'])->name('hq.users.export');
         Route::get('/users/{id}', [AdminController::class, 'showUser'])->name('hq.users.show');
         Route::put('/users/{id}', [AdminController::class, 'updateUserDetails'])->name('hq.users.update');
         Route::get('/users/{id}/impersonate', [AdminController::class, 'impersonate'])->name('hq.users.impersonate');

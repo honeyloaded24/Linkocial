@@ -318,6 +318,75 @@ class AdminController extends Controller
     }
 
     /**
+     * Export users to CSV (First Name, Last Name, Email, Username, Role, Balance, Joined Date)
+     */
+    public function exportUsersCsv(Request $request)
+    {
+        $fileName = 'users_export_' . date('Y-m-d_His') . '.csv';
+
+        $query = User::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('email', 'like', "%{$search}%")
+                  ->orWhere('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $callback = function() use ($query) {
+            $file = fopen('php://output', 'w');
+            // UTF-8 BOM for Microsoft Excel compatibility
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // CSV Columns with First Name, Last Name, Email first as requested
+            fputcsv($file, [
+                'ID',
+                'First Name',
+                'Last Name',
+                'Email',
+                'Username',
+                'Role',
+                'Balance (USD)',
+                'Joined Date'
+            ]);
+
+            $query->orderBy('id', 'asc')->chunk(200, function($users) use ($file) {
+                foreach ($users as $user) {
+                    fputcsv($file, [
+                        $user->id,
+                        $user->first_name ?? '',
+                        $user->last_name ?? '',
+                        $user->email,
+                        $user->username ?? '',
+                        ucfirst($user->role ?? 'user'),
+                        number_format((float)$user->balance, 2, '.', ''),
+                        $user->created_at ? $user->created_at->format('Y-m-d H:i:s') : ''
+                    ]);
+                }
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
      * Update user role (Promote/Demote)
      */
     public function updateRole(Request $request, $id)

@@ -11,14 +11,23 @@
                     <h5 class="fw-bold mb-1">Registered Users</h5>
                     <p class="text-muted small mb-0">Manage user accounts and manual balance adjustments.</p>
                 </div>
-                <form action="{{ route('hq.users') }}" method="GET" class="d-flex" style="max-width: 400px; width: 100%;">
-                    <div class="input-group shadow-sm">
-                        <input type="text" name="search" class="form-control bg-transparent border-secondary" placeholder="Search email, name, username..." value="{{ request('search') }}" style="color: var(--text-main);">
-                        <button class="btn btn-primary-custom text-white" type="submit">
-                            <i class="fa-solid fa-search"></i> Search
-                        </button>
-                    </div>
-                </form>
+                <div class="d-flex align-items-center gap-2 flex-wrap justify-content-md-end" style="max-width: 550px; width: 100%;">
+                    <a href="{{ route('hq.users.export', request()->all()) }}" class="btn btn-outline-success d-flex align-items-center gap-1 shadow-sm px-3" title="Export users to CSV spreadsheet">
+                        <i class="fa-solid fa-file-csv fs-5"></i>
+                        <span>Export CSV</span>
+                    </a>
+                    <form action="{{ route('hq.users') }}" method="GET" class="d-flex flex-grow-1" style="max-width: 380px;">
+                        <div class="input-group shadow-sm">
+                            <input type="text" name="search" class="form-control bg-transparent border-secondary" placeholder="Search email, name, username..." value="{{ request('search') }}" style="color: var(--text-main);">
+                            <button class="btn btn-primary-custom text-white" type="submit">
+                                <i class="fa-solid fa-search"></i> Search
+                            </button>
+                            @if(request('search'))
+                                <a href="{{ route('hq.users') }}" class="btn btn-outline-secondary" title="Clear search"><i class="fa-solid fa-times"></i></a>
+                            @endif
+                        </div>
+                    </form>
+                </div>
             </div>
 
             @if(session('success'))
