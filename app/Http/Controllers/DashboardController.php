@@ -29,9 +29,12 @@ class DashboardController extends Controller
             ->where('status', 'completed')
             ->sum('cost');
 
-        $logSpent = \App\Models\LogOrder::where('user_id', $user->id)
+        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
+
+        $logSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'completed')
-            ->sum('total_cost');
+            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
+            ->value('total') ?? 0);
 
         $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
 
@@ -88,10 +91,11 @@ class DashboardController extends Controller
             ->where('created_at', '>=', now()->startOfWeek())
             ->sum('cost');
 
-        $thisWeekLogSpent = \App\Models\LogOrder::where('user_id', $user->id)
+        $thisWeekLogSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'completed')
             ->where('created_at', '>=', now()->startOfWeek())
-            ->sum('total_cost');
+            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
+            ->value('total') ?? 0);
 
         $thisWeekSpent = $thisWeekSmmSpent + $thisWeekVnSpent + $thisWeekVtuSpent + $thisWeekLogSpent;
         
@@ -111,10 +115,11 @@ class DashboardController extends Controller
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->sum('cost');
 
-        $lastWeekLogSpent = \App\Models\LogOrder::where('user_id', $user->id)
+        $lastWeekLogSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'completed')
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
-            ->sum('total_cost');
+            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
+            ->value('total') ?? 0);
 
         $lastWeekSpent = $lastWeekSmmSpent + $lastWeekVnSpent + $lastWeekVtuSpent + $lastWeekLogSpent;
 

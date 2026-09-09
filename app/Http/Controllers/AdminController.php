@@ -58,11 +58,17 @@ class AdminController extends Controller
         $vtuSpent = \App\Models\VtuOrder::whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
         $vtuCost = 0; // Local / direct VTU provider
         
-        // Logs Spent
-        $logSpent = \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])->sum('total_cost');
-        $logCost = \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
+        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
+
+        // Logs Spent & Cost (converted from NGN to USD base)
+        $logSpent = (float) (\App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
+            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
+            ->value('total') ?? 0);
+
+        $logCost = (float) (\App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
             ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
-            ->sum(\Illuminate\Support\Facades\DB::raw('log_orders.quantity * log_products.base_api_price'));
+            ->selectRaw("SUM((log_orders.quantity * log_products.base_api_price) / ?) as total", [$ngnRate])
+            ->value('total') ?? 0);
 
         $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
         $totalCost = $smmCost + $vnCost + $vtuCost + $logCost;
@@ -153,7 +159,8 @@ class AdminController extends Controller
             ];
         });
 
-        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
+        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) use ($ngnRate) {
+            $amountUsd = (float) ($order->amount_usd > 0 ? $order->amount_usd : ($order->total_cost / ($ngnRate ?: 1420.0)));
             return (object) [
                 'id' => $order->id,
                 'display_id' => '#LOG-' . $order->id,
@@ -162,7 +169,8 @@ class AdminController extends Controller
                 'user' => $order->user,
                 'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
                 'detail' => $order->quantity ? $order->quantity . ' item' . ($order->quantity > 1 ? 's' : '') : null,
-                'charge' => (float) $order->total_cost,
+                'charge' => $amountUsd,
+                'charge_ngn' => (float) $order->total_cost,
                 'status' => $order->status,
                 'created_at' => $order->created_at,
                 'url' => route('hq.logs.orders'),

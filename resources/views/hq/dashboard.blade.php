@@ -269,7 +269,12 @@
                             @endif
                         </td>
                         <td class="fw-bold text-dark">
-                            {{ money($order->charge, true, 'USD') }}
+                            @if(isset($order->charge_ngn) && $order->charge_ngn > 0)
+                                <div>{{ money($order->charge, true, 'USD') }}</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">(₦{{ number_format($order->charge_ngn, 2) }})</small>
+                            @else
+                                {{ money($order->charge, true, 'USD') }}
+                            @endif
                         </td>
                         <td>
                             @php
