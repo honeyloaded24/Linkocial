@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\LogProduct;
 use App\Models\LogCategory;
 use App\Models\LogOrder;
+use App\Models\LogItem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -28,7 +29,7 @@ class AdminLogMarketplaceController extends Controller
                 $query->where('log_category_id', $catParam);
             } else {
                 $cat = LogCategory::where('name', $catParam)->first();
-                if (!$cat && \Illuminate\Support\Facades\Schema::hasColumn('log_categories', 'slug')) {
+                if (!$cat && Schema::hasColumn('log_categories', 'slug')) {
                     $cat = LogCategory::where('slug', $catParam)->first();
                 }
                 if ($cat) {
@@ -76,7 +77,7 @@ class AdminLogMarketplaceController extends Controller
 
             return redirect()->route('hq.logs.index')->with('success', $output ?: 'API Products synchronized successfully.');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Fadded sync error: ' . $e->getMessage());
+            Log::error('Fadded sync error: ' . $e->getMessage());
             return redirect()->route('hq.logs.index')->with('error', 'Sync encountered an error: ' . $e->getMessage());
         }
     }
@@ -247,10 +248,10 @@ class AdminLogMarketplaceController extends Controller
 
             return redirect()->route('hq.logs.index')->with('success', "Product #{$product->id} ('{$product->name}') updated successfully.");
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Illuminate\Support\Facades\Log::warning("Update Log Product Validation Error: " . json_encode($e->validator->errors()->all()));
+            Log::warning("Update Log Product Validation Error: " . json_encode($e->validator->errors()->all()));
             return redirect()->route('hq.logs.index')->withErrors($e->validator)->withInput()->with('error', 'Validation error: ' . implode(', ', $e->validator->errors()->all()));
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Update Log Product Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
+            Log::error("Update Log Product Error: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine());
             return redirect()->route('hq.logs.index')->with('error', 'Could not update product: ' . $e->getMessage());
         }
     }
@@ -261,7 +262,7 @@ class AdminLogMarketplaceController extends Controller
             $prod = LogProduct::findOrFail($id);
 
             // Nullify order references so foreign key constraints don't block deletion
-            \App\Models\LogOrder::where('log_product_id', $prod->id)->update(['log_product_id' => null]);
+            LogOrder::where('log_product_id', $prod->id)->update(['log_product_id' => null]);
 
             if (Schema::hasColumn('log_products', 'icon') && $prod->icon && str_starts_with($prod->icon, '/storage/')) {
                 Storage::disk('public')->delete(str_replace('/storage/', '', $prod->icon));
@@ -277,7 +278,7 @@ class AdminLogMarketplaceController extends Controller
             $prod->delete();
             return redirect()->route('hq.logs.index')->with('success', 'Product and its inventory deleted successfully.');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error("Delete Log Product Error: " . $e->getMessage());
+            Log::error("Delete Log Product Error: " . $e->getMessage());
             return redirect()->route('hq.logs.index')->with('error', 'Could not delete product: ' . $e->getMessage());
         }
     }
@@ -285,7 +286,7 @@ class AdminLogMarketplaceController extends Controller
     public function stock($id)
     {
         $product = LogProduct::where('type', 'local')->findOrFail($id);
-        $items = \App\Models\LogItem::where('log_product_id', $product->id)->latest()->paginate(50);
+        $items = LogItem::where('log_product_id', $product->id)->latest()->paginate(50);
         return view('hq.logs.stock', compact('product', 'items'));
     }
 
@@ -296,7 +297,7 @@ class AdminLogMarketplaceController extends Controller
         $createdCount = 0;
 
         try {
-            \Illuminate\Support\Facades\DB::beginTransaction();
+            DB::beginTransaction();
 
             // 1. If multiple accounts array submitted (from continuous '+' rows)
             if ($request->has('accounts') && is_array($request->accounts)) {
@@ -316,7 +317,7 @@ class AdminLogMarketplaceController extends Controller
                         $filePath = '/storage/' . $path;
                     }
 
-                    \App\Models\LogItem::create([
+                    LogItem::create([
                         'log_product_id' => $product->id,
                         'content' => $content,
                         'file_path' => $filePath,
@@ -338,9 +339,9 @@ class AdminLogMarketplaceController extends Controller
                     $filePath = '/storage/' . $path;
                 }
 
-                \App\Models\LogItem::create([
+                LogItem::create([
                     'log_product_id' => $product->id,
-                    'content' => trim($request->content),
+                    'content' => trim($request->input('content')),
                     'file_path' => $filePath,
                     'file_name' => $fileName,
                     'is_sold' => false,
@@ -350,22 +351,22 @@ class AdminLogMarketplaceController extends Controller
             }
 
             if ($createdCount === 0) {
-                \Illuminate\Support\Facades\DB::rollBack();
+                DB::rollBack();
                 return back()->with('error', 'Please provide account details for at least one account.');
             }
 
             // Recalculate total available stock
-            $product->in_stock = \App\Models\LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
+            $product->in_stock = LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
             $product->save();
 
-            \Illuminate\Support\Facades\DB::commit();
+            DB::commit();
 
             $msg = $createdCount === 1 ? '1 account successfully added to stock.' : "{$createdCount} accounts successfully added to stock!";
             return back()->with('success', $msg);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            \Illuminate\Support\Facades\Log::error("Add Stock Error: " . $e->getMessage());
+            DB::rollBack();
+            Log::error("Add Stock Error: " . $e->getMessage());
             return back()->with('error', 'Failed to add accounts to stock: ' . $e->getMessage());
         }
     }
@@ -378,11 +379,11 @@ class AdminLogMarketplaceController extends Controller
             'remove_attachment' => 'nullable'
         ]);
 
-        $item = \App\Models\LogItem::findOrFail($id);
+        $item = LogItem::findOrFail($id);
 
         if ($request->has('remove_attachment') && $item->file_path) {
             $cleanPath = str_replace('/storage/', '', $item->file_path);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+            Storage::disk('public')->delete($cleanPath);
             $item->file_path = null;
             $item->file_name = null;
         }
@@ -390,7 +391,7 @@ class AdminLogMarketplaceController extends Controller
         if ($request->hasFile('attachment')) {
             if ($item->file_path) {
                 $cleanPath = str_replace('/storage/', '', $item->file_path);
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+                Storage::disk('public')->delete($cleanPath);
             }
             $file = $request->file('attachment');
             $item->file_name = $file->getClientOriginalName();
@@ -398,7 +399,7 @@ class AdminLogMarketplaceController extends Controller
             $item->file_path = '/storage/' . $path;
         }
 
-        $item->content = trim($request->content);
+        $item->content = trim($request->input('content'));
         $item->save();
 
         return back()->with('success', 'Account credentials updated successfully.');
@@ -406,18 +407,18 @@ class AdminLogMarketplaceController extends Controller
 
     public function deleteStockItem($id)
     {
-        $item = \App\Models\LogItem::findOrFail($id);
+        $item = LogItem::findOrFail($id);
         $product = $item->product;
 
         if ($item->file_path) {
             $cleanPath = str_replace('/storage/', '', $item->file_path);
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($cleanPath);
+            Storage::disk('public')->delete($cleanPath);
         }
 
         $item->delete();
 
         if ($product) {
-            $product->in_stock = \App\Models\LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
+            $product->in_stock = LogItem::where('log_product_id', $product->id)->where('is_sold', false)->count();
             $product->save();
         }
 
