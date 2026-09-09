@@ -155,13 +155,6 @@ class AuthController extends Controller
         event(new Registered($user));
 
         Auth::login($user, $request->has('remember'));
-        
-        // Send Welcome Email (Queued for speed)
-        try {
-            \Illuminate\Support\Facades\Mail::to($user->email)->queue(new \App\Mail\WelcomeEmail($user->first_name));
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Welcome email queuing failed: " . $e->getMessage());
-        }
 
         return redirect()->route('dashboard');
     }

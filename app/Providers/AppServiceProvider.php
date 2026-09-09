@@ -60,6 +60,17 @@ class AppServiceProvider extends ServiceProvider
                 ->view('emails.auth.verify', ['url' => $url, 'name' => $notifiable->first_name]);
         });
 
+        // Send Welcome Email ONLY after account email is verified
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Verified::class, function ($event) {
+            try {
+                if ($event->user && !empty($event->user->email)) {
+                    \Illuminate\Support\Facades\Mail::to($event->user->email)->queue(new \App\Mail\WelcomeEmail($event->user->first_name));
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Welcome email queuing failed on verification: " . $e->getMessage());
+            }
+        });
+
         // Custom Password Reset Email
         ResetPassword::toMailUsing(function (object $notifiable, string $token) {
             $baseUrl = request()->root();
