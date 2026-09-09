@@ -129,49 +129,10 @@
                                     <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1" data-bs-toggle="modal" data-bs-target="#deliveredModal{{ $order->id }}">
                                         <i class="fa-solid fa-eye me-1"></i> View ({{ count($items) }})
                                     </button>
-
-                                    <!-- Modal -->
-                                    <div class="modal fade" id="deliveredModal{{ $order->id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h6 class="modal-title fw-bold">Delivered Credentials #LOG-{{ $order->id }}</h6>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    @if(is_array($items) && \Illuminate\Support\Arr::isAssoc($items))
-                                                        <div class="p-2 mb-2 bg-light rounded border">
-                                                            <pre class="mb-0 small font-monospace" style="white-space: pre-wrap;">{{ json_encode($items, JSON_PRETTY_PRINT) }}</pre>
-                                                        </div>
-                                                    @elseif(is_array($items))
-                                                        @foreach($items as $item)
-                                                            <div class="p-2 mb-2 bg-light rounded border">
-                                                                <small class="text-muted d-block fw-bold">Item #{{ $loop->iteration }}</small>
-                                                                @if(is_array($item))
-                                                                    @if(isset($item['content']))
-                                                                        <pre class="mb-1 small font-monospace" style="white-space: pre-wrap;">{{ $item['content'] }}</pre>
-                                                                    @elseif(isset($item['details']))
-                                                                        <pre class="mb-1 small font-monospace" style="white-space: pre-wrap;">{{ $item['details'] }}</pre>
-                                                                    @else
-                                                                        <pre class="mb-1 small font-monospace" style="white-space: pre-wrap;">{{ json_encode($item, JSON_PRETTY_PRINT) }}</pre>
-                                                                    @endif
-                                                                    @if(!empty($item['file_path']))
-                                                                        <a href="{{ $item['file_path'] }}" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
-                                                                            <i class="fa-solid fa-download me-1"></i> Download Attachment
-                                                                        </a>
-                                                                    @endif
-                                                                @else
-                                                                    <pre class="mb-0 small font-monospace" style="white-space: pre-wrap;">{{ $item }}</pre>
-                                                                @endif
-                                                            </div>
-                                                        @endforeach
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 @else
-                                    <span class="text-muted small">No items</span>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-1" data-bs-toggle="modal" data-bs-target="#deliveredModal{{ $order->id }}">
+                                        <i class="fa-solid fa-eye me-1"></i> View
+                                    </button>
                                 @endif
                             @else
                                 <span class="text-muted small">None</span>
@@ -196,4 +157,75 @@
         </div>
     </div>
 </div>
+
+<!-- Delivered Credentials Modals (Placed cleanly outside table to prevent layout shaking & blinking) -->
+@foreach($orders as $order)
+    @if($order->delivered_items)
+        @php
+            $items = json_decode($order->delivered_items, true);
+        @endphp
+        <div class="modal fade" id="deliveredModal{{ $order->id }}" tabindex="-1" aria-labelledby="deliveredModalLabel{{ $order->id }}" aria-hidden="true" data-bs-backdrop="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden" style="background-color: var(--bg-surface, #ffffff); color: var(--text-main, #212529);">
+                    <div class="modal-header border-bottom py-3 px-4">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-key text-primary"></i>
+                            <h6 class="modal-title fw-bold mb-0" id="deliveredModalLabel{{ $order->id }}">
+                                Delivered Credentials #LOG-{{ $order->id }}
+                            </h6>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        @if(is_array($items) && \Illuminate\Support\Arr::isAssoc($items))
+                            @if(isset($items['success']) && $items['success'] === false)
+                                <div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
+                                    <i class="fa-solid fa-circle-exclamation mt-1 fs-5"></i>
+                                    <div>
+                                        <div class="fw-bold">Provider API Error Response:</div>
+                                        <div>{{ $items['message'] ?? 'Product not enabled or fulfillment failed.' }}</div>
+                                    </div>
+                                </div>
+                            @endif
+                            <div class="p-3 bg-light rounded-3 border">
+                                <pre class="mb-0 small font-monospace" style="white-space: pre-wrap; word-break: break-all;">{{ json_encode($items, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                            </div>
+                        @elseif(is_array($items) && count($items) > 0)
+                            @foreach($items as $item)
+                                <div class="p-3 mb-3 bg-light rounded-3 border">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <small class="text-muted fw-bold text-uppercase" style="font-size: 0.75rem;">Item #{{ $loop->iteration }}</small>
+                                    </div>
+                                    @if(is_array($item))
+                                        @if(isset($item['content']))
+                                            <pre class="mb-1 small font-monospace p-2 bg-white rounded border" style="white-space: pre-wrap; word-break: break-all;">{{ $item['content'] }}</pre>
+                                        @elseif(isset($item['details']))
+                                            <pre class="mb-1 small font-monospace p-2 bg-white rounded border" style="white-space: pre-wrap; word-break: break-all;">{{ $item['details'] }}</pre>
+                                        @else
+                                            <pre class="mb-1 small font-monospace p-2 bg-white rounded border" style="white-space: pre-wrap; word-break: break-all;">{{ json_encode($item, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                        @endif
+                                        @if(!empty($item['file_path']))
+                                            <a href="{{ $item['file_path'] }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                                <i class="fa-solid fa-download me-1"></i> Download Attachment
+                                            </a>
+                                        @endif
+                                    @else
+                                        <pre class="mb-0 small font-monospace p-2 bg-white rounded border" style="white-space: pre-wrap; word-break: break-all;">{{ $item }}</pre>
+                                    @endif
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="p-3 bg-light rounded-3 border">
+                                <pre class="mb-0 small font-monospace" style="white-space: pre-wrap; word-break: break-all;">{{ $order->delivered_items }}</pre>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="modal-footer border-top py-2 px-4 bg-light bg-opacity-50">
+                        <button type="button" class="btn btn-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+@endforeach
 @endsection
