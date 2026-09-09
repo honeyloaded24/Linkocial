@@ -107,20 +107,38 @@
                         <td>{{ $product->category->name ?? 'General' }}</td>
                         <td class="fw-bold text-danger">
                             @if($product->type === 'api')
-                                ₦{{ number_format((float)$product->base_api_price, 2) }}
+                                @if((float)$product->base_api_price > 0)
+                                    ₦{{ number_format((float)$product->base_api_price, 2) }}
+                                @else
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">₦0.00 (Missing)</span>
+                                @endif
                             @else
                                 -
                             @endif
                         </td>
                         <td>
+                            @php
+                                $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
+                                $autoPrice = (float)$product->unit_price * (1 + ($markupRate / 100));
+                                $isUnpriced = ((float)$product->our_price <= 0 && (float)$product->unit_price <= 0);
+                            @endphp
                             <form action="{{ route('hq.logs.price', $product->id) }}" method="POST" class="d-flex align-items-center">
                                 @csrf
                                 <div class="input-group input-group-sm me-2" style="width: 135px;">
                                     <span class="input-group-text fw-bold">₦</span>
-                                    <input type="number" step="0.01" name="our_price" value="{{ $product->our_price }}" class="form-control form-control-sm" placeholder="0.00" min="0">
+                                    <input type="number" step="0.01" name="our_price" value="{{ (float)$product->our_price > 0 ? $product->our_price : '' }}" class="form-control form-control-sm {{ $isUnpriced ? 'border-danger bg-danger bg-opacity-10' : '' }}" placeholder="{{ $autoPrice > 0 ? number_format($autoPrice, 2, '.', '') : '0.00' }}" min="0">
                                 </div>
                                 <button type="submit" class="btn btn-sm btn-success" title="Save Price"><i class="fa-solid fa-save"></i></button>
                             </form>
+                            @if($isUnpriced)
+                                <small class="text-danger fw-bold d-block mt-1" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>Set price (blocked for buyers)
+                                </small>
+                            @elseif((float)$product->our_price <= 0 && $autoPrice > 0)
+                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                                    Auto: ₦{{ number_format($autoPrice, 2) }} (+{{ $markupRate }}%)
+                                </small>
+                            @endif
                         </td>
                         <td class="fw-bold">
                             {{ $product->in_stock }} pcs

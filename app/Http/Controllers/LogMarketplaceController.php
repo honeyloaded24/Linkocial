@@ -113,6 +113,11 @@ class LogMarketplaceController extends Controller
 
         // Prices are denominated in Nigerian Naira (₦ / NGN)
         $priceToChargeNgn = (float) ($product->our_price > 0 ? $product->our_price : $product->unit_price * $markupMultiplier);
+
+        if ($priceToChargeNgn <= 0) {
+            return back()->with('error', 'This product is currently unavailable for purchase because its pricing is not configured. Please contact support.');
+        }
+
         $totalCostNgn = $priceToChargeNgn * $request->quantity;
 
         $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00);

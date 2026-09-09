@@ -60,7 +60,47 @@ class SyncFaddedProducts extends Command
             }
 
             $name = $item['name'] ?? $item['title'] ?? ('Product #' . $key);
-            $price = (float)($item['price'] ?? $item['amount'] ?? $item['unit_price'] ?? $item['rate'] ?? 0);
+            
+            // Extract raw price from any common field name in provider payload
+            $rawPrice = $item['price'] 
+                ?? $item['amount'] 
+                ?? $item['unit_price'] 
+                ?? $item['cost'] 
+                ?? $item['rate'] 
+                ?? $item['price_ngn'] 
+                ?? $item['price_usd'] 
+                ?? $item['selling_price'] 
+                ?? $item['cost_price'] 
+                ?? $item['price_per_item'] 
+                ?? $item['price_per_account'] 
+                ?? $item['price_per_unit']
+                ?? ($item['pricing']['price'] ?? null)
+                ?? ($item['pricing']['amount'] ?? null)
+                ?? null;
+
+            $price = 0.0;
+            if ($rawPrice !== null) {
+                if (is_numeric($rawPrice)) {
+                    $price = (float) $rawPrice;
+                } elseif (is_string($rawPrice)) {
+                    // Strip commas, spaces, currency symbols (₦, $, €, £)
+                    $cleaned = str_replace(',', '', trim($rawPrice));
+                    if (preg_match('/[0-9]+(?:\.[0-9]+)?/', $cleaned, $matches)) {
+                        $price = (float) $matches[0];
+                    }
+                }
+            }
+
+            $existing = LogProduct::where('api_product_key', $key)->first();
+            // If current sync returned 0 but we already have a recorded positive price, preserve it
+            if ($price <= 0 && $existing && (float)$existing->unit_price > 0) {
+                $price = (float)$existing->unit_price;
+            }
+
+            if ($price <= 0) {
+                Log::warning("Fadded sync: Product '{$name}' (Key: {$key}) has zero or missing price. Raw item data: " . json_encode($item));
+            }
+
             $stock = (int)($item['stock'] ?? $item['in_stock'] ?? $item['quantity'] ?? $item['available'] ?? 0);
             $desc = LogProduct::sanitizeDescription($item['description'] ?? '');
 

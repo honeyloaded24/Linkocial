@@ -41,19 +41,29 @@
                             $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
                             $multiplier = 1 + ($markupRate / 100);
                             $price = $product->our_price > 0 ? (float)$product->our_price : ((float)$product->unit_price * $multiplier);
-                            $priceFormatted = '₦' . number_format($price, 2);
-                            $priceNgnRaw = number_format($price, 2, '.', '');
+                            $isPriceValid = ($price > 0);
+                            $priceFormatted = $isPriceValid ? ('₦' . number_format($price, 2)) : 'Price Unavailable';
+                            $priceNgnRaw = $isPriceValid ? number_format($price, 2, '.', '') : '0.00';
                         @endphp
+
+                        @if(!$isPriceValid)
+                            <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+                                <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+                                <div>
+                                    <strong>Pricing Temporarily Unavailable:</strong> The price for this product has not been set yet. Purchasing is temporarily disabled.
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold">Price per unit</label>
-                            <div class="fs-3 fw-bold text-success">{{ $priceFormatted }}</div>
+                            <div class="fs-3 fw-bold {{ $isPriceValid ? 'text-success' : 'text-danger' }}">{{ $priceFormatted }}</div>
                             <small class="text-muted d-block mt-1">Available Stock: <span class="fw-bold">{{ $product->in_stock }}</span> pcs</small>
                         </div>
 
                         <div class="mb-3 mt-4">
                             <label class="form-label text-muted small fw-bold">Quantity</label>
-                            <input type="number" name="quantity" id="quantityInput" class="form-control form-control-lg bg-transparent border-secondary text-center fw-bold" value="1" min="1" max="{{ $product->in_stock }}" required style="color: var(--text-main);">
+                            <input type="number" name="quantity" id="quantityInput" class="form-control form-control-lg bg-transparent border-secondary text-center fw-bold" value="1" min="1" max="{{ $product->in_stock }}" required style="color: var(--text-main);" {{ !$isPriceValid ? 'disabled' : '' }}>
                         </div>
 
                         <div class="p-3 mt-4 rounded d-flex justify-content-between align-items-center" style="background: rgba(32, 201, 151, 0.1); border: 1px dashed rgba(32, 201, 151, 0.4);">
@@ -62,8 +72,14 @@
                         </div>
                     </div>
                     <div class="p-4 border-top border-secondary d-grid">
-                        <button type="submit" class="btn btn-primary-custom btn-lg fw-bold" {{ $product->in_stock < 1 ? 'disabled' : '' }}>
-                            {{ $product->in_stock < 1 ? 'Out of Stock' : 'Confirm Purchase' }}
+                        <button type="submit" class="btn btn-primary-custom btn-lg fw-bold" {{ ($product->in_stock < 1 || !$isPriceValid) ? 'disabled' : '' }}>
+                            @if(!$isPriceValid)
+                                Pricing Unavailable
+                            @elseif($product->in_stock < 1)
+                                Out of Stock
+                            @else
+                                Confirm Purchase
+                            @endif
                         </button>
                     </div>
                 </form>
