@@ -129,14 +129,14 @@
                             @forelse($orders as $order)
                             <tr>
                                 <td class="px-4 py-3">
-                                    <div class="fw-bold small">#{{ $order->id }}</div>
+                                    <div class="fw-bold small">{{ $order->display_id ?? ('#' . $order->id) }}</div>
                                     <div class="text-muted" style="font-size: 0.65rem;">{{ $order->created_at->format('M d, Y') }}</div>
                                 </td>
                                 <td class="py-3">
-                                    <div class="fw-bold small text-truncate" style="max-width: 250px;">{{ $order->service->name }}</div>
+                                    <div class="fw-bold small text-truncate" style="max-width: 250px;">{{ $order->service_name ?? ($order->service->name ?? 'Service') }}</div>
                                     <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill" style="font-size: 0.6rem;">{{ strtoupper($order->status) }}</span>
                                 </td>
-                                <td class="py-3 small">{{ number_format($order->quantity) }}</td>
+                                <td class="py-3 small">{{ is_numeric($order->quantity) ? number_format($order->quantity) : ($order->quantity ?? '1') }}</td>
                                 <td class="px-4 py-3 text-end fw-bold">{{ money($order->charge) }}</td>
                             </tr>
                             @empty

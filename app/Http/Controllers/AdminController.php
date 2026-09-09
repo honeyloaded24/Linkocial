@@ -807,13 +807,26 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
 
-        // Stats
+        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
+
+        // Stats across all product categories
         $smmSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
         $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $id)->whereIn('status', ['received', 'finished'])->sum('cost');
-        $totalSpent = $smmSpent + $vnSpent;
+        $vtuSpent = \App\Models\VtuOrder::where('user_id', $id)->whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
+        $logSpent = (float) (\App\Models\LogOrder::where('user_id', $id)->whereIn('status', ['pending', 'completed'])
+            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
+            ->value('total') ?? 0);
+
+        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
         $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount_usd');
-        $totalOrders = Order::where('user_id', $id)->count();
-        $totalTransactions = $totalOrders + \App\Models\Payment::where('user_id', $id)->count();
+
+        $totalOrders = Order::where('user_id', $id)->count()
+            + \App\Models\VirtualNumberOrder::where('user_id', $id)->count()
+            + \App\Models\VtuOrder::where('user_id', $id)->count()
+            + \App\Models\LogOrder::where('user_id', $id)->count();
+
+        $ledgerCount = \App\Models\Transaction::where('user_id', $id)->count();
+        $totalTransactions = $ledgerCount > 0 ? $ledgerCount : ($totalOrders + \App\Models\Payment::where('user_id', $id)->count());
 
         $orders = Order::where('user_id', $id)->with('service')->latest()->take(10)->get();
 
@@ -895,8 +908,67 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         $deposits = \App\Models\Payment::where('user_id', $id)->latest()->get();
-        $orders = Order::where('user_id', $id)->with('service')->latest()->get();
         $transactions = \App\Models\Transaction::where('user_id', $id)->latest()->get();
+
+        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
+
+        $recentSmm = Order::where('user_id', $id)->with('service')->latest()->take(25)->get()->map(function ($order) {
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#' . $order->id,
+                'service_name' => $order->service->name ?? 'Social Boost Service',
+                'quantity' => $order->quantity ? number_format($order->quantity) : '1',
+                'charge' => (float) $order->charge,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentVn = \App\Models\VirtualNumberOrder::where('user_id', $id)->latest()->take(25)->get()->map(function ($order) {
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VN-' . $order->id,
+                'service_name' => ($order->country ? $order->country . ' - ' : '') . ($order->product ?? 'Virtual Number'),
+                'quantity' => '1',
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentVtu = \App\Models\VtuOrder::where('user_id', $id)->latest()->take(25)->get()->map(function ($order) {
+            $serviceType = ucfirst($order->service_type ?? 'Utility');
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VTU-' . $order->id,
+                'service_name' => "VTU {$serviceType} ({$order->phone_or_meter})",
+                'quantity' => '1',
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(25)->get()->map(function ($order) use ($ngnRate) {
+            $amountUsd = (float) ($order->amount_usd > 0 ? $order->amount_usd : ($order->total_cost / ($ngnRate ?: 1420.0)));
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#LOG-' . $order->id,
+                'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
+                'quantity' => $order->quantity ? (string) $order->quantity : '1',
+                'charge' => $amountUsd,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $orders = $recentSmm
+            ->concat($recentVn)
+            ->concat($recentVtu)
+            ->concat($recentLogs)
+            ->sortByDesc('created_at')
+            ->values()
+            ->take(50);
 
         return view('hq.users.transactions', compact('user', 'deposits', 'orders', 'transactions'));
     }

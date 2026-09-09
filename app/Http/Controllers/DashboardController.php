@@ -26,13 +26,13 @@ class DashboardController extends Controller
             ->sum('cost');
 
         $vtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'processing', 'completed'])
             ->sum('cost');
 
         $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
 
         $logSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'completed'])
             ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
             ->value('total') ?? 0);
 
@@ -49,7 +49,7 @@ class DashboardController extends Controller
             ->where('status', 'pending')
             ->count()
             + \App\Models\VtuOrder::where('user_id', $user->id)
-            ->where('status', 'processing')
+            ->whereIn('status', ['pending', 'processing'])
             ->count()
             + \App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'pending')
@@ -87,12 +87,12 @@ class DashboardController extends Controller
             ->sum('cost');
 
         $thisWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'processing', 'completed'])
             ->where('created_at', '>=', now()->startOfWeek())
             ->sum('cost');
 
         $thisWeekLogSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'completed'])
             ->where('created_at', '>=', now()->startOfWeek())
             ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
             ->value('total') ?? 0);
@@ -111,12 +111,12 @@ class DashboardController extends Controller
             ->sum('cost');
 
         $lastWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'processing', 'completed'])
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->sum('cost');
 
         $lastWeekLogSpent = (float) (\App\Models\LogOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
+            ->whereIn('status', ['pending', 'completed'])
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
             ->value('total') ?? 0);
