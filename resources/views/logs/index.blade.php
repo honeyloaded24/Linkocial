@@ -38,6 +38,16 @@
         background-color: #1a1e21;
         color: white;
     }
+    .log-title-link {
+        color: var(--bs-primary, #6366f1);
+        text-decoration: none;
+        transition: color 0.15s ease, opacity 0.15s ease;
+    }
+    .log-title-link:hover {
+        opacity: 0.85;
+        text-decoration: underline !important;
+        cursor: pointer;
+    }
 </style>
 @endpush
 

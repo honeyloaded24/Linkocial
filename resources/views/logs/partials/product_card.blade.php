@@ -6,14 +6,18 @@
     $priceFormatted = $isPriceValid ? ('₦' . number_format($price, 2)) : 'Price Unavailable';
 @endphp
 <div class="log-card p-3 mb-3 d-flex align-items-center justify-content-between">
-    <div class="d-flex align-items-center">
+    <div class="d-flex align-items-center flex-grow-1 me-3">
         <!-- Icon -->
-        {!! $product->getIconHtml(45, 'me-3') !!}
+        <a href="{{ route('logs.show', $product->id) }}" class="text-decoration-none flex-shrink-0" title="{{ $product->name }}">
+            {!! $product->getIconHtml(45, 'me-3') !!}
+        </a>
         
         <!-- Info -->
-        <div>
-            <div class="fw-bold text-primary mb-1 d-flex align-items-center flex-wrap gap-2" style="font-size: 0.95rem;">
-                <span>{{ $product->name }}</span>
+        <div class="flex-grow-1">
+            <div class="mb-1 d-flex align-items-center flex-wrap gap-2">
+                <a href="{{ route('logs.show', $product->id) }}" class="fw-bold log-title-link text-primary text-decoration-none" style="font-size: 0.95rem;" title="{{ $product->name }}">
+                    {{ $product->name }}
+                </a>
             </div>
             <div class="d-flex align-items-center gap-2">
                 @if($isPriceValid)
