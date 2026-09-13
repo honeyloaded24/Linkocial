@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dashboard_sliders', function (Blueprint $table) {
-            $table->id();
-            $table->string('image_path');
-            $table->string('target_url')->nullable();
-            $table->integer('sort_order')->default(0);
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('dashboard_sliders')) {
+            Schema::create('dashboard_sliders', function (Blueprint $table) {
+                $table->id();
+                $table->string('image_path');
+                $table->string('target_url')->nullable();
+                $table->integer('sort_order')->default(0);
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
     }
 
     /**
