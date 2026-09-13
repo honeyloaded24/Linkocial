@@ -32,3 +32,7 @@ Schedule::command('smspool:check-balance')->hourly()->withoutOverlapping();
 // Schedule SMSPool price update every 5 minutes
 Schedule::command('smspool:update-prices')->everyFiveMinutes()->withoutOverlapping();
 
+// Schedule background queue worker to process delayed jobs (like delayed welcome emails)
+Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
+
+

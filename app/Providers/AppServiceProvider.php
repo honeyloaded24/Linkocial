@@ -60,11 +60,20 @@ class AppServiceProvider extends ServiceProvider
                 ->view('emails.auth.verify', ['url' => $url, 'name' => $notifiable->first_name]);
         });
 
-        // Send Welcome Email ONLY after account email is verified
+        // Send Welcome Email ONLY after account email is verified, delayed by 1 minute
         \Illuminate\Support\Facades\Event::listen(\Illuminate\Auth\Events\Verified::class, function ($event) {
             try {
-                if ($event->user && !empty($event->user->email)) {
-                    \Illuminate\Support\Facades\Mail::to($event->user->email)->queue(new \App\Mail\WelcomeEmail($event->user->first_name));
+                $user = $event->user;
+                if ($user && !empty($user->email)) {
+                    $cacheKey = 'welcome_email_queued_' . $user->id;
+                    if (!\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+                        \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addDays(7));
+
+                        \Illuminate\Support\Facades\Mail::to($user->email)
+                            ->later(now()->addMinutes(1), (new \App\Mail\WelcomeEmail($user->first_name))->delay(now()->addMinutes(1)));
+
+                        \Illuminate\Support\Facades\Log::info("Welcome email scheduled with 1-minute delay for verified user #{$user->id} ({$user->email})");
+                    }
                 }
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::error("Welcome email queuing failed on verification: " . $e->getMessage());

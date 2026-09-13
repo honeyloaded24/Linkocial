@@ -171,7 +171,23 @@ class AuthController extends Controller
 
     public function verifyEmail(EmailVerificationRequest $request)
     {
-        $request->fulfill();
+        // Guard against browser speculative link prefetching
+        if (
+            $request->header('Purpose') === 'prefetch' ||
+            $request->header('Sec-Purpose') === 'prefetch' ||
+            $request->header('X-Purpose') === 'preview' ||
+            $request->header('X-Moz') === 'prefetch'
+        ) {
+            return response()->noContent();
+        }
+
+        $user = $request->user();
+
+        if (!$user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+            event(new \Illuminate\Auth\Events\Verified($user));
+        }
+
         return redirect()->intended('dashboard?verified=1');
     }
 
