@@ -50,6 +50,22 @@ class AppServiceProvider extends ServiceProvider
             // Safe fallback to prevent app crashing during installations/migrations
         }
 
+        // Auto-ensure dashboard_sliders table exists without manual CLI migration
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('dashboard_sliders')) {
+                \Illuminate\Support\Facades\Schema::create('dashboard_sliders', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->string('image_path');
+                    $table->string('target_url')->nullable();
+                    $table->integer('sort_order')->default(0);
+                    $table->boolean('is_active')->default(true);
+                    $table->timestamps();
+                });
+            }
+        } catch (\Throwable $e) {
+            // Safe fallback
+        }
+
         // Set 'Remember Me' cookie duration to 5 days (in minutes)
         config(['auth.guards.web.remember' => 7200]);
 

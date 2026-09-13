@@ -1236,7 +1236,14 @@ class AdminController extends Controller
     public function hqSettings()
     {
         $channels = Service::getChannels();
-        $sliders = \App\Models\DashboardSlider::orderBy('sort_order')->latest()->get();
+        $sliders = collect();
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('dashboard_sliders')) {
+                $sliders = \App\Models\DashboardSlider::orderBy('sort_order')->latest()->get();
+            }
+        } catch (\Throwable $e) {
+            $sliders = collect();
+        }
         return view('hq.settings', compact('channels', 'sliders'));
     }
 

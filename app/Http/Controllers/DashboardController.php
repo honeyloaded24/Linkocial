@@ -129,7 +129,15 @@ class DashboardController extends Controller
         }
 
         $channels = \App\Models\Service::getChannels();
-        $sliders = \App\Models\DashboardSlider::where('is_active', true)->orderBy('sort_order')->latest()->get();
+        
+        $sliders = collect();
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('dashboard_sliders')) {
+                $sliders = \App\Models\DashboardSlider::where('is_active', true)->orderBy('sort_order')->latest()->get();
+            }
+        } catch (\Throwable $e) {
+            $sliders = collect();
+        }
 
         return view('dashboard.index', compact(
             'totalSpent', 
