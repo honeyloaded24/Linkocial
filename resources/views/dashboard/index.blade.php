@@ -155,7 +155,7 @@
                                 <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px;">
                                     <i class="fa-solid fa-sim-card fs-5"></i>
                                 </div>
-                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">SIM</span>
+                                <span class="small fw-bold text-center w-100 d-block" style="font-size: 0.7rem; line-height: 1.2; color: var(--text-main);">BUY NUMBER</span>
                             </div>
                         </a>
                     </div>
