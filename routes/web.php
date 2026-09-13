@@ -284,6 +284,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/settings', [AdminController::class, 'hqSettings'])->name('hq.settings');
         Route::post('/settings', [AdminController::class, 'hqUpdateSettings'])->name('hq.settings.update');
         Route::post('/settings/test-email', [AdminController::class, 'hqSendTestEmail'])->name('hq.settings.test-email');
+        Route::post('/settings/sliders', [AdminController::class, 'hqStoreSlider'])->name('hq.sliders.store');
+        Route::delete('/settings/sliders/{id}', [AdminController::class, 'hqDestroySlider'])->name('hq.sliders.destroy');
 
         // Currency Management
         Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index'])->name('hq.currencies');

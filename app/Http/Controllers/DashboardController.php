@@ -129,6 +129,7 @@ class DashboardController extends Controller
         }
 
         $channels = \App\Models\Service::getChannels();
+        $sliders = \App\Models\DashboardSlider::where('is_active', true)->orderBy('sort_order')->latest()->get();
 
         return view('dashboard.index', compact(
             'totalSpent', 
@@ -137,7 +138,8 @@ class DashboardController extends Controller
             'completedOrders', 
             'recentActivities',
             'growth',
-            'channels'
+            'channels',
+            'sliders'
         ));
     }
     public function services()

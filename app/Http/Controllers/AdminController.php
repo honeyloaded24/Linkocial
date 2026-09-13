@@ -1236,7 +1236,54 @@ class AdminController extends Controller
     public function hqSettings()
     {
         $channels = Service::getChannels();
-        return view('hq.settings', compact('channels'));
+        $sliders = \App\Models\DashboardSlider::orderBy('sort_order')->latest()->get();
+        return view('hq.settings', compact('channels', 'sliders'));
+    }
+
+    /**
+     * Store a new dashboard banner slider
+     */
+    public function hqStoreSlider(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
+            'target_url' => 'nullable|string|max:500',
+        ]);
+
+        $file = $request->file('image');
+        $path = $file->store('sliders', 'public');
+        $imagePath = '/storage/' . $path;
+
+        \App\Models\DashboardSlider::create([
+            'image_path' => $imagePath,
+            'target_url' => $request->target_url ? trim($request->target_url) : null,
+            'is_active' => true,
+            'sort_order' => (\App\Models\DashboardSlider::max('sort_order') ?? 0) + 1,
+        ]);
+
+        \App\Models\ActivityLog::log("Added a new dashboard slider image", auth()->user(), [
+            'image_path' => $imagePath,
+            'target_url' => $request->target_url
+        ]);
+
+        return redirect()->route('hq.settings', ['tab' => 'slider'])->with('success', 'Dashboard slide uploaded and activated successfully.');
+    }
+
+    /**
+     * Delete a dashboard slider
+     */
+    public function hqDestroySlider($id)
+    {
+        $slider = \App\Models\DashboardSlider::findOrFail($id);
+
+        $relPath = str_replace('/storage/', '', $slider->image_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($relPath);
+
+        $slider->delete();
+
+        \App\Models\ActivityLog::log("Deleted dashboard slider #{$id}", auth()->user());
+
+        return redirect()->route('hq.settings', ['tab' => 'slider'])->with('success', 'Slide deleted successfully.');
     }
 
     /**

@@ -78,6 +78,48 @@
         </div>
     </div>
 
+    <!-- Dashboard Promotional Slider (Standardized ~120px Height) -->
+    @if(isset($sliders) && $sliders->isNotEmpty())
+    <div class="row mb-3">
+        <div class="col-12">
+            <div id="dashboardSliderCarousel" class="carousel slide carousel-fade shadow-sm overflow-hidden position-relative" data-bs-ride="carousel" data-bs-interval="4500" style="border-radius: 16px; height: 120px; background: var(--bg-surface);">
+                @if($sliders->count() > 1)
+                <div class="carousel-indicators mb-2" style="z-index: 5;">
+                    @foreach($sliders as $idx => $slide)
+                        <button type="button" data-bs-target="#dashboardSliderCarousel" data-bs-slide-to="{{ $idx }}" class="{{ $idx === 0 ? 'active' : '' }}" aria-current="{{ $idx === 0 ? 'true' : 'false' }}" style="width: 8px; height: 8px; border-radius: 50%;"></button>
+                    @endforeach
+                </div>
+                @endif
+                <div class="carousel-inner h-100">
+                    @foreach($sliders as $idx => $slide)
+                    <div class="carousel-item {{ $idx === 0 ? 'active' : '' }} h-100">
+                        @if($slide->target_url)
+                            <a href="{{ $slide->target_url }}" target="{{ Str::startsWith($slide->target_url, ['http://', 'https://']) ? '_blank' : '_self' }}" class="d-block w-100 h-100 position-relative">
+                                <img src="{{ asset($slide->image_path) }}" class="d-block w-100 h-100" style="object-fit: cover; object-position: center; border-radius: 16px;" alt="Banner Slide">
+                            </a>
+                        @else
+                            <div class="w-100 h-100 position-relative">
+                                <img src="{{ asset($slide->image_path) }}" class="d-block w-100 h-100" style="object-fit: cover; object-position: center; border-radius: 16px;" alt="Banner Slide">
+                            </div>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+                @if($sliders->count() > 1)
+                <button class="carousel-control-prev" type="button" data-bs-target="#dashboardSliderCarousel" data-bs-slide="prev" style="width: 7%;">
+                    <span class="carousel-control-prev-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#dashboardSliderCarousel" data-bs-slide="next" style="width: 7%;">
+                    <span class="carousel-control-next-icon" aria-hidden="true" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Our Services -->
     <div class="row mb-4">
         <div class="col-12">
