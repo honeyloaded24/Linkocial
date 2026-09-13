@@ -62,8 +62,9 @@
                     </div>
                 @endif
 
-                <div class="mt-4 text-center">
-                    <a href="{{ route('logs.index') }}" class="btn btn-primary-custom px-4"><i class="fa-solid fa-arrow-left"></i> Back to Marketplace</a>
+                <div class="mt-4 d-flex justify-content-center gap-2 flex-wrap">
+                    <a href="{{ route('logs.history') }}" class="btn btn-primary-custom px-4"><i class="fa-solid fa-clock-rotate-left me-1"></i> View All My Purchases</a>
+                    <a href="{{ route('logs.index') }}" class="btn btn-outline-secondary px-4"><i class="fa-solid fa-arrow-left me-1"></i> Back to Marketplace</a>
                 </div>
             </div>
         </div>

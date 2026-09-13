@@ -92,6 +92,12 @@
                         </button>
                     </div>
                 </form>
+
+                <!-- My Orders Button -->
+                <a href="{{ route('logs.history') }}" class="btn btn-primary-custom d-flex align-items-center gap-2 fw-bold px-3 py-2 text-nowrap shadow-sm" style="border-radius: 8px;" title="View all your purchased accounts and credentials">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>My Purchases</span>
+                </a>
             </div>
         </div>
 

@@ -156,6 +156,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Logs Marketplace
     Route::get('/logs', [\App\Http\Controllers\LogMarketplaceController::class, 'index'])->name('logs.index');
+    Route::get('/logs/history', [\App\Http\Controllers\LogMarketplaceController::class, 'history'])->name('logs.history');
     Route::get('/logs/product/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'show'])->name('logs.show');
     Route::post('/logs/purchase', [\App\Http\Controllers\LogMarketplaceController::class, 'purchase'])->name('logs.purchase');
     Route::get('/logs/order/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'showOrder'])->name('logs.order');

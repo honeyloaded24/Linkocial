@@ -321,4 +321,26 @@ class LogMarketplaceController extends Controller
         $items = json_decode($order->delivered_items, true) ?? [];
         return view('logs.order', compact('order', 'items'));
     }
+
+    public function history(Request $request)
+    {
+        $query = LogOrder::where('user_id', auth()->id())->with('product')->latest();
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('product_name', 'like', "%{$search}%")
+                  ->orWhere('external_order_id', 'like', "%{$search}%")
+                  ->orWhere('id', $search);
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $orders = $query->paginate(15)->withQueryString();
+
+        return view('logs.history', compact('orders'));
+    }
 }

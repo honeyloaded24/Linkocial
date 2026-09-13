@@ -315,8 +315,11 @@
                 <a href="{{ route('services.virtual-numbers') }}" class="nav-link {{ request()->routeIs('services.virtual-numbers') ? 'active' : '' }}">
                     <i class="fa-solid fa-phone-volume"></i> Virtual Numbers <span class="badge bg-danger ms-1" style="font-size: 0.6rem;">NEW</span>
                 </a>
-                <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.*') ? 'active' : '' }}">
+                <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.index') || request()->routeIs('logs.show') ? 'active' : '' }}">
                     <i class="fa-solid fa-box-open"></i> Logs Marketplace <span class="badge bg-success ms-1" style="font-size: 0.6rem;">HOT</span>
+                </a>
+                <a href="{{ route('logs.history') }}" class="nav-link {{ request()->routeIs('logs.history') || request()->routeIs('logs.order') ? 'active' : '' }}">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Logs Purchases
                 </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates
