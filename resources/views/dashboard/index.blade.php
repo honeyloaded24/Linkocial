@@ -135,7 +135,7 @@
                                 <div class="rounded-circle bg-info bg-opacity-10 text-info d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px;">
                                     <i class="fa-solid fa-box-open fs-5"></i>
                                 </div>
-                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">Logs & Accs</span>
+                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">Logs</span>
                             </div>
                         </a>
                     </div>
@@ -145,7 +145,7 @@
                                 <div class="rounded-circle bg-danger bg-opacity-10 text-danger d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px;">
                                     <i class="fa-solid fa-bullhorn fs-5"></i>
                                 </div>
-                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">Social Boost</span>
+                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">Social</span>
                             </div>
                         </a>
                     </div>
@@ -155,7 +155,7 @@
                                 <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px;">
                                     <i class="fa-solid fa-sim-card fs-5"></i>
                                 </div>
-                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.72rem; color: var(--text-main);">Virtual Number</span>
+                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">SIM</span>
                             </div>
                         </a>
                     </div>
