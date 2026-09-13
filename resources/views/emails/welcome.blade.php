@@ -22,8 +22,8 @@
         <p style="margin: 0 0 12px 0; font-size: 14px; color: #15803d; line-height: 1.5;">
             Need a quick walkthrough on how to deposit, place orders, buy virtual numbers, and navigate your dashboard? Watch our official video guide:
         </p>
-        <a href="https://t.me/Linkocial/25" target="_blank" style="display: inline-block; background-color: #16a34a; color: #ffffff !important; font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25);">
-            ▶️ Watch Video Tutorial (https://t.me/Linkocial/25)
+        <a href="https://streamable.com/d7o5ns" target="_blank" style="display: inline-block; background-color: #16a34a; color: #ffffff !important; font-weight: 700; font-size: 13px; padding: 10px 22px; border-radius: 8px; text-decoration: none; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25);">
+            ▶️ Watch Video Tutorial (https://streamable.com/d7o5ns)
         </a>
     </div>
 
