@@ -42,24 +42,25 @@
                     </li>
                 </ul>
 
-                <div class="d-flex justify-content-between align-items-center p-3 px-4 border-bottom bg-light bg-opacity-10">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary">
-                            <i class="fa-solid fa-gears fs-5"></i>
+                <form id="mainSettingsForm" action="{{ route('hq.settings.update') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    
+                    <div class="d-flex justify-content-between align-items-center p-3 px-4 border-bottom bg-light bg-opacity-10">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary">
+                                <i class="fa-solid fa-gears fs-5"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 fw-bold">Platform Control Center</h5>
+                                <small class="text-muted">Global overrides and system-wide parameters</small>
+                            </div>
                         </div>
-                        <div>
-                            <h5 class="mb-0 fw-bold">Platform Control Center</h5>
-                            <small class="text-muted">Global overrides and system-wide parameters</small>
-                        </div>
+                        <button type="submit" class="btn btn-primary-custom px-5 py-2 shadow-sm fw-bold rounded-pill">
+                            <i class="fa-solid fa-floppy-disk me-2"></i> Save Changes
+                        </button>
                     </div>
-                    <button type="submit" form="mainSettingsForm" class="btn btn-primary-custom px-5 py-2 shadow-sm fw-bold rounded-pill">
-                        <i class="fa-solid fa-floppy-disk me-2"></i> Save Changes
-                    </button>
-                </div>
 
-                <div class="tab-content p-4" id="settingsTabsContent">
-                    <form id="mainSettingsForm" action="{{ route('hq.settings.update') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
+                    <div class="tab-content p-4" id="settingsTabsContent">
                         <!-- Tab 1: Global Config -->
                         <div class="tab-pane fade show active" id="global-panel" role="tabpanel">
                             <div class="row g-4 mb-4">
@@ -501,50 +502,48 @@
                                     <input type="number" step="0.01" min="0" name="markup_vtu_electricity" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_vtu_electricity', 0) }}" style="color: var(--text-main);">
                                 </div>
                             </div>
-                    </form>
+                        </div>
 
-                    <!-- Tab 6: Dashboard Slider Management -->
-                    <div class="tab-pane fade" id="slider-panel" role="tabpanel">
-                        <div class="row g-4 mb-4">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 flex-wrap gap-2">
-                                    <div>
-                                        <h5 class="fw-bold mb-1">
-                                            <i class="fa-solid fa-images text-primary me-2"></i> Dashboard Banner Slider
-                                        </h5>
-                                        <p class="text-muted small mb-0">Manage promotional image slides displayed on the user dashboard.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Sizing Notice (Standardized ~120px Height, Mobile Prioritised) -->
-                            <div class="col-12">
-                                <div class="p-3 rounded-4 d-flex align-items-start gap-3 border border-primary border-opacity-25" style="background: rgba(99, 102, 241, 0.05);">
-                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; flex-shrink: 0;">
-                                        <i class="fa-solid fa-mobile-screen fs-5"></i>
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-main" style="font-size: 0.95rem;">Standardized Slide Height: ~120px (Mobile & Web Optimized)</div>
-                                        <div class="text-muted small mt-1">
-                                            To ensure a clean, seamless appearance across mobile screens and desktop browsers, the slider displays at a height of <strong>120px</strong> with responsive cover fit.
-                                            Recommended image dimensions: <strong>600x120 px</strong> or <strong>720x120 px</strong> (aspect ratio ~5:1 or 6:1). Supported formats: JPG, PNG, WEBP, GIF (Max 5MB).
+                        <!-- Tab 6: Dashboard Slider Management -->
+                        <div class="tab-pane fade" id="slider-panel" role="tabpanel">
+                            <div class="row g-4 mb-4">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between align-items-center border-bottom pb-3 flex-wrap gap-2">
+                                        <div>
+                                            <h5 class="fw-bold mb-1">
+                                                <i class="fa-solid fa-images text-primary me-2"></i> Dashboard Banner Slider
+                                            </h5>
+                                            <p class="text-muted small mb-0">Manage promotional image slides displayed on the user dashboard.</p>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Add New Slide Form Card -->
-                            <div class="col-lg-5">
-                                <div class="premium-card p-4 border shadow-sm h-100" style="border-radius: 16px; border-color: var(--border-color) !important;">
-                                    <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
-                                        <i class="fa-solid fa-plus-circle text-primary"></i> Add New Slide
-                                    </h6>
+                                <!-- Sizing Notice (Standardized ~120px Height, Mobile Prioritised) -->
+                                <div class="col-12">
+                                    <div class="p-3 rounded-4 d-flex align-items-start gap-3 border border-primary border-opacity-25" style="background: rgba(99, 102, 241, 0.05);">
+                                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px; flex-shrink: 0;">
+                                            <i class="fa-solid fa-mobile-screen fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-main" style="font-size: 0.95rem;">Standardized Slide Height: ~120px (Mobile & Web Optimized)</div>
+                                            <div class="text-muted small mt-1">
+                                                To ensure a clean, seamless appearance across mobile screens and desktop browsers, the slider displays at a height of <strong>120px</strong> with responsive cover fit.
+                                                Recommended image dimensions: <strong>600x120 px</strong> or <strong>720x120 px</strong> (aspect ratio ~5:1 or 6:1). Supported formats: JPG, PNG, WEBP, GIF (Max 5MB).
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                    <form action="{{ route('hq.sliders.store') }}" method="POST" enctype="multipart/form-data">
-                                        @csrf
+                                <!-- Add New Slide Form Card -->
+                                <div class="col-lg-5">
+                                    <div class="premium-card p-4 border shadow-sm h-100" style="border-radius: 16px; border-color: var(--border-color) !important;">
+                                        <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                                            <i class="fa-solid fa-plus-circle text-primary"></i> Add New Slide
+                                        </h6>
+
                                         <div class="mb-3">
                                             <label class="form-label text-muted small fw-bold text-uppercase">Banner Image <span class="text-danger">*</span></label>
-                                            <input type="file" name="image" id="sliderImageInput" class="form-control border-secondary bg-transparent py-2" accept="image/jpeg,image/png,image/webp,image/gif" required onchange="previewSliderImage(event)" style="color: var(--text-main);">
+                                            <input type="file" name="image" id="sliderImageInput" form="addSliderForm" class="form-control border-secondary bg-transparent py-2" accept="image/jpeg,image/png,image/webp,image/gif" required onchange="previewSliderImage(event)" style="color: var(--text-main);">
                                             <small class="text-muted d-block mt-1">Single size optimized for mobile and web (~120px height)</small>
                                         </div>
 
@@ -552,7 +551,7 @@
                                             <label class="form-label text-muted small fw-bold text-uppercase">Target URL (Optional)</label>
                                             <div class="input-group">
                                                 <span class="input-group-text bg-transparent border-secondary text-muted"><i class="fa-solid fa-link"></i></span>
-                                                <input type="text" name="target_url" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. /vtu/data, /logs, /wallet or https://..." style="color: var(--text-main);">
+                                                <input type="text" name="target_url" form="addSliderForm" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. /vtu/data, /logs, /wallet or https://..." style="color: var(--text-main);">
                                             </div>
                                             <small class="text-muted d-block mt-1">Users will be redirected to this link when they tap the slide.</small>
                                         </div>
@@ -569,69 +568,81 @@
                                             </div>
                                         </div>
 
-                                        <button type="submit" class="btn btn-primary-custom w-100 py-2 fw-bold rounded-pill shadow-sm">
+                                        <button type="submit" form="addSliderForm" class="btn btn-primary-custom w-100 py-2 fw-bold rounded-pill shadow-sm">
                                             <i class="fa-solid fa-cloud-arrow-up me-2"></i> Upload & Add Slide
                                         </button>
-                                    </form>
-                                </div>
-                            </div>
-
-                            <!-- Current Slides List -->
-                            <div class="col-lg-7">
-                                <div class="premium-card p-4 border shadow-sm h-100" style="border-radius: 16px; border-color: var(--border-color) !important;">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <h6 class="fw-bold mb-0 d-flex align-items-center gap-2">
-                                            <i class="fa-solid fa-layer-group text-primary"></i> Current Slides
-                                        </h6>
-                                        <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold" style="font-size: 0.75rem;">
-                                            {{ count($sliders ?? []) }} Slides
-                                        </span>
                                     </div>
+                                </div>
 
-                                    @if(isset($sliders) && count($sliders) > 0)
-                                        <div class="d-flex flex-column gap-3">
-                                            @foreach($sliders as $slide)
-                                            <div class="border rounded-4 p-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 shadow-sm" style="background: var(--bg-surface); border-color: var(--border-color) !important;">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <div class="rounded-3 overflow-hidden border border-secondary border-opacity-25 flex-shrink-0" style="width: 140px; height: 60px;">
-                                                        <img src="{{ asset($slide->image_path) }}" alt="Slide" class="w-100 h-100" style="object-fit: cover; object-position: center;">
-                                                    </div>
-                                                    <div class="overflow-hidden">
-                                                        <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Target Link</div>
-                                                        @if($slide->target_url)
-                                                            <a href="{{ $slide->target_url }}" target="_blank" class="text-primary text-decoration-none small fw-semibold text-truncate d-block" style="max-width: 250px;">
-                                                                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> {{ $slide->target_url }}
-                                                            </a>
-                                                        @else
-                                                            <span class="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style="font-size: 0.72rem;">No link (Display only)</span>
-                                                        @endif
-                                                        <div class="text-muted mt-1" style="font-size: 0.7rem;">Added: {{ $slide->created_at->format('M d, Y') }}</div>
-                                                    </div>
-                                                </div>
+                                <!-- Current Slides List -->
+                                <div class="col-lg-7">
+                                    <div class="premium-card p-4 border shadow-sm h-100" style="border-radius: 16px; border-color: var(--border-color) !important;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                                                <i class="fa-solid fa-layer-group text-primary"></i> Current Slides
+                                            </h6>
+                                            <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold" style="font-size: 0.75rem;">
+                                                {{ count($sliders ?? []) }} Slides
+                                            </span>
+                                        </div>
 
-                                                <div class="d-flex align-items-center justify-content-end">
-                                                    <form action="{{ route('hq.sliders.destroy', $slide->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this slide from the dashboard?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" title="Delete Slide">
+                                        @if(isset($sliders) && count($sliders) > 0)
+                                            <div class="d-flex flex-column gap-3">
+                                                @foreach($sliders as $slide)
+                                                <div class="border rounded-4 p-3 d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 shadow-sm" style="background: var(--bg-surface); border-color: var(--border-color) !important;">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div class="rounded-3 overflow-hidden border border-secondary border-opacity-25 flex-shrink-0" style="width: 140px; height: 60px;">
+                                                            <img src="{{ asset($slide->image_path) }}" alt="Slide" class="w-100 h-100" style="object-fit: cover; object-position: center;">
+                                                        </div>
+                                                        <div class="overflow-hidden">
+                                                            <div class="text-muted small fw-bold text-uppercase" style="font-size: 0.7rem;">Target Link</div>
+                                                            @if($slide->target_url)
+                                                                <a href="{{ $slide->target_url }}" target="_blank" class="text-primary text-decoration-none small fw-semibold text-truncate d-block" style="max-width: 250px;">
+                                                                    <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> {{ $slide->target_url }}
+                                                                </a>
+                                                            @else
+                                                                <span class="badge bg-secondary bg-opacity-10 text-secondary fw-normal" style="font-size: 0.72rem;">No link (Display only)</span>
+                                                            @endif
+                                                            <div class="text-muted mt-1" style="font-size: 0.7rem;">Added: {{ $slide->created_at->format('M d, Y') }}</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex align-items-center justify-content-end">
+                                                        <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 fw-bold" onclick="if(confirm('Are you sure you want to delete this slide from the dashboard?')) document.getElementById('deleteSliderForm_{{ $slide->id }}').submit();" title="Delete Slide">
                                                             <i class="fa-solid fa-trash-can me-1"></i> Delete
                                                         </button>
-                                                    </form>
+                                                    </div>
                                                 </div>
+                                                @endforeach
                                             </div>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <div class="text-center py-5 text-muted bg-light bg-opacity-10 rounded-4">
-                                            <i class="fa-solid fa-images fa-3x mb-3 opacity-25"></i>
-                                            <h6 class="fw-bold">No slides uploaded yet</h6>
-                                            <p class="small mb-0">Upload a banner image on the left to display it on the user dashboard.</p>
-                                        </div>
-                                    @endif
+                                        @else
+                                            <div class="text-center py-5 text-muted bg-light bg-opacity-10 rounded-4">
+                                                <i class="fa-solid fa-images fa-3x mb-3 opacity-25"></i>
+                                                <h6 class="fw-bold">No slides uploaded yet</h6>
+                                                <p class="small mb-0">Upload a banner image on the left to display it on the user dashboard.</p>
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </form>
+
+                <!-- Standalone Slider Upload Form -->
+                <form id="addSliderForm" action="{{ route('hq.sliders.store') }}" method="POST" enctype="multipart/form-data" class="d-none">
+                    @csrf
+                </form>
+
+                <!-- Standalone Slider Delete Forms -->
+                @if(isset($sliders))
+                    @foreach($sliders as $slide)
+                        <form id="deleteSliderForm_{{ $slide->id }}" action="{{ route('hq.sliders.destroy', $slide->id) }}" method="POST" class="d-none">
+                            @csrf
+                            @method('DELETE')
+                        </form>
+                    @endforeach
+                @endif
             </div>
         </div>
 
