@@ -117,10 +117,41 @@ class SyncFaddedProducts extends Command
                 }
             }
 
-            LogProduct::updateOrCreate(
-                ['api_product_key' => $key],
-                [
+            if ($existing) {
+                // For existing products:
+                // Only sync provider price changes and stock availability.
+                // Do NOT reset what admin has edited (name, description, category, custom selling price, icon, status).
+                $updateData = [
+                    'in_stock' => $stock,
+                ];
+
+                if (!empty($item['id'])) {
+                    $updateData['api_product_id'] = $item['id'];
+                }
+
+                // If Fadded's original price changed, update base_api_price
+                if ($price > 0) {
+                    $updateData['base_api_price'] = $price;
+                    // Only update unit_price if admin has not set a custom selling price override
+                    if ((float)$existing->our_price <= 0) {
+                        $updateData['unit_price'] = $price;
+                    }
+                }
+
+                // Only fill category/description if currently blank
+                if (empty($existing->log_category_id) && $categoryId) {
+                    $updateData['log_category_id'] = $categoryId;
+                }
+                if (empty($existing->description) && !empty($desc)) {
+                    $updateData['description'] = $desc;
+                }
+
+                $existing->update($updateData);
+            } else {
+                // New product: add with provider defaults
+                LogProduct::create([
                     'type' => 'api',
+                    'api_product_key' => $key,
                     'api_product_id' => $item['id'] ?? null,
                     'log_category_id' => $categoryId,
                     'name' => $name,
@@ -129,8 +160,9 @@ class SyncFaddedProducts extends Command
                     'unit_price' => $price,
                     'in_stock' => $stock,
                     'is_active' => true,
-                ]
-            );
+                ]);
+            }
+
             $synced++;
         }
 
