@@ -100,13 +100,35 @@
                         @yield('content')
                     </td>
                 </tr>
+                @if(empty($hideTelegramBanner))
+                <tr>
+                    <td style="padding: 0 30px 20px 30px;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #0088cc 0%, #0077b5 100%); border-radius: 14px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 136, 204, 0.2);">
+                            <tr>
+                                <td style="padding: 22px 24px; text-align: center; color: #ffffff;">
+                                    <div style="font-size: 16px; font-weight: 800; margin-bottom: 6px; letter-spacing: 0.2px;">
+                                        📢 Join Our Official Telegram Channel
+                                    </div>
+                                    <div style="font-size: 13px; color: #e0f2fe; margin-bottom: 14px; line-height: 1.4;">
+                                        Get instant updates on flash promos, virtual numbers, data discounts &amp; service alerts!
+                                    </div>
+                                    <a href="https://t.me/Linkocial" target="_blank" style="display: inline-block; background-color: #ffffff; color: #0088cc !important; font-weight: 700; font-size: 13px; padding: 10px 26px; border-radius: 25px; text-decoration: none; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+                                        👉 Join @Linkocial on Telegram
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                @endif
                 <tr>
                     <td class="footer">
                         <p>&copy; {{ date('Y') }} Linkocial SMM Platform. All rights reserved.</p>
                         <p>You received this email because you are a registered member of Linkocial.</p>
                         <div style="margin-top: 10px;">
-                            <a href="{{ config('app.url') }}" style="color: #6366f1; text-decoration: none; margin: 0 10px;">Website</a>
-                            <a href="{{ config('app.url') }}/support" style="color: #6366f1; text-decoration: none; margin: 0 10px;">Support</a>
+                            <a href="{{ config('app.url') }}" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Website</a> &bull;
+                            <a href="https://t.me/Linkocial" style="color: #0088cc; text-decoration: none; margin: 0 8px; font-weight: 600;">Telegram</a> &bull;
+                            <a href="{{ config('app.url') }}/tickets" style="color: #6366f1; text-decoration: none; margin: 0 8px;">Support</a>
                         </div>
                     </td>
                 </tr>
