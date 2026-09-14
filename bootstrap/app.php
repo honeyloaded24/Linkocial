@@ -33,5 +33,20 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\CheckMaintenanceMode::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Routing\Exceptions\InvalidSignatureException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Your link is invalid or has expired.'], 403);
+            }
+            return redirect()->route('login')->with('error', 'Your verification link has expired or is invalid. Please log in to request a fresh link.');
+        });
+
+        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthorized action.'], 403);
+            }
+            if (\Illuminate\Support\Facades\Auth::check()) {
+                return redirect()->route('dashboard')->with('error', 'Unauthorized action: ' . ($e->getMessage() ?: 'You do not have permission for this request.'));
+            }
+            return redirect()->route('login')->with('error', 'Please log in to continue.');
+        });
     })->create();

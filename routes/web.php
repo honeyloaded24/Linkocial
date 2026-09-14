@@ -24,6 +24,9 @@ Route::get('/{platform}-promotion', [LandingController::class, 'platform'])
 
 
 Route::get('/buy-virtual-numbers', [LandingController::class, 'virtualNumbers'])->name('services.vn-marketing');
+Route::redirect('/services/sms', '/orders/virtual-numbers');
+Route::redirect('/services/virtual-numbers', '/orders/virtual-numbers');
+Route::redirect('/virtual-numbers', '/buy-virtual-numbers');
 
 
 // Specialized Instagram SEO Pages
@@ -88,7 +91,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Email Verification
 Route::get('/email/verify', [AuthController::class, 'showVerifyEmail'])->middleware('auth')->name('verification.notice');
-Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->middleware(['auth', 'signed'])->name('verification.verify');
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])->middleware(['signed'])->name('verification.verify');
 Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])->middleware(['auth', 'throttle:6,1'])->name('verification.send');
 
 // Password Reset

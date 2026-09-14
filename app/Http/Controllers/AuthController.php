@@ -169,7 +169,7 @@ class AuthController extends Controller
                     : view('auth.verify-email');
     }
 
-    public function verifyEmail(EmailVerificationRequest $request)
+    public function verifyEmail(Request $request, $id, $hash)
     {
         // Guard against browser speculative link prefetching
         if (
@@ -181,14 +181,23 @@ class AuthController extends Controller
             return response()->noContent();
         }
 
-        $user = $request->user();
+        $user = User::find($id);
+
+        if (!$user || !hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            return redirect()->route('login')->with('error', 'The verification link is invalid or has expired.');
+        }
 
         if (!$user->hasVerifiedEmail()) {
             $user->markEmailAsVerified();
             event(new \Illuminate\Auth\Events\Verified($user));
         }
 
-        return redirect()->intended('dashboard?verified=1');
+        // Auto-login or switch to the verified user's session
+        if (!Auth::check() || Auth::id() !== $user->id) {
+            Auth::login($user, true);
+        }
+
+        return redirect()->route('dashboard', ['verified' => 1])->with('success', 'Email verified successfully! Welcome to Linkocial.');
     }
 
     public function resendVerificationEmail(Request $request)
