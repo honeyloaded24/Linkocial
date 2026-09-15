@@ -329,6 +329,15 @@
                                         <option value="live" {{ \App\Models\Setting::get('korapay_mode') === 'live' ? 'selected' : '' }}>Live Mode</option>
                                     </select>
                                 </div>
+                                <div class="col-md-8">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Webhook URL (Set in Korapay Dashboard)</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control border-secondary bg-transparent py-2" value="{{ url('/api/webhooks/korapay') }}" id="koraWebhookUrlInput" readonly style="color: var(--text-main);">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('koraWebhookUrlInput').value); alert('Copied Webhook URL!');">
+                                            <i class="fa-regular fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
                                 <div class="col-12 m-0"></div> <!-- Break line -->
                                 <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Test Public Key</label>

@@ -66,6 +66,7 @@ class PaymentController extends Controller
             $reference = 'DEP_KORA_' . time() . '_' . $user->id;
             
             $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+            $koraSecret = trim($koraSecret ?? '');
             $response = Http::withToken($koraSecret)
                 ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
                     'amount' => $chargeAmount,
@@ -83,6 +84,17 @@ class PaymentController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['status']) && $result['status'] === true) {
+                // Create a pending payment record so webhook/callbacks always match the user
+                \App\Models\Payment::create([
+                    'user_id' => $user->id,
+                    'amount' => $chargeAmount,
+                    'currency' => $chargeCurrency,
+                    'amount_usd' => $amountInUsd,
+                    'reference' => $reference,
+                    'status' => 'pending',
+                    'method' => 'Korapay'
+                ]);
+
                 return response()->json([
                     'checkout_url' => $result['data']['checkout_url'],
                     'reference' => $reference
@@ -168,12 +180,13 @@ class PaymentController extends Controller
     {
         try {
             $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+            $koraSecret = trim($koraSecret ?? '');
             $response = Http::withToken($koraSecret)
                 ->get("https://api.korapay.com/merchant/api/v1/charges/{$reference}");
 
             $result = $response->json();
 
-            if ($response->successful() && isset($result['status']) && $result['status'] === true && $result['data']['status'] === 'success') {
+            if ($response->successful() && isset($result['status']) && $result['status'] === true && ($result['data']['status'] ?? '') === 'success') {
                 $data = $result['data'];
                 $amount = $data['amount'];
                 $currency = $data['currency'] ?? 'NGN';
@@ -186,6 +199,11 @@ class PaymentController extends Controller
                 // Priority 2: Fallback to customer email lookup
                 if (!$user && $customerEmail) {
                     $user = User::where('email', $customerEmail)->first();
+                }
+
+                // Priority 3: Fallback by extracting user ID from reference pattern DEP_KORA_{time}_{userId}
+                if (!$user && preg_match('/^DEP_KORA_\d+_(\d+)$/', $reference, $matches)) {
+                    $user = User::find($matches[1]);
                 }
 
                 if ($user) {
@@ -208,11 +226,20 @@ class PaymentController extends Controller
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
         
+        Log::info('Korapay Webhook Received:', [
+            'has_signature' => !empty($signature),
+            'payload_length' => strlen($payload)
+        ]);
+
         $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+        $koraSecret = trim($koraSecret ?? '');
         $expectedSignature = hash_hmac('sha256', $payload, $koraSecret);
         
         if ($signature !== $expectedSignature) {
-            Log::warning('Invalid Korapay Webhook Signature detected.');
+            Log::warning('Invalid Korapay Webhook Signature detected.', [
+                'received' => $signature,
+                'expected' => $expectedSignature
+            ]);
             return response()->json(['status' => 'invalid signature'], 400);
         }
 
@@ -238,6 +265,11 @@ class PaymentController extends Controller
                 // Priority 2: Fallback to customer email lookup
                 if (!$user && $customerEmail) {
                     $user = User::where('email', $customerEmail)->first();
+                }
+
+                // Priority 3: Fallback by extracting user ID from reference pattern DEP_KORA_{time}_{userId}
+                if (!$user && preg_match('/^DEP_KORA_\d+_(\d+)$/', $reference, $matches)) {
+                    $user = User::find($matches[1]);
                 }
 
                 if ($user) {
