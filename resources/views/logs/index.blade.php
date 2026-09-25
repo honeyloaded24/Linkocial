@@ -89,6 +89,8 @@
         transition: all 0.2s ease;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
         width: 100%;
+        overflow: hidden;
+        box-sizing: border-box;
     }
     .log-card:hover {
         border-color: var(--primary-color, #6366f1);
@@ -98,7 +100,7 @@
     .product-title-link {
         color: var(--text-main, #0f172a);
         text-decoration: none;
-        font-size: 0.92rem;
+        font-size: 0.9rem;
         font-weight: 700;
         transition: color 0.15s ease;
         display: inline-block;
@@ -109,11 +111,22 @@
         text-decoration: underline;
         cursor: pointer;
     }
+    .product-card-desc a {
+        color: var(--primary-color, #6366f1) !important;
+        text-decoration: underline !important;
+        font-weight: 600 !important;
+        cursor: pointer;
+        position: relative;
+        z-index: 2;
+    }
+    .product-card-desc a:hover {
+        color: var(--primary-hover, #4f46e5) !important;
+    }
     .product-badge-price {
-        font-size: 0.84rem;
-        font-weight: 800;
-        padding: 4px 11px;
-        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        padding: 2.5px 8px;
+        border-radius: 6px;
         background: rgba(16, 185, 129, 0.12);
         color: #059669;
         border: 1px solid rgba(16, 185, 129, 0.3);
@@ -121,10 +134,10 @@
         white-space: nowrap;
     }
     .product-badge-stock {
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 8px;
+        padding: 2.5px 8px;
+        border-radius: 6px;
         white-space: nowrap;
     }
     .product-badge-stock.in-stock {
@@ -134,31 +147,31 @@
     }
     .product-badge-stock.out-of-stock,
     .product-badge-unavail {
-        font-size: 0.74rem;
+        font-size: 0.72rem;
         font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 8px;
+        padding: 2.5px 8px;
+        border-radius: 6px;
         background: rgba(239, 68, 68, 0.09);
         color: #dc2626;
         border: 1px solid rgba(239, 68, 68, 0.22);
         white-space: nowrap;
     }
     .product-badge-type {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding: 3px 8px;
-        border-radius: 6px;
+        padding: 2.5px 7px;
+        border-radius: 4px;
         background: rgba(245, 158, 11, 0.12);
         color: #d97706;
         border: 1px solid rgba(245, 158, 11, 0.25);
         white-space: nowrap;
     }
     .log-buy-btn {
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 700;
-        padding: 6px 18px;
+        padding: 5px 15px;
         border-radius: 20px;
     }
     .search-input-box {
@@ -360,10 +373,12 @@
                 <i class="fa-solid fa-fire text-danger" style="font-size: 0.9rem;"></i>
                 <span class="fw-bold text-uppercase" style="font-size: 0.78rem; letter-spacing: 0.5px; color: var(--text-main, #0f172a);">Trending Products</span>
             </div>
-            <div class="p-3 rounded-3" style="background: var(--bg-surface, #ffffff); border: 1.5px solid var(--border-color, #e2e8f0);">
-                <div class="d-flex flex-column gap-2.5">
+            <div class="p-2.5 rounded-3" style="background: var(--bg-surface, #ffffff); border: 1.5px solid var(--border-color, #e2e8f0);">
+                <div class="row g-2">
                     @foreach($hotProducts as $hot)
-                        @include('logs.partials.product_card', ['product' => $hot])
+                        <div class="col-12 col-md-6 col-xl-4">
+                            @include('logs.partials.product_card', ['product' => $hot])
+                        </div>
                     @endforeach
                 </div>
             </div>
@@ -413,9 +428,11 @@
 
                 <!-- Categorized Products Body -->
                 <div class="category-section-body">
-                    <div class="d-flex flex-column gap-2.5">
+                    <div class="row g-2">
                         @foreach($catProducts as $product)
-                            @include('logs.partials.product_card', ['product' => $product])
+                            <div class="col-12 col-lg-6">
+                                @include('logs.partials.product_card', ['product' => $product])
+                            </div>
                         @endforeach
                     </div>
                 </div>

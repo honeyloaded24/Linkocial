@@ -112,6 +112,30 @@ class LogProduct extends Model
     }
 
     /**
+     * Render compact description for card list view with clickable links
+     */
+    public function renderCardDescriptionHtml(): string
+    {
+        $desc = $this->description ?? '';
+        if (empty(trim($desc))) {
+            return '';
+        }
+
+        // 1. Escape HTML to prevent XSS
+        $escaped = e($desc);
+
+        // 2. Auto-convert URLs to clickable links
+        $pattern = '/(?i)\b((?:https?:\/\/|www\.)[^\s<>"\'\)]+)/';
+        $linked = preg_replace_callback($pattern, function ($matches) {
+            $url = $matches[1];
+            $href = str_starts_with(strtolower($url), 'http') ? $url : 'https://' . $url;
+            return '<a href="' . $href . '" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-underline fw-bold" onclick="event.stopPropagation();">' . $url . '</a>';
+        }, $escaped);
+
+        return $linked;
+    }
+
+    /**
      * Render product icon:
      * 1. If custom icon uploaded, display the uploaded image.
      * 2. Otherwise auto-detect based on platform name (Instagram, FB, X, TikTok, Gmail, VPN, etc.).
