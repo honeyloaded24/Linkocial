@@ -20,9 +20,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Orders API
     Route::post('/orders', [OrderController::class, 'store']);
-    
-    // Payments API (Initiate)
-    Route::post('/payments/deposit', [PaymentController::class, 'initializeDeposit']);
 });
 
 // Public Webhook Routes

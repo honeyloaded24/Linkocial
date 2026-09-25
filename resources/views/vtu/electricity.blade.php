@@ -39,6 +39,9 @@
                                 <option value="Ibadan Electric">Ibadan Electric</option>
                                 <option value="Kaduna Electric">Kaduna Electric</option>
                                 <option value="Jos Electric">Jos Electric</option>
+                                <option value="Benin Electric">Benin Electric</option>
+                                <option value="Yola Electric">Yola Electric</option>
+                                <option value="Aba Electric">Aba Electric (APLE)</option>
                             </select>
                         </div>
 
@@ -144,15 +147,19 @@
 
             if (data.success) {
                 meterNameLabel.style.display = 'block';
-                let displayText = 'Meter Name: ' + data.name;
+                let displayText = '<i class="fa-solid fa-circle-check me-1"></i> <strong>' + data.name + '</strong>';
                 if (data.address) {
-                    displayText += '<br>Address: ' + data.address;
+                    displayText += '<br><small class="text-muted">' + data.address + '</small>';
+                }
+                if (data.detectedMismatch && data.suggestedMeterType) {
+                    document.getElementById('meter_type').value = data.suggestedMeterType;
+                    displayText += '<br><span class="badge bg-warning text-dark mt-1"><i class="fa-solid fa-arrows-rotate me-1"></i> Auto-switched to ' + data.suggestedMeterType + '</span>';
                 }
                 meterNameLabel.innerHTML = displayText;
-                meterNameLabel.className = 'form-text text-success font-weight-bold mt-2';
+                meterNameLabel.className = 'form-text text-success fw-bold mt-2';
             } else {
-                meterNameLabel.innerHTML = data.message || 'Invalid meter number.';
-                meterNameLabel.className = 'form-text text-danger font-weight-bold mt-2';
+                meterNameLabel.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i> ' + (data.message || 'Invalid meter number.');
+                meterNameLabel.className = 'form-text text-danger fw-bold mt-2';
                 meterNameLabel.style.display = 'block';
             }
         })

@@ -81,32 +81,68 @@ class AdminController extends Controller
 
         $pendingServices = Service::where('is_active', false)->count();
 
-        // --- CHART DATA (Last 30 Days) ---
-        $days = [];
-        $orderData = [];
-        $profitData = [];
-        $userData = [];
+        // --- CHART DATA (Last 30 Days - Aggregated & Cached) ---
+        $chartData = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_chart_v2', 300, function () {
+            $startDate = now()->subDays(29)->startOfDay();
 
-        for ($i = 29; $i >= 0; $i--) {
-            $date = now()->subDays($i)->format('Y-m-d');
-            $days[] = now()->subDays($i)->format('M d');
+            $smmStats = Order::where('created_at', '>=', $startDate)
+                ->where('is_refunded', false)
+                ->selectRaw("DATE(created_at) as date, count(*) as count, sum(charge - coalesce(provider_cost, 0)) as profit")
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
 
-            $orderCount = Order::whereDate('created_at', $date)->count()
-                + \App\Models\VirtualNumberOrder::whereDate('created_at', $date)->count()
-                + \App\Models\VtuOrder::whereDate('created_at', $date)->count()
-                + \App\Models\LogOrder::whereDate('created_at', $date)->count();
+            $vnStats = \App\Models\VirtualNumberOrder::where('created_at', '>=', $startDate)
+                ->whereIn('status', ['received', 'finished', 'pending'])
+                ->selectRaw("DATE(created_at) as date, count(*) as count, sum(cost - coalesce(provider_cost, 0)) as profit")
+                ->groupBy('date')
+                ->get()
+                ->keyBy('date');
 
-            $orderData[] = $orderCount;
-            $profitData[] = Order::whereDate('created_at', $date)->sum('profit');
-            $userData[] = User::whereDate('created_at', $date)->count();
-        }
+            $vtuCounts = \App\Models\VtuOrder::where('created_at', '>=', $startDate)
+                ->selectRaw("DATE(created_at) as date, count(*) as count")
+                ->groupBy('date')
+                ->pluck('count', 'date');
 
-        $chartData = [
-            'labels' => $days,
-            'orders' => $orderData,
-            'profits' => $profitData,
-            'users' => $userData,
-        ];
+            $logCounts = \App\Models\LogOrder::where('created_at', '>=', $startDate)
+                ->selectRaw("DATE(created_at) as date, count(*) as count")
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            $userCounts = User::where('created_at', '>=', $startDate)
+                ->selectRaw("DATE(created_at) as date, count(*) as count")
+                ->groupBy('date')
+                ->pluck('count', 'date');
+
+            $days = [];
+            $orderData = [];
+            $profitData = [];
+            $userData = [];
+
+            for ($i = 29; $i >= 0; $i--) {
+                $targetDate = now()->subDays($i);
+                $dateKey = $targetDate->format('Y-m-d');
+                $days[] = $targetDate->format('M d');
+
+                $smmCount = (int) ($smmStats[$dateKey]->count ?? 0);
+                $smmProfit = (float) ($smmStats[$dateKey]->profit ?? 0);
+                $vnCount = (int) ($vnStats[$dateKey]->count ?? 0);
+                $vnProfit = (float) ($vnStats[$dateKey]->profit ?? 0);
+                $vtuCount = (int) ($vtuCounts[$dateKey] ?? 0);
+                $logCount = (int) ($logCounts[$dateKey] ?? 0);
+
+                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount;
+                $profitData[] = round($smmProfit + $vnProfit, 2);
+                $userData[] = (int) ($userCounts[$dateKey] ?? 0);
+            }
+
+            return [
+                'labels' => $days,
+                'orders' => $orderData,
+                'profits' => $profitData,
+                'users' => $userData,
+            ];
+        });
 
         // --- RECENT PLATFORM ORDERS (Unified across all products & users) ---
         $recentSmm = Order::with(['user', 'service'])->latest()->take(10)->get()->map(function ($order) {
@@ -404,12 +440,23 @@ class AdminController extends Controller
         ]);
 
         $user = User::findOrFail($id);
+
+        // Security Guard: An admin cannot demote themselves
+        if (Auth::id() == $user->id && $request->role !== 'admin') {
+            return back()->with('error', 'You cannot demote yourself from the administrator role.');
+        }
+
+        // Security Guard: Cannot demote the primary administrator account (ID: 1)
+        if ($user->id == 1 && $request->role !== 'admin') {
+            return back()->with('error', 'The primary administrator account cannot be demoted.');
+        }
+
         $oldRole = $user->role;
 
-        $user->update([
+        $user->forceFill([
             'role' => $request->role,
             'is_admin' => ($request->role === 'admin')
-        ]);
+        ])->save();
 
         \App\Models\ActivityLog::log("Changed user role", $user, [
             'old_role' => $oldRole,
@@ -539,14 +586,14 @@ class AdminController extends Controller
     public function updateUserBalance(Request $request, $id)
     {
         $request->validate([
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|gt:0',
             'type' => 'required|in:add,subtract'
         ]);
 
         $user = User::findOrFail($id);
 
         if ($request->type === 'add') {
-            $user->balance += $request->amount;
+            $user->addBalance($request->amount);
 
             // Record as a Payment so it accumulates in total deposits and financial metrics
             $ref = 'DEP_MANUAL_' . strtoupper(\Illuminate\Support\Str::random(10));
@@ -559,10 +606,11 @@ class AdminController extends Controller
                 'status' => 'success',
             ]);
         } else {
-            $user->balance -= $request->amount;
+            $deducted = $user->deductBalance($request->amount);
+            if (!$deducted) {
+                return back()->with('error', 'Cannot deduct: user balance (' . money($user->balance, true, $user->currency_code) . ') is insufficient for this deduction.');
+            }
         }
-
-        $user->save();
 
         \App\Models\Transaction::add(
             $user->id,
@@ -641,28 +689,28 @@ class AdminController extends Controller
         if ($order->is_refunded) {
             $user = $order->user;
 
-            // Check if they have enough balance to be re-charged
-            if ((float) $user->balance < (float) $order->charge) {
-                return back()->with('error', "Cannot force complete. User has already been refunded and now has insufficient balance (₦" . number_format((float) $user->balance, 2) . ") to be re-charged.");
+            try {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
+                    if (!$user->deductBalance((float) $order->charge)) {
+                        throw new \Exception("Cannot force complete. User has already been refunded and now has insufficient balance (₦" . number_format((float) $user->balance, 2) . ") to be re-charged.");
+                    }
+
+                    \App\Models\Transaction::add(
+                        $user->id,
+                        $order->charge,
+                        'debit',
+                        'order',
+                        "Re-debit for Force-Completed order #{$order->id}"
+                    );
+
+                    $order->update([
+                        'status' => 'completed',
+                        'is_refunded' => false
+                    ]);
+                });
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
             }
-
-            \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
-                \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->decrement('balance', (float) $order->charge);
-                $user->refresh();
-
-                \App\Models\Transaction::add(
-                    $user->id,
-                    $order->charge,
-                    'debit',
-                    'order',
-                    "Re-debit for Force-Completed order #{$order->id}"
-                );
-
-                $order->update([
-                    'status' => 'completed',
-                    'is_refunded' => false
-                ]);
-            });
         } else {
             $order->update(['status' => 'completed']);
         }
@@ -683,43 +731,46 @@ class AdminController extends Controller
             return back()->with('error', 'This order is already canceled.');
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($order) {
-            $user = $order->user;
-
-            // Only refund if not already marked as refunded
-            if (!$order->is_refunded) {
-                \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->increment('balance', (float) $order->charge);
-                $user->refresh(); // Sync the user object
-
-                \App\Models\Transaction::add(
-                    $user->id,
-                    $order->charge,
-                    'credit',
-                    'refund',
-                    "Manual refund for order #{$order->id} by Admin"
-                );
-
-                $order->is_refunded = true;
+        \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+            $lockedOrder = Order::where('id', $id)->lockForUpdate()->firstOrFail();
+            if ($lockedOrder->status === 'canceled' && $lockedOrder->is_refunded) {
+                return;
             }
 
-            $order->status = 'canceled';
-            $order->save();
+            $lockedUser = \App\Models\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
 
-            \App\Models\ActivityLog::log("Manually canceled order", $order, [
-                'was_refunded_now' => !$order->was_already_refunded_before_this_call, // Simplified logic
-                'refund_amount' => $order->charge,
-                'new_balance' => $user->balance
+            // Only refund if not already marked as refunded
+            if (!$lockedOrder->is_refunded && $lockedUser) {
+                $lockedUser->addBalance((float) $lockedOrder->charge);
+
+                \App\Models\Transaction::add(
+                    $lockedUser->id,
+                    $lockedOrder->charge,
+                    'credit',
+                    'refund',
+                    "Manual refund for order #{$lockedOrder->id} by Admin"
+                );
+
+                $lockedOrder->is_refunded = true;
+            }
+
+            $lockedOrder->status = 'canceled';
+            $lockedOrder->save();
+
+            \App\Models\ActivityLog::log("Manually canceled order", $lockedOrder, [
+                'refund_amount' => $lockedOrder->charge,
+                'new_balance' => $lockedUser ? $lockedUser->balance : null
             ]);
-
-            // Send Notification to user
-            \App\Models\Notification::send(
-                $order->user_id,
-                "Order Refunded",
-                "Order #{$order->id} has been canceled. ₦" . number_format((float) $order->charge, 2) . " has been refunded to your wallet.",
-                'warning',
-                route('orders.index')
-            );
         });
+
+        // Send Notification to user
+        \App\Models\Notification::send(
+            $order->user_id,
+            "Order Refunded",
+            "Order #{$order->id} has been canceled. ₦" . number_format((float) $order->charge, 2) . " has been refunded to your wallet.",
+            'warning',
+            route('orders.index')
+        );
 
         return back()->with('success', "Order #{$id} has been CANCELED and ₦" . number_format((float) $order->charge, 2) . " has been refunded to the user.");
     }
@@ -735,29 +786,30 @@ class AdminController extends Controller
         if (in_array($order->status, ['canceled', 'failed'])) {
             $user = $order->user;
 
-            if ((float) $user->balance < (float) $order->charge) {
-                return back()->with('error', "Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
+            try {
+                \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
+                    if (!$user->deductBalance((float) $order->charge)) {
+                        throw new \Exception("Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
+                    }
+
+                    \App\Models\Transaction::add(
+                        $user->id,
+                        $order->charge,
+                        'debit',
+                        'order',
+                        "Re-debit for resubmitted order #{$order->id}"
+                    );
+
+                    $order->update([
+                        'status' => 'processing',
+                        'is_refunded' => false,
+                        'error_log' => null
+                    ]);
+                    \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
+                });
+            } catch (\Exception $e) {
+                return back()->with('error', $e->getMessage());
             }
-
-            \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
-                \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->decrement('balance', (float) $order->charge);
-                $user->refresh(); // Force refresh to prevent stale data overwrites
-
-                \App\Models\Transaction::add(
-                    $user->id,
-                    $order->charge,
-                    'debit',
-                    'order',
-                    "Re-debit for resubmitted order #{$order->id}"
-                );
-
-                $order->update([
-                    'status' => 'processing',
-                    'is_refunded' => false,
-                    'error_log' => null
-                ]);
-                \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
-            });
 
             return back()->with('success', "Order #{$id} has been re-debited and re-queued for processing.");
         }
@@ -864,8 +916,20 @@ class AdminController extends Controller
 
         $user = User::findOrFail($id);
 
-        // Store original admin ID in session to allow "returning"
-        session(['impersonator_id' => Auth::id()]);
+        if ($user->isAdmin()) {
+            return back()->with('error', 'Cannot impersonate another administrator.');
+        }
+
+        if (!$user->is_active) {
+            return back()->with('error', 'Cannot impersonate an inactive or suspended user.');
+        }
+
+        $adminId = Auth::id();
+        \App\Models\ActivityLog::log("Impersonated user #{$user->id} ({$user->username})", $user);
+
+        // Store original admin ID and regenerate session to protect against session fixation
+        session()->regenerate();
+        session(['impersonator_id' => $adminId]);
 
         Auth::login($user);
 
@@ -882,9 +946,19 @@ class AdminController extends Controller
         }
 
         $adminId = session()->pull('impersonator_id');
-        $admin = User::findOrFail($adminId);
+        $admin = User::find($adminId);
 
+        if (!$admin || !$admin->isAdmin() || !$admin->is_active) {
+            Auth::logout();
+            session()->invalidate();
+            session()->regenerateToken();
+            return redirect()->route('login')->with('error', 'Administrator session expired or invalid.');
+        }
+
+        session()->regenerate();
         Auth::login($admin);
+
+        \App\Models\ActivityLog::log("Exited impersonation and returned to admin session", $admin);
 
         return redirect()->route('hq.dashboard')->with('success', 'Returned to Admin HQ');
     }
@@ -1331,7 +1405,14 @@ class AdminController extends Controller
             \App\Models\Setting::set($key, $value);
         }
 
-        \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $request->all());
+        $sanitizedLog = $request->except([
+            '_token', 'password', 'mail_password',
+            'korapay_live_secret_key', 'korapay_test_secret_key',
+            'heleket_api_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key',
+            'exchangerate_api_key'
+        ]);
+
+        \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $sanitizedLog);
 
         return back()->with('success', 'Settings updated successfully.');
     }

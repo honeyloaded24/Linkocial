@@ -18,7 +18,7 @@ class CurrencyController extends Controller
         $request->validate([
             'code' => 'required|string|size:3|unique:currencies,code',
             'symbol' => 'required|string|max:10',
-            'exchange_rate' => 'required|numeric|min:0',
+            'exchange_rate' => 'required|numeric|gt:0',
         ]);
 
         $data = $request->all();
@@ -36,7 +36,7 @@ class CurrencyController extends Controller
     {
         $request->validate([
             'symbol' => 'required|string|max:10',
-            'exchange_rate' => 'required|numeric|min:0',
+            'exchange_rate' => 'required|numeric|gt:0',
         ]);
 
         $data = $request->only(['symbol', 'exchange_rate', 'is_active']);

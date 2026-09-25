@@ -39,17 +39,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'username',
         'email',
         'password',
-        'balance',
-        'is_admin',
-        'role', // user, reseller, vip, admin
         'referral_code',
         'referred_by',
-        'commission_balance',
-        'total_earned_commission',
-        'total_withdrawn_commission',
         'two_factor_enabled',
-        'two_factor_code',
-        'two_factor_expires_at',
     ];
 
     public function isReseller()
@@ -117,5 +109,50 @@ class User extends Authenticatable implements MustVerifyEmail
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    /**
+     * Atomically deduct balance ensuring it never drops below 0.
+     * Uses a conditional WHERE clause directly in SQL to prevent race conditions.
+     *
+     * @param float|int $amount
+     * @return bool True if deduction succeeded, false if insufficient balance.
+     */
+    public function deductBalance(float|int $amount): bool
+    {
+        $amount = round((float) $amount, 4);
+        if ($amount <= 0) {
+            return true;
+        }
+
+        // Atomic database update with condition: balance >= amount
+        $affected = \Illuminate\Support\Facades\DB::table('users')
+            ->where('id', $this->id)
+            ->where('balance', '>=', $amount)
+            ->decrement('balance', $amount);
+
+        if ($affected > 0) {
+            $this->refresh();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Atomically add to balance.
+     *
+     * @param float|int $amount
+     * @return void
+     */
+    public function addBalance(float|int $amount): void
+    {
+        $amount = round((float) $amount, 4);
+        if ($amount > 0) {
+            \Illuminate\Support\Facades\DB::table('users')
+                ->where('id', $this->id)
+                ->increment('balance', $amount);
+            $this->refresh();
+        }
     }
 }

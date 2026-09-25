@@ -30,10 +30,11 @@ class Blog extends Model
     {
         if (class_exists(\Parsedown::class)) {
             $parsedown = new \Parsedown();
-            $parsedown->setSafeMode(false);
+            $parsedown->setSafeMode(true);
+            $parsedown->setMarkupEscaped(true);
             return $parsedown->text($this->content);
         }
-        return nl2br($this->content);
+        return nl2br(e($this->content));
     }
 
     public function getImageUrlAttribute()

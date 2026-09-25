@@ -71,52 +71,66 @@ class CheckOrderStatuses extends Command
                 if ($newStatus !== $order->status) {
                     DB::transaction(function () use ($order, $newStatus, $statusData, &$completedCount, &$refundedCount) {
                         
-                        $user = $order->user;
-                        $oldStatus = $order->status;
+                        $lockedOrder = Order::where('id', $order->id)->lockForUpdate()->first();
+                        if (!$lockedOrder) {
+                            return;
+                        }
+
+                        $user = $lockedOrder->user;
+                        $oldStatus = $lockedOrder->status;
 
                         if ($newStatus === 'completed') {
-                            $order->update(['status' => 'completed']);
-                            $order->logStatusChange('completed', "Order marked as completed by provider.", $statusData);
+                            $lockedOrder->update(['status' => 'completed']);
+                            $lockedOrder->logStatusChange('completed', "Order marked as completed by provider.", $statusData);
                             $completedCount++;
                         } 
                         elseif ($newStatus === 'canceled') {
-                            // Full Refund
-                            $order->update(['status' => 'canceled', 'error_log' => 'Canceled by provider']);
-                            DB::table('users')->where('id', $user->id)->increment('balance', (float)$order->charge);
-                            $user->refresh();
-                            
-                            \App\Models\Transaction::add($user->id, $order->charge, 'credit', 'refund', "Full refund for canceled order #{$order->id}");
-                            $order->logStatusChange('canceled', "Order canceled by provider. Full refund issued.", $statusData);
-                            
-                            $refundedCount++;
-                        }
-                        elseif ($newStatus === 'partial') {
-                            // Partial Refund calculation based on 'remains' returned by the provider
-                            $remains = isset($statusData['remains']) ? (int) $statusData['remains'] : 0;
-                            
-                            if ($remains > 0 && $order->quantity > 0) {
-                                $refundAmount = ($order->charge / $order->quantity) * $remains;
-                                
-                                DB::table('users')->where('id', $user->id)->increment('balance', (float)$refundAmount);
-                                $user->refresh(); // Update the local user model
-                                
-                                \App\Models\Transaction::add($user->id, $refundAmount, 'credit', 'refund', "Partial refund for order #{$order->id} ({$remains} remains)");
-                                
-                                $order->update([
-                                    'status' => 'partial',
-                                    'error_log' => "Partial delivery. Refunded {$refundAmount} NGN for {$remains} undelivered items."
+                            if (!$lockedOrder->is_refunded) {
+                                $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                                if ($lockedUser) {
+                                    $lockedUser->addBalance($lockedOrder->charge);
+                                    \App\Models\Transaction::add($lockedUser->id, $lockedOrder->charge, 'credit', 'refund', "Full refund for canceled order #{$lockedOrder->id}");
+                                }
+
+                                $lockedOrder->update([
+                                    'status' => 'canceled',
+                                    'is_refunded' => true,
+                                    'error_log' => 'Canceled by provider'
                                 ]);
-                                $order->logStatusChange('partial', "Partial delivery detected ($remains remains). Partial refund issued.", $statusData);
+                                $lockedOrder->logStatusChange('canceled', "Order canceled by provider. Full refund issued.", $statusData);
                                 $refundedCount++;
                             } else {
-                                $order->update(['status' => 'partial']);
-                                $order->logStatusChange('partial', "Order marked as partial by provider.", $statusData);
+                                $lockedOrder->update(['status' => 'canceled']);
+                            }
+                        }
+                        elseif ($newStatus === 'partial') {
+                            $remains = isset($statusData['remains']) ? (int) $statusData['remains'] : 0;
+                            
+                            if (!$lockedOrder->is_refunded && $remains > 0 && $lockedOrder->quantity > 0) {
+                                $refundAmount = ($lockedOrder->charge / $lockedOrder->quantity) * $remains;
+                                
+                                $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                                if ($lockedUser) {
+                                    $lockedUser->addBalance($refundAmount);
+                                    \App\Models\Transaction::add($lockedUser->id, $refundAmount, 'credit', 'refund', "Partial refund for order #{$lockedOrder->id} ({$remains} remains)");
+                                }
+                                
+                                $lockedOrder->update([
+                                    'status' => 'partial',
+                                    'is_refunded' => true,
+                                    'error_log' => "Partial delivery. Refunded {$refundAmount} for {$remains} undelivered items."
+                                ]);
+                                $lockedOrder->logStatusChange('partial', "Partial delivery detected ($remains remains). Partial refund issued.", $statusData);
+                                $refundedCount++;
+                            } else {
+                                $lockedOrder->update(['status' => 'partial']);
+                                $lockedOrder->logStatusChange('partial', "Order marked as partial by provider.", $statusData);
                             }
                         }
                         else {
                             // Just update the status (e.g. from pending to in_progress)
-                            $order->update(['status' => $newStatus]);
-                            $order->logStatusChange($newStatus, "Status updated to " . ucfirst($newStatus), $statusData);
+                            $lockedOrder->update(['status' => $newStatus]);
+                            $lockedOrder->logStatusChange($newStatus, "Status updated to " . ucfirst($newStatus), $statusData);
                         }
                     });
                 }

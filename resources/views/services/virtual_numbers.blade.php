@@ -13,6 +13,50 @@
     [data-theme="dark"] .ts-control input { color: #f8fafc; }
     [data-theme="dark"] .ts-dropdown { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
     [data-theme="dark"] .ts-dropdown .active { background: #334155; color: #fff; }
+
+    /* ZuvaPay Server Selection Styles */
+    .server-toggle-btn {
+        background: var(--bg-surface, #fff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
+        color: var(--text-main, #334155);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        padding: 0.7rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .server-toggle-btn:hover {
+        border-color: #f43f5e;
+    }
+    .server-toggle-btn.active-server {
+        border-color: #f43f5e !important;
+        background: rgba(244, 63, 94, 0.06) !important;
+        color: var(--text-main, #0f172a) !important;
+        box-shadow: 0 0 0 1px #f43f5e;
+    }
+    .server-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+    }
+    .server-dot-hot {
+        background-color: #f43f5e;
+        box-shadow: 0 0 8px rgba(244, 63, 94, 0.7);
+    }
+    .server-dot-idle {
+        background-color: #94a3b8;
+    }
+    .pulse-hot {
+        animation: pulseDot 2s infinite;
+    }
+    @keyframes pulseDot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7); }
+        70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(244, 63, 94, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+    }
 </style>
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
@@ -39,40 +83,125 @@
 
             <form id="vn-form" class="mt-4">
                 @csrf
+
+                <!-- Server Selector (ZuvaPay Style) -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold small text-muted mb-0">Select Server</label>
+                        <span class="text-muted small fw-semibold" style="font-size: 0.78rem;">High Capacity Pool</span>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn active-server" data-server="server1" id="server-btn-1">
+                                <span class="server-dot server-dot-hot pulse-hot"></span>
+                                <span class="fw-bold">Server 1</span>
+                                <span class="badge bg-danger ms-1 text-white" style="font-size: 0.65rem;">HOT</span>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server2" id="server-btn-2">
+                                <span class="server-dot server-dot-idle"></span>
+                                <span class="fw-bold">Server 2</span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="server" id="vn-server-input" value="server1">
+                </div>
+
                 <div class="row g-3">
-                    <!-- Country Select -->
+                    <!-- 1. Select Country -->
                     <div class="col-12">
-                        <label class="form-label fw-bold small text-muted">Select Country</label>
+                        <label class="form-label fw-bold small text-muted">1. Select Country</label>
                         <select class="form-select form-select-lg rounded-3" id="vn-country" required disabled>
-                            <option value="">Loading countries...</option>
+                            <option value="">-- Select Country --</option>
                         </select>
                     </div>
                     
-                    <!-- Service Select -->
+                    <!-- 2. Select Online Service / Application -->
                     <div class="col-12">
-                        <label class="form-label fw-bold small text-muted">Select Service</label>
+                        <label class="form-label fw-bold small text-muted">2. Select Online Service / Application</label>
                         <select class="form-select form-select-lg rounded-3" id="vn-service" required disabled>
-                            <option value="">Select country first</option>
+                            <option value="">-- Select Online Service / App --</option>
                         </select>
+                    </div>
+
+                    <!-- Carrier Rate Advisory -->
+                    <div class="col-12">
+                        <small class="text-muted d-flex align-items-center gap-2" style="font-size: 0.78rem;">
+                            <i class="fa-solid fa-circle-info text-primary"></i> Rates may vary slightly in real time based on carrier supply and demand.
+                        </small>
                     </div>
                 </div> <!-- Closes row g-3 -->
                 
-                <div class="mt-4 p-3 p-sm-4 rounded-4 bg-primary-custom text-white d-flex flex-column d-none shadow" id="vn-price-box">
-                    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center w-100">
-                        <div class="mb-3 mb-sm-0 text-center text-sm-start">
-                            <span class="text-white-50 small fw-bold d-block text-uppercase tracking-widest">Estimated Cost</span>
-                            <div class="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mt-1">
-                                <span class="fs-3 fw-bold text-white" id="vn-cost">$0.00</span>
-                                <span class="text-decoration-line-through text-white-50 small d-none" id="vn-original-cost">$0.00</span>
+                <!-- Live Quote Container -->
+                <div class="mt-4 rounded-4 d-none shadow-sm overflow-hidden" id="vn-price-box" style="background: rgba(99, 102, 241, 0.04); border: 1px solid var(--border-color, #e2e8f0);">
+                    <!-- Loading state indicator -->
+                    <div id="vn-quote-loading" class="p-4 text-center d-none">
+                        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+                        <div class="small fw-semibold text-muted">Fetching real-time verified quote...</div>
+                    </div>
+
+                    <!-- Quote Content -->
+                    <div id="vn-quote-content" class="p-3 p-sm-4">
+                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color, #e2e8f0) !important;">
+                            <div>
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold text-uppercase px-2 py-1 rounded-pill" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-bolt me-1"></i> Live Verified Quote
+                                </span>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-muted small fw-semibold">Markup:</span>
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold ms-1" id="vn-quote-markup">+65%</span>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-light rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn" style="color: var(--bs-primary); white-space: nowrap;">
-                            Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
-                        </button>
+
+                        <!-- Price Breakdown -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <div class="p-2 rounded-3" style="background: var(--bg-surface); border: 1px solid var(--border-color, #e2e8f0);">
+                                    <span class="text-muted d-block small" style="font-size: 0.72rem;">Wholesale Rate</span>
+                                    <span class="fw-bold text-muted small" id="vn-wholesale-rate">$0.00</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 rounded-3" style="background: var(--bg-surface); border: 1px solid var(--border-color, #e2e8f0);">
+                                    <span class="text-muted d-block small" style="font-size: 0.72rem;">Your Balance</span>
+                                    <span class="fw-bold small" id="vn-user-balance">$0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Quote Price & Action -->
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pt-1">
+                            <div class="mb-3 mb-sm-0 text-center text-sm-start">
+                                <span class="text-muted small fw-bold d-block text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Final Total Price</span>
+                                <div class="d-flex align-items-baseline justify-content-center justify-content-sm-start gap-2 mt-1">
+                                    <span class="fs-2 fw-bolder text-primary-custom" id="vn-cost">$0.00</span>
+                                    <span class="small text-muted" id="vn-balance-after">(Remaining: $0.00)</span>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary-custom rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn">
+                                Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+
+                        <!-- Low Balance Warning -->
+                        <div class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3 d-none align-items-center justify-content-between gap-2" id="vn-insufficient-alert">
+                            <div class="small fw-semibold">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Balance insufficient for this order.
+                            </div>
+                            <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-danger rounded-pill fw-bold text-nowrap px-3 shadow-sm">
+                                <i class="fa-solid fa-wallet me-1"></i> Fund Wallet
+                            </a>
+                        </div>
                     </div>
-                    <div class="mt-3 text-center text-sm-start w-100">
-                        <small class="text-white-50 d-block" style="font-size: 0.75rem;">* Final price may slightly vary depending on real-time market rates.</small>
-                    </div>
+                </div>
+
+                <!-- Automated Refund Trust Badge (ZuvaPay Style) -->
+                <div class="text-center mt-3 pt-2">
+                    <span class="text-muted small fw-semibold d-inline-flex align-items-center justify-content-center gap-2" style="font-size: 0.8rem;">
+                        <i class="fa-solid fa-shield-halved text-success fs-6"></i> Automated Refund: Immediate 100% wallet reversal if SMS does not arrive
+                    </span>
                 </div>
                 
                 <!-- Error Alert -->
@@ -207,9 +336,11 @@
                 
                 <div class="sms-result d-none">
                     <span class="d-block small text-muted mb-1 sms-sender"></span>
-                    <div class="d-flex align-items-center justify-content-center gap-2">
-                        <h3 class="fw-bold text-success mb-0 tracking-widest sms-code"></h3>
-                        <button class="btn btn-sm btn-link text-muted copy-sms-btn p-0" type="button" title="Copy Verification Code"><i class="fa-regular fa-copy" style="font-size: 0.95rem;"></i></button>
+                    <div class="d-flex flex-column align-items-center justify-content-center gap-2">
+                        <h3 class="fw-bold text-success mb-0 tracking-widest sms-code user-select-all" style="font-family: monospace; font-size: 1.6rem; cursor: pointer;" title="Click to copy OTP code"></h3>
+                        <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold copy-sms-btn mt-1 shadow-sm" type="button" title="Copy Verification Code">
+                            <i class="fa-regular fa-copy me-1"></i> Copy Code
+                        </button>
                     </div>
                 </div>
             </div>
@@ -234,13 +365,81 @@ document.addEventListener('DOMContentLoaded', function() {
     const countrySelect = document.getElementById('vn-country');
     const serviceSelect = document.getElementById('vn-service');
     const priceBox = document.getElementById('vn-price-box');
+    const quoteLoading = document.getElementById('vn-quote-loading');
+    const quoteContent = document.getElementById('vn-quote-content');
     const costDisplay = document.getElementById('vn-cost');
+    const wholesaleDisplay = document.getElementById('vn-wholesale-rate');
+    const userBalanceDisplay = document.getElementById('vn-user-balance');
+    const markupDisplay = document.getElementById('vn-quote-markup');
+    const balanceAfterDisplay = document.getElementById('vn-balance-after');
+    const insufficientAlert = document.getElementById('vn-insufficient-alert');
     const errorBox = document.getElementById('vn-error');
     const buyBtn = document.getElementById('vn-buy-btn');
 
-    const originalCostDisplay = document.getElementById('vn-original-cost');
-    let currentOriginalPrice = 0.00;
-    
+    // Server Selector Logic (ZuvaPay Dual Server Style)
+    const serverInput = document.getElementById('vn-server-input');
+    const serverBtns = document.querySelectorAll('.server-toggle-btn');
+    let currentServer = serverInput ? serverInput.value : 'server1';
+
+    serverBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const chosenServer = this.dataset.server;
+            if (chosenServer === currentServer) return;
+
+            currentServer = chosenServer;
+            if (serverInput) serverInput.value = currentServer;
+
+            serverBtns.forEach(b => {
+                b.classList.remove('active-server');
+                const dot = b.querySelector('.server-dot');
+                if (b.dataset.server === 'server1') {
+                    if (dot) {
+                        dot.className = 'server-dot server-dot-hot';
+                        dot.style.backgroundColor = '';
+                        dot.style.boxShadow = '';
+                    }
+                } else {
+                    if (dot) {
+                        dot.className = 'server-dot server-dot-idle';
+                        dot.style.backgroundColor = '';
+                        dot.style.boxShadow = '';
+                    }
+                }
+            });
+
+            this.classList.add('active-server');
+            const activeDot = this.querySelector('.server-dot');
+            if (chosenServer === 'server1') {
+                if (activeDot) activeDot.className = 'server-dot server-dot-hot pulse-hot';
+            } else {
+                if (activeDot) {
+                    activeDot.className = 'server-dot pulse-hot';
+                    activeDot.style.backgroundColor = '#6366f1';
+                    activeDot.style.boxShadow = '0 0 8px rgba(99, 102, 241, 0.7)';
+                }
+            }
+
+            // Reset downstream quote and products
+            priceBox.classList.add('d-none');
+            if (insufficientAlert) {
+                insufficientAlert.classList.add('d-none');
+                insufficientAlert.classList.remove('d-flex');
+            }
+            if (errorBox) errorBox.classList.add('d-none');
+
+            if (serviceTs) {
+                serviceTs.clearOptions();
+                serviceTs.clear();
+                serviceTs.disable();
+                serviceTs.settings.placeholder = 'Select country first';
+                if (serviceTs.control_input) serviceTs.control_input.placeholder = 'Select country first';
+            }
+
+            // Reload countries for this server
+            loadCountries(currentServer);
+        });
+    });
+
     // Load Tom Select Script dynamically
     const script = document.createElement('script');
     script.src = "https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js";
@@ -250,6 +449,46 @@ document.addEventListener('DOMContentLoaded', function() {
     document.head.appendChild(script);
 
     let countryTs, serviceTs;
+
+    function setTsPlaceholder(tsInstance, text) {
+        if (!tsInstance) return;
+        tsInstance.settings.placeholder = text;
+        if (tsInstance.control_input) tsInstance.control_input.placeholder = text;
+    }
+
+    function loadCountries(server) {
+        if (!countryTs) return;
+        countryTs.clearOptions();
+        countryTs.clear();
+        countryTs.disable();
+        const serverName = server === 'server2' ? 'Server 2' : 'Server 1';
+        setTsPlaceholder(countryTs, `Loading ${serverName} countries...`);
+
+        fetch(`/api/virtual-numbers/countries?server=${encodeURIComponent(server)}`)
+            .then(res => res.json())
+            .then(countries => {
+                // Discard stale response if user switched server while request was in-flight
+                if (server !== currentServer) return;
+
+                if (!Array.isArray(countries) || countries.length === 0) {
+                    setTsPlaceholder(countryTs, `No countries available on ${serverName}`);
+                    return;
+                }
+                countries.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                countryTs.clearOptions();
+                countries.forEach(c => {
+                    countryTs.addOption({value: c.ID, text: c.name + (c.cc ? ` (+${c.cc})` : '')});
+                });
+                setTsPlaceholder(countryTs, 'Select Country');
+                countryTs.enable();
+                countryTs.clear();
+            })
+            .catch(err => {
+                if (server !== currentServer) return;
+                setTsPlaceholder(countryTs, 'Failed to load countries');
+                console.error(`Failed to load countries for ${server}:`, err);
+            });
+    }
 
     function initTomSelect() {
         countryTs = new TomSelect('#vn-country', {
@@ -264,70 +503,123 @@ document.addEventListener('DOMContentLoaded', function() {
             placeholder: 'Select country first'
         });
 
-        // Fetch and populate countries
-        fetch('/api/virtual-numbers/countries')
-            .then(res => res.json())
-            .then(countries => {
-                countries.sort((a, b) => a.name.localeCompare(b.name));
-                countryTs.clearOptions();
-                countries.forEach(c => {
-                    countryTs.addOption({value: c.ID, text: c.name + (c.cc ? ` (+${c.cc})` : '')});
-                });
-                countryTs.settings.placeholder = 'Select Country';
-                countryTs.enable();
-                countryTs.clear();
-            })
-            .catch(err => {
-                countryTs.settings.placeholder = 'Failed to load countries';
-                console.error('Failed to load countries', err);
-            });
+        // Initial populate of countries for active server
+        loadCountries(currentServer);
             
-        // On country select, load service pricing
+        // On country select, load service pricing for active server
         countryTs.on('change', function(countryId) {
             serviceTs.clearOptions();
             serviceTs.clear();
             priceBox.classList.add('d-none');
+            if (insufficientAlert) {
+                insufficientAlert.classList.add('d-none');
+                insufficientAlert.classList.remove('d-flex');
+            }
+            if (errorBox) errorBox.classList.add('d-none');
             
             if (countryId) {
                 serviceTs.disable();
-                serviceTs.settings.placeholder = 'Loading services...';
+                setTsPlaceholder(serviceTs, 'Loading services...');
+                const requestedServer = currentServer;
                 
-                fetch(`/api/virtual-numbers/products?country=${countryId}`)
+                fetch(`/api/virtual-numbers/products?country=${encodeURIComponent(countryId)}&server=${encodeURIComponent(requestedServer)}`)
                     .then(res => res.json())
                     .then(services => {
-                        services.sort((a, b) => a.name.localeCompare(b.name));
+                        // Discard if server changed
+                        if (requestedServer !== currentServer) return;
+
+                        if (!Array.isArray(services) || services.length === 0) {
+                            setTsPlaceholder(serviceTs, 'No services available');
+                            return;
+                        }
+                        services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                         services.forEach(s => {
                             serviceTs.addOption({value: s.id, text: `${s.name} — ${s.formatted_price}`, formatted_price: s.formatted_price});
                         });
-                        serviceTs.settings.placeholder = 'Select Service';
+                        setTsPlaceholder(serviceTs, 'Select Service');
                         serviceTs.enable();
                     })
                     .catch(err => {
-                        serviceTs.settings.placeholder = 'Failed to load services';
+                        if (requestedServer !== currentServer) return;
+                        setTsPlaceholder(serviceTs, 'Failed to load services');
                         console.error('Failed to load services', err);
                     });
             } else {
-                serviceTs.settings.placeholder = 'Select country first';
+                setTsPlaceholder(serviceTs, 'Select country first');
                 serviceTs.disable();
             }
         });
         
-        // On service select, show price and buy button
+        // On service select, fetch real-time live price quote with markup & balance check
         serviceTs.on('change', function(val) {
+            if (errorBox) errorBox.classList.add('d-none');
+            if (insufficientAlert) {
+                insufficientAlert.classList.add('d-none');
+                insufficientAlert.classList.remove('d-flex');
+            }
+
             if (val) {
-                const option = serviceTs.options[val];
-                if (option && option.formatted_price) {
-                    costDisplay.textContent = option.formatted_price;
-                    priceBox.classList.remove('d-none');
-                }
+                const countryId = countryTs.getValue();
+                const requestedServer = currentServer;
+                priceBox.classList.remove('d-none');
+                if (quoteLoading) quoteLoading.classList.remove('d-none');
+                if (quoteContent) quoteContent.classList.add('d-none');
+                buyBtn.disabled = true;
+
+                fetch(`/api/virtual-numbers/quote?country=${encodeURIComponent(countryId)}&product=${encodeURIComponent(val)}&server=${encodeURIComponent(requestedServer)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (requestedServer !== currentServer) return;
+                        if (quoteLoading) quoteLoading.classList.add('d-none');
+                        if (data.success) {
+                            if (quoteContent) quoteContent.classList.remove('d-none');
+                            costDisplay.textContent = data.formatted_quote;
+                            if (wholesaleDisplay) wholesaleDisplay.textContent = '$' + parseFloat(data.wholesale_price).toFixed(2);
+                            if (markupDisplay) markupDisplay.textContent = '+' + data.markup_percent + '%';
+                            if (userBalanceDisplay) userBalanceDisplay.textContent = data.formatted_balance;
+                            if (balanceAfterDisplay) balanceAfterDisplay.textContent = '(Remaining: ' + data.formatted_remaining + ')';
+
+                            if (!data.sufficient_balance) {
+                                if (insufficientAlert) {
+                                    insufficientAlert.classList.remove('d-none');
+                                    insufficientAlert.classList.add('d-flex');
+                                }
+                                buyBtn.disabled = true;
+                                buyBtn.innerHTML = 'Insufficient Balance';
+                            } else {
+                                if (insufficientAlert) {
+                                    insufficientAlert.classList.add('d-none');
+                                    insufficientAlert.classList.remove('d-flex');
+                                }
+                                buyBtn.disabled = false;
+                                buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
+                            }
+                        } else {
+                            priceBox.classList.add('d-none');
+                            if (errorBox) {
+                                errorBox.textContent = data.message || 'Service is temporarily unavailable for this country. Please select another.';
+                                errorBox.classList.remove('d-none');
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        if (requestedServer !== currentServer) return;
+                        if (quoteLoading) quoteLoading.classList.add('d-none');
+                        console.error('Failed to fetch live quote:', err);
+                        // Fallback to option price if network glitch
+                        const option = serviceTs.options[val];
+                        if (option && option.formatted_price) {
+                            if (quoteContent) quoteContent.classList.remove('d-none');
+                            costDisplay.textContent = option.formatted_price;
+                            buyBtn.disabled = false;
+                            buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
+                        }
+                    });
             } else {
-                currentOriginalPrice = 0;
                 priceBox.classList.add('d-none');
             }
         });
     }
-
-
 
     // Handle Form Submit (Purchase)
     document.getElementById('vn-form').addEventListener('submit', function(e) {
@@ -337,6 +629,9 @@ document.addEventListener('DOMContentLoaded', function() {
         buyBtn.disabled = true;
         buyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
         
+        const selectedCountry = countryTs ? countryTs.getValue() : countrySelect.value;
+        const selectedProduct = serviceTs ? serviceTs.getValue() : serviceSelect.value;
+
         fetch('/api/virtual-numbers/purchase', {
             method: 'POST',
             headers: {
@@ -344,8 +639,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
             },
             body: JSON.stringify({
-                country: countrySelect.value,
-                product: serviceSelect.value
+                server: currentServer,
+                country: selectedCountry,
+                product: selectedProduct
             })
         })
         .then(res => res.json())
@@ -360,7 +656,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Success! Create active order card
                 addOrderCard(res.order);
                 // Clear selection
-                if (serviceSelect.tomselect) {
+                if (serviceTs) {
+                    serviceTs.clear();
+                } else if (serviceSelect.tomselect) {
                     serviceSelect.tomselect.clear();
                 } else {
                     serviceSelect.value = '';
@@ -411,6 +709,10 @@ document.addEventListener('DOMContentLoaded', function() {
         waitingText.classList.remove('d-none');
         waitingText.textContent = isResent ? 'Waiting for next SMS (Resent)...' : 'Waiting for SMS...';
         
+        // Hide old SMS OTP result when requesting a new code
+        const smsResult = cardNode.querySelector('.sms-result');
+        if (smsResult) smsResult.classList.add('d-none');
+
         const smsArea = cardNode.querySelector('.sms-area');
         smsArea.classList.remove('bg-success', 'bg-opacity-10');
         smsArea.classList.add('bg-white');
@@ -431,7 +733,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const serviceName = order.product || order.service || 'Service';
         card.querySelector('.service-name').textContent = serviceName;
         card.querySelector('.service-name-inline').textContent = serviceName;
-        card.querySelector('.country-name').textContent = order.country;
+        const serverBadge = (order.server === 'server2')
+            ? '<span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Server 2</span>'
+            : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>';
+        card.querySelector('.country-name').innerHTML = `${order.country} ${serverBadge}`;
         card.querySelector('.phone-number').value = order.phone_number;
         
         // Setup countdown timer for pending orders
@@ -473,16 +778,28 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => { icon.className = 'fa-solid fa-copy'; }, 2000);
         });
 
-        // Copy SMS Code btn
-        card.querySelector('.copy-sms-btn').addEventListener('click', function() {
-            const smsCode = card.querySelector('.sms-code').textContent;
-            if (smsCode) {
+        // Copy SMS Code action (both on button and clicking code itself)
+        const copySmsAction = () => {
+            const smsCode = card.querySelector('.sms-code').textContent.trim();
+            if (smsCode && smsCode !== 'Waiting for SMS...' && smsCode !== 'Received') {
                 navigator.clipboard.writeText(smsCode);
-                const icon = this.querySelector('i');
-                icon.className = 'fa-solid fa-check text-success';
-                setTimeout(() => { icon.className = 'fa-regular fa-copy text-muted'; }, 2000);
+                const btn = card.querySelector('.copy-sms-btn');
+                if (btn) {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Copied!';
+                    btn.classList.replace('btn-outline-success', 'btn-success');
+                    btn.classList.add('text-white');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.classList.replace('btn-success', 'btn-outline-success');
+                        btn.classList.remove('text-white');
+                    }, 2000);
+                }
             }
-        });
+        };
+
+        card.querySelector('.copy-sms-btn')?.addEventListener('click', copySmsAction);
+        card.querySelector('.sms-code')?.addEventListener('click', copySmsAction);
         
         // Cancel btn
         card.querySelector('.cancel-btn').addEventListener('click', function() {
@@ -552,11 +869,12 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/api/virtual-numbers/${id}/check`)
                 .then(res => res.json())
                 .then(data => {
-                    if (data.order && (data.order.status === 'received' || data.order.status === 'finished')) {
+                    const status = data.order?.status;
+                    if (data.order && (status === 'received' || status === 'finished')) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
                         showReceivedState(cardNode, data.order.sms_code || data.order.sms_text || 'Received');
-                    } else if (data.order && data.order.status === 'canceled') {
+                    } else if (data.order && (status === 'canceled' || status === 'expired' || status === 'refunded' || status === 'failed')) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
                         if (cardNode.dataset.timerId) clearInterval(cardNode.dataset.timerId);

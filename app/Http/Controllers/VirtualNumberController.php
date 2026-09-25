@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Services\SmsPoolService;
+use App\Services\GrizzlySmsService;
 use App\Models\VirtualNumberOrder;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
@@ -14,10 +15,20 @@ use Illuminate\Support\Facades\Log;
 class VirtualNumberController extends Controller
 {
     protected SmsPoolService $smspool;
+    protected GrizzlySmsService $grizzly;
 
-    public function __construct(SmsPoolService $smspool)
+    public function __construct(SmsPoolService $smspool, GrizzlySmsService $grizzly)
     {
         $this->smspool = $smspool;
+        $this->grizzly = $grizzly;
+    }
+
+    /**
+     * Get the service provider instance based on server key ('server1' = SMSPool, 'server2' = Grizzly SMS).
+     */
+    protected function getProvider(string $server = 'server1')
+    {
+        return ($server === 'server2') ? $this->grizzly : $this->smspool;
     }
 
     /**
@@ -52,44 +63,46 @@ class VirtualNumberController extends Controller
     }
 
     /**
-     * API: Get cached countries list from SMSPool.
+     * API: Get cached countries list (supports Server 1: SMSPool, Server 2: Grizzly SMS).
      */
-    public function getCountries()
+    public function getCountries(Request $request)
     {
-        $cacheKey = "smspool_countries";
-        
-        $data = Cache::remember($cacheKey, 86400, function () {
-            try {
-                return $this->smspool->getCountries();
-            } catch (\Exception $e) {
-                Log::error('SMSPool getCountries failed in controller', ['error' => $e->getMessage()]);
-                return [];
-            }
-        });
+        $server = $request->query('server', 'server1');
+        $cacheKey = ($server === 'server2') ? "grizzly_countries" : "smspool_countries";
 
-        return response()->json($data);
+        $cached = Cache::get($cacheKey);
+        if ($cached && is_array($cached) && !empty($cached)) {
+            return response()->json($cached);
+        }
+
+        try {
+            $data = $this->getProvider($server)->getCountries();
+            if (!empty($data) && is_array($data)) {
+                Cache::put($cacheKey, $data, 86400);
+            }
+            return response()->json($data ?: []);
+        } catch (\Exception $e) {
+            Log::error("Virtual numbers getCountries failed for {$server}: " . $e->getMessage());
+            return response()->json([]);
+        }
     }
 
     /**
-     * API: Get dynamic products list from SMSPool for a specific country.
+     * API: Get dynamic products list for a specific country from chosen server.
      * Caches the results for 5 minutes.
      */
     public function getProducts(Request $request)
     {
         $country = $request->query('country');
-        
+        $server = $request->query('server', 'server1');
+
         if (!$country) {
             return response()->json(['error' => 'Country ID is required.'], 400);
         }
 
-        $markupFee = $this->getMarkupFee();
-        
         try {
-            $cacheKey = "smspool_prices_{$country}";
-            $pricesData = Cache::remember($cacheKey, 600, function () use ($country) {
-                return $this->smspool->getPricesForCountry($country);
-            });
-            
+            $pricesData = $this->getCachedPricesForCountry($country, $server);
+
             // Group by service ID/name and choose the lowest price across different pools
             $grouped = [];
             foreach ($pricesData as $item) {
@@ -110,28 +123,29 @@ class VirtualNumberController extends Controller
                     ];
                 }
             }
-            
-            // Map to final array with markup fee applied
+
+            // Map to final array with dynamic markup percentage applied (default: 65%)
             $finalServices = [];
             foreach ($grouped as $service) {
+                $retailPrice = $this->calculateRetailPrice($service['raw_price']);
                 $finalServices[] = [
                     'id' => $service['id'],
                     'name' => $service['name'],
-                    'price' => round($service['raw_price'] + $markupFee, 2),
-                    'formatted_price' => money(round($service['raw_price'] + $markupFee, 2))
+                    'price' => $retailPrice,
+                    'formatted_price' => money($retailPrice)
                 ];
             }
-            
+
             return response()->json($finalServices);
         } catch (\Exception $e) {
-            Log::error('SMSPool getPricesForCountry failed in controller', ['country' => $country, 'error' => $e->getMessage()]);
+            Log::error("getPricesForCountry failed for {$server}: " . $e->getMessage(), ['country' => $country]);
             return response()->json([]);
         }
     }
 
 
     /**
-     * Process the purchase of a virtual number
+     * Process the purchase of a virtual number (supports Server 1 and Server 2)
      */
     public function purchase(Request $request)
     {
@@ -142,67 +156,70 @@ class VirtualNumberController extends Controller
 
         $country = $request->country; // Country ID
         $product = $request->product; // Service ID or Name
+        $server = $request->input('server', 'server1');
         $user = Auth::user();
 
         try {
             // Retrieve pricing for this country to estimate cost (check cache first)
-            $cacheKey = "smspool_prices_{$country}";
-            $pricesData = Cache::remember($cacheKey, 600, function () use ($country) {
-                return $this->smspool->getPricesForCountry($country);
-            });
+            $pricesData = $this->getCachedPricesForCountry($country, $server);
             
             $cheapestPrice = null;
             $serviceName = null;
+            $productId = null;
             foreach ($pricesData as $item) {
-                if ((string)$item['service'] === (string)$product || strtolower($item['service_name']) === strtolower($product)) {
+                if ((string)($item['service'] ?? '') === (string)$product || strtolower($item['service_name'] ?? '') === strtolower($product)) {
                     $price = (float)$item['price'];
                     if ($cheapestPrice === null || $price < $cheapestPrice) {
                         $cheapestPrice = $price;
-                        $serviceName = $item['service_name'];
-                        $productId = $item['service'];
+                        $serviceName = $item['service_name'] ?? $product;
+                        $productId = $item['service'] ?? $product;
                     }
                 }
             }
 
             if ($cheapestPrice === null) {
-                return response()->json(['error' => 'Product not available for this country.'], 400);
+                return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'], 400);
             }
 
-            // Calculate estimated user cost (SMSPool is natively in USD)
-            $markupFee = $this->getMarkupFee(); 
-            $userCostUsd = $cheapestPrice + $markupFee;  
+            // Calculate estimated user cost with dynamic percentage markup
+            $userCostUsd = $this->calculateRetailPrice($cheapestPrice);  
 
-            // Ensure user has enough balance and reserve it before the slow external API call
+            // Ensure user has enough balance and reserve it before the external API call
             $finalCheckCost = max(0.00, $userCostUsd);
 
+            $totalAvailableBalance = 0.0;
             DB::beginTransaction();
             try {
                 // Lock the user record to prevent concurrent check-out race conditions
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                $totalAvailableBalance = (float) $lockedUser->balance;
 
-                if ($lockedUser->balance < $finalCheckCost) {
+                if (!$lockedUser->deductBalance($finalCheckCost)) {
                     DB::rollBack();
                     return response()->json(['error' => 'Insufficient wallet balance.'], 402);
                 }
-
-                // Reserve the estimated balance immediately
-                $lockedUser->decrement('balance', $finalCheckCost);
                 DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
                 throw $e;
             }
 
-            // Execute Purchase
+            // Allow up to 15% wholesale price fluctuation from quoted rate, capped by user's available funds
+            $markupMultiplier = 1 + ($this->getMarkupPercent() / 100);
+            $maxAffordableWholesale = round(max(0.00, $totalAvailableBalance / $markupMultiplier), 2);
+            $maxWholesaleWithSlippage = round($cheapestPrice * 1.15, 2);
+            $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithSlippage);
+
+            // Execute Purchase on chosen server
             try {
-                // Do not pass max_price parameter so SMSPool can fulfill from any available pool
-                $buyResponse = $this->smspool->buyNumber($country, $productId);
+                $provider = $this->getProvider($server);
+                $buyResponse = $provider->buyNumber($country, $productId, $maxWholesale);
             } catch (\Exception $e) {
                 // Refund the reserved balance if purchase fails
                 DB::beginTransaction();
                 try {
                     $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                    $refundUser->increment('balance', $finalCheckCost);
+                    $refundUser->addBalance($finalCheckCost);
                     DB::commit();
                 } catch (\Exception $ex) {
                     DB::rollBack();
@@ -217,60 +234,95 @@ class VirtualNumberController extends Controller
 
             // Extract order details
             $apiOrderId = $buyResponse['order_id'] ?? null;
-            $phoneNumber = '+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? '');
-            $actualCostUsd = isset($buyResponse['cost']) ? (float)$buyResponse['cost'] : $cheapestPrice;
-            $countryName = $buyResponse['country'] ?? 'Unknown';
+            $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
+                ? $buyResponse['phonenumber'] 
+                : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
+            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0) ? (float)$buyResponse['cost'] : $cheapestPrice;
+
+            // Resolve human-friendly country name from provider list
+            $countryName = null;
+            try {
+                $allCountries = $this->getProvider($server)->getCountries();
+                if (is_array($allCountries)) {
+                    foreach ($allCountries as $c) {
+                        if ((string)($c['ID'] ?? '') === (string)$country || (string)($c['id'] ?? '') === (string)$country) {
+                            $countryName = $c['name'] ?? null;
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $cErr) {
+                Log::warning("Failed resolving country name: " . $cErr->getMessage());
+            }
+            if (!$countryName) {
+                $countryName = $buyResponse['country'] ?? (string)$country;
+            }
+
             $serviceName = $buyResponse['service'] ?? $serviceName;
 
             if (!$apiOrderId) {
                 DB::beginTransaction();
                 try {
                     $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                    $refundUser->increment('balance', $finalCheckCost);
+                    $refundUser->addBalance($finalCheckCost);
                     DB::commit();
                 } catch (\Exception $ex) {
                     DB::rollBack();
                 }
-                return response()->json(['error' => 'Failed to obtain an order ID from SMSPool.'], 500);
+                return response()->json(['error' => 'Failed to obtain an order ID from SMS provider.'], 500);
             }
 
-            // Recalculate final user cost based on the real price returned by SMSPool
-            $realUserCostUsd = $actualCostUsd + $markupFee;
-            
-            $finalUserCostUsd = max(0.00, $realUserCostUsd);
+            // Recalculate final user cost based on the real price returned by provider with dynamic markup
+            $finalUserCostUsd = max(0.00, $this->calculateRetailPrice($actualCostUsd));
 
-            // Database Transaction
+            // Database Transaction for finalizing and adjusting cost
             DB::beginTransaction();
             try {
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-                // Adjust balance based on the actual final cost vs our estimate
-                $costDifference = $finalUserCostUsd - $finalCheckCost;
+                // Adjust balance based on the actual final cost vs our initial reserved estimate
+                $costDifference = round($finalUserCostUsd - $finalCheckCost, 4);
                 if ($costDifference > 0) {
-                    $lockedUser->decrement('balance', $costDifference);
+                    if (!$lockedUser->deductBalance($costDifference)) {
+                        // User cannot afford the extra cost - cancel immediately and refund
+                        try {
+                            $this->getProvider($server)->cancelOrder($apiOrderId);
+                        } catch (\Throwable $cancelErr) {
+                            Log::error('Failed to cancel order on price jump', [
+                                'order_id' => $apiOrderId,
+                                'error' => $cancelErr->getMessage()
+                            ]);
+                        }
+                        $lockedUser->addBalance($finalCheckCost);
+                        DB::commit();
+                        return response()->json(['error' => 'Provider price for this number exceeded your wallet balance. Your funds have been refunded.'], 402);
+                    }
                 } elseif ($costDifference < 0) {
-                    $lockedUser->increment('balance', abs($costDifference));
+                    $lockedUser->addBalance(abs($costDifference));
                 }
 
                 // Record Financial Transaction
                 if ($finalUserCostUsd > 0) {
+                    $serverLabel = ($server === 'server2') ? 'Server 2 (Grizzly)' : 'Server 1';
                     Transaction::add(
                         $lockedUser->id, 
                         $finalUserCostUsd, 
                         'debit', 
                         'virtual_number', 
-                        "Virtual Number Purchase ({$serviceName} - {$countryName})"
+                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}])"
                     );
                 }
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
-                
+                $operatorLabel = ($server === 'server2') ? 'Grizzly SMS' : 'SMSPool';
+
                 $order = VirtualNumberOrder::create([
                     'user_id' => $lockedUser->id,
                     'api_order_id' => $apiOrderId,
                     'phone_number' => $phoneNumber,
                     'country' => $countryName,
-                    'operator' => 'SMSPool',
+                    'operator' => $operatorLabel,
+                    'server' => $server,
                     'product' => $serviceName,
                     'cost' => $finalUserCostUsd,
                     'provider_cost' => $actualCostUsd,
@@ -295,6 +347,7 @@ class VirtualNumberController extends Controller
             // Log the actual error for admin review
             Log::error('Virtual Number Purchase Exception', [
                 'user_id' => Auth::id(),
+                'server' => $server ?? 'server1',
                 'country' => $country ?? 'Unknown',
                 'product' => $product ?? 'Unknown',
                 'error' => $e->getMessage()
@@ -321,9 +374,10 @@ class VirtualNumberController extends Controller
         }
 
         try {
-            $checkData = $this->smspool->checkOrder($order->api_order_id);
+            $provider = $this->getProvider($order->server ?? 'server1');
+            $checkData = $provider->checkOrder($order->api_order_id);
 
-            // SMSPool status values: 1 = pending, 3 = completed (SMS received), 5/6 = refunded/canceled
+            // Status values: 1 = pending, 2 = expired, 3 = completed (SMS received), 5/6 = refunded/canceled
             $status = isset($checkData['status']) ? (int)$checkData['status'] : 1;
 
             if ($status === 3) {
@@ -340,15 +394,15 @@ class VirtualNumberController extends Controller
                         ]);
                     }
                 });
-            } elseif ($status === 5 || $status === 6) {
-                // Refund the user if it failed
+            } elseif ($status === 2 || $status === 5 || $status === 6) {
+                // Refund the user if it failed, expired, or was canceled upstream
                 $this->refundOrder($order);
             }
 
             return response()->json(['order' => $order->fresh()]);
 
         } catch (\Exception $e) {
-            Log::error('SMSPool checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            Log::error('Virtual number checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to check status.'], 500);
         }
     }
@@ -360,9 +414,13 @@ class VirtualNumberController extends Controller
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->where('status', 'pending')->findOrFail($id);
 
+        if (!empty($order->sms_code) || !empty($order->sms_text)) {
+            return response()->json(['error' => 'Cannot cancel a number that has already received an SMS code.'], 400);
+        }
+
         try {
-            // Call SMSPool cancel endpoint
-            $this->smspool->cancelOrder($order->api_order_id);
+            $provider = $this->getProvider($order->server ?? 'server1');
+            $provider->cancelOrder($order->api_order_id);
             
             // Perform the refund
             $this->refundOrder($order);
@@ -370,8 +428,8 @@ class VirtualNumberController extends Controller
             return response()->json(['success' => true, 'order' => $order->fresh()]);
 
         } catch (\Exception $e) {
-            Log::error('SMSPool cancelOrder failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Could not cancel the order at this time.'], 400);
+            Log::error('Virtual number cancelOrder failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage() ?: 'Could not cancel the order at this time.'], 400);
         }
     }
 
@@ -385,10 +443,10 @@ class VirtualNumberController extends Controller
             ->findOrFail($id);
 
         try {
-            // Call SMSPool resend endpoint
-            $resendData = $this->smspool->resendOrder($order->api_order_id);
+            $provider = $this->getProvider($order->server ?? 'server1');
+            $resendData = $provider->resendOrder($order->api_order_id);
 
-            // Set order status back to pending to wait for the next SMS
+            // Set order status back to pending to wait for the next SMS (retaining sms_text as audit trail of initial delivery)
             DB::transaction(function () use ($order) {
                 $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
                 if ($lockedOrder) {
@@ -406,7 +464,7 @@ class VirtualNumberController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('SMSPool resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            Log::error('Virtual number resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json([
                 'error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'
             ], 400);
@@ -423,38 +481,154 @@ class VirtualNumberController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedOrder || $lockedOrder->status !== 'pending') {
+            // Guard: Cannot refund if order is not pending or if it has ever received an SMS
+            if (!$lockedOrder || $lockedOrder->status !== 'pending' || !empty($lockedOrder->sms_code) || !empty($lockedOrder->sms_text)) {
                 return;
             }
 
             $lockedOrder->update(['status' => 'canceled']);
-            $lockedOrder->user->increment('balance', $lockedOrder->cost);
 
-            if ($lockedOrder->cost > 0) {
-                Transaction::add(
-                    $lockedOrder->user_id, 
-                    $lockedOrder->cost, 
-                    'credit', 
-                    'refund', 
-                    "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})"
-                );
+            $lockedUser = \App\Models\User::where('id', $lockedOrder->user_id)
+                ->lockForUpdate()
+                ->first();
+
+            if ($lockedUser) {
+                $lockedUser->addBalance($lockedOrder->cost);
+
+                if ($lockedOrder->cost > 0) {
+                    Transaction::add(
+                        $lockedUser->id, 
+                        $lockedOrder->cost, 
+                        'credit', 
+                        'refund', 
+                        "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})"
+                    );
+                }
             }
         });
     }
 
     /**
-     * Get the markup flat fee.
+     * API: Get real-time verified price quote for a selected country and service.
+     * Prevents pricing surprises, stale cached data, and balance discrepancies.
+     */
+    public function getLiveQuote(Request $request)
+    {
+        $request->validate([
+            'country' => 'required',
+            'product' => 'required',
+        ]);
+
+        $country = $request->country;
+        $product = $request->product;
+        $server = $request->input('server', 'server1');
+        $user = Auth::user();
+
+        try {
+            $pricesData = $this->getCachedPricesForCountry($country, $server);
+
+            $cheapestPrice = null;
+            $serviceName = null;
+            $productId = null;
+
+            foreach ($pricesData as $item) {
+                if ((string)($item['service'] ?? '') === (string)$product || strtolower($item['service_name'] ?? '') === strtolower($product)) {
+                    $price = (float) $item['price'];
+                    if ($cheapestPrice === null || $price < $cheapestPrice) {
+                        $cheapestPrice = $price;
+                        $serviceName = $item['service_name'] ?? $product;
+                        $productId = $item['service'] ?? $product;
+                    }
+                }
+            }
+
+            if ($cheapestPrice === null) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Service currently out of stock or unavailable for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'
+                ], 404);
+            }
+
+            $userCost = $this->calculateRetailPrice($cheapestPrice);
+            $userBalance = (float) $user->balance;
+            $sufficient = $userBalance >= $userCost;
+            $remainingBalance = max(0.00, round($userBalance - $userCost, 4));
+
+            return response()->json([
+                'success' => true,
+                'server' => $server,
+                'country' => $country,
+                'product_id' => $productId,
+                'service_name' => $serviceName,
+                'wholesale_price' => $cheapestPrice,
+                'quote_price' => $userCost,
+                'formatted_quote' => money($userCost),
+                'markup_percent' => $this->getMarkupPercent(),
+                'user_balance' => $userBalance,
+                'formatted_balance' => money($userBalance),
+                'sufficient_balance' => $sufficient,
+                'remaining_balance' => $remainingBalance,
+                'formatted_remaining' => money($remainingBalance),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('SMS Live Quote Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to fetch real-time quote: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper to get and cache prices for a specific country and server.
+     * Prevents caching empty arrays on API transient errors.
+     */
+    protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
+    {
+        $cacheKey = ($server === 'server2') ? "grizzly_prices_{$country}" : "smspool_prices_{$country}";
+        $cached = Cache::get($cacheKey);
+        if ($cached && is_array($cached) && !empty($cached)) {
+            return $cached;
+        }
+
+        try {
+            $pricesData = $this->getProvider($server)->getPricesForCountry($country);
+            if (!empty($pricesData) && is_array($pricesData)) {
+                Cache::put($cacheKey, $pricesData, 300);
+            }
+            return $pricesData ?: [];
+        } catch (\Throwable $e) {
+            Log::error("Failed fetching prices for country {$country} on {$server}: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get the dynamic profit margin percentage for virtual numbers (default: 65%).
+     */
+    public function getMarkupPercent(): float
+    {
+        return (float) \App\Models\Setting::get('vn_markup_percent', 65.0);
+    }
+
+    /**
+     * Calculate user retail price from wholesale price with percentage markup
+     */
+    public function calculateRetailPrice(float $wholesalePrice): float
+    {
+        $percent = $this->getMarkupPercent();
+        return round($wholesalePrice * (1 + ($percent / 100)), 2);
+    }
+
+    /**
+     * Legacy markup flat fee fallback.
      */
     protected function getMarkupFee(): float
     {
         $markupSetting = (float) \App\Models\Setting::get('vn_markup', 1.00);
-        
-        // If the legacy value was a percentage (e.g. 65 or 200) or multiplier (e.g. 1.65),
-        // we should fallback to a safe default markup fee (like 1.00) to prevent pricing breaks
         if ($markupSetting > 5.0 || ($markupSetting > 1.0 && $markupSetting < 2.0)) {
             $markupSetting = 1.00;
         }
-        
         return $markupSetting;
     }
 }

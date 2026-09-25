@@ -23,6 +23,9 @@ class ResellerApiController extends Controller
         }
 
         $user = User::where('api_key', $request->key)->first();
+        if (!$user || !$user->is_active) {
+            return response()->json(['error' => 'Account is suspended or invalid API key.'], 403);
+        }
 
         switch ($request->action) {
             case 'services':
@@ -66,8 +69,10 @@ class ResellerApiController extends Controller
 
     private function addOrder($request, $user)
     {
-        // Mocking a request for OrderController
+        // Mocking a JSON request for OrderController
         $orderRequest = new Request();
+        $orderRequest->headers->set('Accept', 'application/json');
+        $orderRequest->setUserResolver(fn() => $user);
         $orderRequest->replace([
             'service_id' => $request->service,
             'link' => $request->link,
@@ -79,17 +84,37 @@ class ResellerApiController extends Controller
         // Manually authenticate user for the request
         \Illuminate\Support\Facades\Auth::login($user);
 
-        $orderController = app(OrderController::class);
-        $response = $orderController->store($orderRequest);
-        $data = $response->getData();
+        try {
+            $orderController = app(OrderController::class);
+            $response = $orderController->store($orderRequest);
 
-        if (isset($data->error)) {
-            return response()->json(['error' => $data->error], 400);
+            if ($response instanceof \Illuminate\Http\JsonResponse) {
+                $data = $response->getData();
+                if (isset($data->error)) {
+                    return response()->json(['error' => $data->error], $response->status() >= 400 ? $response->status() : 400);
+                }
+                if (isset($data->order)) {
+                    return response()->json(['order' => $data->order->id]);
+                }
+                return $response;
+            }
+
+            // Fallback for non-JSON responses
+            $content = json_decode($response->getContent(), true);
+            if (isset($content['error'])) {
+                return response()->json(['error' => $content['error']], 400);
+            }
+            if (isset($content['order']['id'])) {
+                return response()->json(['order' => $content['order']['id']]);
+            }
+
+            return response()->json(['error' => 'Unable to process order.'], 400);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['error' => collect($e->errors())->flatten()->first()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Reseller API addOrder error: ' . $e->getMessage());
+            return response()->json(['error' => 'Order placement failed: ' . $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'order' => $data->order->id,
-        ]);
     }
 
     private function status($request, $user)
@@ -105,7 +130,7 @@ class ResellerApiController extends Controller
         }
 
         return response()->json([
-            'charge' => $order->total_price,
+            'charge' => (float) $order->charge,
             'start_count' => $order->start_count,
             'status' => ucfirst($order->status),
             'remains' => $order->remains,

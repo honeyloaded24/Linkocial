@@ -157,27 +157,30 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
+                @php
+                    $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 10.00);
+                @endphp
                 <div class="alert alert-info border-0 bg-primary bg-opacity-10 small mb-4">
                     <strong>Current Balance:</strong> {{ money($user->commission_balance) }}<br>
-                    <strong>Minimum Payout:</strong> {{ money(10) }}
+                    <strong>Minimum Payout:</strong> {{ money($minPayout) }}
                 </div>
 
                 <form action="{{ route('affiliate.withdraw') }}" method="POST">
                     @csrf
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold text-uppercase">Amount to Withdraw</label>
+                        <label class="form-label text-muted small fw-bold text-uppercase">Amount to Withdraw (USD)</label>
                         <div class="input-group">
-                            <span class="input-group-text border-secondary bg-transparent text-muted">{{ get_currency_symbol() }}</span>
-                            <input type="number" name="amount" class="form-control" placeholder="1000" min="1000" max="{{ $user->commission_balance }}" step="0.01" required>
+                            <span class="input-group-text border-secondary bg-transparent text-muted">$</span>
+                            <input type="number" name="amount" class="form-control" placeholder="{{ $minPayout }}" min="{{ $minPayout }}" max="{{ $user->commission_balance }}" step="0.01" required>
                         </div>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold text-uppercase">Bank Account Details</label>
-                        <textarea name="bank_details" class="form-control" rows="5" placeholder="Bank Name: &#10;Account Number: &#10;Account Name: " required></textarea>
+                        <label class="form-label text-muted small fw-bold text-uppercase">Bank / Payment Details</label>
+                        <textarea name="bank_details" class="form-control" rows="5" placeholder="Bank Name: &#10;Account Number: &#10;Account Name: &#10;Or USDT/Crypto Address:" required></textarea>
                     </div>
 
-                    <button type="submit" class="btn bg-primary-custom w-100 py-3 fw-bold" @if($user->commission_balance < 1000) disabled @endif>
+                    <button type="submit" class="btn bg-primary-custom w-100 py-3 fw-bold" @if($user->commission_balance < $minPayout) disabled @endif>
                         Submit Payout Request
                     </button>
                 </form>

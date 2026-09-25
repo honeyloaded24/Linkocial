@@ -54,7 +54,7 @@ class AdminVirtualNumberController extends Controller
     /**
      * Force refund/cancel an order
      */
-    public function refund($id, SmsPoolService $smspool)
+    public function refund($id, SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly)
     {
         try {
             DB::beginTransaction();
@@ -69,17 +69,18 @@ class AdminVirtualNumberController extends Controller
                 return back()->with('error', 'That order is already canceled and refunded.');
             }
 
-            // Attempt to tell SMSPool to cancel it so we get our API money back too, if it's pending.
+            // Attempt to tell provider to cancel it so we get our API money back too, if it's pending.
             if ($order->status === 'pending' || $order->status === 'received') {
                 try {
-                    $smspool->cancelOrder($order->api_order_id);
+                    $provider = ($order->server === 'server2') ? $grizzly : $smspool;
+                    $provider->cancelOrder($order->api_order_id);
                 } catch (\Exception $e) {
                     // Ignore API fails on manual admin overrides to ensure the user gets refunded regardless
                 }
             }
 
             // Perform Refund
-            $order->user->increment('balance', $order->cost);
+            $order->user->addBalance($order->cost);
             
             if ($order->cost > 0) {
                 Transaction::add(
@@ -89,20 +90,6 @@ class AdminVirtualNumberController extends Controller
                     'refund', 
                     "Admin manual refund for Virtual Number #{$order->id} ({$order->product})"
                 );
-            }
-
-            // Rollback coupon usage if applicable
-            if ($order->coupon_code) {
-                $coupon = \App\Models\Coupon::where('code', $order->coupon_code)->first();
-                if ($coupon) {
-                    $usage = \App\Models\CouponUsage::where('coupon_id', $coupon->id)
-                        ->where('virtual_number_order_id', $order->id)
-                        ->first();
-                    if ($usage) {
-                        $usage->delete();
-                        $coupon->decrement('usage_count');
-                    }
-                }
             }
 
             $order->update(['status' => 'canceled']);

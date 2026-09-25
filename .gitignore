@@ -27,6 +27,7 @@ Thumbs.db
 /database/*.sqlite
 /database/*.sqlite-journal
 /scratch
+scratch_*.php
 *.json.tmp
 postman.json
 postman_new.json

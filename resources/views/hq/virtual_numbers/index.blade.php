@@ -95,7 +95,10 @@
                     </td>
                     <td>
                         <div class="fw-bold fs-7 text-capitalize">{{ str_replace('_', ' ', $order->product) }}</div>
-                        <div class="small text-muted text-uppercase">{{ $order->country }} ({{ $order->operator }})</div>
+                        <div class="small text-muted text-uppercase d-flex align-items-center gap-1">
+                            <span>{{ $order->country }} ({{ $order->operator }})</span>
+                            <span class="badge {{ $order->server === 'server2' ? 'bg-secondary' : 'bg-danger' }} text-white" style="font-size: 0.60rem; padding: 2px 5px;">{{ $order->server === 'server2' ? 'Server 2' : 'Server 1 (HOT)' }}</span>
+                        </div>
                     </td>
                     <td>
                         <span class="fw-bold font-monospace px-2 py-1 rounded" style="background: rgba(255,255,255,0.05); color: var(--text-main);">{{ $order->phone_number }}</span>

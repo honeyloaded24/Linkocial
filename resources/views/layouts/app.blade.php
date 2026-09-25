@@ -236,9 +236,6 @@
                                 <a href="{{ route('hq.logs.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.logs*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-box-open"></i> Logs & Accounts
                                 </a>
-                                <a href="{{ route('hq.coupons.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.coupons*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-ticket"></i> Coupons
-                                </a>
                                 <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-pen-to-square"></i> Blog Manager
                                 </a>

@@ -373,26 +373,37 @@
                                 </div>
                             </div>
 
-                            <!-- SMSPool -->
+                            <!-- Virtual Numbers (Server 1: SMSPool & Server 2: Grizzly SMS) -->
                             <div class="row g-4 mb-4">
                                 <div class="col-12">
-                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">SMSPool (Virtual Numbers)</h6>
-                                    <small class="text-muted d-block mb-3">Sign up and get your API Key at <a href="https://smspool.net" target="_blank">smspool.net</a>.</small>
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Virtual Numbers (Dual Servers)</h6>
+                                    <small class="text-muted d-block mb-3">Configure Server 1 (SMSPool) and Server 2 (Grizzly SMS) for high-capacity SMS verification.</small>
                                 </div>
-                                <div class="col-md-8">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">SMSPool API Key</label>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Server 1 API Key (SMSPool - HOT)</label>
                                     <input type="text" name="smspool_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smspool_api_key') }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">From <a href="https://smspool.net" target="_blank" class="text-decoration-underline">smspool.net</a></small>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Server 2 API Key (Grizzly SMS)</label>
+                                    <input type="text" name="grizzly_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('grizzly_api_key') }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">From <a href="https://grizzlysms.com" target="_blank" class="text-decoration-underline">grizzlysms.com</a></small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Dynamic Profit Margin (%)</label>
+                                    <input type="number" step="0.5" min="0" name="vn_markup_percent" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('vn_markup_percent', 65.0) }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Applied dynamically on wholesale quotes (e.g. 65 adds +65% margin).</small>
+                                </div>
+                                <div class="col-md-6">
                                     @php
                                         $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
                                         if ($rawMarkup > 5.0 || ($rawMarkup > 1.0 && $rawMarkup < 2.0)) {
                                             $rawMarkup = 1.00;
                                         }
                                     @endphp
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Markup Fee (USD)</label>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Legacy Flat Markup (USD Fallback)</label>
                                     <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format($rawMarkup, 2) }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">e.g., 1.00 adds a flat $1.00 fee to SMSPool cost.</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Fallback flat fee in case dynamic percentage is not applied.</small>
                                 </div>
                             </div>
 

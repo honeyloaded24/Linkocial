@@ -284,17 +284,19 @@ class AuthController extends Controller
 
         $user = User::findOrFail(session('2fa_user_id'));
 
-        if ($user->two_factor_code === $request->code && now()->lt($user->two_factor_expires_at)) {
+        if ($user->two_factor_code && hash_equals((string) $user->two_factor_code, (string) $request->code) && now()->lt($user->two_factor_expires_at)) {
             // Success! Reset 2FA fields and log them in
             $user->update([
                 'two_factor_code' => null,
                 'two_factor_expires_at' => null
             ]);
 
-            Auth::login($user, session('2fa_remember', false));
-            $this->recordLogin($user, $request);
-            
+            $remember = session('2fa_remember', false);
             session()->forget(['2fa_user_id', '2fa_remember']);
+            $request->session()->regenerate();
+
+            Auth::login($user, $remember);
+            $this->recordLogin($user, $request);
             
             return redirect()->intended($user->isAdmin() ? 'hq/dashboard' : 'dashboard');
         }

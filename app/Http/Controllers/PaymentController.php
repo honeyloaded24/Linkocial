@@ -233,9 +233,15 @@ class PaymentController extends Controller
 
         $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
         $koraSecret = trim($koraSecret ?? '');
+        
+        if (empty($koraSecret)) {
+            Log::error('Korapay Webhook: Secret key is not configured.');
+            return response()->json(['status' => 'webhook secret unconfigured'], 403);
+        }
+
         $expectedSignature = hash_hmac('sha256', $payload, $koraSecret);
         
-        if ($signature !== $expectedSignature) {
+        if (empty($signature) || !hash_equals((string) $expectedSignature, (string) $signature)) {
             Log::warning('Invalid Korapay Webhook Signature detected.', [
                 'received' => $signature,
                 'expected' => $expectedSignature
@@ -338,7 +344,7 @@ class PaymentController extends Controller
 
             // Lock and Credit the user's wallet with USD value
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-            $lockedUser->increment('balance', $amountInUsd);
+            $lockedUser->addBalance($amountInUsd);
 
             // --- Promo Bonus Logic (Calculated in USD base) ---
             $promoEnabled = \App\Models\Setting::get('promo_enabled') == '1';
@@ -349,7 +355,7 @@ class PaymentController extends Controller
             if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
                 if ($amountInNaira >= $promoMinNgn) {
                     $bonusAmountUsd = ($amountInUsd * $promoPercent) / 100;
-                    $lockedUser->increment('balance', $bonusAmountUsd);
+                    $lockedUser->addBalance($bonusAmountUsd);
                     
                     \App\Models\Transaction::add(
                         $lockedUser->id, 
@@ -545,29 +551,27 @@ class PaymentController extends Controller
         
         // Removed strict Merchant ID check because Heleket does not include it in the webhook payload.
         // We rely on the cryptographic signature validation below for security.
-        $apiKey = \App\Models\Setting::get('heleket_api_key');
+        $apiKey = trim(\App\Models\Setting::get('heleket_api_key') ?? '');
+        if (empty($apiKey)) {
+            Log::error('Heleket Webhook: API key is not configured.');
+            return response()->json(['status' => 'api key unconfigured'], 403);
+        }
         
         // 1. Signature Verification: Heleket signs webhooks in the exact order received (DO NOT SORT)
         $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
+        $fallbackSign = md5(base64_encode($rawBody) . $apiKey);
 
-        if ($receivedSign !== $calculatedSign) {
-            // Also try signing raw body as fallback
-            $fallbackSign = md5(base64_encode($rawBody) . $apiKey);
-            
-            if ($receivedSign !== $fallbackSign) {
-                Log::warning('Invalid Heleket Webhook Signature detected.', [
-                    'received' => $receivedSign,
-                    'calculated' => $calculatedSign,
-                    'fallback' => $fallbackSign,
-                    'payload' => $data
-                ]);
-                return response()->json(['status' => 'invalid signature'], 400);
-            }
-            Log::info('Heleket Signature Verified via Raw Body.');
-        } else {
-            Log::info('Heleket Signature Verified via Sorted JSON.');
+        if (empty($receivedSign) || (!hash_equals((string) $calculatedSign, (string) $receivedSign) && !hash_equals((string) $fallbackSign, (string) $receivedSign))) {
+            Log::warning('Invalid Heleket Webhook Signature detected.', [
+                'received' => $receivedSign,
+                'calculated' => $calculatedSign,
+                'fallback' => $fallbackSign,
+                'payload' => $data
+            ]);
+            return response()->json(['status' => 'invalid signature'], 400);
         }
+        Log::info('Heleket Signature Verified successfully.');
 
         $status = strtolower($data['status'] ?? '');
         $isFinal = (bool) ($data['is_final'] ?? false);
@@ -615,16 +619,13 @@ class PaymentController extends Controller
                 return response()->json(['status' => 'already processed']);
             }
 
-            DB::beginTransaction();
             try {
                 $user = User::find($payment->user_id);
                 if ($user) {
                     $this->processSuccessfulHeleketPayment($user, $amountInUsd, $reference);
-                    DB::commit();
                     Log::info("Heleket Payment Fulfillment Success: {$reference}");
                 }
             } catch (\Exception $e) {
-                DB::rollBack();
                 Log::error("Failed to process Heleket webhook for {$reference}: " . $e->getMessage());
                 return response()->json(['status' => 'database error'], 500);
             }
@@ -635,62 +636,75 @@ class PaymentController extends Controller
 
     private function processSuccessfulHeleketPayment($user, $amountInUsd, $reference)
     {
-        // 1. Pessimistic Lock on the reference to prevent race conditions
-        // This ensures that only ONE process can enter this block for this reference
-        $exists = \App\Models\Transaction::where('reference', $reference)
-            ->lockForUpdate()
-            ->exists();
+        DB::transaction(function () use ($user, $amountInUsd, $reference) {
+            // 1. Pessimistic Lock on the payment record
+            $payment = \App\Models\Payment::where('reference', $reference)
+                ->lockForUpdate()
+                ->first();
 
-        if ($exists) {
-            Log::info("Heleket Atomic Guard: Transaction already exists for {$reference}, skipping credit.");
-            return;
-        }
+            if ($payment && $payment->status === 'success') {
+                Log::info("Heleket Atomic Guard: Payment already marked success for {$reference}, skipping credit.");
+                return;
+            }
 
-        // 2. Update the payment record
-        $payment = \App\Models\Payment::where('reference', $reference)->first();
-        if ($payment) {
-            $payment->update([
-                'amount' => $amountInUsd, 
-                'amount_usd' => $amountInUsd,
-                'currency' => 'USD',
-                'status' => 'success',
-                'method' => 'Heleket'
-            ]);
-        }
+            // Check if transaction ledger entry already exists
+            $exists = \App\Models\Transaction::where('reference', $reference)
+                ->lockForUpdate()
+                ->exists();
 
-        // 3. Credit the user's wallet
-        $user->increment('balance', $amountInUsd);
+            if ($exists) {
+                Log::info("Heleket Atomic Guard: Transaction already exists for {$reference}, skipping credit.");
+                return;
+            }
 
-        \App\Models\Transaction::add(
-            $user->id, 
-            $amountInUsd, 
-            'credit', 
-            'deposit', 
-            "Deposit via Heleket Crypto",
-            $reference
-        );
+            // 2. Update the payment record
+            if ($payment) {
+                $payment->update([
+                    'amount' => $amountInUsd, 
+                    'amount_usd' => $amountInUsd,
+                    'currency' => 'USD',
+                    'status' => 'success',
+                    'method' => 'Heleket'
+                ]);
+            }
 
-        \App\Models\Notification::send(
-            $user->id,
-            "Crypto Deposit Successful",
-            "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
-            'success',
-            route('wallet.history')
-        );
+            // 3. Lock user and credit wallet atomically
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
+            if ($lockedUser) {
+                $lockedUser->addBalance($amountInUsd);
 
-        // 4. Send Wallet Funded Email
-        try {
-            Mail::send('emails.wallet_funded', [
-                'transaction_id' => 'TXN-' . time(),
-                'method' => 'Heleket Crypto',
-                'amount' => $amountInUsd,
-                'currency' => 'USD',
-                'bonus' => 0
-            ], function($message) use ($user) {
-                $message->to($user->email)->subject('Wallet Funded Successfully');
-            });
-        } catch (\Exception $e) {
-            Log::error('Heleket Wallet Funded Email Error: ' . $e->getMessage());
-        }
+                \App\Models\Transaction::add(
+                    $lockedUser->id, 
+                    $amountInUsd, 
+                    'credit', 
+                    'deposit', 
+                    "Deposit via Heleket Crypto",
+                    $reference
+                );
+
+                \App\Models\Notification::send(
+                    $lockedUser->id,
+                    "Crypto Deposit Successful",
+                    "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
+                    'success',
+                    route('wallet.history')
+                );
+
+                // 4. Send Wallet Funded Email
+                try {
+                    Mail::send('emails.wallet_funded', [
+                        'transaction_id' => 'TXN-' . time(),
+                        'method' => 'Heleket Crypto',
+                        'amount' => $amountInUsd,
+                        'currency' => 'USD',
+                        'bonus' => 0
+                    ], function($message) use ($lockedUser) {
+                        $message->to($lockedUser->email)->subject('Wallet Funded Successfully');
+                    });
+                } catch (\Exception $e) {
+                    Log::error('Heleket Wallet Funded Email Error: ' . $e->getMessage());
+                }
+            }
+        });
     }
 }

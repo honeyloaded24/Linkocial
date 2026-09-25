@@ -27,13 +27,14 @@ class AffiliateController extends Controller
     public function requestWithdrawal(Request $request)
     {
         $user = Auth::user();
+        $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 10.00);
 
         $request->validate([
-            'amount' => 'required|numeric|min:1000', // Min withdrawal e.g. 1000 NGN
-            'bank_details' => 'required|string|min:20',
+            'amount' => "required|numeric|min:{$minPayout}",
+            'bank_details' => 'required|string|min:15',
         ]);
 
-        if ($user->commission_balance < $request->amount) {
+        if ((float) $user->commission_balance < (float) $request->amount) {
             return back()->with('error', 'Insufficient commission balance.');
         }
 

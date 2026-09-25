@@ -35,7 +35,10 @@
                             </td>
                             <td>
                                 <div class="fw-bold">{{ $order->product }}</div>
-                                <small class="text-muted">{{ $order->country }}</small>
+                                <div class="d-flex align-items-center gap-1">
+                                    <small class="text-muted">{{ $order->country }}</small>
+                                    <span class="badge {{ $order->server === 'server2' ? 'bg-secondary' : 'bg-danger' }} text-white" style="font-size: 0.62rem; padding: 2px 6px;">{{ $order->server === 'server2' ? 'Server 2' : 'Server 1 (HOT)' }}</span>
+                                </div>
                             </td>
                             <td class="fw-bold text-nowrap">
                                 <span class="font-monospace" style="font-size: 0.88rem;">{{ $order->phone_number }}</span>

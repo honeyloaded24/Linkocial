@@ -20,61 +20,63 @@ class VtuWebhookController extends Controller
         $payload = $request->all();
         Log::info('VTU Webhook Received: ', $payload);
 
-        // Typical payload structure for refunds could include 'status' => 'failed' or 'refunded',
-        // and a reference id such as 'id', 'ref', 'reference', or 'api_reference'.
-        
-        $status = $payload['status'] ?? null;
-        if (!$status) {
-            return response()->json(['message' => 'Status missing'], 200); // 200 so they don't retry unnecessarily if malformed
+        // Verify webhook secret - strictly fail-closed for security
+        $configuredSecret = \App\Models\Setting::get('vtu_webhook_secret');
+        $receivedSecret = $request->header('X-Webhook-Secret') ?? $request->query('secret') ?? $request->bearerToken();
+        if (empty($configuredSecret) || empty($receivedSecret) || !hash_equals((string) $configuredSecret, (string) $receivedSecret)) {
+            Log::warning('VTU Webhook: Unauthorized signature or secret mismatch.');
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        // Find the order by api_reference or id.
-        // Some providers send 'id', some send 'ref', 'reference'
-        $apiReference = $payload['id'] ?? $payload['ref'] ?? $payload['reference'] ?? null;
+        // Typical payload structure for refunds could include 'status' => 'failed' or 'refunded',
+        // and a reference id such as 'id', 'ref', 'reference', or 'api_reference'.
+        $status = $payload['status'] ?? null;
+        if (!$status) {
+            return response()->json(['message' => 'Status missing'], 200);
+        }
 
+        $apiReference = $payload['id'] ?? $payload['ref'] ?? $payload['reference'] ?? null;
         if (!$apiReference) {
             Log::warning('VTU Webhook: No reference found in payload.');
             return response()->json(['message' => 'No reference found'], 200);
         }
 
-        $order = VtuOrder::where('api_reference', $apiReference)->first();
+        $statusStr = strtolower((string) $status);
 
-        if (!$order) {
-            // Also try matching by parsing the JSON api_response if api_reference wasn't saved properly
-            $order = VtuOrder::where('api_response', 'like', '%"id":' . $apiReference . '%')
-                             ->orWhere('api_response', 'like', '%"id":"' . $apiReference . '"%')
-                             ->first();
-        }
+        return DB::transaction(function () use ($apiReference, $payload, $statusStr) {
+            $order = VtuOrder::where('api_reference', $apiReference)->lockForUpdate()->first();
 
-        if (!$order) {
-            Log::warning("VTU Webhook: Order not found for reference {$apiReference}");
-            return response()->json(['message' => 'Order not found'], 200);
-        }
+            if (!$order) {
+                // Also try matching by parsing the JSON api_response if api_reference wasn't saved properly
+                $order = VtuOrder::where('api_response', 'like', '%"id":' . $apiReference . '%')
+                                 ->orWhere('api_response', 'like', '%"id":"' . $apiReference . '"%')
+                                 ->lockForUpdate()
+                                 ->first();
+            }
 
-        if ($order->status === 'refunded') {
-            Log::info("VTU Webhook: Order {$order->id} already refunded.");
-            return response()->json(['message' => 'Already refunded'], 200);
-        }
+            if (!$order) {
+                Log::warning("VTU Webhook: Order not found for reference {$apiReference}");
+                return response()->json(['message' => 'Order not found'], 200);
+            }
 
-        $statusStr = strtolower($status);
+            // Guard against duplicate refunds (both 'refunded' and already 'failed' orders)
+            if ($order->status === 'refunded' || $order->status === 'failed') {
+                Log::info("VTU Webhook: Order {$order->id} already marked as {$order->status}. Skipping refund.");
+                return response()->json(['message' => 'Already refunded or failed'], 200);
+            }
 
-        if ($statusStr === 'failed' || $statusStr === 'refunded' || $statusStr === 'reversed') {
-            DB::beginTransaction();
-            try {
-                // Mark order as failed/refunded
+            if (in_array($statusStr, ['failed', 'refunded', 'reversed'])) {
+                // Mark order as refunded
                 $order->status = 'refunded';
-                
-                // Append webhook response to api_response
                 $existingResponse = json_decode($order->api_response, true) ?? [];
                 $existingResponse['webhook'] = $payload;
                 $order->api_response = json_encode($existingResponse);
                 $order->save();
 
-                // Refund the user
-                $user = User::find($order->user_id);
+                // Refund the user atomically
+                $user = User::where('id', $order->user_id)->lockForUpdate()->first();
                 if ($user) {
-                    $user->balance += $order->cost;
-                    $user->save();
+                    $user->addBalance($order->cost);
                     
                     // The cost was deducted in USD
                     $amountUsd = $order->cost;
@@ -82,23 +84,19 @@ class VtuWebhookController extends Controller
                     Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed {$service} purchase (Ref: {$apiReference})");
                 }
 
-                DB::commit();
                 Log::info("VTU Webhook: Successfully refunded order {$order->id}");
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("VTU Webhook Error during refund: " . $e->getMessage());
+            } elseif (in_array($statusStr, ['successful', 'success', 'completed'])) {
+                if ($order->status !== 'completed') {
+                    $order->status = 'completed';
+                    $existingResponse = json_decode($order->api_response, true) ?? [];
+                    $existingResponse['webhook'] = $payload;
+                    $order->api_response = json_encode($existingResponse);
+                    $order->save();
+                    Log::info("VTU Webhook: Marked order {$order->id} as completed.");
+                }
             }
-        } elseif ($statusStr === 'successful' || $statusStr === 'success' || $statusStr === 'completed') {
-            if ($order->status !== 'completed') {
-                $order->status = 'completed';
-                $existingResponse = json_decode($order->api_response, true) ?? [];
-                $existingResponse['webhook'] = $payload;
-                $order->api_response = json_encode($existingResponse);
-                $order->save();
-                Log::info("VTU Webhook: Marked order {$order->id} as completed.");
-            }
-        }
 
-        return response()->json(['status' => 'success'], 200);
+            return response()->json(['status' => 'success'], 200);
+        });
     }
 }

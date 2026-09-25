@@ -98,9 +98,143 @@ class GongozconceptApi
     }
 
     /**
+     * Map Frontend Disco Names to Gongoz Disco IDs and Names
+     */
+    protected static array $discoMap = [
+        '1' => 'Ikeja Electric',
+        '2' => 'Eko Electric',
+        '3' => 'Abuja Electric',
+        '4' => 'Kano Electric',
+        '5' => 'Enugu Electric',
+        '6' => 'Port Harcourt Electric',
+        '7' => 'Ibadan Electric',
+        '8' => 'Kaduna Electric',
+        '9' => 'Jos Electric',
+        '10' => 'Benin Electric',
+        '11' => 'Yola Electric',
+        '12' => 'Aba Electric',
+    ];
+
+    protected static array $discoSlugMap = [
+        'ikeja' => 1,
+        'ikedc' => 1,
+        'eko' => 2,
+        'ekedc' => 2,
+        'abuja' => 3,
+        'aedc' => 3,
+        'kano' => 4,
+        'kedco' => 4,
+        'enugu' => 5,
+        'eedc' => 5,
+        'port harcourt' => 6,
+        'portharcourt' => 6,
+        'phed' => 6,
+        'phedc' => 6,
+        'ibadan' => 7,
+        'ibedc' => 7,
+        'kaduna' => 8,
+        'kaedco' => 8,
+        'jos' => 9,
+        'jed' => 9,
+        'jedplc' => 9,
+        'benin' => 10,
+        'bedc' => 10,
+        'yola' => 11,
+        'yedc' => 11,
+        'aba' => 12,
+        'aple' => 12,
+    ];
+
+    /**
+     * Resolve Disco input into numeric ID and string name
+     */
+    public function resolveDisco($discoInput): array
+    {
+        $input = strtolower(trim((string) $discoInput));
+        $clean = trim(str_replace([' electric', ' electricity', ' distribution', ' company', ' power', '-electric', '_electric'], '', $input));
+
+        $id = self::$discoSlugMap[$clean] ?? (self::$discoSlugMap[$input] ?? (is_numeric($discoInput) ? (int)$discoInput : 1));
+        $name = self::$discoMap[(string) $id] ?? 'Ikeja Electric';
+
+        return [$id, $name];
+    }
+
+    /**
+     * Map Frontend Disco Names to Gongoz Disco IDs
+     */
+    protected function getDiscoId($discoName)
+    {
+        [$id] = $this->resolveDisco($discoName);
+        return $id;
+    }
+
+    /**
+     * Extract customer name from varied provider API responses
+     */
+    public static function extractCustomerName(?array $response): ?string
+    {
+        if (empty($response)) {
+            return null;
+        }
+
+        $candidates = [
+            $response['Customer_Name'] ?? null,
+            $response['customer_name'] ?? null,
+            $response['name'] ?? null,
+            $response['CustomerName'] ?? null,
+            $response['customerName'] ?? null,
+            $response['user_name'] ?? null,
+            $response['account_name'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!empty($candidate) && is_string($candidate)) {
+                $trimmed = trim($candidate);
+                $lower = strtolower($trimmed);
+                if ($lower !== 'invalid' && $lower !== 'null' && !str_contains($lower, 'invalid meter') && !str_contains($lower, 'not found') && strlen($trimmed) > 1) {
+                    return $trimmed;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract address from varied provider API responses
+     */
+    public static function extractAddress(?array $response): ?string
+    {
+        if (empty($response)) {
+            return null;
+        }
+
+        $candidates = [
+            $response['Customer_Address'] ?? null,
+            $response['customer_address'] ?? null,
+            $response['address'] ?? null,
+            $response['CustomerAddress'] ?? null,
+            $response['customerAddress'] ?? null,
+            $response['meter_address'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!empty($candidate) && is_string($candidate)) {
+                $trimmed = trim($candidate);
+                $lower = strtolower($trimmed);
+                if ($lower !== 'null' && $lower !== 'n/a' && strlen($trimmed) > 2) {
+                    return $trimmed;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Buy Electricity
      * 
-     * @param int $disco Disco ID (1 for Ikeja, 2 for Eko, etc.)
+     * @param int|string $disco Disco ID or Name
      * @param int $amount Amount
      * @param string $meterNumber Meter number
      * @param string $meterType Prepaid or Postpaid
@@ -108,11 +242,15 @@ class GongozconceptApi
      */
     public function buyElectricity($disco, $amount, $meterNumber, $meterType = 'Prepaid', $phone = '')
     {
+        [$discoId, $discoName] = $this->resolveDisco($disco);
+        $cleanMeter = preg_replace('/\D/', '', (string) $meterNumber);
+        $mType = strtolower($meterType) === 'postpaid' ? 'Postpaid' : 'Prepaid';
+        
         $payload = [
-            'disco_name' => $disco,
+            'disco_name' => $discoId,
             'amount' => $amount,
-            'meter_number' => $meterNumber,
-            'MeterType' => $meterType,
+            'meter_number' => $cleanMeter,
+            'MeterType' => $mType,
             'Customer_Phone' => $phone
         ];
 
@@ -120,19 +258,58 @@ class GongozconceptApi
     }
 
     /**
-     * Validate Electricity Meter
+     * Validate Electricity Meter with multi-provider format support and automatic prepaid/postpaid fallback
      * 
      * @param string $meterNumber Meter number
-     * @param int $disco Disco ID
+     * @param int|string $disco Disco ID or Name
      * @param string $meterType Prepaid or Postpaid
      */
     public function validateMeter($meterNumber, $disco, $meterType = 'Prepaid')
     {
-        $url = 'validatemeter?meternumber=' . urlencode($meterNumber) . '&disconame=' . urlencode($disco) . '&mtype=' . urlencode($meterType);
-        
+        $cleanMeter = preg_replace('/\D/', '', (string) $meterNumber);
+        [$discoId, $discoName] = $this->resolveDisco($disco);
+        $mType = strtolower($meterType) === 'postpaid' ? 'Postpaid' : 'Prepaid';
+
+        // Attempt 1: Query with numeric Disco ID
+        $url = 'validatemeter?meternumber=' . urlencode($cleanMeter) . '&disconame=' . urlencode($discoId) . '&mtype=' . urlencode($mType);
         $response = $this->request('get', $url);
-        \Illuminate\Support\Facades\Log::info("Gongoz Validate Meter Response for $meterNumber ($disco): ", (array)$response);
-        return $response;
+        \Illuminate\Support\Facades\Log::info("Gongoz Validate Meter Response (ID: $discoId, Meter: $cleanMeter): ", (array)$response);
+
+        $name = self::extractCustomerName($response);
+        if ($name) {
+            $response['extracted_name'] = $name;
+            $response['extracted_address'] = self::extractAddress($response);
+            return $response;
+        }
+
+        // Attempt 2: Query with Disco String Name (some gateways expect 'Ikeja Electric')
+        $urlName = 'validatemeter?meternumber=' . urlencode($cleanMeter) . '&disconame=' . urlencode($discoName) . '&mtype=' . urlencode($mType);
+        $responseName = $this->request('get', $urlName);
+        \Illuminate\Support\Facades\Log::info("Gongoz Validate Meter Response (Name: $discoName, Meter: $cleanMeter): ", (array)$responseName);
+
+        $name = self::extractCustomerName($responseName);
+        if ($name) {
+            $responseName['extracted_name'] = $name;
+            $responseName['extracted_address'] = self::extractAddress($responseName);
+            return $responseName;
+        }
+
+        // Attempt 3: Automatic Alternate Meter Type Fallback (Prepaid <-> Postpaid)
+        $altType = $mType === 'Prepaid' ? 'Postpaid' : 'Prepaid';
+        $altUrl = 'validatemeter?meternumber=' . urlencode($cleanMeter) . '&disconame=' . urlencode($discoId) . '&mtype=' . urlencode($altType);
+        $altResponse = $this->request('get', $altUrl);
+        \Illuminate\Support\Facades\Log::info("Gongoz Validate Meter Alt Fallback (Alt: $altType, Meter: $cleanMeter): ", (array)$altResponse);
+
+        $altName = self::extractCustomerName($altResponse);
+        if ($altName) {
+            $altResponse['extracted_name'] = $altName;
+            $altResponse['extracted_address'] = self::extractAddress($altResponse);
+            $altResponse['detectedMismatch'] = true;
+            $altResponse['suggestedMeterType'] = $altType;
+            return $altResponse;
+        }
+
+        return $response ?: $responseName;
     }
 
     /**

@@ -168,9 +168,11 @@ class LogMarketplaceController extends Controller
                     return back()->with('error', 'Not enough stock available at this moment. Please try a lower quantity.');
                 }
 
-                // Deduct balance (USD base)
-                $user->balance -= $amountUsd;
-                $user->save();
+                // Deduct balance atomically (USD base)
+                if (!$user->deductBalance($amountUsd)) {
+                    DB::rollBack();
+                    return back()->with('error', 'Insufficient wallet balance. Please fund your account.');
+                }
                 Transaction::add(
                     $user->id, 
                     $amountUsd, 
@@ -223,8 +225,7 @@ class LogMarketplaceController extends Controller
 
                 $order->update(['delivered_items' => json_encode($deliveredItems)]);
                 
-                $product->in_stock -= $request->quantity;
-                $product->save();
+                $product->decrement('in_stock', (int) $request->quantity);
 
                 DB::commit();
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
@@ -239,10 +240,11 @@ class LogMarketplaceController extends Controller
             DB::beginTransaction();
 
             try {
-                // Deduct from user balance (USD base)
-                $user->balance -= $amountUsd;
-                $user->save();
-
+                // Deduct from user balance atomically (USD base)
+                if (!$user->deductBalance($amountUsd)) {
+                    DB::rollBack();
+                    return back()->with('error', 'Insufficient wallet balance. Please fund your account.');
+                }
                 Transaction::add(
                     $user->id, 
                     $amountUsd, 
@@ -278,8 +280,16 @@ class LogMarketplaceController extends Controller
                 return back()->with('error', 'Could not complete purchase: ' . $e->getMessage());
             }
 
-            // Call the provider API
-            $response = $api->order($product->api_product_key, $request->quantity, $externalOrderId);
+            // Call the provider API with robust exception handling
+            try {
+                $response = $api->order($product->api_product_key, $request->quantity, $externalOrderId);
+            } catch (\Throwable $apiEx) {
+                Log::error("Logs Marketplace Provider API Exception: " . $apiEx->getMessage());
+                $response = [
+                    'success' => false,
+                    'message' => 'Provider communication error: ' . $apiEx->getMessage()
+                ];
+            }
 
             if (isset($response['success']) && $response['success']) {
                 $order->update([
@@ -288,14 +298,12 @@ class LogMarketplaceController extends Controller
                 ]);
 
                 // Deduct local stock
-                $product->in_stock -= $request->quantity;
-                $product->save();
+                $product->decrement('in_stock', (int) $request->quantity);
 
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
             } else {
-                // Refund
-                $user->balance += $amountUsd;
-                $user->save();
+                // Atomic refund
+                $user->addBalance($amountUsd);
                 Transaction::add(
                     $user->id, 
                     $amountUsd, 

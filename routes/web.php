@@ -83,9 +83,9 @@ Route::get('/privacy', function() { return view('legal.terms'); })->name('legal.
 // --- AUTHENTICATION ROUTES ---
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
@@ -96,14 +96,14 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 
 // Password Reset
 Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->middleware('guest')->name('password.request');
-Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware('guest')->name('password.email');
+Route::post('/forgot-password', [AuthController::class, 'sendResetLinkEmail'])->middleware(['guest', 'throttle:3,1'])->name('password.email');
 Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
-Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1')->name('password.update');
 
 // 2FA
 Route::get('/two-factor', [AuthController::class, 'showTwoFactor'])->name('two-factor.index');
-Route::post('/two-factor', [AuthController::class, 'verifyTwoFactor'])->name('two-factor.verify');
-Route::get('/two-factor/resend', [AuthController::class, 'resendTwoFactor'])->name('two-factor.resend');
+Route::post('/two-factor', [AuthController::class, 'verifyTwoFactor'])->middleware('throttle:5,1')->name('two-factor.verify');
+Route::get('/two-factor/resend', [AuthController::class, 'resendTwoFactor'])->middleware('throttle:3,1')->name('two-factor.resend');
 
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -121,7 +121,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Wallet Routes
     Route::get('/wallet', [App\Http\Controllers\PaymentController::class, 'deposit'])->name('wallet.index');
     Route::get('/wallet/history', [App\Http\Controllers\TransactionController::class, 'index'])->name('wallet.history');
-    Route::post('/api/payments/deposit', [App\Http\Controllers\PaymentController::class, 'initializeDeposit']);
     Route::post('/api/payments/korapay', [App\Http\Controllers\PaymentController::class, 'initializeKorapay'])->name('wallet.korapay.initialize');
     Route::post('/api/payments/heleket', [App\Http\Controllers\PaymentController::class, 'initializeHeleket'])->name('wallet.heleket.initialize');
 
@@ -165,7 +164,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/logs/order/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'showOrder'])->name('logs.order');
 
     Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
-    Route::post('/api/virtual-numbers/coupon/validate', [\App\Http\Controllers\VirtualNumberController::class, 'validateCoupon']);
+    Route::get('/api/virtual-numbers/quote', [\App\Http\Controllers\VirtualNumberController::class, 'getLiveQuote'])->name('virtual-numbers.quote');
     Route::post('/api/virtual-numbers/purchase', [\App\Http\Controllers\VirtualNumberController::class, 'purchase']);
     Route::get('/api/virtual-numbers/{id}/check', [\App\Http\Controllers\VirtualNumberController::class, 'checkStatus']);
     Route::post('/api/virtual-numbers/{id}/cancel', [\App\Http\Controllers\VirtualNumberController::class, 'cancelOrder']);
@@ -212,7 +211,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/users/export', [AdminController::class, 'exportUsersCsv'])->name('hq.users.export');
         Route::get('/users/{id}', [AdminController::class, 'showUser'])->name('hq.users.show');
         Route::put('/users/{id}', [AdminController::class, 'updateUserDetails'])->name('hq.users.update');
-        Route::get('/users/{id}/impersonate', [AdminController::class, 'impersonate'])->name('hq.users.impersonate');
+        Route::match(['get', 'post'], '/users/{id}/impersonate', [AdminController::class, 'impersonate'])->name('hq.users.impersonate');
         Route::get('/users/{id}/logins', [AdminController::class, 'userLogins'])->name('hq.users.logins');
         Route::get('/users/{id}/transactions', [AdminController::class, 'userTransactions'])->name('hq.users.transactions');
         Route::post('/users/{id}/balance', [AdminController::class, 'updateUserBalance'])->name('hq.users.balance');
@@ -295,12 +294,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/currencies', [\App\Http\Controllers\CurrencyController::class, 'store'])->name('hq.currencies.store');
         Route::put('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'update'])->name('hq.currencies.update');
         Route::delete('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'destroy'])->name('hq.currencies.destroy');
-
-        // Coupon Management
-        Route::get('/coupons', [\App\Http\Controllers\AdminCouponController::class, 'index'])->name('hq.coupons.index');
-        Route::post('/coupons', [\App\Http\Controllers\AdminCouponController::class, 'store'])->name('hq.coupons.store');
-        Route::post('/coupons/{coupon}/toggle', [\App\Http\Controllers\AdminCouponController::class, 'toggle'])->name('hq.coupons.toggle');
-        Route::delete('/coupons/{coupon}', [\App\Http\Controllers\AdminCouponController::class, 'destroy'])->name('hq.coupons.destroy');
     });
 });
 

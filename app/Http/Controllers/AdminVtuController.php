@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\VtuOrder;
 use App\Models\User;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AdminVtuController extends Controller
 {
@@ -45,29 +47,32 @@ class AdminVtuController extends Controller
      */
     public function refund($id)
     {
-        $order = VtuOrder::findOrFail($id);
+        return DB::transaction(function () use ($id) {
+            $order = VtuOrder::lockForUpdate()->findOrFail($id);
 
-        if ($order->status === 'refunded') {
-            return back()->with('error', 'This order has already been refunded.');
-        }
+            if ($order->status === 'refunded') {
+                return back()->with('error', 'This order has already been refunded.');
+            }
 
-        // Add funds back to user
-        $order->user->balance += $order->cost;
-        $order->user->save();
+            $user = User::lockForUpdate()->findOrFail($order->user_id);
 
-        // Log transaction
-        \App\Models\Transaction::add(
-            $order->user_id,
-            $order->cost,
-            'credit',
-            'vtu_refund',
-            'Refund for VTU order #' . $order->id,
-            'REF-VTU-' . $order->id . '-' . time()
-        );
+            // Add funds back to user atomically
+            $user->addBalance($order->cost);
 
-        $order->status = 'refunded';
-        $order->save();
+            // Log transaction
+            Transaction::add(
+                $order->user_id,
+                $order->cost,
+                'credit',
+                'vtu_refund',
+                'Refund for VTU order #' . $order->id,
+                'REF-VTU-' . $order->id . '-' . time()
+            );
 
-        return back()->with('success', 'Order has been refunded successfully.');
+            $order->status = 'refunded';
+            $order->save();
+
+            return back()->with('success', 'Order has been refunded successfully.');
+        });
     }
 }

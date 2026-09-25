@@ -43,16 +43,14 @@ class VtuController extends Controller
         $ngnRate = \App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00;
         $amountUsd = $chargedAmountNgn / $ngnRate;
 
-        if ($user->balance < $amountUsd) {
-            return back()->with('error', 'Insufficient balance. Please fund your account.');
-        }
-
         DB::beginTransaction();
 
         try {
-            // Deduct balance
-            $user->balance -= $amountUsd;
-            $user->save();
+            // Atomic conditional deduction
+            if (!$user->deductBalance($amountUsd)) {
+                DB::rollBack();
+                return back()->with('error', 'Insufficient balance. Please fund your account.');
+            }
 
             // Log Transaction
             Transaction::add($user->id, $amountUsd, 'debit', 'vtu_airtime', "₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up for {$request->phone}");
@@ -75,30 +73,40 @@ class VtuController extends Controller
             return back()->with('error', 'An error occurred while processing your request.');
         }
 
-        // Call API
-        $response = $this->vtuApi->buyAirtime($request->network, $baseAmountNgn, $request->phone);
+        // Call API with try-catch protection
+        try {
+            $response = $this->vtuApi->buyAirtime($request->network, $baseAmountNgn, $request->phone);
 
-        if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+            if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+                $order->update([
+                    'status' => 'completed',
+                    'api_reference' => $response['id'] ?? null,
+                    'api_response' => json_encode($response),
+                ]);
+                return back()->with('success', 'Airtime purchased successfully!');
+            } else {
+                // Handle failure/refund
+                $order->update([
+                    'status' => 'refunded',
+                    'api_response' => json_encode($response),
+                ]);
+
+                // Refund User
+                $user->addBalance($amountUsd);
+                Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up");
+
+                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase airtime.');
+                return back()->with('error', $message);
+            }
+        } catch (\Throwable $e) {
+            Log::error('VTU Airtime API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'completed',
-                'api_reference' => $response['id'] ?? null,
-                'api_response' => json_encode($response),
+                'status' => 'refunded',
+                'api_response' => json_encode(['error' => $e->getMessage()]),
             ]);
-            return back()->with('success', 'Airtime purchased successfully!');
-        } else {
-            // Handle failure/refund
-            $order->update([
-                'status' => 'failed',
-                'api_response' => json_encode($response),
-            ]);
-
-            // Refund User
-            $user->balance += $amountUsd;
-            $user->save();
-            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up");
-
-            $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase airtime.');
-            return back()->with('error', $message);
+            $user->addBalance($amountUsd);
+            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up (Connection error)");
+            return back()->with('error', 'Airtime provider is currently unreachable. Your funds have been automatically refunded.');
         }
     }
 
@@ -129,15 +137,13 @@ class VtuController extends Controller
         $ngnRate = \App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00;
         $amountUsd = $chargedAmountNgn / $ngnRate;
 
-        if ($user->balance < $amountUsd) {
-            return back()->with('error', 'Insufficient balance. Please fund your account.');
-        }
-
         DB::beginTransaction();
 
         try {
-            $user->balance -= $amountUsd;
-            $user->save();
+            if (!$user->deductBalance($amountUsd)) {
+                DB::rollBack();
+                return back()->with('error', 'Insufficient balance. Please fund your account.');
+            }
 
             Transaction::add($user->id, $amountUsd, 'debit', 'vtu_data', "₦" . number_format($chargedAmountNgn, 2) . " Data purchase for {$request->phone}");
 
@@ -158,27 +164,37 @@ class VtuController extends Controller
             return back()->with('error', 'An error occurred while processing your request.');
         }
 
-        $response = $this->vtuApi->buyData($request->network, $request->plan, $request->phone);
+        try {
+            $response = $this->vtuApi->buyData($request->network, $request->plan, $request->phone);
 
-        if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+            if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+                $order->update([
+                    'status' => 'completed',
+                    'api_reference' => $response['id'] ?? null,
+                    'api_response' => json_encode($response),
+                ]);
+                return back()->with('success', 'Data purchased successfully!');
+            } else {
+                $order->update([
+                    'status' => 'refunded',
+                    'api_response' => json_encode($response),
+                ]);
+
+                $user->addBalance($amountUsd);
+                Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase");
+
+                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase data.');
+                return back()->with('error', $message);
+            }
+        } catch (\Throwable $e) {
+            Log::error('VTU Data API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'completed',
-                'api_reference' => $response['id'] ?? null,
-                'api_response' => json_encode($response),
+                'status' => 'refunded',
+                'api_response' => json_encode(['error' => $e->getMessage()]),
             ]);
-            return back()->with('success', 'Data purchased successfully!');
-        } else {
-            $order->update([
-                'status' => 'failed',
-                'api_response' => json_encode($response),
-            ]);
-
-            $user->balance += $amountUsd;
-            $user->save();
-            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase");
-
-            $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase data.');
-            return back()->with('error', $message);
+            $user->addBalance($amountUsd);
+            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase (Connection error)");
+            return back()->with('error', 'Data provider is currently unreachable. Your funds have been automatically refunded.');
         }
     }
 
@@ -193,24 +209,30 @@ class VtuController extends Controller
     public function validateMeter(Request $request)
     {
         $request->validate([
-            'meter_number' => 'required',
+            'meter_number' => 'required|string',
             'disco' => 'required|string',
             'meter_type' => 'required|string',
         ]);
 
         $response = $this->vtuApi->validateMeter($request->meter_number, $request->disco, $request->meter_type);
 
-        if (isset($response['name'])) {
+        $name = $response['extracted_name'] ?? \App\Services\GongozconceptApi::extractCustomerName($response);
+
+        if ($name) {
             return response()->json([
                 'success' => true,
-                'name' => $response['name'],
-                'address' => $response['address'] ?? null
+                'name' => $name,
+                'address' => $response['extracted_address'] ?? \App\Services\GongozconceptApi::extractAddress($response),
+                'detectedMismatch' => $response['detectedMismatch'] ?? false,
+                'suggestedMeterType' => $response['suggestedMeterType'] ?? null,
             ]);
         }
 
+        $errMsg = $response['message'] ?? ($response['detail'] ?? ($response['error'] ?? 'Could not verify meter. Please double-check your provider and meter number.'));
+
         return response()->json([
             'success' => false,
-            'message' => 'Invalid meter number or could not validate.'
+            'message' => $errMsg
         ]);
     }
 
@@ -232,15 +254,13 @@ class VtuController extends Controller
         $ngnRate = \App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00;
         $amountUsd = $chargedAmountNgn / $ngnRate;
 
-        if ($user->balance < $amountUsd) {
-            return back()->with('error', 'Insufficient balance. Please fund your account.');
-        }
-
         DB::beginTransaction();
 
         try {
-            $user->balance -= $amountUsd;
-            $user->save();
+            if (!$user->deductBalance($amountUsd)) {
+                DB::rollBack();
+                return back()->with('error', 'Insufficient balance. Please fund your account.');
+            }
 
             Transaction::add($user->id, $amountUsd, 'debit', 'vtu_electricity', "₦" . number_format($chargedAmountNgn, 2) . " Electricity payment for meter {$request->meter_number}");
 
@@ -260,30 +280,40 @@ class VtuController extends Controller
             Log::error('VTU Electricity error: ' . $e->getMessage());
             return back()->with('error', 'An error occurred while processing your request.');
         }
-        // 3. Purchase Electricity via API
-        $response = $this->vtuApi->buyElectricity($request->disco, $baseAmountNgn, $request->meter_number, $request->meter_type, $request->phone);
+        // 3. Purchase Electricity via API with try-catch protection
+        try {
+            $response = $this->vtuApi->buyElectricity($request->disco, $baseAmountNgn, $request->meter_number, $request->meter_type, $request->phone);
 
-        if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
-            $token = $response['token'] ?? 'Check history or SMS';
-            
-            $order->update([
-                'status' => 'completed',
-                'api_reference' => $response['id'] ?? null,
-                'api_response' => json_encode($response),
-            ]);
-            
-            return back()->with('success', "Electricity payment successful! Token: $token");
-        } else {
-            $order->update([
-                'status' => 'failed',
-                'api_response' => json_encode($response),
-            ]);
-            $user->balance += $amountUsd;
-            $user->save();
-            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment");
+            if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+                $token = $response['token'] ?? 'Check history or SMS';
+                
+                $order->update([
+                    'status' => 'completed',
+                    'api_reference' => $response['id'] ?? null,
+                    'api_response' => json_encode($response),
+                ]);
+                
+                return back()->with('success', "Electricity payment successful! Token: $token");
+            } else {
+                $order->update([
+                    'status' => 'refunded',
+                    'api_response' => json_encode($response),
+                ]);
+                $user->addBalance($amountUsd);
+                Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment");
 
-            $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process electricity payment.');
-            return back()->with('error', $message);
+                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process electricity payment.');
+                return back()->with('error', $message);
+            }
+        } catch (\Throwable $e) {
+            Log::error('VTU Electricity API Exception: ' . $e->getMessage());
+            $order->update([
+                'status' => 'refunded',
+                'api_response' => json_encode(['error' => $e->getMessage()]),
+            ]);
+            $user->addBalance($amountUsd);
+            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment (Connection error)");
+            return back()->with('error', 'Electricity provider is currently unreachable. Your funds have been automatically refunded.');
         }
     }
 
@@ -334,26 +364,29 @@ class VtuController extends Controller
             'cablename' => 'required',
             'cableplan' => 'required',
             'smart_card_number' => 'required|string',
-            'amount' => 'required|numeric',
         ]);
 
         $user = Auth::user();
-        $baseAmountNgn = (float) $request->amount;
-        $markupRate = (float) \App\Models\Setting::get('markup_vtu_cable', 0);
-        $chargedAmountNgn = $baseAmountNgn * (1 + ($markupRate / 100));
+
+        // Secure server-side pricing verification (prevents client-side price tampering)
+        $verifiedPrice = \App\Services\VtuCableService::getCustomerPrice($request->cablename, $request->cableplan);
+        if ($verifiedPrice === null || $verifiedPrice <= 0) {
+            return back()->with('error', 'The selected cable package is invalid or currently unavailable. Please reselect your plan.');
+        }
+
+        $chargedAmountNgn = $verifiedPrice;
+        $baseAmountNgn = \App\Services\VtuCableService::getPlanBasePrice($request->cablename, $request->cableplan) ?? $verifiedPrice;
 
         $ngnRate = \App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00;
         $amountUsd = $chargedAmountNgn / $ngnRate;
 
-        if ($user->balance < $amountUsd) {
-            return back()->with('error', 'Insufficient balance. Please fund your account.');
-        }
-
         DB::beginTransaction();
 
         try {
-            $user->balance -= $amountUsd;
-            $user->save();
+            if (!$user->deductBalance($amountUsd)) {
+                DB::rollBack();
+                return back()->with('error', 'Insufficient balance. Please fund your account.');
+            }
 
             Transaction::add($user->id, $amountUsd, 'debit', 'vtu_cable', "₦" . number_format($chargedAmountNgn, 2) . " Cable TV subscription for {$request->smart_card_number}");
 
@@ -374,28 +407,38 @@ class VtuController extends Controller
             return back()->with('error', 'An error occurred while processing your request.');
         }
 
-        $response = $this->vtuApi->buyCable($request->cablename, $request->cableplan, $request->smart_card_number);
+        try {
+            $response = $this->vtuApi->buyCable($request->cablename, $request->cableplan, $request->smart_card_number);
 
-        if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
-            $order->update([
-                'status' => 'completed',
-                'api_reference' => $response['id'] ?? null,
-                'api_response' => json_encode($response),
-            ]);
-            
-            return back()->with('success', "Cable subscription successful!");
-        } else {
-            $order->update([
-                'status' => 'failed',
-                'api_response' => json_encode($response),
-            ]);
-            
-            $user->balance += $amountUsd;
-            $user->save();
-            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription");
+            if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
+                $order->update([
+                    'status' => 'completed',
+                    'api_reference' => $response['id'] ?? null,
+                    'api_response' => json_encode($response),
+                ]);
+                
+                return back()->with('success', "Cable subscription successful!");
+            } else {
+                $order->update([
+                    'status' => 'refunded',
+                    'api_response' => json_encode($response),
+                ]);
+                
+                $user->addBalance($amountUsd);
+                Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription");
 
-            $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process cable subscription.');
-            return back()->with('error', $message);
+                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process cable subscription.');
+                return back()->with('error', $message);
+            }
+        } catch (\Throwable $e) {
+            Log::error('VTU Cable API Exception: ' . $e->getMessage());
+            $order->update([
+                'status' => 'refunded',
+                'api_response' => json_encode(['error' => $e->getMessage()]),
+            ]);
+            $user->addBalance($amountUsd);
+            Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription (Connection error)");
+            return back()->with('error', 'Cable provider is currently unreachable. Your funds have been automatically refunded.');
         }
     }
 }

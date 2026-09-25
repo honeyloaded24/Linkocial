@@ -33,24 +33,38 @@ class ProcessSmmOrder implements ShouldQueue
         $success = $router->routeOrder($this->order, $this->service);
 
         // Refund the user if all failovers failed AND not already refunded
-        if (!$success && !$this->order->is_refunded) {
-            $user = User::find($this->order->user_id);
-            if ($user) {
-                \Illuminate\Support\Facades\DB::table('users')->where('id', $user->id)->increment('balance', (float)$this->order->charge);
-                
-                \App\Models\Transaction::add(
-                    $user->id, 
-                    $this->order->charge, 
-                    'credit', 
-                    'refund', 
-                    "Auto-refund for failed order #{$this->order->id}"
-                );
+        if (!$success) {
+            \Illuminate\Support\Facades\DB::transaction(function () {
+                $lockedOrder = Order::where('id', $this->order->id)
+                    ->lockForUpdate()
+                    ->first();
 
-                $this->order->update([
-                    'status' => 'failed',
-                    'is_refunded' => true
-                ]);
-            }
+                if (!$lockedOrder || $lockedOrder->is_refunded) {
+                    return;
+                }
+
+                $lockedUser = User::where('id', $lockedOrder->user_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($lockedUser) {
+                    $refundCharge = (float) $lockedOrder->charge;
+                    $lockedUser->addBalance($refundCharge);
+
+                    \App\Models\Transaction::add(
+                        $lockedUser->id,
+                        $refundCharge,
+                        'credit',
+                        'refund',
+                        "Auto-refund for failed order #{$lockedOrder->id}"
+                    );
+
+                    $lockedOrder->update([
+                        'status' => 'failed',
+                        'is_refunded' => true
+                    ]);
+                }
+            });
         }
     }
 }

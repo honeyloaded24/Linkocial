@@ -57,8 +57,9 @@ class UpdateExchangeRates extends Command
                 $rawRate = (float) $rates[$currency->code];
                 
                 // Apply Profit Shield (Safety Buffer)
-                // New Rate = Raw Rate * (1 + Buffer%)
-                $protectedRate = $rawRate * (1 + ($buffer / 100));
+                // For foreign currencies quoted per USD (e.g. NGN, GHS), reducing the rate
+                // ensures that converting local costs (Local / Rate) yields sufficient USD to cover wholesale expenses.
+                $protectedRate = round($rawRate * (1 - ($buffer / 100)), 4);
                 
                 $currency->update([
                     'exchange_rate' => $protectedRate

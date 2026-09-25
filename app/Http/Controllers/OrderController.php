@@ -83,21 +83,18 @@ class OrderController extends Controller
         $discountAmount = ($baseCharge * $discountPercent) / 100;
         $charge = $baseCharge - $discountAmount;
 
-        // 1. Check user balance internally
-        if ($user->balance < $charge) {
-            if ($request->expectsJson()) {
-                return response()->json(['error' => 'Insufficient wallet balance.'], 402); // Payment Required
-            }
-            return back()->with('error', 'Insufficient wallet balance. Please fund your account to continue.')->withInput();
-        }
-
-        // 2. Begin Transaction for local changes
+        // 1. Begin Transaction for atomic balance check and deduction
         DB::beginTransaction();
 
         try {
-            // Force a direct database update to bypass any model session caching issues
-            DB::table('users')->where('id', $user->id)->decrement('balance', (float)$charge);
-            $user->refresh(); // Refresh the in-memory object for the current request
+            // Atomic conditional decrement: balance >= charge directly in SQL
+            if (!$user->deductBalance($charge)) {
+                DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json(['error' => 'Insufficient wallet balance.'], 402); // Payment Required
+                }
+                return back()->with('error', 'Insufficient wallet balance. Please fund your account to continue.')->withInput();
+            }
 
             // 3. Record in Financial Ledger
             \App\Models\Transaction::add(
@@ -210,15 +207,14 @@ class OrderController extends Controller
             $discountPercent = ($user->role === 'reseller') ? $resellerDiscount : (($user->role === 'vip') ? $vipDiscount : 0);
             $charge = $baseCharge - (($baseCharge * $discountPercent) / 100);
 
-            if ($user->balance < $charge) {
-                $errorLines[] = "Line " . ($index + 1) . ": Insufficient balance for this order.";
-                continue;
-            }
-
-            // Process Order
+            // Process Order with atomic balance deduction
             DB::beginTransaction();
             try {
-                $user->decrement('balance', $charge);
+                if (!$user->deductBalance($charge)) {
+                    DB::rollBack();
+                    $errorLines[] = "Line " . ($index + 1) . ": Insufficient balance for this order.";
+                    continue;
+                }
 
                 \App\Models\Transaction::add($user->id, $charge, 'debit', 'order', "Bulk Order: {$service->name}");
 
