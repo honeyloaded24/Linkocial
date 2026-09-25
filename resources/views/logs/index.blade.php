@@ -6,75 +6,99 @@
 <style>
     .marketplace-hero {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(20, 184, 166, 0.04) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         border-radius: 14px;
+    }
+    .cat-tabs-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .cat-tabs-container::-webkit-scrollbar {
+        display: none;
     }
     .cat-tab-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 7px 14px;
+        padding: 7px 15px;
         border-radius: 20px;
-        font-size: 0.78rem;
+        font-size: 0.8rem;
         font-weight: 600;
         text-decoration: none;
-        color: #94a3b8;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        color: var(--text-main, #1e293b);
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         transition: all 0.18s ease;
         white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
     .cat-tab-btn:hover {
-        color: #ffffff;
-        background: rgba(255, 255, 255, 0.07);
-        border-color: rgba(255, 255, 255, 0.14);
+        color: var(--primary-color, #6366f1);
+        border-color: var(--primary-color, #6366f1);
+        background: var(--bg-surface, #ffffff);
         transform: translateY(-1px);
     }
     .cat-tab-btn.active {
-        color: #ffffff;
-        background: var(--primary-color, #6366f1);
-        border-color: var(--primary-color, #6366f1);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        color: #ffffff !important;
+        background: var(--primary-color, #6366f1) !important;
+        border-color: var(--primary-color, #6366f1) !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.28);
     }
     .cat-tab-btn .badge-count {
         font-size: 0.7rem;
-        padding: 2px 6px;
+        padding: 2px 7px;
         border-radius: 10px;
-        background: rgba(0, 0, 0, 0.25);
+        background: rgba(0, 0, 0, 0.07);
+        color: inherit;
+    }
+    .cat-tab-btn.active .badge-count {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
     }
     .category-section-header {
-        background: rgba(30, 41, 59, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
+        border-bottom: 1px solid var(--border-color, #e2e8f0);
         border-top-left-radius: 12px;
         border-top-right-radius: 12px;
-        padding: 11px 16px;
+        padding: 12px 18px;
+    }
+    .category-section-title {
+        color: var(--text-main, #0f172a);
+        font-size: 0.85rem;
+        font-weight: 700;
+        letter-spacing: 0.4px;
     }
     .category-section-body {
-        background: var(--bg-surface, rgba(15, 23, 42, 0.5));
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: var(--bg-body, #f8fafc);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         border-top: none;
         border-bottom-left-radius: 12px;
         border-bottom-right-radius: 12px;
         padding: 14px;
     }
     .log-card {
-        background: rgba(255, 255, 255, 0.025);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         border-radius: 10px;
         transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     }
     .log-card:hover {
-        background: rgba(255, 255, 255, 0.045);
-        border-color: rgba(99, 102, 241, 0.3);
+        border-color: var(--primary-color, #6366f1);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.12);
     }
     .product-title-link {
-        color: #f1f5f9;
+        color: var(--text-main, #0f172a);
         text-decoration: none;
         font-size: 0.88rem;
-        font-weight: 600;
+        font-weight: 700;
         transition: color 0.15s ease;
         display: inline-block;
         max-width: 100%;
@@ -85,14 +109,14 @@
         cursor: pointer;
     }
     .product-badge-price {
-        font-size: 0.76rem;
+        font-size: 0.78rem;
         font-weight: 700;
-        padding: 2px 9px;
+        padding: 3px 9px;
         border-radius: 6px;
         background: rgba(16, 185, 129, 0.12);
-        color: #10b981;
-        border: 1px solid rgba(16, 185, 129, 0.25);
-        letter-spacing: 0.3px;
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        letter-spacing: 0.2px;
     }
     .product-badge-stock {
         font-size: 0.72rem;
@@ -101,53 +125,49 @@
         border-radius: 6px;
     }
     .product-badge-stock.in-stock {
-        background: rgba(99, 102, 241, 0.1);
-        color: #a5b4fc;
-        border: 1px solid rgba(99, 102, 241, 0.2);
+        background: rgba(99, 102, 241, 0.09);
+        color: #4f46e5;
+        border: 1px solid rgba(99, 102, 241, 0.22);
     }
-    .product-badge-stock.out-of-stock {
-        background: rgba(239, 68, 68, 0.08);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.18);
-    }
+    .product-badge-stock.out-of-stock,
     .product-badge-unavail {
         font-size: 0.72rem;
         font-weight: 600;
         padding: 2px 8px;
         border-radius: 6px;
-        background: rgba(239, 68, 68, 0.08);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.18);
+        background: rgba(239, 68, 68, 0.09);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.22);
     }
     .product-badge-type {
         font-size: 0.68rem;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        padding: 2px 6px;
+        padding: 2px 7px;
         border-radius: 4px;
-        background: rgba(245, 158, 11, 0.1);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.2);
+        background: rgba(245, 158, 11, 0.12);
+        color: #d97706;
+        border: 1px solid rgba(245, 158, 11, 0.25);
     }
     .search-input-box {
-        background: rgba(255, 255, 255, 0.035);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         border-radius: 10px;
-        color: #f8fafc;
+        color: var(--text-main, #0f172a);
         font-size: 0.85rem;
         transition: all 0.2s ease;
     }
     .search-input-box:focus {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(99, 102, 241, 0.4);
+        background: var(--bg-surface, #ffffff);
+        border-color: var(--primary-color, #6366f1);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
-        color: #fff;
+        color: var(--text-main, #0f172a);
     }
     .cat-select-dropdown {
-        background-color: #1e293b;
-        color: #f1f5f9;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: var(--bg-surface, #ffffff);
+        color: var(--text-main, #0f172a);
+        border: 1.5px solid var(--border-color, #e2e8f0);
         border-radius: 10px;
         font-size: 0.82rem;
         font-weight: 600;
@@ -155,9 +175,65 @@
         cursor: pointer;
     }
     .cat-select-dropdown:focus {
-        border-color: #6366f1;
+        border-color: var(--primary-color, #6366f1);
         box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
         outline: none;
+    }
+
+    /* Dark Mode Overrides */
+    [data-theme="dark"] .cat-tab-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+    }
+    [data-theme="dark"] .cat-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+    }
+    [data-theme="dark"] .cat-tab-btn .badge-count {
+        background: rgba(255, 255, 255, 0.12);
+        color: #e2e8f0;
+    }
+    [data-theme="dark"] .category-section-header {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    [data-theme="dark"] .category-section-title {
+        color: #f8fafc;
+    }
+    [data-theme="dark"] .category-section-body {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: #334155;
+    }
+    [data-theme="dark"] .log-card {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    [data-theme="dark"] .log-card:hover {
+        border-color: rgba(99, 102, 241, 0.5);
+    }
+    [data-theme="dark"] .product-title-link {
+        color: #f8fafc;
+    }
+    [data-theme="dark"] .product-badge-price {
+        color: #10b981;
+    }
+    [data-theme="dark"] .product-badge-stock.in-stock {
+        color: #a5b4fc;
+        background: rgba(99, 102, 241, 0.15);
+    }
+    [data-theme="dark"] .product-badge-stock.out-of-stock,
+    [data-theme="dark"] .product-badge-unavail {
+        color: #f87171;
+    }
+    [data-theme="dark"] .product-badge-type {
+        color: #fbbf24;
+    }
+    [data-theme="dark"] .search-input-box,
+    [data-theme="dark"] .cat-select-dropdown {
+        background: #1e293b;
+        border-color: #334155;
+        color: #f8fafc;
     }
 </style>
 @endpush
@@ -166,13 +242,13 @@
 <div class="container-fluid py-2">
     
     @if(session('success'))
-        <div class="alert alert-success border-0 bg-success bg-opacity-25 text-white py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+        <div class="alert alert-success border-0 py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
             <i class="fa-solid fa-circle-check text-success"></i>
             <div>{{ session('success') }}</div>
         </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger border-0 bg-danger bg-opacity-25 text-white py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+        <div class="alert alert-danger border-0 py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
             <i class="fa-solid fa-circle-exclamation text-danger"></i>
             <div>{{ session('error') }}</div>
         </div>
@@ -218,8 +294,8 @@
 
         <!-- My Purchases Button -->
         <div class="col-6 col-md-3 col-lg-3 text-end">
-            <a href="{{ route('logs.history') }}" class="btn btn-outline-light border-secondary border-opacity-25 w-100 py-2 d-inline-flex align-items-center justify-content-center gap-2 fw-semibold shadow-sm text-nowrap rounded-3" style="font-size: 0.82rem; background: rgba(255,255,255,0.03);" title="View all your purchased accounts">
-                <i class="fa-solid fa-clock-rotate-left text-primary-custom"></i>
+            <a href="{{ route('logs.history') }}" class="btn btn-outline-primary w-100 py-2 d-inline-flex align-items-center justify-content-center gap-2 fw-semibold shadow-sm text-nowrap rounded-3" style="font-size: 0.82rem;" title="View all your purchased accounts">
+                <i class="fa-solid fa-clock-rotate-left"></i>
                 <span>My Purchases</span>
             </a>
         </div>
@@ -227,7 +303,7 @@
 
     <!-- Category Tabs Navigation (Clean horizontal pills) -->
     <div class="mb-4">
-        <div class="d-flex align-items-center gap-2 overflow-auto pb-2" style="scrollbar-width: thin;">
+        <div class="cat-tabs-container">
             <!-- All Pill -->
             <a href="{{ route('logs.index', request()->except('category', 'category_id', 'page')) }}" class="cat-tab-btn {{ !$selectedCategory ? 'active' : '' }}">
                 <i class="fa-solid fa-border-all"></i>
@@ -251,9 +327,9 @@
 
     <!-- Active Search or Filter Banner -->
     @if($selectedCategory || request('search'))
-        <div class="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 rounded-3" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); font-size: 0.82rem;">
-            <div class="d-flex align-items-center gap-2 text-white">
-                <i class="fa-solid fa-filter text-primary-custom"></i>
+        <div class="d-flex align-items-center justify-content-between p-2.5 px-3 mb-3 rounded-3" style="background: rgba(99, 102, 241, 0.08); border: 1.5px solid rgba(99, 102, 241, 0.25); font-size: 0.82rem;">
+            <div class="d-flex align-items-center gap-2" style="color: var(--text-main, #0f172a);">
+                <i class="fa-solid fa-filter text-primary"></i>
                 <span>
                     Showing <strong>{{ $products->count() }}</strong> results 
                     @if($selectedCategory) in <strong>{{ $selectedCategory->name }}</strong> @endif
@@ -271,9 +347,9 @@
         <div class="mb-4">
             <div class="d-flex align-items-center gap-2 mb-2 px-1">
                 <i class="fa-solid fa-fire text-danger" style="font-size: 0.9rem;"></i>
-                <span class="fw-bold text-white text-uppercase" style="font-size: 0.78rem; letter-spacing: 0.5px;">Trending Products</span>
+                <span class="fw-bold text-uppercase" style="font-size: 0.78rem; letter-spacing: 0.5px; color: var(--text-main, #0f172a);">Trending Products</span>
             </div>
-            <div class="p-2.5 rounded-3" style="background: rgba(255, 255, 255, 0.015); border: 1px solid rgba(255, 255, 255, 0.05);">
+            <div class="p-2.5 rounded-3" style="background: var(--bg-surface, #ffffff); border: 1.5px solid var(--border-color, #e2e8f0);">
                 <div class="row g-2">
                     @foreach($hotProducts as $hot)
                         <div class="col-12 col-md-6 col-xl-4">
@@ -287,9 +363,9 @@
 
     <!-- Categorized Products Listing -->
     @if($products->isEmpty())
-        <div class="text-center py-5 rounded-4" style="background: rgba(255, 255, 255, 0.02); border: 1px dashed rgba(255, 255, 255, 0.08);">
-            <i class="fa-solid fa-box-open fa-2x text-muted opacity-25 mb-2"></i>
-            <h6 class="text-white fw-semibold mb-1" style="font-size: 0.9rem;">No accounts found</h6>
+        <div class="text-center py-5 rounded-4" style="background: var(--bg-surface, #ffffff); border: 1.5px dashed var(--border-color, #e2e8f0);">
+            <i class="fa-solid fa-box-open fa-2x text-muted opacity-50 mb-2"></i>
+            <h6 class="fw-semibold mb-1" style="font-size: 0.9rem; color: var(--text-main, #0f172a);">No accounts found</h6>
             <p class="text-muted small mb-3">Try searching with a different keyword or selecting another category.</p>
             <a href="{{ route('logs.index') }}" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.78rem;">
                 View All Categories
@@ -308,19 +384,19 @@
                 <!-- Categorized Section Header -->
                 <div class="category-section-header d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center gap-2">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 24px; height: 24px; background: rgba(99, 102, 241, 0.15); color: #818cf8; font-size: 0.72rem;">
+                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 26px; height: 26px; background: rgba(99, 102, 241, 0.12); color: var(--primary-color, #6366f1); font-size: 0.75rem;">
                             <i class="fa-solid fa-layer-group"></i>
                         </div>
-                        <h6 class="mb-0 fw-bold text-white text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">
+                        <h6 class="mb-0 fw-bold text-uppercase category-section-title">
                             {{ $categoryName }}
                         </h6>
-                        <span class="badge rounded-pill fw-medium" style="font-size: 0.68rem; background: rgba(255, 255, 255, 0.07); color: #94a3b8;">
+                        <span class="badge rounded-pill fw-semibold" style="font-size: 0.68rem; background: rgba(99, 102, 241, 0.1); color: var(--primary-color, #6366f1); border: 1px solid rgba(99, 102, 241, 0.2);">
                             {{ $catProducts->count() }} {{ \Illuminate\Support\Str::plural('product', $catProducts->count()) }}
                         </span>
                     </div>
 
                     @if(!$selectedCategory && $catProducts->first()?->category)
-                        <a href="{{ route('logs.index', ['category' => $catProducts->first()->category->id]) }}" class="text-decoration-none text-muted small fw-medium" style="font-size: 0.72rem;">
+                        <a href="{{ route('logs.index', ['category' => $catProducts->first()->category->id]) }}" class="text-decoration-none small fw-semibold" style="font-size: 0.74rem; color: var(--primary-color, #6366f1);">
                             Filter this category <i class="fa-solid fa-chevron-right ms-1" style="font-size: 0.6rem;"></i>
                         </a>
                     @endif
