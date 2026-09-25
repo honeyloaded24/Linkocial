@@ -55,23 +55,23 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead>
-                    <tr class="text-muted small text-uppercase">
-                        <th class="px-3">Order ID</th>
-                        <th>User</th>
-                        <th>Product / Quantity</th>
-                        <th>Cost</th>
-                        <th>Status</th>
-                        <th>Delivered Items</th>
-                        <th>Date</th>
+                    <tr class="text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <th class="px-3 text-nowrap">Order ID</th>
+                        <th class="text-nowrap">User</th>
+                        <th class="text-nowrap">Product / Quantity</th>
+                        <th class="text-nowrap">Cost</th>
+                        <th class="text-nowrap">Status</th>
+                        <th class="text-nowrap">Delivered Items</th>
+                        <th class="text-nowrap">Date</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
-                        <td class="px-3">
-                            <span class="fw-bold text-primary">#LOG-{{ $order->id }}</span>
+                        <td class="px-3 text-nowrap">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">#LOG-{{ $order->id }}</span>
                             @if($order->external_order_id)
-                                <small class="text-muted d-block" style="font-size: 0.65rem;">{{ $order->external_order_id }}</small>
+                                <small class="text-muted d-block font-monospace mt-1" style="font-size: 0.65rem;">{{ $order->external_order_id }}</small>
                             @endif
                         </td>
                         <td>

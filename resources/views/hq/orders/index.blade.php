@@ -55,22 +55,22 @@
             <table class="table table-hover align-middle">
                 <thead>
                     <tr class="text-muted small text-uppercase">
-                        <th class="px-3">Order ID</th>
-                        <th>User</th>
-                        <th>Service / Provider</th>
-                        <th>Target Link</th>
-                        <th>Quantity</th>
-                        <th>Profit / Charge</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th class="px-3 text-end">Actions</th>
+                        <th class="px-3 text-nowrap">Order ID</th>
+                        <th class="text-nowrap">User</th>
+                        <th class="text-nowrap">Service / Provider</th>
+                        <th class="text-nowrap">Target Link</th>
+                        <th class="text-nowrap">Quantity</th>
+                        <th class="text-nowrap">Profit / Charge</th>
+                        <th class="text-nowrap">Status</th>
+                        <th class="text-nowrap">Date</th>
+                        <th class="px-3 text-end text-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($orders as $order)
                     <tr>
-                        <td class="px-3">
-                            <span class="fw-bold text-primary">#{{ $order->id }}</span>
+                        <td class="px-3 text-nowrap">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">#{{ $order->id }}</span>
                         </td>
                         <td>
                             <div class="fw-bold" style="font-size: 0.85rem;">{{ $order->user->username }}</div>

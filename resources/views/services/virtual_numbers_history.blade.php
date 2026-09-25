@@ -29,9 +29,9 @@
                 <tbody>
                     @forelse($orders as $order)
                         <tr>
-                            <td class="px-4">
-                                <div class="fw-bold">#{{ $order->id }}</div>
-                                <small class="text-muted">{{ $order->created_at->format('M d, Y H:i') }}</small>
+                            <td class="px-4 text-nowrap">
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">#{{ $order->id }}</span>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">{{ $order->created_at->format('M d, Y H:i') }}</small>
                             </td>
                             <td>
                                 <div class="fw-bold">{{ $order->product }}</div>

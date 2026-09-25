@@ -28,61 +28,61 @@
 
     <!-- Section 1: User & Order Overview -->
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <a href="{{ route('hq.users') }}" class="text-decoration-none">
                 <div class="premium-card p-3 h-100 border-start border-primary border-4 transition-all">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Users</h6>
-                            <h3 class="fw-bold mb-0 text-main">{{ number_format($totalUsers) }}</h3>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Total Users</h6>
+                            <h3 class="fw-bold mb-0 text-main fs-4 fs-md-3">{{ number_format($totalUsers) }}</h3>
                         </div>
-                        <div class="bg-primary bg-opacity-10 p-3 rounded-3 text-primary">
-                            <i class="fa-solid fa-users fa-xl"></i>
+                        <div class="bg-primary bg-opacity-10 p-2 p-md-3 rounded-3 text-primary d-none d-sm-flex align-items-center justify-content-center">
+                            <i class="fa-solid fa-users fa-lg"></i>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <a href="{{ route('hq.orders', ['status' => 'all']) }}" class="text-decoration-none">
                 <div class="premium-card p-3 h-100 border-start border-info border-4 transition-all">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted small fw-bold text-uppercase mb-1">Total Orders</h6>
-                            <h3 class="fw-bold mb-0 text-main">{{ number_format($totalOrders) }}</h3>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Total Orders</h6>
+                            <h3 class="fw-bold mb-0 text-main fs-4 fs-md-3">{{ number_format($totalOrders) }}</h3>
                         </div>
-                        <div class="bg-info bg-opacity-10 p-3 rounded-3 text-info">
-                            <i class="fa-solid fa-cart-shopping fa-xl"></i>
+                        <div class="bg-info bg-opacity-10 p-2 p-md-3 rounded-3 text-info d-none d-sm-flex align-items-center justify-content-center">
+                            <i class="fa-solid fa-cart-shopping fa-lg"></i>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <a href="{{ route('hq.orders', ['status' => 'pending']) }}" class="text-decoration-none">
                 <div class="premium-card p-3 h-100 border-start border-warning border-4 transition-all">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted small fw-bold text-uppercase mb-1">Pending Orders</h6>
-                            <h3 class="fw-bold mb-0 text-main">{{ number_format($pendingOrders) }}</h3>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Pending Orders</h6>
+                            <h3 class="fw-bold mb-0 text-main fs-4 fs-md-3">{{ number_format($pendingOrders) }}</h3>
                         </div>
-                        <div class="bg-warning bg-opacity-10 p-3 rounded-3 text-warning">
-                            <i class="fa-solid fa-clock fa-xl"></i>
+                        <div class="bg-warning bg-opacity-10 p-2 p-md-3 rounded-3 text-warning d-none d-sm-flex align-items-center justify-content-center">
+                            <i class="fa-solid fa-clock fa-lg"></i>
                         </div>
                     </div>
                 </div>
             </a>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <a href="{{ route('hq.orders', ['status' => 'completed']) }}" class="text-decoration-none">
                 <div class="premium-card p-3 h-100 border-start border-success border-4 transition-all">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="text-muted small fw-bold text-uppercase mb-1">Completed Orders</h6>
-                            <h3 class="fw-bold mb-0 text-main">{{ number_format($completedOrders) }}</h3>
+                            <h6 class="text-muted small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Completed Orders</h6>
+                            <h3 class="fw-bold mb-0 text-main fs-4 fs-md-3">{{ number_format($completedOrders) }}</h3>
                         </div>
-                        <div class="bg-success bg-opacity-10 p-3 rounded-3 text-success">
-                            <i class="fa-solid fa-circle-check fa-xl"></i>
+                        <div class="bg-success bg-opacity-10 p-2 p-md-3 rounded-3 text-success d-none d-sm-flex align-items-center justify-content-center">
+                            <i class="fa-solid fa-circle-check fa-lg"></i>
                         </div>
                     </div>
                 </div>
@@ -93,32 +93,32 @@
     <!-- Section 2: Financial Health -->
     <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-line me-2 text-primary"></i> Financial Performance</h5>
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 bg-primary bg-opacity-10 border-0">
-                <h6 class="text-primary small fw-bold text-uppercase mb-1">Amount Deposited</h6>
-                <h3 class="fw-bold mb-0 text-primary">{{ money($totalDeposited, true, 'USD') }}</h3>
-                <small class="text-muted mt-2 d-block">Lifetime success deposits</small>
+                <h6 class="text-primary small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Amount Deposited</h6>
+                <h4 class="fw-bold mb-0 text-primary fs-5 fs-md-4">{{ money($totalDeposited, true, 'USD') }}</h4>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Lifetime success deposits</small>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
-                <h6 class="text-danger small fw-bold text-uppercase mb-1">Amount Spent</h6>
-                <h3 class="fw-bold mb-0 text-danger">{{ money($totalSpent, true, 'USD') }}</h3>
-                <small class="text-muted mt-2 d-block">Total order volume</small>
+                <h6 class="text-danger small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Amount Spent</h6>
+                <h4 class="fw-bold mb-0 text-danger fs-5 fs-md-4">{{ money($totalSpent, true, 'USD') }}</h4>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Total order volume</small>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
-                <h6 class="text-warning small fw-bold text-uppercase mb-1">Cost of Services</h6>
-                <h3 class="fw-bold mb-0 text-warning">{{ money($totalCost, true, 'USD') }}</h3>
-                <small class="text-muted mt-2 d-block">Provider expenses</small>
+                <h6 class="text-warning small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Cost of Services</h6>
+                <h4 class="fw-bold mb-0 text-warning fs-5 fs-md-4">{{ money($totalCost, true, 'USD') }}</h4>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Provider expenses</small>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 bg-success bg-opacity-10 border-0">
-                <h6 class="text-success small fw-bold text-uppercase mb-1">Platform Profit</h6>
-                <h3 class="fw-bold mb-0 text-success">{{ money($totalProfit, true, 'USD') }}</h3>
-                <small class="text-muted mt-2 d-block">Net margin</small>
+                <h6 class="text-success small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Platform Profit</h6>
+                <h4 class="fw-bold mb-0 text-success fs-5 fs-md-4">{{ money($totalProfit, true, 'USD') }}</h4>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Net margin</small>
             </div>
         </div>
     </div>
@@ -146,39 +146,39 @@
     <!-- Section 3: User Liquidity & Affiliate -->
     <div class="row g-3 mb-4">
         <div class="col-md-6">
-            <div class="premium-card p-4 h-100">
+            <div class="premium-card p-3 p-md-4 h-100">
                 <h6 class="fw-bold text-muted mb-4 text-uppercase small">User Liquidity</h6>
                 <div class="row text-center">
                     <div class="col-6 border-end">
                         <small class="text-muted d-block mb-1">Unused Deposits</small>
-                        <h4 class="fw-bold mb-0">{{ money($totalUserBalance, true, 'USD') }}</h4>
+                        <h4 class="fw-bold mb-0 fs-5 fs-md-4">{{ money($totalUserBalance, true, 'USD') }}</h4>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block mb-1">Pending Services</small>
-                        <h4 class="fw-bold mb-0 text-warning">{{ $pendingServices }}</h4>
+                        <h4 class="fw-bold mb-0 text-warning fs-5 fs-md-4">{{ $pendingServices }}</h4>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
-            <div class="premium-card p-4 h-100">
+            <div class="premium-card p-3 p-md-4 h-100">
                 <h6 class="fw-bold text-muted mb-4 text-uppercase small">Affiliate & Referrals</h6>
-                <div class="row text-center">
-                    <div class="col-3 border-end">
+                <div class="row text-center g-2">
+                    <div class="col-6 col-sm-3 border-end">
                         <small class="text-muted d-block mb-1">Referrals</small>
-                        <h5 class="fw-bold mb-0">{{ number_format($totalReferrals) }}</h5>
+                        <h5 class="fw-bold mb-0 fs-6 fs-md-5">{{ number_format($totalReferrals) }}</h5>
                     </div>
-                    <div class="col-3 border-end">
+                    <div class="col-6 col-sm-3 border-end border-sm-end">
                         <small class="text-muted d-block mb-1">Earned</small>
-                        <h5 class="fw-bold mb-0 text-success">{{ money($totalCommissionEarned, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-success fs-6 fs-md-5">{{ money($totalCommissionEarned, true, 'USD') }}</h5>
                     </div>
-                    <div class="col-3 border-end">
+                    <div class="col-6 col-sm-3 border-end">
                         <small class="text-muted d-block mb-1">Pending</small>
-                        <h5 class="fw-bold mb-0 text-warning">{{ money($pendingCommission, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-warning fs-6 fs-md-5">{{ money($pendingCommission, true, 'USD') }}</h5>
                     </div>
-                    <div class="col-3">
+                    <div class="col-6 col-sm-3">
                         <small class="text-muted d-block mb-1">Paid</small>
-                        <h5 class="fw-bold mb-0 text-info">{{ money($totalCommissionWithdrawn, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-info fs-6 fs-md-5">{{ money($totalCommissionWithdrawn, true, 'USD') }}</h5>
                     </div>
                 </div>
             </div>
@@ -187,7 +187,7 @@
 
     <!-- Section 4: Recent Orders -->
     <div class="premium-card p-0 overflow-hidden shadow-sm">
-        <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center bg-light bg-opacity-10">
+        <div class="p-3 border-bottom border-secondary border-opacity-10 d-flex flex-wrap justify-content-between align-items-center gap-2 bg-light bg-opacity-10">
             <div class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-clock-rotate-left text-primary"></i>
                 <h6 class="fw-bold mb-0">Recent Platform Orders</h6>
@@ -208,26 +208,26 @@
         <div class="table-responsive">
             <table class="table table-hover table-borderless align-middle mb-0">
                 <thead class="bg-light bg-opacity-25">
-                    <tr>
-                        <th class="px-3">Order ID</th>
-                        <th>Type</th>
-                        <th>User</th>
-                        <th>Service / Details</th>
-                        <th>Charge</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th class="text-end pe-3">Action</th>
+                    <tr class="text-muted small text-uppercase" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                        <th class="px-3 text-nowrap">Order ID</th>
+                        <th class="text-nowrap">Type</th>
+                        <th class="text-nowrap">User</th>
+                        <th class="text-nowrap">Service / Details</th>
+                        <th class="text-nowrap">Charge</th>
+                        <th class="text-nowrap">Status</th>
+                        <th class="text-nowrap">Date</th>
+                        <th class="text-end pe-3 text-nowrap">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($recentOrders as $order)
                     <tr>
-                        <td class="px-3 fw-bold">
-                            <a href="{{ $order->url }}" class="text-decoration-none fw-bold text-primary">
+                        <td class="px-3 text-nowrap">
+                            <a href="{{ $order->url }}" class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace text-decoration-none px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">
                                 {{ $order->display_id }}
                             </a>
                         </td>
-                        <td>
+                        <td class="text-nowrap">
                             @if($order->type_key === 'smm')
                                 <span class="badge rounded-pill px-2 py-1 fw-bold" style="background-color: rgba(99, 102, 241, 0.12); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.25); font-size: 0.7rem;">
                                     <i class="fa-solid fa-rocket me-1"></i>Social Boost
@@ -246,37 +246,37 @@
                                 </span>
                             @endif
                         </td>
-                        <td>
+                        <td class="text-nowrap">
                             @if($order->user)
                                 <a href="{{ route('hq.users.show', $order->user->id) }}" class="text-decoration-none text-dark">
-                                    <div class="fw-bold" style="font-size: 0.85rem;">
+                                    <div class="fw-bold" style="font-size: 0.82rem;">
                                         {{ trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')) ?: $order->user->username }}
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">{{ $order->user->email }}</small>
+                                    <small class="text-muted" style="font-size: 0.72rem;">{{ $order->user->email }}</small>
                                 </a>
                             @else
                                 <div class="text-muted small">Deleted User</div>
                             @endif
                         </td>
                         <td>
-                            <div class="fw-semibold text-truncate" style="max-width: 260px; font-size: 0.85rem;" title="{{ $order->service_name }}">
-                                {{ Str::limit($order->service_name, 45) }}
+                            <div class="fw-semibold text-truncate" style="max-width: 240px; font-size: 0.82rem;" title="{{ $order->service_name }}">
+                                {{ Str::limit($order->service_name, 40) }}
                             </div>
                             @if($order->detail)
-                                <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                <small class="text-muted d-block text-truncate" style="max-width: 240px; font-size: 0.72rem;">
                                     <i class="fa-solid fa-circle-info me-1" style="font-size: 0.65rem;"></i>{{ $order->detail }}
                                 </small>
                             @endif
                         </td>
-                        <td class="fw-bold text-dark">
+                        <td class="fw-bold text-dark text-nowrap">
                             @if(isset($order->charge_ngn) && $order->charge_ngn > 0)
-                                <div>{{ money($order->charge, true, 'USD') }}</div>
-                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">(₦{{ number_format($order->charge_ngn, 2) }})</small>
+                                <div style="font-size: 0.82rem;">{{ money($order->charge, true, 'USD') }}</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.7rem;">(₦{{ number_format($order->charge_ngn, 2) }})</small>
                             @else
-                                {{ money($order->charge, true, 'USD') }}
+                                <span style="font-size: 0.82rem;">{{ money($order->charge, true, 'USD') }}</span>
                             @endif
                         </td>
-                        <td>
+                        <td class="text-nowrap">
                             @php
                                 $cleanStatus = strtolower(str_replace(' ', '_', $order->status));
                                 $isActive = in_array($cleanStatus, ['processing', 'in_progress']);
@@ -317,12 +317,12 @@
                                 </span>
                             @endif
                         </td>
-                        <td>
-                            <span class="small text-muted" title="{{ $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : '' }}">
+                        <td class="text-nowrap">
+                            <span class="small text-muted" style="font-size: 0.72rem;" title="{{ $order->created_at ? $order->created_at->format('Y-m-d H:i:s') : '' }}">
                                 {{ $order->created_at ? $order->created_at->diffForHumans() : 'N/A' }}
                             </span>
                         </td>
-                        <td class="text-end pe-3">
+                        <td class="text-end pe-3 text-nowrap">
                             <a href="{{ $order->url }}" class="btn btn-sm btn-outline-primary px-2 py-1 rounded-pill" title="View in Management">
                                 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem;"></i>
                             </a>

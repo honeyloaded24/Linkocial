@@ -32,19 +32,21 @@
         <table class="table table-hover table-borderless align-middle mb-0">
             <thead class="bg-light bg-opacity-10">
                 <tr>
-                    <th>ID</th>
-                    <th>Date</th>
-                    <th>Service</th>
-                    <th>Link</th>
-                    <th>Quantity</th>
-                    <th>Charge</th>
-                    <th>Status</th>
+                    <th class="px-3 text-nowrap">ID</th>
+                    <th class="text-nowrap">Date</th>
+                    <th class="text-nowrap">Service</th>
+                    <th class="text-nowrap">Link</th>
+                    <th class="text-nowrap">Quantity</th>
+                    <th class="text-nowrap">Charge</th>
+                    <th class="text-nowrap">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse($orders as $order)
                 <tr>
-                    <td class="text-muted fw-bold">#{{ $order->id }}</td>
+                    <td class="px-3 text-nowrap">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">#{{ $order->id }}</span>
+                    </td>
                     <td>{{ $order->created_at->format('M d, Y h:i A') }}</td>
                     <td>
                         <span class="d-block text-truncate" style="max-width: 200px;" title="{{ $order->service->name }}">
