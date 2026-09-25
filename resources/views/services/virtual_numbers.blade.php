@@ -58,10 +58,8 @@
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
     }
 </style>
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
-    <div>
-        <p class="text-muted small mb-0">Order phone numbers and receive verification codes dynamically.</p>
-    </div>
+<!-- Desktop Order History Link -->
+<div class="d-none d-md-flex justify-content-end align-items-center mb-3">
     <a href="{{ route('virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">
         <i class="fa-solid fa-clock-rotate-left me-1"></i> Order History & Logs
     </a>
@@ -71,25 +69,16 @@
     <div class="col-12 col-lg-6 col-xl-6" style="position: relative; z-index: 10;">
         <!-- Main Form Card -->
         <div class="premium-card p-4 border-0 shadow-sm h-100 rounded-4" style="background: var(--bg-surface); overflow: visible !important;">
-            <div class="d-flex align-items-center mb-4">
-                <div class="bg-primary-custom bg-opacity-10 rounded-circle p-3 me-3 text-primary-custom shadow-sm">
-                    <i class="fa-solid fa-phone-volume fs-4"></i>
-                </div>
-                <div>
-                    <h4 class="mb-0 fw-bold" style="font-family: var(--heading-font);">Get Virtual Number</h4>
-                    <p class="text-muted small mb-0">Virtual numbers for SMS verification (WhatsApp, Telegram, etc.)</p>
-                </div>
+            <div class="mb-4">
+                <h4 class="mb-0 fw-bold" style="font-family: var(--heading-font);">Get Virtual Number</h4>
             </div>
 
-            <form id="vn-form" class="mt-4">
+            <form id="vn-form">
                 @csrf
 
                 <!-- Server Selector (ZuvaPay Style) -->
-                <div class="mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="form-label fw-bold small text-muted mb-0">Select Server</label>
-                        <span class="text-muted small fw-semibold" style="font-size: 0.78rem;">High Capacity Pool</span>
-                    </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted mb-2">Select Server</label>
                     <div class="row g-2">
                         <div class="col-6">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn active-server" data-server="server1" id="server-btn-1">
@@ -119,44 +108,37 @@
                     
                     <!-- 2. Select Online Service / Application -->
                     <div class="col-12">
-                        <label class="form-label fw-bold small text-muted">2. Select Online Service / Application</label>
+                        <label class="form-label fw-bold small text-muted">2. Select Service</label>
                         <select class="form-select form-select-lg rounded-3" id="vn-service" required disabled>
-                            <option value="">-- Select Online Service / App --</option>
+                            <option value="">-- Select Service --</option>
                         </select>
-                    </div>
-
-                    <!-- Carrier Rate Advisory -->
-                    <div class="col-12">
-                        <small class="text-muted d-flex align-items-center gap-2" style="font-size: 0.78rem;">
-                            <i class="fa-solid fa-circle-info text-primary"></i> Rates may vary slightly in real time based on carrier supply and demand.
-                        </small>
                     </div>
                 </div> <!-- Closes row g-3 -->
                 
                 <!-- Price & Order Confirmation Container -->
-                <div class="mt-4 rounded-4 d-none shadow-sm overflow-hidden" id="vn-price-box" style="background: var(--bg-surface); border: 1.5px solid var(--border-color, #e2e8f0);">
+                <div class="mt-3 rounded-4 d-none shadow-sm overflow-hidden" id="vn-price-box" style="background: var(--bg-surface); border: 1.5px solid var(--border-color, #e2e8f0);">
                     <!-- Loading state indicator -->
-                    <div id="vn-quote-loading" class="p-4 text-center d-none">
-                        <div class="spinner-border spinner-border-sm text-primary-custom mb-2" role="status"></div>
-                        <div class="small fw-semibold text-muted">Checking number availability...</div>
+                    <div id="vn-quote-loading" class="p-3 text-center d-none">
+                        <div class="spinner-border spinner-border-sm text-primary-custom mb-1" role="status"></div>
+                        <div class="small fw-semibold text-muted">Checking availability...</div>
                     </div>
 
                     <!-- Clean Quote Content -->
-                    <div id="vn-quote-content" class="p-3 p-md-4">
+                    <div id="vn-quote-content" class="p-3">
                         <!-- Clean Price & Balance Row -->
                         <div class="p-3 rounded-3 mb-3 d-flex justify-content-between align-items-center" style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.12);">
                             <div>
-                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.70rem; letter-spacing: 0.5px;">Price</span>
-                                <div class="fs-2 fw-bolder text-primary-custom text-nowrap font-monospace" id="vn-cost" style="line-height: 1.2;">$0.00</div>
+                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Price</span>
+                                <div class="fw-bold text-primary-custom text-nowrap font-monospace" id="vn-cost" style="font-size: 1.25rem; line-height: 1.2;">$0.00</div>
                             </div>
                             <div class="text-end">
-                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.70rem; letter-spacing: 0.5px;">Your Balance</span>
-                                <div class="fw-bold font-monospace text-nowrap" id="vn-user-balance" style="font-size: 1rem; color: var(--text-main);">$0.00</div>
+                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Your Balance</span>
+                                <div class="fw-semibold font-monospace text-nowrap" id="vn-user-balance" style="font-size: 0.90rem; color: var(--text-main);">$0.00</div>
                             </div>
                         </div>
 
                         <!-- Purchase Button -->
-                        <button type="submit" class="btn btn-primary-custom w-100 py-3 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" id="vn-buy-btn" style="font-size: 1rem;">
+                        <button type="submit" class="btn btn-primary-custom w-100 py-2 py-md-3 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" id="vn-buy-btn" style="font-size: 0.95rem;">
                             <span>Purchase Number</span>
                             <i class="fa-solid fa-arrow-right"></i>
                         </button>
@@ -173,11 +155,11 @@
                     </div>
                 </div>
 
-                <!-- Automated Refund Trust Badge (ZuvaPay Style) -->
-                <div class="text-center mt-3 pt-2">
-                    <span class="text-muted small fw-semibold d-inline-flex align-items-center justify-content-center gap-2" style="font-size: 0.8rem;">
-                        <i class="fa-solid fa-shield-halved text-success fs-6"></i> Automated Refund: Immediate 100% wallet reversal if SMS does not arrive
-                    </span>
+                <!-- Subtle Refund Note -->
+                <div class="text-center mt-3">
+                    <small class="text-muted d-inline-flex align-items-center gap-1" style="font-size: 0.75rem;">
+                        <i class="fa-solid fa-shield-halved text-success"></i> Instant auto-refund if SMS is not received
+                    </small>
                 </div>
                 
                 <!-- Error Alert -->
@@ -201,6 +183,13 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Mobile Order History Button -->
+    <div class="col-12 d-md-none mt-2">
+        <a href="{{ route('virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold w-100 py-2 shadow-sm">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i> View Order History & Logs
+        </a>
     </div>
 </div>
 
