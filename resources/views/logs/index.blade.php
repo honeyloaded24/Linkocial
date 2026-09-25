@@ -4,11 +4,6 @@
 
 @push('styles')
 <style>
-    .marketplace-hero {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(20, 184, 166, 0.04) 100%);
-        border: 1.5px solid var(--border-color, #e2e8f0);
-        border-radius: 14px;
-    }
     .cat-tabs-container {
         display: flex;
         align-items: center;
@@ -60,120 +55,36 @@
         background: rgba(255, 255, 255, 0.25);
         color: #ffffff;
     }
-    .category-section-header {
-        background: var(--bg-surface, #ffffff);
-        border: 1.5px solid var(--border-color, #e2e8f0);
-        border-bottom: 1px solid var(--border-color, #e2e8f0);
-        border-top-left-radius: 12px;
-        border-top-right-radius: 12px;
-        padding: 12px 18px;
-    }
-    .category-section-title {
-        color: var(--text-main, #0f172a);
-        font-size: 0.85rem;
-        font-weight: 700;
-        letter-spacing: 0.4px;
-    }
-    .category-section-body {
-        background: var(--bg-body, #f8fafc);
-        border: 1.5px solid var(--border-color, #e2e8f0);
-        border-top: none;
-        border-bottom-left-radius: 12px;
-        border-bottom-right-radius: 12px;
-        padding: 14px;
-    }
+
     .log-card {
         background: var(--bg-surface, #ffffff);
-        border: 1.5px solid var(--border-color, #e2e8f0);
-        border-radius: 12px;
-        transition: all 0.2s ease;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
         width: 100%;
-        overflow: hidden;
-        box-sizing: border-box;
     }
     .log-card:hover {
-        border-color: var(--primary-color, #6366f1);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.12);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+        border-color: #cbd5e1;
     }
-    .product-title-link {
-        color: var(--text-main, #0f172a);
-        text-decoration: none;
-        font-size: 0.9rem;
-        font-weight: 700;
-        transition: color 0.15s ease;
-        display: inline-block;
-        max-width: 100%;
+    .log-title-link {
+        color: var(--primary-color, #0d6efd) !important;
+        transition: opacity 0.15s ease;
     }
-    .product-title-link:hover {
-        color: var(--primary-color, #6366f1);
-        text-decoration: underline;
-        cursor: pointer;
-    }
-    .product-card-desc a {
-        color: var(--primary-color, #6366f1) !important;
+    .log-title-link:hover {
         text-decoration: underline !important;
-        font-weight: 600 !important;
+        opacity: 0.85;
+    }
+    .bag-icon {
         cursor: pointer;
-        position: relative;
-        z-index: 2;
+        transition: transform 0.18s ease;
     }
-    .product-card-desc a:hover {
-        color: var(--primary-hover, #4f46e5) !important;
+    .bag-icon:hover {
+        transform: scale(1.1);
     }
-    .product-badge-price {
-        font-size: 0.78rem;
-        font-weight: 700;
-        padding: 2.5px 8px;
-        border-radius: 6px;
-        background: rgba(16, 185, 129, 0.12);
-        color: #059669;
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        letter-spacing: 0.2px;
-        white-space: nowrap;
-    }
-    .product-badge-stock {
-        font-size: 0.72rem;
-        font-weight: 600;
-        padding: 2.5px 8px;
-        border-radius: 6px;
-        white-space: nowrap;
-    }
-    .product-badge-stock.in-stock {
-        background: rgba(99, 102, 241, 0.09);
-        color: #4f46e5;
-        border: 1px solid rgba(99, 102, 241, 0.22);
-    }
-    .product-badge-stock.out-of-stock,
-    .product-badge-unavail {
-        font-size: 0.72rem;
-        font-weight: 600;
-        padding: 2.5px 8px;
-        border-radius: 6px;
-        background: rgba(239, 68, 68, 0.09);
-        color: #dc2626;
-        border: 1px solid rgba(239, 68, 68, 0.22);
-        white-space: nowrap;
-    }
-    .product-badge-type {
-        font-size: 0.68rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: 2.5px 7px;
-        border-radius: 4px;
-        background: rgba(245, 158, 11, 0.12);
-        color: #d97706;
-        border: 1px solid rgba(245, 158, 11, 0.25);
-        white-space: nowrap;
-    }
-    .log-buy-btn {
-        font-size: 0.8rem;
-        font-weight: 700;
-        padding: 5px 15px;
-        border-radius: 20px;
-    }
+
     .search-input-box {
         background: var(--bg-surface, #ffffff);
         border: 1.5px solid var(--border-color, #e2e8f0);
@@ -218,17 +129,6 @@
         background: rgba(255, 255, 255, 0.12);
         color: #e2e8f0;
     }
-    [data-theme="dark"] .category-section-header {
-        background: #1e293b;
-        border-color: #334155;
-    }
-    [data-theme="dark"] .category-section-title {
-        color: #f8fafc;
-    }
-    [data-theme="dark"] .category-section-body {
-        background: rgba(15, 23, 42, 0.6);
-        border-color: #334155;
-    }
     [data-theme="dark"] .log-card {
         background: #1e293b;
         border-color: #334155;
@@ -236,22 +136,8 @@
     [data-theme="dark"] .log-card:hover {
         border-color: rgba(99, 102, 241, 0.5);
     }
-    [data-theme="dark"] .product-title-link {
-        color: #f8fafc;
-    }
-    [data-theme="dark"] .product-badge-price {
-        color: #10b981;
-    }
-    [data-theme="dark"] .product-badge-stock.in-stock {
-        color: #a5b4fc;
-        background: rgba(99, 102, 241, 0.15);
-    }
-    [data-theme="dark"] .product-badge-stock.out-of-stock,
-    [data-theme="dark"] .product-badge-unavail {
-        color: #f87171;
-    }
-    [data-theme="dark"] .product-badge-type {
-        color: #fbbf24;
+    [data-theme="dark"] .log-title-link {
+        color: #60a5fa !important;
     }
     [data-theme="dark"] .search-input-box,
     [data-theme="dark"] .cat-select-dropdown {
@@ -366,79 +252,21 @@
         </div>
     @endif
 
-    <!-- Hot / Trending Products Section (Shown on default 'All' view) -->
-    @if(!$selectedCategory && !request('search') && $hotProducts->count() > 0)
-        <div class="mb-4">
-            <div class="d-flex align-items-center gap-2 mb-2 px-1">
-                <i class="fa-solid fa-fire text-danger" style="font-size: 0.9rem;"></i>
-                <span class="fw-bold text-uppercase" style="font-size: 0.78rem; letter-spacing: 0.5px; color: var(--text-main, #0f172a);">Trending Products</span>
+    <!-- Clean Vertical List of Products (Matches Screenshot) -->
+    <div class="product-list">
+        @forelse($products as $product)
+            @include('logs.partials.product_card', ['product' => $product])
+        @empty
+            <div class="text-center py-5 rounded-4" style="background: var(--bg-surface, #ffffff); border: 1.5px dashed var(--border-color, #e2e8f0);">
+                <i class="fa-solid fa-box-open fa-2x text-muted opacity-50 mb-2"></i>
+                <h6 class="fw-semibold mb-1" style="font-size: 0.9rem; color: var(--text-main, #0f172a);">No accounts found</h6>
+                <p class="text-muted small mb-3">Try searching with a different keyword or selecting another category.</p>
+                <a href="{{ route('logs.index') }}" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.78rem;">
+                    View All Categories
+                </a>
             </div>
-            <div class="p-2.5 rounded-3" style="background: var(--bg-surface, #ffffff); border: 1.5px solid var(--border-color, #e2e8f0);">
-                <div class="row g-2">
-                    @foreach($hotProducts as $hot)
-                        <div class="col-12 col-md-6 col-xl-4">
-                            @include('logs.partials.product_card', ['product' => $hot])
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-    @endif
-
-    <!-- Categorized Products Listing -->
-    @if($products->isEmpty())
-        <div class="text-center py-5 rounded-4" style="background: var(--bg-surface, #ffffff); border: 1.5px dashed var(--border-color, #e2e8f0);">
-            <i class="fa-solid fa-box-open fa-2x text-muted opacity-50 mb-2"></i>
-            <h6 class="fw-semibold mb-1" style="font-size: 0.9rem; color: var(--text-main, #0f172a);">No accounts found</h6>
-            <p class="text-muted small mb-3">Try searching with a different keyword or selecting another category.</p>
-            <a href="{{ route('logs.index') }}" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1 fw-semibold" style="font-size: 0.78rem;">
-                View All Categories
-            </a>
-        </div>
-    @else
-        @php
-            // Group products by their category name so the layout is properly categorized
-            $groupedProducts = $products->groupBy(function($item) {
-                return $item->category ? $item->category->name : 'General & Other Accounts';
-            });
-        @endphp
-
-        @foreach($groupedProducts as $categoryName => $catProducts)
-            <div class="category-section mb-4" id="cat-{{ \Illuminate\Support\Str::slug($categoryName) }}">
-                <!-- Categorized Section Header -->
-                <div class="category-section-header d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 26px; height: 26px; background: rgba(99, 102, 241, 0.12); color: var(--primary-color, #6366f1); font-size: 0.75rem;">
-                            <i class="fa-solid fa-layer-group"></i>
-                        </div>
-                        <h6 class="mb-0 fw-bold text-uppercase category-section-title">
-                            {{ $categoryName }}
-                        </h6>
-                        <span class="badge rounded-pill fw-semibold" style="font-size: 0.68rem; background: rgba(99, 102, 241, 0.1); color: var(--primary-color, #6366f1); border: 1px solid rgba(99, 102, 241, 0.2);">
-                            {{ $catProducts->count() }} {{ \Illuminate\Support\Str::plural('product', $catProducts->count()) }}
-                        </span>
-                    </div>
-
-                    @if(!$selectedCategory && $catProducts->first()?->category)
-                        <a href="{{ route('logs.index', ['category' => $catProducts->first()->category->id]) }}" class="text-decoration-none small fw-semibold" style="font-size: 0.74rem; color: var(--primary-color, #6366f1);">
-                            Filter this category <i class="fa-solid fa-chevron-right ms-1" style="font-size: 0.6rem;"></i>
-                        </a>
-                    @endif
-                </div>
-
-                <!-- Categorized Products Body -->
-                <div class="category-section-body">
-                    <div class="row g-2">
-                        @foreach($catProducts as $product)
-                            <div class="col-12 col-lg-6">
-                                @include('logs.partials.product_card', ['product' => $product])
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        @endforeach
-    @endif
+        @endforelse
+    </div>
 
 </div>
 @endsection
