@@ -35,7 +35,8 @@ if (!function_exists('money')) {
             return number_format($converted, 2, '.', '');
         }
 
-        return $currencyData['symbol'] . ' ' . number_format($converted, 2);
+        $sep = strlen($currencyData['symbol']) > 2 ? ' ' : '';
+        return $currencyData['symbol'] . $sep . number_format($converted, 2);
     }
 }
 

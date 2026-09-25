@@ -133,62 +133,38 @@
                     </div>
                 </div> <!-- Closes row g-3 -->
                 
-                <!-- Live Quote Container -->
-                <div class="mt-4 rounded-4 d-none shadow-sm overflow-hidden" id="vn-price-box" style="background: rgba(99, 102, 241, 0.04); border: 1px solid var(--border-color, #e2e8f0);">
+                <!-- Price & Order Confirmation Container -->
+                <div class="mt-4 rounded-4 d-none shadow-sm overflow-hidden" id="vn-price-box" style="background: var(--bg-surface); border: 1.5px solid var(--border-color, #e2e8f0);">
                     <!-- Loading state indicator -->
                     <div id="vn-quote-loading" class="p-4 text-center d-none">
-                        <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
-                        <div class="small fw-semibold text-muted">Fetching real-time verified quote...</div>
+                        <div class="spinner-border spinner-border-sm text-primary-custom mb-2" role="status"></div>
+                        <div class="small fw-semibold text-muted">Checking number availability...</div>
                     </div>
 
-                    <!-- Quote Content -->
-                    <div id="vn-quote-content" class="p-3 p-sm-4">
-                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color, #e2e8f0) !important;">
+                    <!-- Clean Quote Content -->
+                    <div id="vn-quote-content" class="p-3 p-md-4">
+                        <!-- Clean Price & Balance Row -->
+                        <div class="p-3 rounded-3 mb-3 d-flex justify-content-between align-items-center" style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.12);">
                             <div>
-                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold text-uppercase px-2 py-1 rounded-pill" style="font-size: 0.72rem;">
-                                    <i class="fa-solid fa-bolt me-1"></i> Live Verified Quote
-                                </span>
+                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.70rem; letter-spacing: 0.5px;">Price</span>
+                                <div class="fs-2 fw-bolder text-primary-custom text-nowrap font-monospace" id="vn-cost" style="line-height: 1.2;">$0.00</div>
                             </div>
                             <div class="text-end">
-                                <span class="text-muted small fw-semibold">Markup:</span>
-                                <span class="badge bg-success bg-opacity-10 text-success fw-bold ms-1" id="vn-quote-markup">+65%</span>
+                                <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.70rem; letter-spacing: 0.5px;">Your Balance</span>
+                                <div class="fw-bold font-monospace text-nowrap" id="vn-user-balance" style="font-size: 1rem; color: var(--text-main);">$0.00</div>
                             </div>
                         </div>
 
-                        <!-- Price Breakdown -->
-                        <div class="row g-2 mb-3">
-                            <div class="col-6">
-                                <div class="p-2 rounded-3" style="background: var(--bg-surface); border: 1px solid var(--border-color, #e2e8f0);">
-                                    <span class="text-muted d-block small" style="font-size: 0.72rem;">Wholesale Rate</span>
-                                    <span class="fw-bold text-muted small" id="vn-wholesale-rate">$0.00</span>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="p-2 rounded-3" style="background: var(--bg-surface); border: 1px solid var(--border-color, #e2e8f0);">
-                                    <span class="text-muted d-block small" style="font-size: 0.72rem;">Your Balance</span>
-                                    <span class="fw-bold small" id="vn-user-balance">$0.00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Main Quote Price & Action -->
-                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pt-1">
-                            <div class="mb-3 mb-sm-0 text-center text-sm-start">
-                                <span class="text-muted small fw-bold d-block text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Final Total Price</span>
-                                <div class="d-flex align-items-baseline justify-content-center justify-content-sm-start gap-2 mt-1">
-                                    <span class="fs-2 fw-bolder text-primary-custom" id="vn-cost">$0.00</span>
-                                    <span class="small text-muted" id="vn-balance-after">(Remaining: $0.00)</span>
-                                </div>
-                            </div>
-                            <button type="submit" class="btn btn-primary-custom rounded-pill fw-bold shadow-sm px-4 py-2" id="vn-buy-btn">
-                                Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>
-                            </button>
-                        </div>
+                        <!-- Purchase Button -->
+                        <button type="submit" class="btn btn-primary-custom w-100 py-3 rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2" id="vn-buy-btn" style="font-size: 1rem;">
+                            <span>Purchase Number</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
 
                         <!-- Low Balance Warning -->
                         <div class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3 d-none align-items-center justify-content-between gap-2" id="vn-insufficient-alert">
                             <div class="small fw-semibold">
-                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Balance insufficient for this order.
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Insufficient balance for this order.
                             </div>
                             <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-danger rounded-pill fw-bold text-nowrap px-3 shadow-sm">
                                 <i class="fa-solid fa-wallet me-1"></i> Fund Wallet
@@ -368,10 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const quoteLoading = document.getElementById('vn-quote-loading');
     const quoteContent = document.getElementById('vn-quote-content');
     const costDisplay = document.getElementById('vn-cost');
-    const wholesaleDisplay = document.getElementById('vn-wholesale-rate');
     const userBalanceDisplay = document.getElementById('vn-user-balance');
-    const markupDisplay = document.getElementById('vn-quote-markup');
-    const balanceAfterDisplay = document.getElementById('vn-balance-after');
     const insufficientAlert = document.getElementById('vn-insufficient-alert');
     const errorBox = document.getElementById('vn-error');
     const buyBtn = document.getElementById('vn-buy-btn');
@@ -574,10 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (data.success) {
                             if (quoteContent) quoteContent.classList.remove('d-none');
                             costDisplay.textContent = data.formatted_quote;
-                            if (wholesaleDisplay) wholesaleDisplay.textContent = '$' + parseFloat(data.wholesale_price).toFixed(2);
-                            if (markupDisplay) markupDisplay.textContent = '+' + data.markup_percent + '%';
                             if (userBalanceDisplay) userBalanceDisplay.textContent = data.formatted_balance;
-                            if (balanceAfterDisplay) balanceAfterDisplay.textContent = '(Remaining: ' + data.formatted_remaining + ')';
 
                             if (!data.sufficient_balance) {
                                 if (insufficientAlert) {
@@ -592,7 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     insufficientAlert.classList.remove('d-flex');
                                 }
                                 buyBtn.disabled = false;
-                                buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
+                                buyBtn.innerHTML = '<span>Purchase Number</span> <i class="fa-solid fa-arrow-right ms-2"></i>';
                             }
                         } else {
                             priceBox.classList.add('d-none');
