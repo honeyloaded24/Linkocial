@@ -100,11 +100,19 @@ class SyncBillstackTransaction extends Command
             }
         }
 
-        $this->info("Crediting User #{$user->id} ({$user->username} - {$user->email}) with NGN {$amount}...");
+        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 65.0);
+        $netAmount = round($amount - $depositFee, 2);
+
+        if ($netAmount <= 0) {
+            $this->error("Deposit amount NGN {$amount} is less than or equal to the deposit fee NGN {$depositFee}.");
+            return 1;
+        }
+
+        $this->info("Crediting User #{$user->id} ({$user->username} - {$user->email}) with net NGN {$netAmount} (Gross: NGN {$amount}, Fee: NGN {$depositFee})...");
 
         try {
-            $paymentController->processSuccessfulPayment($user, $amount, $ref, "Virtual Account ({$bankName})", 'NGN');
-            $this->info("SUCCESS! User #{$user->id} credited with NGN {$amount} (Ref: {$ref}).");
+            $paymentController->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
+            $this->info("SUCCESS! User #{$user->id} credited with net NGN {$netAmount} (Ref: {$ref}).");
             return 0;
         } catch (\Exception $e) {
             $this->error("Error processing credit: " . $e->getMessage());

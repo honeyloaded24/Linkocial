@@ -376,6 +376,14 @@
                                         </button>
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Deposit Fee (₦ per transfer)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
+                                        <input type="number" step="1" min="0" name="billstack_deposit_fee" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('billstack_deposit_fee', 65) }}" style="color: var(--text-main);">
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Flat fee automatically deducted per inbound virtual account deposit (Default: ₦65).</small>
+                                </div>
                                 <div class="col-12 mt-2">
                                     <div class="p-3 rounded-3 bg-light bg-opacity-10 border border-secondary border-opacity-25 small text-muted">
                                         <i class="fa-solid fa-circle-info text-info me-2"></i>
@@ -384,6 +392,7 @@
                                             <li><strong>9PSB:</strong> Virtual account generated with 1-click (no BVN required).</li>
                                             <li><strong>PalmPay:</strong> Generates dedicated account requiring customer's 11-digit BVN.</li>
                                             <li><strong>Automated Crediting:</strong> Inbound transfers trigger the BillStack webhook, instantly crediting the user's wallet with zero delays.</li>
+                                            <li><strong>Deposit Fee:</strong> A flat fee (₦{{ \App\Models\Setting::get('billstack_deposit_fee', 65) }}) is deducted from each deposit before crediting the net amount to the user's wallet.</li>
                                         </ul>
                                     </div>
                                 </div>

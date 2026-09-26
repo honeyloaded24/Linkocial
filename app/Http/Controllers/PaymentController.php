@@ -252,7 +252,7 @@ class PaymentController extends Controller
     /**
      * Shared logic to credit wallet and award commissions
      */
-    public function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN')
+    public function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN', $fee = 0.0)
     {
         // 1. Check if this payment reference has already been successfully processed (concurrency check)
         $alreadySuccess = \App\Models\Payment::where('reference', $reference)
@@ -264,7 +264,7 @@ class PaymentController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($user, $amount, $reference, $method, $currencyCode) {
+        DB::transaction(function () use ($user, $amount, $reference, $method, $currencyCode, $fee) {
             // Re-verify under lock to prevent any race condition double-writes
             $lockedPayment = \App\Models\Payment::where('reference', $reference)
                 ->lockForUpdate()
@@ -321,20 +321,33 @@ class PaymentController extends Controller
             }
 
             // 3. Record in Financial Ledger (in USD base)
+            $desc = "Deposit via {$method}";
+            if ($fee > 0) {
+                $grossNaira = $amountInNaira + $fee;
+                $desc .= " (Gross: ₦" . number_format($grossNaira, 2) . ", Fee: ₦" . number_format($fee, 2) . ", Net: ₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})";
+            } else {
+                $desc .= " (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})";
+            }
+
             \App\Models\Transaction::add(
                 $lockedUser->id, 
                 $amountInUsd, 
                 'credit', 
                 'deposit', 
-                "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
+                $desc,
                 $reference
             );
 
             // 4. Send Notification & Email to user
+            $notifMsg = "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.";
+            if ($fee > 0) {
+                $notifMsg .= " (Fee: ₦" . number_format($fee, 2) . ")";
+            }
+
             \App\Models\Notification::send(
                 $lockedUser->id,
                 "Wallet Funded Successfully",
-                "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
+                $notifMsg,
                 'success',
                 route('wallet.history')
             );
@@ -550,10 +563,19 @@ class PaymentController extends Controller
             return response()->json(['status' => false, 'message' => 'User not found'], 404);
         }
 
+        // Calculate deposit fee (Default 65 Naira)
+        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 65.0);
+        $netAmount = round($amount - $depositFee, 2);
+
+        if ($netAmount <= 0) {
+            Log::warning("BillStack Webhook: Deposit amount NGN {$amount} is <= fee NGN {$depositFee}. Ref: {$ref}");
+            return response()->json(['status' => true, 'message' => 'Deposit amount absorbed by fee'], 200);
+        }
+
         try {
             // Process wallet credit with atomic concurrency protection
-            $this->processSuccessfulPayment($user, $amount, $ref, "Virtual Account ({$bankName})", 'NGN');
-            Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with NGN {$amount} (Ref: {$ref})");
+            $this->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
+            Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with net NGN {$netAmount} after NGN {$depositFee} fee (Ref: {$ref})");
             return response()->json(['status' => true, 'message' => 'successful'], 200);
         } catch (\Exception $e) {
             Log::error("BillStack Webhook Processing Error for {$ref}: " . $e->getMessage());

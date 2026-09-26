@@ -36,9 +36,14 @@
         <div class="tab-pane fade show active" id="tab-virtual" role="tabpanel" aria-labelledby="tab-virtual-btn">
             
             <!-- Compact Alert -->
-            <div class="p-2 px-3 mb-3 rounded-3 d-flex align-items-center gap-2 small text-success" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
-                <i class="fa-solid fa-bolt-lightning text-success"></i>
-                <span><strong>Instant Auto-Credit:</strong> Transfers to either account below are credited to your balance automatically within seconds.</span>
+            <div class="p-2 px-3 mb-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2 small text-success" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-bolt-lightning text-success"></i>
+                    <span><strong>Instant Auto-Credit:</strong> Transfers to either account below are credited to your balance automatically within seconds.</span>
+                </div>
+                <div class="text-muted">
+                    <span>Fee: <strong class="text-main">₦{{ number_format(\App\Models\Setting::get('billstack_deposit_fee', 65), 0) }} / deposit</strong></span>
+                </div>
             </div>
 
             <!-- 2 Compact Bank Cards -->
@@ -80,7 +85,11 @@
                                             </button>
                                         @endif
                                     </div>
-                                    <span>Bank: <strong class="text-main">9PSB</strong></span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Fee: <strong class="text-main">₦{{ number_format(\App\Models\Setting::get('billstack_deposit_fee', 65), 0) }}</strong></span>
+                                        <span class="text-muted">•</span>
+                                        <span>Bank: <strong class="text-main">9PSB</strong></span>
+                                    </div>
                                 </div>
                             </div>
                         @else
@@ -134,7 +143,11 @@
                                             </button>
                                         @endif
                                     </div>
-                                    <span>Bank: <strong class="text-main">PalmPay</strong></span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span>Fee: <strong class="text-main">₦{{ number_format(\App\Models\Setting::get('billstack_deposit_fee', 65), 0) }}</strong></span>
+                                        <span class="text-muted">•</span>
+                                        <span>Bank: <strong class="text-main">PalmPay</strong></span>
+                                    </div>
                                 </div>
                             </div>
                         @else
