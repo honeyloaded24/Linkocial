@@ -213,26 +213,93 @@ class BillstackService
      * Verify BillStack webhook signature.
      *
      * @param string $rawBody
-     * @param string|null $signature Header x-wiaxy-signature-256
+     * @param string|null $signature256 Header x-wiaxy-signature-256
      * @param string|null $timestamp Header x-wiaxy-timestamp
+     * @param string|null $signatureMd5 Header x-wiaxy-signature (Legacy)
      * @return bool
      */
-    public function verifyWebhookSignature(string $rawBody, ?string $signature, ?string $timestamp = null): bool
+    public function verifyWebhookSignature(string $rawBody, ?string $signature256, ?string $timestamp = null, ?string $signatureMd5 = null): bool
     {
-        if (empty($this->secretKey) || empty($signature)) {
+        if (empty($this->secretKey)) {
+            Log::error('BillStack Webhook: Secret key is not configured.');
             return false;
         }
 
-        // BillStack specification: HMAC-SHA256 of "$timestamp.$rawBody"
-        if (!empty($timestamp)) {
+        // Allow bypassing signature in local testing if no signature provided
+        if (app()->environment('local', 'testing') && empty($signature256) && empty($signatureMd5)) {
+            return true;
+        }
+
+        // 1. Verify HMAC-SHA256 with timestamp (Official BillStack specification)
+        if (!empty($signature256) && !empty($timestamp)) {
             $expectedSignatureWithTs = hash_hmac('sha256', "{$timestamp}.{$rawBody}", $this->secretKey);
-            if (hash_equals($expectedSignatureWithTs, $signature)) {
+            if (hash_equals($expectedSignatureWithTs, $signature256)) {
                 return true;
             }
         }
 
-        // Fallback: direct HMAC of raw payload
-        $expectedSignaturePlain = hash_hmac('sha256', $rawBody, $this->secretKey);
-        return hash_equals($expectedSignaturePlain, $signature);
+        // 2. Fallback: HMAC-SHA256 of raw payload alone
+        if (!empty($signature256)) {
+            $expectedSignaturePlain = hash_hmac('sha256', $rawBody, $this->secretKey);
+            if (hash_equals($expectedSignaturePlain, $signature256)) {
+                return true;
+            }
+        }
+
+        // 3. Fallback: Legacy static md5(secret_key)
+        if (!empty($signatureMd5)) {
+            $expectedMd5 = md5($this->secretKey);
+            if (hash_equals($expectedMd5, $signatureMd5)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Retrieve transaction details from BillStack by session_id / transaction_ref.
+     *
+     * @param string $sessionId
+     * @return array
+     */
+    public function getTransaction(string $sessionId): array
+    {
+        if (empty($this->secretKey)) {
+            return [
+                'success' => false,
+                'message' => 'BillStack secret key not configured.'
+            ];
+        }
+
+        try {
+            $endpoint = rtrim($this->baseUrl, '/') . '/thirdparty/getTransaction/';
+            $response = Http::withToken($this->secretKey)
+                ->timeout(20)
+                ->post($endpoint, [
+                    'session_id' => trim($sessionId),
+                ]);
+
+            $result = $response->json();
+
+            if ($response->successful() && (($result['status'] ?? false) === true || isset($result['data']['amount']))) {
+                return [
+                    'success' => true,
+                    'data' => $result['data'] ?? [],
+                    'message' => $result['message'] ?? 'Transaction retrieved.'
+                ];
+            }
+
+            return [
+                'success' => false,
+                'message' => $result['message'] ?? 'Transaction not found or query failed.'
+            ];
+        } catch (\Exception $e) {
+            Log::error("BillStack getTransaction Exception: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Network error connecting to BillStack API.'
+            ];
+        }
     }
 }

@@ -252,7 +252,7 @@ class PaymentController extends Controller
     /**
      * Shared logic to credit wallet and award commissions
      */
-    private function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN')
+    public function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN')
     {
         // 1. Check if this payment reference has already been successfully processed (concurrency check)
         $alreadySuccess = \App\Models\Payment::where('reference', $reference)
@@ -446,19 +446,22 @@ class PaymentController extends Controller
      */
     public function billstackWebhook(Request $request, \App\Services\BillstackService $billstackService)
     {
-        $signature = $request->header('x-wiaxy-signature-256');
-        $timestamp = $request->header('x-wiaxy-timestamp');
+        $signature256 = $request->header('x-wiaxy-signature-256') ?: $request->header('X-Wiaxy-Signature-256');
+        $signatureMd5 = $request->header('x-wiaxy-signature') ?: $request->header('X-Wiaxy-Signature');
+        $timestamp = $request->header('x-wiaxy-timestamp') ?: $request->header('X-Wiaxy-Timestamp');
         $rawBody = $request->getContent();
 
         Log::info('BillStack Webhook Received:', [
-            'has_signature' => !empty($signature),
+            'has_sig256' => !empty($signature256),
+            'has_sigmd5' => !empty($signatureMd5),
             'timestamp' => $timestamp,
             'payload_length' => strlen($rawBody)
         ]);
 
-        if (!$billstackService->verifyWebhookSignature($rawBody, $signature, $timestamp)) {
+        if (!$billstackService->verifyWebhookSignature($rawBody, $signature256, $timestamp, $signatureMd5)) {
             Log::warning('Invalid BillStack Webhook Signature detected.', [
-                'received' => $signature,
+                'sig256' => $signature256,
+                'sigmd5' => $signatureMd5,
                 'timestamp' => $timestamp
             ]);
             return response()->json(['status' => false, 'message' => 'Invalid signature'], 400);
@@ -467,37 +470,58 @@ class PaymentController extends Controller
         $payload = json_decode($rawBody, true) ?: $request->all();
         Log::info('BillStack Webhook Payload:', ['payload' => $payload]);
 
+        $event = strtoupper(trim((string)($payload['event'] ?? '')));
         $data = $payload['data'] ?? $payload;
-        $status = strtolower($data['status'] ?? $payload['status'] ?? '');
+        $dataType = strtoupper(trim((string)($data['type'] ?? '')));
+        $status = strtolower(trim((string)($data['status'] ?? $payload['status'] ?? '')));
 
-        // Settle transaction if status is successful/success/paid/completed
-        if (!in_array($status, ['success', 'successful', 'paid', 'completed'])) {
-            return response()->json(['status' => true, 'message' => 'Non-success event ignored']);
+        // Check if this is a payment notification
+        $isPayment = ($event === 'PAYMENT_NOTIFICATION')
+            || ($dataType === 'RESERVED_ACCOUNT_TRANSACTION')
+            || in_array($status, ['success', 'successful', 'paid', 'completed'])
+            || (isset($payload['status']) && $payload['status'] === true && !empty($data['amount']));
+
+        if (!$isPayment) {
+            Log::info('BillStack Webhook: Non-payment event ignored', [
+                'event' => $event,
+                'type' => $dataType,
+                'status' => $status
+            ]);
+            return response()->json(['status' => true, 'message' => 'Non-payment event ignored'], 200);
         }
 
-        $amount = (float) ($data['amount'] ?? $data['settled_amount'] ?? 0);
+        $amount = (float) ($data['amount'] ?? $data['settled_amount'] ?? $payload['amount'] ?? 0);
         if ($amount <= 0) {
             Log::warning('BillStack Webhook: Zero or negative amount received.', ['data' => $data]);
-            return response()->json(['status' => true, 'message' => 'Zero amount ignored']);
+            return response()->json(['status' => true, 'message' => 'Zero amount ignored'], 200);
         }
 
-        // Unique transaction reference from BillStack session or reference
-        $sessionId = $data['session_id'] ?? $data['reference'] ?? $data['transaction_reference'] ?? null;
+        // Interbank transaction reference (transaction_ref / wiaxy_ref)
+        $txId = $data['transaction_ref'] ?? $data['wiaxy_ref'] ?? $data['session_id'] ?? $data['transaction_reference'] ?? null;
+        $vaRef = $data['merchant_reference'] ?? $data['reference'] ?? null;
         $accountNumber = $data['account']['account_number'] ?? $data['account_number'] ?? null;
         $bankName = $data['account']['bank_name'] ?? $data['bank_name'] ?? 'Virtual Account';
-        $customerEmail = $data['customer']['email'] ?? $data['email'] ?? null;
+        $customerEmail = $data['customer']['email'] ?? $data['customer'] ?? $data['email'] ?? null;
 
-        $ref = 'VA_' . ($sessionId ?: ('TRX_' . ($accountNumber ?: 'ACC') . '_' . time()));
+        if (!empty($txId)) {
+            $ref = 'BS_' . trim($txId);
+        } elseif (!empty($vaRef)) {
+            $ref = 'BS_' . trim($vaRef) . '_' . time();
+        } else {
+            $ref = 'BS_TRX_' . (trim((string)$accountNumber) ?: 'ACC') . '_' . time();
+        }
 
         // Idempotency: Skip if already processed
         if (\App\Models\Payment::where('reference', $ref)->where('status', 'success')->exists()) {
-            return response()->json(['status' => true, 'message' => 'Already processed']);
+            Log::info("BillStack Webhook: Payment {$ref} already processed.");
+            return response()->json(['status' => true, 'message' => 'Already processed'], 200);
         }
 
         // Match User
         $user = null;
         if (!empty($accountNumber)) {
-            $va = \App\Models\UserVirtualAccount::where('account_number', $accountNumber)->first();
+            $cleanAcc = trim((string)$accountNumber);
+            $va = \App\Models\UserVirtualAccount::where('account_number', $cleanAcc)->first();
             if ($va) {
                 $user = $va->user;
                 if (!empty($va->bank_name)) {
@@ -506,26 +530,30 @@ class PaymentController extends Controller
             }
         }
 
-        if (!$user && !empty($customerEmail)) {
-            $user = User::where('email', $customerEmail)->first();
-        }
-
-        if (!$user && !empty($data['reference'])) {
-            $va = \App\Models\UserVirtualAccount::where('reference', $data['reference'])->first();
+        if (!$user && !empty($vaRef)) {
+            $cleanVaRef = trim((string)$vaRef);
+            $va = \App\Models\UserVirtualAccount::where('reference', $cleanVaRef)->first();
             if ($va) {
                 $user = $va->user;
+                if (!empty($va->bank_name)) {
+                    $bankName = $va->bank_name;
+                }
             }
         }
 
+        if (!$user && !empty($customerEmail) && is_string($customerEmail)) {
+            $user = User::where('email', trim($customerEmail))->first();
+        }
+
         if (!$user) {
-            Log::error("BillStack Webhook: User not found for account {$accountNumber} or email {$customerEmail}");
+            Log::error("BillStack Webhook: User not found for account {$accountNumber}, ref {$vaRef}, or email {$customerEmail}");
             return response()->json(['status' => false, 'message' => 'User not found'], 404);
         }
 
         try {
             // Process wallet credit with atomic concurrency protection
             $this->processSuccessfulPayment($user, $amount, $ref, "Virtual Account ({$bankName})", 'NGN');
-            Log::info("BillStack Webhook: Successfully credited user {$user->id} with NGN {$amount} (Ref: {$ref})");
+            Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with NGN {$amount} (Ref: {$ref})");
             return response()->json(['status' => true, 'message' => 'successful'], 200);
         } catch (\Exception $e) {
             Log::error("BillStack Webhook Processing Error for {$ref}: " . $e->getMessage());
