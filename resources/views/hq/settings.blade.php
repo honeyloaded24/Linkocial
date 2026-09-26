@@ -510,8 +510,9 @@
                                     <small class="text-muted d-block mb-3">Define the percentage markup added to the base cost for each service. For example, setting <b>5</b> means a 5% markup is applied to the base price.</small>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Logs Marketplace (%)</label>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Logs Marketplace API Markup (%)</label>
                                     <input type="number" step="0.01" min="0" name="markup_logs_market" class="form-control border-secondary bg-transparent py-2 fw-bold" value="{{ \App\Models\Setting::get('markup_logs_market', 20) }}" style="color: var(--text-main);">
+                                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">Applies only to external API imported products. Local products use their fixed price.</small>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="form-label text-muted small fw-bold text-uppercase">VTU Airtime (%)</label>

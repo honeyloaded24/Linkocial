@@ -32,6 +32,11 @@ class LogProduct extends Model
      */
     public function getWholesalePrice(): float
     {
+        // Local products are self-hosted and have no wholesale provider cost
+        if ($this->type === 'local') {
+            return 0.0;
+        }
+
         return (float) ($this->base_api_price > 0 ? $this->base_api_price : $this->unit_price);
     }
 
@@ -41,11 +46,17 @@ class LogProduct extends Model
     }
 
     /**
-     * Calculate retail selling price with admin global markup percentage.
-     * Overrides static prices across the whole system when markup is set.
+     * Calculate retail selling price.
+     * For external API products: dynamically applies admin global markup percentage over wholesale price.
+     * For local products: uses the fixed price set by the admin directly without applying API markup.
      */
     public function getRetailPrice(): float
     {
+        // Local products: respect the admin set fixed price directly without applying API margin
+        if ($this->type === 'local') {
+            return (float) ($this->our_price > 0 ? $this->our_price : $this->unit_price);
+        }
+
         $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20.0);
         $wholesale = $this->getWholesalePrice();
 

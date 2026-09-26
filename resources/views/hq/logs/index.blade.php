@@ -121,7 +121,7 @@
                                 $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
                                 $retail = $product->getRetailPrice();
                                 $wholesale = $product->getWholesalePrice();
-                                $isUnpriced = ($retail <= 0 && $wholesale <= 0);
+                                $isUnpriced = ($retail <= 0 && ($product->type === 'local' || $wholesale <= 0));
                             @endphp
                             <div class="d-flex align-items-center">
                                 <div class="fw-bold text-success font-monospace me-2" style="font-size: 0.95rem;">
@@ -131,11 +131,17 @@
                                         <span class="text-danger">Unpriced</span>
                                     @endif
                                 </div>
-                                <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size: 0.65rem;">+{{ $markupRate }}%</span>
+                                @if($product->type === 'api')
+                                    <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size: 0.65rem;">+{{ $markupRate }}%</span>
+                                @else
+                                    <span class="badge bg-secondary bg-opacity-15 text-muted" style="font-size: 0.65rem;">Fixed</span>
+                                @endif
                             </div>
-                            <small class="text-muted d-block mt-0.5" style="font-size: 0.72rem;">
-                                Wholesale: ₦{{ number_format($wholesale, 2) }}
-                            </small>
+                            @if($product->type === 'api' && $wholesale > 0)
+                                <small class="text-muted d-block mt-0.5" style="font-size: 0.72rem;">
+                                    Wholesale: ₦{{ number_format($wholesale, 2) }}
+                                </small>
+                            @endif
                             @if($isUnpriced)
                                 <small class="text-danger fw-bold d-block mt-1" style="font-size: 0.72rem;">
                                     <i class="fa-solid fa-triangle-exclamation me-1"></i>Zero cost (blocked for buyers)

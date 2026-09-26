@@ -1418,16 +1418,16 @@ class AdminController extends Controller
             \App\Models\Setting::set($key, $value);
         }
 
-        // When Log Marketplace markup percentage is updated, sync our_price across all products
+        // When Log Marketplace markup percentage is updated, sync our_price ONLY for external API products
         if ($request->filled('markup_logs_market')) {
             $newMarkup = (float) $request->input('markup_logs_market', 20.0);
             $multiplier = 1 + ($newMarkup / 100);
-            \App\Models\LogProduct::where(function($q) {
-                $q->where('base_api_price', '>', 0)->orWhere('unit_price', '>', 0);
-            })->each(function($prod) use ($multiplier) {
-                $cost = (float) ($prod->base_api_price > 0 ? $prod->base_api_price : $prod->unit_price);
-                $prod->update(['our_price' => round($cost * $multiplier, 2)]);
-            });
+            \App\Models\LogProduct::where('type', 'api')
+                ->where('base_api_price', '>', 0)
+                ->each(function($prod) use ($multiplier) {
+                    $cost = (float) $prod->base_api_price;
+                    $prod->update(['our_price' => round($cost * $multiplier, 2)]);
+                });
         }
 
         $sanitizedLog = $request->except([
