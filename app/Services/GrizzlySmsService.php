@@ -11,39 +11,430 @@ class GrizzlySmsService
     protected ?string $apiKey;
 
     /**
-     * Map of common service codes to readable names for Grizzly SMS.
+     * Comprehensive Map of service codes to readable names for Grizzly SMS / SMS-Activate protocol.
      */
     protected array $serviceDictionary = [
+        // Top Global & Messaging
         'tg' => 'Telegram',
+        'tgm' => 'Telegram',
+        'te' => 'Telegram',
         'wa' => 'WhatsApp',
+        'wha' => 'WhatsApp',
         'go' => 'Google / Gmail / YouTube',
         'ig' => 'Instagram',
         'fb' => 'Facebook',
         'tw' => 'Twitter / X',
+        'tv' => 'Twitter / X',
+        'twi' => 'Twitter / X',
         'vi' => 'Viber',
+        'vbr' => 'Viber',
+        'vb' => 'Viber',
         'oi' => 'Tinder',
+        'tin' => 'Tinder',
         'ds' => 'Discord',
         'nf' => 'Netflix',
         'tk' => 'TikTok',
+        'tik' => 'TikTok',
+        'lf' => 'TikTok / Douyin',
         'mb' => 'Yahoo',
+        'yah' => 'Yahoo',
+        'yh' => 'Yahoo',
         'ub' => 'Uber',
+        'ua' => 'Uber',
+        'ue' => 'Uber Eats',
         'wb' => 'WeChat',
+        'wc' => 'WeChat',
+        'wx' => 'Apple / iCloud',
         'sn' => 'Snapchat',
         'am' => 'Amazon',
         'li' => 'LinkedIn',
+        'lin' => 'LinkedIn',
         'me' => 'Line',
+        'ln' => 'Line',
         'pm' => 'AOL',
         'hw' => 'AliPay / Alibaba',
         'kt' => 'KakaoTalk',
         'dr' => 'OpenTable',
         'ya' => 'Yandex',
+        'yd' => 'Yandex',
+        'yx' => 'Yandex',
+        'ym' => 'Yandex Money / YooMoney',
         'vk' => 'VKontakte',
         'ok' => 'Odnoklassniki',
+        'od' => 'Odnoklassniki',
         'ma' => 'Mail.ru',
         'bl' => 'Bigo Live',
         'qq' => 'QQ',
+        
+        // Financial & Crypto
+        'ts' => 'PayPal',
+        'pp' => 'PayPal',
+        're' => 'Coinbase',
+        'bd' => 'Binance',
+        'bin' => 'Binance',
+        'bo' => 'Wise (TransferWise)',
+        'ii' => 'Cash App',
+        'csh' => 'Cash App',
+        'rj' => 'Revolut',
+        'rev' => 'Revolut',
+        've' => 'Venmo',
+        'pa' => 'Payoneer',
+        'str' => 'Stripe',
+        'sq' => 'Square',
+        'kw' => 'KuCoin',
+        'ku' => 'KuCoin',
+        'byb' => 'Bybit',
+        'okx' => 'OKX',
+        'kra' => 'Kraken',
+        'gem' => 'Gemini',
+        'bex' => 'Bitfinex',
+        'btx' => 'Bittrex',
+        'mxc' => 'MEXC',
+        'gat' => 'Gate.io',
+        'huo' => 'HTX / Huobi',
+        'ld' => 'Ledger',
+        'lt' => 'BitForex',
+        'ky' => 'Kriptomat',
+        'jy' => 'BitClout',
+        'jc' => 'Bitso',
+        'pc' => 'CoinField',
+        'we' => 'WebMoney',
+        'wm' => 'WebMoney',
+        'ge' => 'PaySend',
+        'pe' => 'Paysera',
+        'jq' => 'Paysafecard',
+        'gr' => 'AstroPay',
+        'gm' => 'Monese',
+        'py' => 'Monese',
+        'mu' => 'Monese',
+        'mn' => 'Monobank',
+        'mon' => 'Monzo',
+        'nu' => 'Nubank',
+        'iu' => 'Itau Bank',
+        'pj' => 'PrivatBank',
+        'kn' => 'KoronaPay',
+        'wu' => 'Western Union',
+        'jo' => 'SoFi',
+        'chk' => 'Chime',
+        'jz' => 'Tazapay',
+        'lx' => 'Luxon Pay',
+        'kg' => 'Kredivo',
+        'qg' => 'Qiwi',
+        'qh' => 'Qiwi',
+        'qi' => 'Qiwi',
+        'hc' => 'Paycell',
+        'gg' => 'PagSmile',
+        'ix' => 'Celcoin',
+        'ja' => 'WiZink',
+        'jb' => 'Wing Money',
+        'jp' => 'JKOPAY',
+        'mp' => 'MirPay',
+        'mk' => 'Mir',
+        'mr' => 'Mir',
+        'js' => 'Freecharge',
+        'mj' => 'Mercado Pago',
+        'cq' => 'Mercado',
+        'ov' => 'OVO',
+        'dp' => 'ProtonMail',
+
+        // Tech, Cloud & Productivity
+        'ms' => 'Microsoft / Outlook / Hotmail',
+        'mm' => 'Microsoft / Outlook / Hotmail',
+        'off' => 'Office 365',
+        'clo' => 'Cloudflare',
+        'ns' => 'Notion',
+        'wp' => 'WordPress',
+        'ra' => 'Keybase',
+        'up' => 'Upwork',
+        'iy' => 'Fiverr',
+        'to' => 'Toptal',
+        'kd' => 'Kwork',
+        'ji' => 'Medium',
+        'zoo' => 'Zoom',
+        'id' => 'Intercom',
+        'jh' => 'PingCode',
+        'si' => 'Signal',
+        'gf' => 'Google Voice',
+        'tc' => 'Truecaller',
+        'im' => 'Imo',
+        'io' => 'Imo',
+        'tu' => 'Tuya / Smart Life',
+
+        // Entertainment, Gaming & Streaming
+        'mt' => 'Steam',
+        'ste' => 'Steam',
+        'rf' => 'Roblox',
+        'rob' => 'Roblox',
+        'ps' => 'PlayStation / Sony',
+        'xb' => 'Xbox',
+        'tt' => 'Twitch',
+        'hb' => 'Twitch',
+        'spo' => 'Spotify',
+        'yt' => 'YouTube',
+        'bla' => 'Blizzard / Battle.net',
+        'epi' => 'Epic Games',
+        'eas' => 'EA Sports',
+        'lp' => 'League of Legends',
+        'mq' => 'MOBA',
+        'rr' => 'Razer',
+        'rk' => 'Roku',
+        'ze' => 'Zee5',
+        'iq' => 'iQIYI',
+        'iw' => 'iQIYI',
+        'lc' => 'Likee',
+        'jw' => 'Kwai',
+        'ni' => 'Nimo TV',
+        'hg' => 'Huya',
+        'kj' => 'Kugou',
+        'ru' => 'Rutube',
+        'vd' => 'Video',
+        'vr' => 'VR Games',
+        'll' => '888casino',
+        'ie' => 'Betfair',
+        'nb' => 'NetBet',
+        'pz' => 'Loto',
+        'gc' => 'Gamekit',
+        'pk' => 'PlayerAuctions',
+        'pl' => 'Playtech',
+        'pq' => 'CDKeys',
+        'ng' => 'Discord Nitro',
+
+        // Dating & Social Apps
+        'mo' => 'Bumble',
+        'df' => 'Happn',
+        'se' => 'Feeld',
+        'sb' => 'Skout',
+        'ta' => 'Tantan',
+        'pi' => 'Pure Dating',
+        'pr' => 'Pure Dating',
+        'pu' => 'JustDating',
+        'lw' => 'Lovoo',
+        'mh' => 'Match.com',
+        'oc' => 'OkCupid',
+        'fd' => 'Mamba',
+        'of' => 'OnlyFans',
+        'rd' => 'Reddit',
+        'red' => 'Reddit',
+        'za' => 'Zalo',
+        'co' => 'RedBook (XiaoHongShu)',
+        'rb' => 'RedBook (XiaoHongShu)',
+        'mc' => 'MiChat',
+        'tm' => 'TamTam',
+        'cla' => 'Clubhouse',
+        'kf' => 'Weverse',
+        'om' => 'Omegle',
+        'hl' => 'Band',
+        'hn' => 'Handshake',
+        'if' => 'Yalla',
+        'gb' => 'YouStar',
+        'nk' => 'Nekto.me',
+        'sm' => 'YoWin',
+
+        // E-Commerce & Shopping
+        'ew' => 'Nike',
+        'nq' => 'Nike',
+        'nh' => 'Nike',
+        'ks' => 'SNKRS (Nike)',
+        'eb' => 'eBay',
+        'ka' => 'Shopee',
+        'sh' => 'Shopee',
+        'jl' => 'Lazada',
+        'lz' => 'Lazada',
+        'tb' => 'Taobao',
+        'pt' => 'Pinduoduo',
+        'wh' => 'Wish',
+        'wd' => 'Wildberries',
+        'oz' => 'Ozon',
+        'vz' => 'Vinted',
+        'jv' => 'Vinted',
+        'dep' => 'Depop',
+        'pos' => 'Poshmark',
+        'ets' => 'Etsy',
+        'dhg' => 'DHgate',
+        'ly' => 'OLX',
+        'jm' => 'Jiji',
+        'kh' => 'Bukalapak',
+        'gx' => 'Hepsiburada',
+        'hv' => 'HepsiGlobal',
+        'sk' => 'Skroutz',
+        'my' => 'Myntra',
+        'lk' => 'Lamoda',
+        'lm' => 'Leroy Merlin',
+        'ir' => 'Redbubble',
+        'pw' => 'SellMonitor',
+        'le' => 'Leboncoin',
+        'kb' => 'Kufar',
+        'kz' => 'Kufar',
+        'la' => 'Lalafo',
+        'it' => 'Rozetka',
+        'ro' => 'Rozetka',
+        'km' => 'Rozetka',
+        'yb' => 'Youla',
+        'yo' => 'YouDo',
+        'nam' => 'Namshi',
+        'iz' => 'Big C',
+
+        // Delivery, Food & Travel
+        'wr' => 'Wolt',
+        'wl' => 'Wolt',
+        'nz' => 'Foodpanda',
+        'dop' => 'DoorDash',
+        'dh' => 'DoorDash',
+        'grb' => 'Grubhub',
+        'je' => 'Just Eat',
+        'pd' => 'iFood',
+        'ph' => 'SnappFood',
+        'jk' => 'Swiggy',
+        'jf' => 'JioMart',
+        'md' => 'McDonalds',
+        'ip' => 'Burger King',
+        'lq' => 'Luckin Coffee',
+        'pn' => 'Coffee Like',
+        'hf' => 'HungryPanda',
+        'jg' => 'Grab',
+        'jn' => 'Ola Cabs',
+        'ol' => 'Ola Cabs',
+        'gt' => 'Gett',
+        'hj' => 'DiDi',
+        'hy' => 'InDrive',
+        'iv' => 'InDrive',
+        'ic' => 'Citymobil',
+        'sd' => 'Citymobil',
+        'ju' => 'Uklon',
+        'rp' => 'Rapido',
+        'ht' => 'Bykea',
+        'lyf' => 'Lyft',
+        'bz' => 'BlaBlaCar',
+        'air' => 'Airbnb',
+        'ab' => 'Airbnb',
+        'sa' => 'Agoda',
+        'ho' => 'Cathay',
+        'ev' => 'Hermes',
+        'jr' => 'CDEK',
+        'np' => 'Nova Poshta',
+
+        // Telecom, Portals & Others
+        'nv' => 'Naver',
+        'mi' => 'Xiaomi',
+        'hi' => 'Jio',
+        'hh' => 'Optus',
+        'tl' => 'Tele2',
+        'lg' => 'Lycamobile',
+        'lv' => 'Megafon',
+        'vf' => 'Vodafone',
+        'vg' => 'Virgin Mobile',
+        'ke' => 'KKTCell',
+        'hr' => 'Rostelecom',
+        'rg' => 'Rostelecom',
+        'hs' => 'Alfa Bank',
+        'hu' => 'Ukrnet',
+        'sw' => 'Swagbucks',
+        'is' => 'Seosprint',
+        'na' => 'Namars',
+        'kp' => 'HQ Trivia',
+        'kc' => 'Vkusvill',
+        'mf' => 'Miratorg',
+        'mg' => 'Magnit',
+        'mz' => 'Magnit',
+        'lj' => 'Lenta',
+        'lr' => 'Lenta',
+        'zz' => 'Dent',
+        'eve' => 'Evernote',
+        'gh' => 'GyFTR',
+        'gj' => 'Carousell',
+        'fx' => 'PGbonus',
+        'pg' => 'PGbonus',
+        'fz' => 'Facily',
+        'hd' => 'Handypark',
+        'il' => 'IQOS',
+        'ib' => 'Ibotta',
+        'ij' => 'Rebtel',
+        'jx' => 'Paxful',
+        'kq' => 'Koo',
+        'ku' => 'Kueski',
+        'kx' => 'Kumu',
+        'lh' => 'Luno',
+        'nc' => 'Nic.ru',
+        'op' => 'OpenSea',
+        'px' => 'Nifty',
         'ot' => 'Any Other Service',
     ];
+
+    /**
+     * Get human-readable service name for a given service code.
+     */
+    public function getServiceName(string $code): string
+    {
+        $codeClean = strtolower(trim($code));
+
+        // 1. Check live/cached dynamic dictionary from Grizzly API
+        $dynamic = $this->getDynamicServices();
+        if (isset($dynamic[$codeClean]) && !empty($dynamic[$codeClean])) {
+            return $dynamic[$codeClean];
+        }
+
+        // 2. Check comprehensive static dictionary
+        if (isset($this->serviceDictionary[$codeClean])) {
+            return $this->serviceDictionary[$codeClean];
+        }
+
+        // 3. Fallback: if it's already a descriptive word, format cleanly
+        if (strlen($codeClean) > 3) {
+            return ucwords(str_replace(['_', '-'], ' ', $codeClean));
+        }
+
+        return 'Other (' . strtoupper($codeClean) . ')';
+    }
+
+    /**
+     * Retrieve and cache dynamic service list from Grizzly SMS API if available.
+     */
+    public function getDynamicServices(): array
+    {
+        if (empty($this->apiKey)) {
+            return [];
+        }
+
+        return \Illuminate\Support\Facades\Cache::remember('grizzly_services_dictionary', 86400, function () {
+            try {
+                $response = Http::timeout(15)->get($this->baseUrl, [
+                    'api_key' => $this->apiKey,
+                    'action' => 'getServicesList',
+                    'format' => 'json',
+                    'lang' => 'en',
+                ]);
+
+                if ($response->successful()) {
+                    $json = $response->json();
+                    $dict = [];
+                    if (is_array($json)) {
+                        if (isset($json['services']) && is_array($json['services'])) {
+                            foreach ($json['services'] as $svc) {
+                                if (isset($svc['code']) && isset($svc['name'])) {
+                                    $dict[strtolower(trim($svc['code']))] = trim($svc['name']);
+                                }
+                            }
+                        } else {
+                            foreach ($json as $k => $v) {
+                                if (is_array($v) && isset($v['name'])) {
+                                    $dict[strtolower(trim($k))] = trim($v['name']);
+                                } elseif (is_string($v)) {
+                                    $dict[strtolower(trim($k))] = trim($v);
+                                }
+                            }
+                        }
+                    }
+                    if (!empty($dict)) {
+                        return $dict;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Grizzly getServicesList API call skipped: ' . $e->getMessage());
+            }
+
+            return [];
+        });
+    }
 
     public function __construct()
     {
@@ -169,7 +560,7 @@ class GrizzlySmsService
                     continue;
                 }
 
-                $serviceName = $this->serviceDictionary[strtolower($code)] ?? strtoupper($code);
+                $serviceName = $this->getServiceName($code);
 
                 $items[] = [
                     'service' => (string) $code,
@@ -226,7 +617,7 @@ class GrizzlySmsService
         // Try parsing JSON (getNumberV2 response)
         $data = $response->json();
         if (is_array($data) && isset($data['activationId']) && isset($data['phoneNumber'])) {
-            $serviceName = $this->serviceDictionary[strtolower($service)] ?? strtoupper($service);
+            $serviceName = $this->getServiceName($service);
             return [
                 'success' => 1,
                 'order_id' => (string)$data['activationId'],
@@ -242,7 +633,7 @@ class GrizzlySmsService
         if (str_starts_with($body, 'ACCESS_NUMBER:')) {
             $parts = explode(':', $body);
             if (count($parts) >= 3) {
-                $serviceName = $this->serviceDictionary[strtolower($service)] ?? strtoupper($service);
+                $serviceName = $this->getServiceName($service);
                 return [
                     'success' => 1,
                     'order_id' => (string)$parts[1],

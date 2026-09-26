@@ -114,6 +114,11 @@ class VirtualNumberController extends Controller
                     continue;
                 }
 
+                // If Server 2, ensure service name is never an abbreviation
+                if ($server === 'server2' && (strlen($serviceName) <= 3 || strtoupper($serviceName) === $serviceName)) {
+                    $serviceName = $this->grizzly->getServiceName($serviceId);
+                }
+
                 if (!isset($grouped[$serviceName])) {
                     $grouped[$serviceName] = [
                         'id' => $serviceId,
@@ -189,6 +194,10 @@ class VirtualNumberController extends Controller
 
             if ($cheapestPrice === null) {
                 return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'], 400);
+            }
+
+            if ($server === 'server2' && $productId) {
+                $serviceName = $this->grizzly->getServiceName($productId);
             }
 
             $activeWholesalePrice = $cheapestPrice;
@@ -299,7 +308,11 @@ class VirtualNumberController extends Controller
                 $countryName = $buyResponse['country'] ?? (string)$country;
             }
 
-            $serviceName = $buyResponse['service'] ?? $serviceName;
+            if (!empty($buyResponse['service']) && strlen($buyResponse['service']) > 3) {
+                $serviceName = $buyResponse['service'];
+            } elseif ($server === 'server2') {
+                $serviceName = $this->grizzly->getServiceName($buyResponse['service'] ?? $productId ?? $serviceName);
+            }
 
             if (!$apiOrderId) {
                 DB::beginTransaction();
@@ -599,6 +612,10 @@ class VirtualNumberController extends Controller
                     'success' => false,
                     'message' => 'Service currently out of stock or unavailable for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'
                 ], 404);
+            }
+
+            if ($server === 'server2' && $productId) {
+                $serviceName = $this->grizzly->getServiceName($productId);
             }
 
             $activeWholesalePrice = $cheapestPrice;
