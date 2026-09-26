@@ -410,26 +410,30 @@
                     </button>
                 </div>
 
-                <!-- Fund Wallet Button (Desktop only, mobile uses balance pill) -->
-                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-none d-md-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover me-1 pulse-hover">
-                    <i class="fa-solid fa-plus-circle"></i>
-                    <span>Fund Wallet</span>
+                <!-- Fund Wallet Button -->
+                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm transition-hover px-2 px-md-3 py-1" style="height: 32px;" title="Fund Wallet">
+                    <i class="fa-solid fa-plus"></i>
+                    <span class="d-none d-md-inline ms-1">Fund Wallet</span>
                 </a>
                 @endauth
 
-                <!-- Currency Switcher (Desktop only, mobile in profile menu) -->
-                <div class="dropdown me-md-2 d-none d-md-block">
+                <!-- Currency Switcher -->
+                <div class="dropdown me-md-2">
                     @php
                         $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                         $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
                     @endphp
-                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3);" title="Change Currency">
-                        <i class="fa-solid fa-coins text-primary" style="color: var(--primary-color);"></i>
-                        <span class="d-none d-sm-inline opacity-75 fw-normal small">Change:</span>
-                        <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
-                        <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.8em; color: var(--primary-color);"></i>
+                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-2 px-md-3 py-1 shadow-sm transition-hover" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 32px;" title="Change Currency">
+                        <span class="d-none d-md-inline-flex align-items-center gap-1">
+                            <i class="fa-solid fa-coins text-primary" style="color: var(--primary-color);"></i>
+                            <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
+                            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.75em; color: var(--primary-color);"></i>
+                        </span>
+                        <span class="d-inline d-md-none fw-bold" style="color: var(--primary-color); font-size: 0.85rem;">
+                            {{ $currentCurrency->symbol }}
+                        </span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdown" style="z-index: 2001; max-height: 300px; overflow-y: auto;">
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdown" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
                         @foreach($activeCurrencies as $cur)
                             <li>
                                 <form action="{{ route('currency.switch') }}" method="POST">
@@ -520,32 +524,12 @@
                     <!-- Profile Dropdown -->
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="rounded-circle bg-primary-custom text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 40px; height: 40px; font-size: 0.9rem;">
+                            <div class="rounded-circle bg-primary-custom text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 34px; height: 34px; font-size: 0.85rem;">
                                 {{ substr(Auth::user()->first_name ?? 'U', 0, 1) }}{{ substr(Auth::user()->last_name ?? 'U', 0, 1) }}
                             </div>
-                            <i class="fa-solid fa-chevron-down small text-muted ms-2"></i>
+                            <i class="fa-solid fa-chevron-down small text-muted ms-1" style="font-size: 0.7em;"></i>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3" style="min-width: 220px;">
-                            @if(isset($activeCurrencies) && count($activeCurrencies) > 0)
-                            <li class="d-md-none px-3 py-2">
-                                <div class="text-muted small fw-bold text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">
-                                    <i class="fa-solid fa-coins me-1 text-primary"></i> Currency
-                                </div>
-                                <div class="d-flex flex-wrap gap-1">
-                                    @foreach($activeCurrencies as $cur)
-                                        <form action="{{ route('currency.switch') }}" method="POST" class="d-inline mb-0">
-                                            @csrf
-                                            <input type="hidden" name="currency_code" value="{{ $cur->code }}">
-                                            <button type="submit" class="btn btn-xs {{ ($currentCurrency->code ?? '') == $cur->code ? 'btn-primary-custom text-white fw-bold' : 'btn-outline-secondary' }} rounded-pill px-2 py-1" style="font-size: 0.72rem;">
-                                                {{ $cur->code }} ({{ $cur->symbol }})
-                                            </button>
-                                        </form>
-                                    @endforeach
-                                </div>
-                            </li>
-                            <li class="d-md-none"><hr class="dropdown-divider opacity-10"></li>
-                            @endif
-
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3">
                             <li><a class="dropdown-item rounded p-2" href="{{ route('profile.index') }}"><i class="fa-solid fa-user-pen me-2 text-primary"></i> Edit Profile</a></li>
                             <li><a class="dropdown-item rounded p-2" href="{{ route('wallet.index') }}"><i class="fa-solid fa-wallet me-2 text-primary"></i> My Wallet</a></li>
                             <li class="d-md-none"><a class="dropdown-item rounded p-2" href="#" data-bs-toggle="modal" data-bs-target="#mobileNotificationsModal"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications @if(isset($unreadCount) && $unreadCount > 0)<span class="badge bg-danger ms-2">{{ $unreadCount }}</span>@endif</a></li>
