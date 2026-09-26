@@ -424,7 +424,8 @@ class PaymentController extends Controller
             }
         }
 
-        $result = $billstackService->generateVirtualAccount($user, $bank, $bvn);
+        $forceNew = $request->boolean('force_new');
+        $result = $billstackService->generateVirtualAccount($user, $bank, $bvn, $forceNew);
 
         if (!$result['success']) {
             return response()->json([

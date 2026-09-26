@@ -38,7 +38,7 @@ class BillstackService
      * @param string|null $bvn Required when $bank is 'PALMPAY'
      * @return array
      */
-    public function generateVirtualAccount(User $user, string $bank = '9PSB', ?string $bvn = null): array
+    public function generateVirtualAccount(User $user, string $bank = '9PSB', ?string $bvn = null, bool $forceNew = false): array
     {
         $bank = strtoupper(trim($bank));
 
@@ -49,18 +49,20 @@ class BillstackService
             ];
         }
 
-        // Return existing active account if already generated
+        // Return existing active account if already generated (unless forcing new or cleaning Customer User)
         $existing = UserVirtualAccount::where('user_id', $user->id)
             ->where('bank_id', $bank)
             ->where('status', 'active')
             ->first();
 
-        if ($existing && !empty($existing->account_number)) {
-            return [
-                'success' => true,
-                'account' => $existing,
-                'message' => 'Account already generated.'
-            ];
+        if ($existing && !empty($existing->account_number) && !$forceNew) {
+            if (!str_contains($existing->account_name, 'Customer User')) {
+                return [
+                    'success' => true,
+                    'account' => $existing,
+                    'message' => 'Account already generated.'
+                ];
+            }
         }
 
         if (empty($this->secretKey)) {
@@ -71,10 +73,18 @@ class BillstackService
             ];
         }
 
-        // Parse Name
-        $nameParts = explode(' ', trim($user->name ?? 'Customer User'));
-        $firstName = $nameParts[0] ?? 'User';
-        $lastName = isset($nameParts[1]) ? implode(' ', array_slice($nameParts, 1)) : ($user->username ?: 'Customer');
+        // Parse Name from user attributes
+        $firstName = trim($user->first_name ?? '');
+        $lastName = trim($user->last_name ?? '');
+
+        if (empty($firstName) && empty($lastName)) {
+            $firstName = trim($user->username ?: 'Customer');
+            $lastName = 'User';
+        } elseif (empty($lastName)) {
+            $lastName = trim($user->username ?: $firstName);
+        } elseif (empty($firstName)) {
+            $firstName = trim($user->username ?: $lastName);
+        }
 
         // Parse Phone
         $phone = preg_replace('/[^0-9]/', '', (string)($user->phone ?? ''));
@@ -145,7 +155,7 @@ class BillstackService
                 }
 
                 $accountNumber = $acc['account_number'] ?? $data['account_number'] ?? null;
-                $accountName = $acc['account_name'] ?? $data['account_name'] ?? ($user->name);
+                $accountName = $acc['account_name'] ?? $data['account_name'] ?? ($firstName . ' ' . $lastName);
                 $bankName = $acc['bank_name'] ?? ($bank === 'PALMPAY' ? 'PalmPay' : '9Payment Service Bank (9PSB)');
                 $apiRef = $data['reference'] ?? $reference;
 

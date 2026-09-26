@@ -59,6 +59,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'admin' || $this->is_admin;
     }
 
+    public function getNameAttribute(): string
+    {
+        $full = trim(($this->first_name ?? '') . ' ' . ($this->last_name ?? ''));
+        return $full ?: ($this->username ?? 'User');
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *

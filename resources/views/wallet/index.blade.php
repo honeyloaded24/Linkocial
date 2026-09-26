@@ -56,8 +56,8 @@
                                         </div>
                                         <h6 class="fw-bold mb-0 text-main">9PSB Bank</h6>
                                     </div>
-                                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25 px-2 py-1 x-small">
-                                        <i class="fa-solid fa-circle-dot me-1"></i> Active
+                                    <span class="badge bg-success text-white rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 shadow-sm" style="font-size: 0.72rem; font-weight: 600;">
+                                        <i class="fa-solid fa-circle-check"></i> Active
                                     </span>
                                 </div>
 
@@ -71,8 +71,15 @@
                                     </button>
                                 </div>
 
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span>Account Name: <strong class="text-main">{{ $account9psb->account_name }}</strong></span>
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span>Account Name: <strong class="text-main">{{ $account9psb->account_name }}</strong></span>
+                                        @if(str_contains($account9psb->account_name, 'Customer User'))
+                                            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;" onclick="generateAccount('9PSB', true, this)" title="Update to your real profile name">
+                                                <i class="fa-solid fa-rotate me-1"></i> Sync Real Name
+                                            </button>
+                                        @endif
+                                    </div>
                                     <span>Bank: <strong class="text-main">9PSB</strong></span>
                                 </div>
                             </div>
@@ -103,8 +110,8 @@
                                         </div>
                                         <h6 class="fw-bold mb-0 text-main">PalmPay</h6>
                                     </div>
-                                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25 px-2 py-1 x-small">
-                                        <i class="fa-solid fa-circle-dot me-1"></i> Active
+                                    <span class="badge bg-success text-white rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1 shadow-sm" style="font-size: 0.72rem; font-weight: 600;">
+                                        <i class="fa-solid fa-circle-check"></i> Active
                                     </span>
                                 </div>
 
@@ -118,8 +125,15 @@
                                     </button>
                                 </div>
 
-                                <div class="d-flex justify-content-between small text-muted">
-                                    <span>Account Name: <strong class="text-main">{{ $accountPalmpay->account_name }}</strong></span>
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 small text-muted">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span>Account Name: <strong class="text-main">{{ $accountPalmpay->account_name }}</strong></span>
+                                        @if(str_contains($accountPalmpay->account_name, 'Customer User'))
+                                            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2 py-0.5" style="font-size: 0.72rem;" onclick="generateAccount('PALMPAY', true, this)" title="Update to your real profile name">
+                                                <i class="fa-solid fa-rotate me-1"></i> Sync Real Name
+                                            </button>
+                                        @endif
+                                    </div>
                                     <span>Bank: <strong class="text-main">PalmPay</strong></span>
                                 </div>
                             </div>
@@ -249,11 +263,11 @@
     }
 
     // Generate Virtual Account
-    async function generateAccount(bank) {
+    async function generateAccount(bank, force = false, triggerBtn = null) {
         let bvn = null;
-        const btn = bank === '9PSB' ? document.getElementById('btnGen9psb') : document.getElementById('btnGenPalmpay');
+        const btn = triggerBtn || (bank === '9PSB' ? document.getElementById('btnGen9psb') : document.getElementById('btnGenPalmpay'));
 
-        if (bank === 'PALMPAY') {
+        if (bank === 'PALMPAY' && !force) {
             const bvnInput = document.getElementById('bvnInputPalmpay');
             bvn = bvnInput ? bvnInput.value.trim() : '';
             if (bvn.length !== 11 || !/^\d+$/.test(bvn)) {
@@ -267,9 +281,11 @@
             }
         }
 
-        const originalBtnHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Generating...';
+        const originalBtnHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> ' + (force ? 'Updating...' : 'Generating...');
+        }
 
         try {
             const response = await fetch("{{ route('wallet.virtual-account.generate') }}", {
@@ -278,7 +294,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ bank: bank, bvn: bvn })
+                body: JSON.stringify({ bank: bank, bvn: bvn, force_new: force })
             });
 
             const result = await response.json();
@@ -292,8 +308,10 @@
                     text: result.message || 'Could not generate virtual account.',
                     confirmButtonColor: '#6366f1'
                 });
-                btn.disabled = false;
-                btn.innerHTML = originalBtnHtml;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                }
             }
         } catch (error) {
             Swal.fire({
@@ -302,8 +320,10 @@
                 text: 'Could not connect to server.',
                 confirmButtonColor: '#6366f1'
             });
-            btn.disabled = false;
-            btn.innerHTML = originalBtnHtml;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+            }
         }
     }
 
