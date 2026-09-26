@@ -396,11 +396,11 @@
                 </button>
             </div>
             
-            <div class="d-flex align-items-center gap-2 gap-md-3">
+            <div class="d-flex align-items-center gap-1 gap-sm-2 gap-md-3">
                 
                 @auth
                 <!-- Balance Pill Button (with Eye Toggle) -->
-                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.82rem;" title="Current Balance">
+                <div class="d-flex align-items-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem;" title="Current Balance">
                     <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
                         <i class="fa-solid fa-wallet text-muted me-1"></i>
                         <span id="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
@@ -409,16 +409,16 @@
                         <i class="fa-regular fa-eye" id="topbarBalanceEye"></i>
                     </button>
                 </div>
+
+                <!-- Fund Wallet Button (Desktop only, mobile uses balance pill) -->
+                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-none d-md-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover me-1 pulse-hover">
+                    <i class="fa-solid fa-plus-circle"></i>
+                    <span>Fund Wallet</span>
+                </a>
                 @endauth
 
-                <!-- Fund Wallet Button -->
-                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover me-1 pulse-hover">
-                    <i class="fa-solid fa-plus-circle"></i>
-                    <span class="d-none d-md-inline">Fund Wallet</span>
-                </a>
-
-                <!-- Currency Switcher -->
-                <div class="dropdown me-md-2">
+                <!-- Currency Switcher (Desktop only, mobile in profile menu) -->
+                <div class="dropdown me-md-2 d-none d-md-block">
                     @php
                         $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                         $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
@@ -525,7 +525,27 @@
                             </div>
                             <i class="fa-solid fa-chevron-down small text-muted ms-2"></i>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3">
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3" style="min-width: 220px;">
+                            @if(isset($activeCurrencies) && count($activeCurrencies) > 0)
+                            <li class="d-md-none px-3 py-2">
+                                <div class="text-muted small fw-bold text-uppercase mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">
+                                    <i class="fa-solid fa-coins me-1 text-primary"></i> Currency
+                                </div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach($activeCurrencies as $cur)
+                                        <form action="{{ route('currency.switch') }}" method="POST" class="d-inline mb-0">
+                                            @csrf
+                                            <input type="hidden" name="currency_code" value="{{ $cur->code }}">
+                                            <button type="submit" class="btn btn-xs {{ ($currentCurrency->code ?? '') == $cur->code ? 'btn-primary-custom text-white fw-bold' : 'btn-outline-secondary' }} rounded-pill px-2 py-1" style="font-size: 0.72rem;">
+                                                {{ $cur->code }} ({{ $cur->symbol }})
+                                            </button>
+                                        </form>
+                                    @endforeach
+                                </div>
+                            </li>
+                            <li class="d-md-none"><hr class="dropdown-divider opacity-10"></li>
+                            @endif
+
                             <li><a class="dropdown-item rounded p-2" href="{{ route('profile.index') }}"><i class="fa-solid fa-user-pen me-2 text-primary"></i> Edit Profile</a></li>
                             <li><a class="dropdown-item rounded p-2" href="{{ route('wallet.index') }}"><i class="fa-solid fa-wallet me-2 text-primary"></i> My Wallet</a></li>
                             <li class="d-md-none"><a class="dropdown-item rounded p-2" href="#" data-bs-toggle="modal" data-bs-target="#mobileNotificationsModal"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications @if(isset($unreadCount) && $unreadCount > 0)<span class="badge bg-danger ms-2">{{ $unreadCount }}</span>@endif</a></li>
