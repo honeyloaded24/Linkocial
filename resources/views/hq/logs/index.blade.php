@@ -97,7 +97,7 @@
                             <div class="d-flex align-items-center gap-2">
                                 {!! $product->getIconHtml(36) !!}
                                 <div>
-                                    <div class="fw-bold" style="font-size: 0.85rem;">{{ $product->name }}</div>
+                                    <div class="fw-bold" style="font-size: 0.85rem; word-break: break-word; overflow-wrap: anywhere;">{{ $product->name }}</div>
                                     @if($product->type === 'api')
                                         <small class="text-muted" style="font-size: 0.75rem;">Key: {{ $product->api_product_key }}</small>
                                     @endif

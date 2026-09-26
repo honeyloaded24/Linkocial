@@ -72,6 +72,9 @@
     .log-title-link {
         color: var(--primary-color, #0d6efd) !important;
         transition: opacity 0.15s ease;
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
     }
     .log-title-link:hover {
         text-decoration: underline !important;

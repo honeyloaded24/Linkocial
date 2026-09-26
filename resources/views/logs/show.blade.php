@@ -97,7 +97,7 @@
                     <div class="d-flex align-items-start gap-3.5 mb-2">
                         {!! $product->getIconHtml(52, 'flex-shrink-0') !!}
                         <div class="flex-grow-1 min-w-0">
-                            <h4 class="fw-bold mb-1.5" style="color: var(--text-main, #0f172a); font-size: 1.2rem; line-height: 1.4;">
+                            <h4 class="fw-bold mb-1.5" style="color: var(--text-main, #0f172a); font-size: 1.2rem; line-height: 1.4; word-break: break-word; overflow-wrap: anywhere;">
                                 {{ $product->name }}
                             </h4>
                             <div class="d-flex align-items-center flex-wrap gap-2">

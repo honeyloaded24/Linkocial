@@ -84,7 +84,7 @@
                                     </div>
                                 @endif
                                 <div>
-                                    <div class="fw-bold">{{ $order->product_name }}</div>
+                                    <div class="fw-bold" style="word-break: break-word; overflow-wrap: anywhere;">{{ $order->product_name }}</div>
                                     <small class="text-muted">₦{{ number_format((float)$order->unit_cost, 2) }} / unit</small>
                                 </div>
                             </div>
