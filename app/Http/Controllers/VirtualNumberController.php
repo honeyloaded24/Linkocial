@@ -103,7 +103,7 @@ class VirtualNumberController extends Controller
         try {
             $pricesData = $this->getCachedPricesForCountry($country, $server);
 
-            // Group by service ID/name and choose the lowest price across different pools
+            // Group by service ID/name and choose a realistic active pool price
             $grouped = [];
             foreach ($pricesData as $item) {
                 $serviceId = $item['service'] ?? null;
@@ -114,20 +114,27 @@ class VirtualNumberController extends Controller
                     continue;
                 }
 
-                // Keep the cheapest price for each unique service (comparing raw wholesale prices)
-                if (!isset($grouped[$serviceName]) || $price < $grouped[$serviceName]['raw_price']) {
+                if (!isset($grouped[$serviceName])) {
                     $grouped[$serviceName] = [
                         'id' => $serviceId,
                         'name' => $serviceName,
-                        'raw_price' => $price
+                        'prices' => [$price]
                     ];
+                } else {
+                    $grouped[$serviceName]['prices'][] = $price;
                 }
             }
 
             // Map to final array with dynamic markup percentage applied (default: 65%)
             $finalServices = [];
             foreach ($grouped as $service) {
-                $retailPrice = $this->calculateRetailPrice($service['raw_price']);
+                // If there are multiple pools, sort prices and pick the active/median pool to avoid dead low-price traps
+                $prices = $service['prices'];
+                sort($prices);
+                $count = count($prices);
+                $chosenWholesale = ($count > 1) ? $prices[(int)floor($count / 2)] : $prices[0];
+
+                $retailPrice = $this->calculateRetailPrice($chosenWholesale);
                 $finalServices[] = [
                     'id' => $service['id'],
                     'name' => $service['name'],
@@ -166,9 +173,12 @@ class VirtualNumberController extends Controller
             $cheapestPrice = null;
             $serviceName = null;
             $productId = null;
+            $allPoolPrices = [];
+
             foreach ($pricesData as $item) {
                 if ((string)($item['service'] ?? '') === (string)$product || strtolower($item['service_name'] ?? '') === strtolower($product)) {
                     $price = (float)$item['price'];
+                    $allPoolPrices[] = $price;
                     if ($cheapestPrice === null || $price < $cheapestPrice) {
                         $cheapestPrice = $price;
                         $serviceName = $item['service_name'] ?? $product;
@@ -181,10 +191,32 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'], 400);
             }
 
-            // Calculate estimated user cost with dynamic percentage markup
-            $userCostUsd = $this->calculateRetailPrice($cheapestPrice);  
+            $activeWholesalePrice = $cheapestPrice;
 
-            // Ensure user has enough balance and reserve it before the external API call
+            // For Server 1 (SMSPool): verify real-time stock and active in-stock pool price
+            if ($server === 'server1') {
+                $cacheKey = "smspool_live_quote_{$country}_{$productId}";
+                $liveInfo = Cache::get($cacheKey) ?: $this->smspool->getServiceLiveInfo($productId, $country);
+
+                if ($liveInfo !== null) {
+                    $stock = $liveInfo['stock'] ?? 0;
+                    if ($stock <= 0) {
+                        return response()->json([
+                            'error' => "{$serviceName} is currently out of stock for this country on Server 1. Please try Server 2 or select another country."
+                        ], 400);
+                    }
+
+                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['price'];
+                    }
+                } elseif (count($allPoolPrices) > 1) {
+                    sort($allPoolPrices);
+                    $activeWholesalePrice = $allPoolPrices[(int)floor(count($allPoolPrices) / 2)];
+                }
+            }
+
+            // Calculate verified user cost with dynamic percentage markup
+            $userCostUsd = $this->calculateRetailPrice($activeWholesalePrice);  
             $finalCheckCost = max(0.00, $userCostUsd);
 
             $totalAvailableBalance = 0.0;
@@ -196,7 +228,10 @@ class VirtualNumberController extends Controller
 
                 if (!$lockedUser->deductBalance($finalCheckCost)) {
                     DB::rollBack();
-                    return response()->json(['error' => 'Insufficient wallet balance.'], 402);
+                    $shortfall = max(0.00, round($finalCheckCost - $totalAvailableBalance, 2));
+                    return response()->json([
+                        'error' => "Insufficient wallet balance. This number costs " . money($finalCheckCost) . " (your balance is " . money($totalAvailableBalance) . "). Please fund your wallet with at least " . money($shortfall) . " to proceed."
+                    ], 402);
                 }
                 DB::commit();
             } catch (\Exception $e) {
@@ -204,11 +239,11 @@ class VirtualNumberController extends Controller
                 throw $e;
             }
 
-            // Allow up to 15% wholesale price fluctuation from quoted rate, capped by user's available funds
+            // Provide a realistic pool buffer for SMSPool without exceeding what the user can afford
             $markupMultiplier = 1 + ($this->getMarkupPercent() / 100);
             $maxAffordableWholesale = round(max(0.00, $totalAvailableBalance / $markupMultiplier), 2);
-            $maxWholesaleWithSlippage = round($cheapestPrice * 1.15, 2);
-            $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithSlippage);
+            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
+            $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
             // Execute Purchase on chosen server
             try {
@@ -229,6 +264,12 @@ class VirtualNumberController extends Controller
                         'error' => $ex->getMessage()
                     ]);
                 }
+
+                // If error indicates out of stock, invalidate the cached quote so new status is retrieved
+                if (str_contains(strtolower($e->getMessage()), 'out_of_stock') || str_contains(strtolower($e->getMessage()), 'no numbers')) {
+                    Cache::forget("smspool_live_quote_{$country}_{$productId}");
+                }
+
                 throw $e;
             }
 
@@ -237,7 +278,7 @@ class VirtualNumberController extends Controller
             $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
                 ? $buyResponse['phonenumber'] 
                 : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
-            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0) ? (float)$buyResponse['cost'] : $cheapestPrice;
+            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0) ? (float)$buyResponse['cost'] : $activeWholesalePrice;
 
             // Resolve human-friendly country name from provider list
             $countryName = null;
@@ -354,11 +395,20 @@ class VirtualNumberController extends Controller
             ]);
             
             $ticketsUrl = route('tickets.index');
+            $rawError = $e->getMessage();
+            $userFacingError = "This service is currently unavailable or out of stock. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Open a ticket</a> if error persists.";
+
+            if (stripos($rawError, 'no numbers') !== false || stripos($rawError, 'out of stock') !== false) {
+                $userFacingError = "No numbers are currently available in stock for this service from the provider. Your wallet was not charged. Please try Server 2 or select another country.";
+            } elseif (stripos($rawError, 'Insufficient') !== false) {
+                $userFacingError = $rawError;
+            }
+
             $errorMessage = (Auth::user() && Auth::user()->is_admin)
-                ? "<strong>Admin Debug:</strong> " . htmlspecialchars($e->getMessage())
-                : "This service is currently unavailable or out of stock. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Open a ticket</a> if error persists.";
+                ? "<strong>Admin Debug:</strong> " . htmlspecialchars($rawError) . "<br><small class='text-muted'>User error: " . $userFacingError . "</small>"
+                : $userFacingError;
                 
-            return response()->json(['error' => $errorMessage], 500);
+            return response()->json(['error' => $errorMessage], 400);
         }
     }
 
@@ -530,10 +580,12 @@ class VirtualNumberController extends Controller
             $cheapestPrice = null;
             $serviceName = null;
             $productId = null;
+            $allPoolPrices = [];
 
             foreach ($pricesData as $item) {
                 if ((string)($item['service'] ?? '') === (string)$product || strtolower($item['service_name'] ?? '') === strtolower($product)) {
                     $price = (float) $item['price'];
+                    $allPoolPrices[] = $price;
                     if ($cheapestPrice === null || $price < $cheapestPrice) {
                         $cheapestPrice = $price;
                         $serviceName = $item['service_name'] ?? $product;
@@ -549,10 +601,47 @@ class VirtualNumberController extends Controller
                 ], 404);
             }
 
-            $userCost = $this->calculateRetailPrice($cheapestPrice);
+            $activeWholesalePrice = $cheapestPrice;
+            $stockCount = null;
+            $successRate = null;
+
+            // For Server 1 (SMSPool): query real-time in-stock pool price & stock availability
+            if ($server === 'server1') {
+                $cacheKey = "smspool_live_quote_{$country}_{$productId}";
+                $liveInfo = Cache::remember($cacheKey, 30, function() use ($productId, $country) {
+                    return $this->smspool->getServiceLiveInfo($productId, $country);
+                });
+
+                if ($liveInfo !== null) {
+                    $stockCount = $liveInfo['stock'] ?? 0;
+                    $successRate = $liveInfo['success_rate'] ?? null;
+
+                    // If provider explicitly reports 0 stock, notify customer immediately
+                    if ($stockCount <= 0) {
+                        return response()->json([
+                            'success' => false,
+                            'out_of_stock' => true,
+                            'stock' => 0,
+                            'service_name' => $serviceName,
+                            'message' => "{$serviceName} is currently out of stock for this country on Server 1. Please select another country or try Server 2."
+                        ]);
+                    }
+
+                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['price'];
+                    }
+                } elseif (count($allPoolPrices) > 1) {
+                    // Fallback if success_rate endpoint is unreachable: use median pool to avoid dead low-price traps
+                    sort($allPoolPrices);
+                    $activeWholesalePrice = $allPoolPrices[(int)floor(count($allPoolPrices) / 2)];
+                }
+            }
+
+            $userCost = $this->calculateRetailPrice($activeWholesalePrice);
             $userBalance = (float) $user->balance;
             $sufficient = $userBalance >= $userCost;
             $remainingBalance = max(0.00, round($userBalance - $userCost, 4));
+            $shortfall = max(0.00, round($userCost - $userBalance, 2));
 
             return response()->json([
                 'success' => true,
@@ -560,13 +649,19 @@ class VirtualNumberController extends Controller
                 'country' => $country,
                 'product_id' => $productId,
                 'service_name' => $serviceName,
+                'wholesale_price' => $activeWholesalePrice,
+                'stock' => $stockCount,
+                'success_rate' => $successRate,
                 'quote_price' => $userCost,
                 'formatted_quote' => money($userCost),
+                'markup_percent' => $this->getMarkupPercent(),
                 'user_balance' => $userBalance,
                 'formatted_balance' => money($userBalance),
                 'sufficient_balance' => $sufficient,
                 'remaining_balance' => $remainingBalance,
                 'formatted_remaining' => money($remainingBalance),
+                'shortfall' => $shortfall,
+                'formatted_shortfall' => money($shortfall),
             ]);
         } catch (\Throwable $e) {
             Log::error('SMS Live Quote Error: ' . $e->getMessage());

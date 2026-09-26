@@ -145,7 +145,7 @@
 
                         <!-- Low Balance Warning -->
                         <div class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3 d-none align-items-center justify-content-between gap-2" id="vn-insufficient-alert">
-                            <div class="small fw-semibold">
+                            <div class="small fw-semibold" id="vn-insufficient-msg">
                                 <i class="fa-solid fa-triangle-exclamation me-1"></i> Insufficient balance for this order.
                             </div>
                             <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-danger rounded-pill fw-bold text-nowrap px-3 shadow-sm">
@@ -540,6 +540,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             if (!data.sufficient_balance) {
                                 if (insufficientAlert) {
+                                    const msgEl = document.getElementById('vn-insufficient-msg');
+                                    if (msgEl) {
+                                        if (data.formatted_shortfall) {
+                                            msgEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Insufficient balance. Short by <strong>${data.formatted_shortfall}</strong>.`;
+                                        } else {
+                                            msgEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Insufficient balance for this order.`;
+                                        }
+                                    }
                                     insufficientAlert.classList.remove('d-none');
                                     insufficientAlert.classList.add('d-flex');
                                 }
@@ -556,7 +564,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             priceBox.classList.add('d-none');
                             if (errorBox) {
-                                errorBox.textContent = data.message || 'Service is temporarily unavailable for this country. Please select another.';
+                                if (data.out_of_stock) {
+                                    errorBox.innerHTML = `<div class="d-flex align-items-center gap-2"><i class="fa-solid fa-boxes-packing fs-5 text-warning"></i> <div><strong>Out of Stock:</strong> ${data.message}</div></div>`;
+                                } else {
+                                    errorBox.textContent = data.message || 'Service is temporarily unavailable for this country. Please select another.';
+                                }
                                 errorBox.classList.remove('d-none');
                             }
                         }

@@ -74,6 +74,44 @@ class SmsPoolService
     }
 
     /**
+     * Get real-time stock, active price, and success rate for a specific service and country.
+     * Endpoint: POST /request/success_rate
+     */
+    public function getServiceLiveInfo(string|int $service, string|int|null $country = null): ?array
+    {
+        try {
+            $params = [
+                'key' => $this->apiKey,
+                'service' => $service,
+            ];
+
+            if ($country !== null) {
+                $params['country'] = $country;
+            }
+
+            $response = Http::asForm()->timeout(8)->post("{$this->baseUrl}/request/success_rate", $params);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                if (is_array($data) && !empty($data)) {
+                    $item = $data[0];
+                    return [
+                        'price' => isset($item['price']) ? (float)$item['price'] : null,
+                        'low_price' => isset($item['low_price']) ? (float)$item['low_price'] : null,
+                        'stock' => isset($item['stock']) ? (int)$item['stock'] : 0,
+                        'success_rate' => isset($item['success_rate']) ? (int)$item['success_rate'] : null,
+                        'name' => $item['name'] ?? null,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("SMSPool getServiceLiveInfo error for service {$service}, country {$country}: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */
