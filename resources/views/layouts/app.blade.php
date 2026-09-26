@@ -398,6 +398,19 @@
             
             <div class="d-flex align-items-center gap-2 gap-md-3">
                 
+                @auth
+                <!-- Balance Pill Button (with Eye Toggle) -->
+                <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.82rem;" title="Current Balance">
+                    <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
+                        <i class="fa-solid fa-wallet text-muted me-1"></i>
+                        <span id="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
+                    </a>
+                    <button type="button" class="btn btn-link p-0 text-muted border-0 lh-1" onclick="toggleTopbarBalance(this)" style="font-size: 0.78rem;" title="Show/Hide Balance">
+                        <i class="fa-regular fa-eye" id="topbarBalanceEye"></i>
+                    </button>
+                </div>
+                @endauth
+
                 <!-- Fund Wallet Button -->
                 <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center gap-2 px-3 py-2 shadow-sm transition-hover me-1 pulse-hover">
                     <i class="fa-solid fa-plus-circle"></i>
@@ -600,6 +613,34 @@
         }
 
         toggleSwitch.addEventListener('change', switchTheme, false);
+
+        // Topbar Balance Visibility Toggle
+        function toggleTopbarBalance(btn) {
+            const span = document.getElementById('topbarBalanceValue');
+            const eye = document.getElementById('topbarBalanceEye');
+            if (!span || !eye) return;
+            const raw = span.getAttribute('data-raw-balance');
+            const isHidden = span.innerText === '••••••';
+            if (isHidden) {
+                span.innerText = raw;
+                eye.className = 'fa-regular fa-eye';
+                localStorage.setItem('topbar_balance_hidden', '0');
+            } else {
+                span.innerText = '••••••';
+                eye.className = 'fa-regular fa-eye-slash';
+                localStorage.setItem('topbar_balance_hidden', '1');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            if (localStorage.getItem('topbar_balance_hidden') === '1') {
+                const span = document.getElementById('topbarBalanceValue');
+                const eye = document.getElementById('topbarBalanceEye');
+                if (span && eye) {
+                    span.innerText = '••••••';
+                    eye.className = 'fa-regular fa-eye-slash';
+                }
+            }
+        });
 
         // Sidebar Toggle for Mobile
         const sidebar = document.getElementById('mainSidebar');
