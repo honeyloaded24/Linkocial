@@ -151,6 +151,8 @@
 @section('content')
 <div class="container-fluid py-2">
     
+    @include('partials.service_ticker', ['service' => 'logs'])
+
     @if(session('success'))
         <div class="alert alert-success border-0 py-2 px-3 rounded-3 mb-3 d-flex align-items-center gap-2" style="font-size: 0.85rem;">
             <i class="fa-solid fa-circle-check text-success"></i>

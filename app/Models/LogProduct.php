@@ -28,6 +28,40 @@ class LogProduct extends Model
     }
 
     /**
+     * Get baseline wholesale / cost price of the product
+     */
+    public function getWholesalePrice(): float
+    {
+        return (float) ($this->base_api_price > 0 ? $this->base_api_price : $this->unit_price);
+    }
+
+    public function getWholesalePriceAttribute(): float
+    {
+        return $this->getWholesalePrice();
+    }
+
+    /**
+     * Calculate retail selling price with admin global markup percentage.
+     * Overrides static prices across the whole system when markup is set.
+     */
+    public function getRetailPrice(): float
+    {
+        $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20.0);
+        $wholesale = $this->getWholesalePrice();
+
+        if ($wholesale > 0) {
+            return round($wholesale * (1 + ($markupRate / 100)), 2);
+        }
+
+        return (float) ($this->our_price > 0 ? $this->our_price : $this->unit_price);
+    }
+
+    public function getRetailPriceAttribute(): float
+    {
+        return $this->getRetailPrice();
+    }
+
+    /**
      * Clean up third-party promotional spam specifically during external API sync
      */
     public static function sanitizeDescription(?string $text): string

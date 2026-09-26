@@ -48,6 +48,9 @@ class SyncFaddedProducts extends Command
             return 0;
         }
 
+        $markupRate = (float) Setting::get('markup_logs_market', 20.0);
+        $markupMultiplier = 1 + ($markupRate / 100);
+
         $synced = 0;
         foreach ($products as $item) {
             if (!is_array($item)) {
@@ -119,8 +122,7 @@ class SyncFaddedProducts extends Command
 
             if ($existing) {
                 // For existing products:
-                // Only sync provider price changes and stock availability.
-                // Do NOT reset what admin has edited (name, description, category, custom selling price, icon, status).
+                // Sync provider wholesale price changes, stock availability, and update our_price with margin.
                 $updateData = [
                     'in_stock' => $stock,
                 ];
@@ -129,13 +131,11 @@ class SyncFaddedProducts extends Command
                     $updateData['api_product_id'] = $item['id'];
                 }
 
-                // If Fadded's original price changed, update base_api_price
+                // If Fadded's original price changed, update base_api_price, unit_price, and recalculate our_price with margin
                 if ($price > 0) {
                     $updateData['base_api_price'] = $price;
-                    // Only update unit_price if admin has not set a custom selling price override
-                    if ((float)$existing->our_price <= 0) {
-                        $updateData['unit_price'] = $price;
-                    }
+                    $updateData['unit_price'] = $price;
+                    $updateData['our_price'] = round($price * $markupMultiplier, 2);
                 }
 
                 // Only fill category/description if currently blank
@@ -148,7 +148,8 @@ class SyncFaddedProducts extends Command
 
                 $existing->update($updateData);
             } else {
-                // New product: add with provider defaults
+                // New product: add with provider wholesale price and margin-calculated selling price
+                $calculatedSellingPrice = round($price * $markupMultiplier, 2);
                 LogProduct::create([
                     'type' => 'api',
                     'api_product_key' => $key,
@@ -158,6 +159,7 @@ class SyncFaddedProducts extends Command
                     'description' => $desc,
                     'base_api_price' => $price,
                     'unit_price' => $price,
+                    'our_price' => $calculatedSellingPrice,
                     'in_stock' => $stock,
                     'is_active' => true,
                 ]);

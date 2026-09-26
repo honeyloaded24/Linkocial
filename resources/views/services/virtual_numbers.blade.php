@@ -58,6 +58,9 @@
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
     }
 </style>
+
+@include('partials.service_ticker', ['service' => 'numbers'])
+
 <!-- Desktop Order History Link -->
 <div class="d-none d-md-flex justify-content-end align-items-center mb-3">
     <a href="{{ route('virtual-numbers.history') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">

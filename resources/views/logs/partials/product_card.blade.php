@@ -1,7 +1,5 @@
 @php
-    $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
-    $multiplier = 1 + ($markupRate / 100);
-    $price = $product->our_price > 0 ? (float)$product->our_price : ((float)$product->unit_price * $multiplier);
+    $price = $product->getRetailPrice();
     $isPriceValid = ($price > 0);
     $priceFormatted = $isPriceValid ? ('₦' . number_format($price, 2)) : 'Price Unavailable';
     $productUrl = route('logs.show', $product->id);

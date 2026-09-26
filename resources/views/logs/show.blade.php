@@ -49,6 +49,8 @@
 <div class="container-fluid py-3">
     <div class="col-12 col-xl-11 col-xxl-10 mx-auto">
         
+        @include('partials.service_ticker', ['service' => 'logs'])
+
         <!-- Top Back Navigation & Breadcrumb -->
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <a href="{{ route('logs.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3.5 py-1.5 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" style="font-size: 0.82rem;">
@@ -77,9 +79,7 @@
         @endif
 
         @php
-            $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
-            $multiplier = 1 + ($markupRate / 100);
-            $price = $product->our_price > 0 ? (float)$product->our_price : ((float)$product->unit_price * $multiplier);
+            $price = $product->getRetailPrice();
             $isPriceValid = ($price > 0);
             $priceFormatted = $isPriceValid ? ('₦' . number_format($price, 2)) : 'Price Unavailable';
             $priceNgnRaw = $isPriceValid ? number_format($price, 2, '.', '') : '0.00';

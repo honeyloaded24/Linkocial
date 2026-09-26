@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="container-fluid">
+    @include('partials.service_ticker', ['service' => 'vtu'])
     <div class="row mb-4">
         <div class="col-12">
             <h4 class="mb-0 fw-bold">Data Subscriptions</h4>

@@ -2,6 +2,7 @@
 
 @section('content')
 <div class="container-fluid">
+    @include('partials.service_ticker', ['service' => 'smm'])
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold mb-0" style="font-family: var(--heading-font); letter-spacing: -0.5px;">All Services</h3>
     </div>

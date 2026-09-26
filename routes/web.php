@@ -282,6 +282,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/broadcasts', [AdminController::class, 'hqBroadcasts'])->name('hq.broadcasts');
         Route::post('/broadcasts', [AdminController::class, 'hqStoreBroadcast'])->name('hq.broadcasts.store');
         Route::delete('/broadcasts/{id}', [AdminController::class, 'hqDestroyBroadcast'])->name('hq.broadcasts.destroy');
+        Route::post('/service-notices', [AdminController::class, 'hqUpdateServiceNotices'])->name('hq.service-notices.update');
 
         Route::get('/settings', [AdminController::class, 'hqSettings'])->name('hq.settings');
         Route::post('/settings', [AdminController::class, 'hqUpdateSettings'])->name('hq.settings.update');

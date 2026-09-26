@@ -6,6 +6,7 @@
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-xl-10">
+            @include('partials.service_ticker', ['service' => 'smm'])
             <!-- Channel Selector -->
             <div class="mb-4">
                 <h6 class="text-muted small fw-bold text-uppercase mb-3">Choose a Channel</h6>

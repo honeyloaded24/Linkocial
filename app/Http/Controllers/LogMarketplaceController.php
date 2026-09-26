@@ -11,6 +11,8 @@ use App\Services\FaddedApi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 
 class LogMarketplaceController extends Controller
 {
@@ -22,6 +24,16 @@ class LogMarketplaceController extends Controller
                     $table->string('slug')->nullable()->after('name')->index();
                 });
             } catch (\Throwable $ignored) {}
+        }
+
+        // Auto-sync log products in background if last sync is older than 30 minutes
+        if (!Cache::has('fadded_auto_sync_cooldown') && app(FaddedApi::class)->isConfigured()) {
+            Cache::put('fadded_auto_sync_cooldown', true, 1800); // 30 mins
+            try {
+                Artisan::call('fadded:sync');
+            } catch (\Throwable $syncErr) {
+                Log::warning('Auto-sync fadded:sync warning: ' . $syncErr->getMessage());
+            }
         }
 
         $categories = LogCategory::where('is_active', true)->orWhereNull('is_active')->get();
@@ -108,11 +120,8 @@ class LogMarketplaceController extends Controller
             return back()->with('error', 'Requested quantity exceeds available stock.');
         }
 
-        $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20);
-        $markupMultiplier = 1 + ($markupRate / 100);
-
-        // Prices are denominated in Nigerian Naira (₦ / NGN)
-        $priceToChargeNgn = (float) ($product->our_price > 0 ? $product->our_price : $product->unit_price * $markupMultiplier);
+        // Retail price is dynamically computed with the admin global profit margin
+        $priceToChargeNgn = $product->getRetailPrice();
 
         if ($priceToChargeNgn <= 0) {
             return back()->with('error', 'This product is currently unavailable for purchase because its pricing is not configured. Please contact support.');
