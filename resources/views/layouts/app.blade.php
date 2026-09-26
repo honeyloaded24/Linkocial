@@ -389,18 +389,16 @@
             </div>
         @endif
         <!-- Topbar -->
-        <header class="topbar" style="position: relative; z-index: 100;">
-            <div class="d-flex align-items-center pe-2">
-                <button class="btn d-lg-none me-3 p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle">
+        <header class="topbar px-3 px-md-4" style="position: relative; z-index: 100;">
+            <!-- Left Side: Hamburger & Balance Pill -->
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn d-lg-none me-1 p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle" title="Toggle Navigation">
                     <i class="fa-solid fa-bars-staggered fs-4"></i>
                 </button>
-            </div>
-            
-            <div class="d-flex align-items-center gap-1 gap-sm-2 gap-md-3">
-                
+
                 @auth
                 <!-- Balance Pill Button (with Eye Toggle) -->
-                <div class="d-flex align-items-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem;" title="Current Balance">
+                <div class="d-flex align-items-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem; height: 32px;" title="Current Balance">
                     <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
                         <i class="fa-solid fa-wallet text-muted me-1"></i>
                         <span id="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
@@ -409,7 +407,12 @@
                         <i class="fa-regular fa-eye" id="topbarBalanceEye"></i>
                     </button>
                 </div>
-
+                @endauth
+            </div>
+            
+            <!-- Right Side: Action Items -->
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                @auth
                 <!-- Fund Wallet Button -->
                 <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm transition-hover px-2 px-md-3 py-1" style="height: 32px;" title="Fund Wallet">
                     <i class="fa-solid fa-plus"></i>
@@ -418,7 +421,7 @@
                 @endauth
 
                 <!-- Currency Switcher -->
-                <div class="dropdown me-md-2">
+                <div class="dropdown me-md-1">
                     @php
                         $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                         $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
