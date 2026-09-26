@@ -465,14 +465,14 @@
                         ];
                         $badge = $roleBadges[Auth::user()->role ?? 'user'] ?? $roleBadges['user'];
                     @endphp
-                    <span class="badge {{ $badge['class'] }} tier-badge shadow-sm d-none d-md-inline-flex align-items-center">
+                    <span class="badge {{ $badge['class'] }} tier-badge shadow-sm d-none d-lg-inline-flex align-items-center">
                         <i class="fa-solid fa-crown"></i>
                         <span class="tier-label">{{ $badge['label'] }}</span>
                     </span>
                 @endauth
 
-                <!-- Notification Bell -->
-                <div class="dropdown">
+                <!-- Notification Bell (Hidden on Mobile to Prevent Overflow) -->
+                <div class="dropdown d-none d-md-block">
                     @auth
                         @php
                             $unreadCount = \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count();
@@ -528,6 +528,7 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3">
                             <li><a class="dropdown-item rounded p-2" href="{{ route('profile.index') }}"><i class="fa-solid fa-user-pen me-2 text-primary"></i> Edit Profile</a></li>
                             <li><a class="dropdown-item rounded p-2" href="{{ route('wallet.index') }}"><i class="fa-solid fa-wallet me-2 text-primary"></i> My Wallet</a></li>
+                            <li class="d-md-none"><a class="dropdown-item rounded p-2" href="#" data-bs-toggle="modal" data-bs-target="#mobileNotificationsModal"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications @if(isset($unreadCount) && $unreadCount > 0)<span class="badge bg-danger ms-2">{{ $unreadCount }}</span>@endif</a></li>
                             <li><hr class="dropdown-divider opacity-10"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -582,6 +583,41 @@
 
         @yield('content')
         @include('partials.promo_popup')
+
+        @auth
+        <!-- Mobile Notifications Modal -->
+        <div class="modal fade" id="mobileNotificationsModal" tabindex="-1" aria-labelledby="mobileNotificationsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content premium-card border-0 shadow-lg">
+                    <div class="modal-header border-bottom border-secondary border-opacity-10">
+                        <h6 class="modal-title fw-bold" id="mobileNotificationsModalLabel"><i class="fa-solid fa-bell text-warning me-2"></i> Notifications</h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-2" style="max-height: 400px; overflow-y: auto;">
+                        @forelse($latestNotifications ?? [] as $notif)
+                            <div class="p-2 rounded hover-bg mb-2">
+                                <a href="{{ $notif->link ?? '#' }}" class="text-decoration-none d-flex gap-3">
+                                    <div class="rounded-circle bg-{{ $notif->type }} bg-opacity-10 text-{{ $notif->type }} d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px;">
+                                        <i class="fa-solid fa-{{ $notif->type == 'success' ? 'check' : ($notif->type == 'danger' ? 'circle-exclamation' : ($notif->type == 'warning' ? 'triangle-exclamation' : 'info-circle')) }}"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark small">{{ $notif->title }}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem; line-height: 1.3;">{{ Str::limit($notif->message, 80) }}</div>
+                                        <div class="text-muted mt-1" style="font-size: 0.65rem;">{{ $notif->created_at->diffForHumans() }}</div>
+                                    </div>
+                                </a>
+                            </div>
+                        @empty
+                            <div class="p-4 text-center text-muted">
+                                <i class="fa-solid fa-bell-slash fa-2x mb-2 opacity-20"></i>
+                                <p class="small mb-0">No notifications yet</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endauth
     </main>
 
     <!-- Bootstrap JS -->

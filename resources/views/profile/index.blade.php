@@ -111,6 +111,26 @@
                 </div>
             </div>
 
+            <!-- Appearance / Theme Preferences -->
+            <div class="premium-card shadow-lg mb-4 overflow-hidden border-primary border-opacity-10">
+                <div class="p-4 border-bottom border-secondary bg-transparent d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="fa-solid fa-circle-half-stroke text-primary-custom me-2"></i> Appearance & Theme</h5>
+                    <span class="badge bg-primary bg-opacity-15 text-primary rounded-pill px-3" id="profileThemeBadge">Dark Mode</span>
+                </div>
+                <div class="p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="fw-bold mb-1">Dark Mode</h6>
+                            <p class="text-muted small mb-0">Switch between dark and light appearance across all devices.</p>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input ms-0" type="checkbox" role="switch" id="profileThemeToggleSwitch" 
+                                style="width: 3rem; height: 1.5rem; cursor: pointer;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Two-Factor Authentication -->
             <div class="premium-card shadow-lg mb-4 overflow-hidden border-primary border-opacity-10">
                 <div class="p-4 border-bottom border-secondary bg-transparent d-flex justify-content-between align-items-center">
@@ -229,5 +249,36 @@ function toggleKeyVisibility(btn) {
         btn.classList.replace('btn-primary-custom', 'btn-outline-secondary');
     }
 }
+
+// Profile Dark Mode Switch Sync
+document.addEventListener('DOMContentLoaded', function() {
+    const profileToggle = document.getElementById('profileThemeToggleSwitch');
+    const profileBadge = document.getElementById('profileThemeBadge');
+
+    if (profileToggle) {
+        const activeTheme = localStorage.getItem('theme') || 'dark';
+        profileToggle.checked = (activeTheme === 'dark');
+        if (profileBadge) {
+            profileBadge.textContent = activeTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
+        }
+
+        profileToggle.addEventListener('change', function() {
+            const theme = this.checked ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('theme', theme);
+            
+            if (profileBadge) {
+                profileBadge.textContent = theme === 'dark' ? 'Dark Mode' : 'Light Mode';
+            }
+
+            // Also sync topbar checkbox if present
+            const topbarCheckbox = document.querySelector('#checkbox');
+            if (topbarCheckbox) {
+                topbarCheckbox.checked = (theme === 'light');
+            }
+        });
+    }
+});
 </script>
 @endsection
