@@ -41,9 +41,9 @@ return [
         'key' => env('EXCHANGERATE_API_KEY'),
     ],
 
-    'heleket' => [
-        'key' => env('HELEKET_API_KEY'),
-        'merchant_id' => env('HELEKET_MERCHANT_ID'),
+    'billstack' => [
+        'secret_key' => env('BILLSTACK_SECRET_KEY'),
+        'base_url' => env('BILLSTACK_BASE_URL', 'https://api.billstack.co/v2'),
     ],
 
     'korapay' => [

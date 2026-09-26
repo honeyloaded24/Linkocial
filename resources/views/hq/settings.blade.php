@@ -357,19 +357,35 @@
                                 </div>
                             </div>
 
-                            <!-- Heleket -->
+                            <!-- BillStack (Virtual Accounts) -->
                             <div class="row g-4 mb-4">
                                 <div class="col-12">
-                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Heleket (Crypto Payments)</h6>
-                                    <small class="text-muted d-block mb-3">Sign up and get your Merchant ID & API Key at <a href="https://heleket.com" target="_blank">heleket.com</a>.</small>
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">BillStack (Virtual Accounts - 9PSB & PalmPay)</h6>
+                                    <small class="text-muted d-block mb-3">Configure BillStack API credentials for dedicated virtual bank accounts (9PSB & PalmPay) and automated instant wallet crediting. Sign up at <a href="https://billstack.co" target="_blank">billstack.co</a>.</small>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Merchant ID</label>
-                                    <input type="text" name="heleket_merchant_id" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('heleket_merchant_id') }}" style="color: var(--text-main);">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">BillStack Secret Key</label>
+                                    <input type="text" name="billstack_secret_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('billstack_secret_key') }}" placeholder="Bill_Stack-SEC-KEY-..." style="color: var(--text-main);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">API Key (Secret)</label>
-                                    <input type="text" name="heleket_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('heleket_api_key') }}" style="color: var(--text-main);">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Webhook URL (Set in BillStack Dashboard)</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control border-secondary bg-transparent py-2" value="{{ url('/api/webhooks/billstack') }}" id="billstackWebhookUrlInput" readonly style="color: var(--text-main);">
+                                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('billstackWebhookUrlInput').value); alert('Copied BillStack Webhook URL!');">
+                                            <i class="fa-regular fa-copy"></i> Copy
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <div class="p-3 rounded-3 bg-light bg-opacity-10 border border-secondary border-opacity-25 small text-muted">
+                                        <i class="fa-solid fa-circle-info text-info me-2"></i>
+                                        <strong>Integration Details:</strong>
+                                        <ul class="mb-0 mt-1 ps-3">
+                                            <li><strong>9PSB:</strong> Virtual account generated with 1-click (no BVN required).</li>
+                                            <li><strong>PalmPay:</strong> Generates dedicated account requiring customer's 11-digit BVN.</li>
+                                            <li><strong>Automated Crediting:</strong> Inbound transfers trigger the BillStack webhook, instantly crediting the user's wallet with zero delays.</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
 

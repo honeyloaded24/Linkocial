@@ -26,7 +26,12 @@ class PaymentController extends Controller
         $cfCountry = $request->header('CF-IPCountry', 'NG');
         $isForeigner = $cfCountry !== 'NG';
 
-        return view('wallet.index', compact('isForeigner', 'cfCountry'));
+        $user = $request->user();
+        $virtualAccounts = $user ? $user->virtualAccounts()->get()->keyBy('bank_id') : collect();
+        $account9psb = $virtualAccounts->get('9PSB');
+        $accountPalmpay = $virtualAccounts->get('PALMPAY');
+
+        return view('wallet.index', compact('isForeigner', 'cfCountry', 'account9psb', 'accountPalmpay'));
     }
 
 
@@ -118,60 +123,8 @@ class PaymentController extends Controller
         }
         if (str_starts_with($reference, 'DEP_KORA_')) {
             $this->verifyKorapayTransaction($reference);
-        } elseif (str_starts_with($reference, 'DEP_CRYP_')) {
-            $this->verifyHeleketTransaction($reference);
         } else {
             Log::warning('Unknown payment reference format: ' . $reference);
-        }
-    }
-
-    private function verifyHeleketTransaction($reference)
-    {
-        // 1. Skip if already processed (Performance & Safety)
-        $payment = \App\Models\Payment::where('reference', $reference)->first();
-        if (!$payment || $payment->status === 'success') {
-            return;
-        }
-
-        try {
-            $merchantId = \App\Models\Setting::get('heleket_merchant_id');
-            $apiKey = \App\Models\Setting::get('heleket_api_key');
-
-            $data = ['order_id' => $reference];
-            $jsonData = json_encode($data);
-            $sign = md5(base64_encode($jsonData) . $apiKey);
-
-            $response = Http::timeout(15)
-                ->retry(3, 200)
-                ->withHeaders([
-                    'merchant' => $merchantId,
-                    'sign' => $sign,
-                    'Content-Type' => 'application/json'
-                ])->withBody($jsonData, 'application/json')
-                ->post('https://api.heleket.com/v1/payment/status');
-
-            $result = $response->json();
-
-            Log::info("Heleket Status Check for {$reference}:", [
-                'request_body' => $jsonData,
-                'signature' => $sign,
-                'response' => $result
-            ]);
-
-            $status = strtolower($result['result']['status'] ?? '');
-            $isFinal = (bool) ($result['result']['is_final'] ?? false);
-
-            // 2. status === 'paid' means it's successful
-            if ($response->successful() && in_array($status, ['paid', 'completed', 'success']) && $isFinal === true) {
-                $amount = (float) $result['result']['amount'];
-                
-                $user = User::find($payment->user_id);
-                if ($user) {
-                    $this->processSuccessfulHeleketPayment($user, $amount, $reference);
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error("Manual Heleket Verification Exception for {$reference}: " . $e->getMessage());
         }
     }
 
@@ -449,262 +402,133 @@ class PaymentController extends Controller
     }
 
     /**
-     * Initialize a Heleket Deposit (Crypto/USD)
+     * Generate a dedicated BillStack virtual account for the authenticated user.
      */
-    public function initializeHeleket(Request $request)
+    public function generateVirtualAccount(Request $request, \App\Services\BillstackService $billstackService)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.01', 
+            'bank' => 'required|string|in:9PSB,PALMPAY,9psb,palmpay',
+            'bvn' => 'nullable|string'
         ]);
 
         $user = $request->user();
-        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
-        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
-        
-        // Convert the input amount into USD for Heleket and enforce $1 min
-        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
-        if ($amountInUsd < 1) {
-            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
-        }
+        $bank = strtoupper($request->bank);
+        $bvn = $request->bvn ? trim($request->bvn) : null;
 
-        $merchantId = \App\Models\Setting::get('heleket_merchant_id');
-        $apiKey = \App\Models\Setting::get('heleket_api_key');
-
-        $reference = 'DEP_CRYP_' . time() . '_' . $user->id;
-
-        // Strictly documented fields only
-        $payload = [
-            'amount' => number_format($amountInUsd, 2, '.', ''),
-            'currency' => 'USD',
-            'order_id' => $reference,
-            'email' => $user->email,
-            'url_success' => route('wallet.index') . '?status=success&reference=' . $reference,
-            'url_callback' => url('/api/webhooks/heleket'),
-        ];
-
-        // Create a pending payment record
-        \App\Models\Payment::create([
-            'user_id' => $user->id,
-            'amount' => $amountInUsd,
-            'currency' => 'USD',
-            'amount_usd' => $amountInUsd,
-            'reference' => $reference,
-            'status' => 'pending',
-            'method' => 'Heleket'
-        ]);
-
-        // Heleket Signature Algorithm: Sort keys alphabetically first
-        ksort($payload);
-        $jsonData = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $sign = md5(base64_encode($jsonData) . $apiKey);
-
-        try {
-            $response = Http::timeout(15)
-                ->retry(2, 200)
-                ->withHeaders([
-                    'merchant' => $merchantId,
-                    'sign' => $sign,
-                    'Content-Type' => 'application/json'
-                ])->withBody($jsonData, 'application/json')
-                ->post('https://api.heleket.com/v1/payment');
-
-            $result = $response->json();
-
-            Log::info("Heleket Initialization Request:", [
-                'body' => $jsonData,
-                'sign' => $sign,
-                'response' => $result
-            ]);
-
-            if ($response->successful() && isset($result['state']) && $result['state'] === 0) {
+        if ($bank === 'PALMPAY') {
+            if (empty($bvn) || strlen($bvn) !== 11 || !ctype_digit($bvn)) {
                 return response()->json([
-                    'authorization_url' => $result['result']['url'],
-                    'uuid' => $result['result']['uuid']
-                ]);
+                    'success' => false,
+                    'message' => 'Please provide a valid 11-digit BVN for PalmPay virtual account generation.'
+                ], 422);
             }
-
-            Log::error('Heleket Initialization Failed: ' . $response->body());
-            return response()->json(['error' => 'Failed to initialize crypto gateway.'], 500);
-
-        } catch (\Exception $e) {
-            Log::error('Heleket Exception: ' . $e->getMessage());
-            return response()->json(['error' => 'An error occurred with the crypto gateway.'], 500);
         }
+
+        $result = $billstackService->generateVirtualAccount($user, $bank, $bvn);
+
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Failed to generate virtual account.'
+            ], 400);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'] ?? 'Virtual account ready.',
+            'account' => $result['account']
+        ]);
     }
 
     /**
-     * Handle Heleket Webhook
+     * Handle BillStack Webhook for Automated Virtual Account Crediting
      */
-    public function heleketWebhook(Request $request)
+    public function billstackWebhook(Request $request, \App\Services\BillstackService $billstackService)
     {
-        $data = $request->all();
+        $signature = $request->header('x-wiaxy-signature-256');
+        $timestamp = $request->header('x-wiaxy-timestamp');
         $rawBody = $request->getContent();
-        
-        Log::info('Heleket Webhook Received:', [
-            'payload' => $data,
-            'raw_body' => $rawBody
-        ]);
-        
-        $receivedSign = $data['sign'] ?? '';
-        $verificationData = $data;
-        unset($verificationData['sign']);
-        
-        // Removed strict Merchant ID check because Heleket does not include it in the webhook payload.
-        // We rely on the cryptographic signature validation below for security.
-        $apiKey = trim(\App\Models\Setting::get('heleket_api_key') ?? '');
-        if (empty($apiKey)) {
-            Log::error('Heleket Webhook: API key is not configured.');
-            return response()->json(['status' => 'api key unconfigured'], 403);
-        }
-        
-        // 1. Signature Verification: Heleket signs webhooks in the exact order received (DO NOT SORT)
-        $jsonString = json_encode($verificationData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $calculatedSign = md5(base64_encode($jsonString) . $apiKey);
-        $fallbackSign = md5(base64_encode($rawBody) . $apiKey);
 
-        if (empty($receivedSign) || (!hash_equals((string) $calculatedSign, (string) $receivedSign) && !hash_equals((string) $fallbackSign, (string) $receivedSign))) {
-            Log::warning('Invalid Heleket Webhook Signature detected.', [
-                'received' => $receivedSign,
-                'calculated' => $calculatedSign,
-                'fallback' => $fallbackSign,
-                'payload' => $data
+        Log::info('BillStack Webhook Received:', [
+            'has_signature' => !empty($signature),
+            'timestamp' => $timestamp,
+            'payload_length' => strlen($rawBody)
+        ]);
+
+        if (!$billstackService->verifyWebhookSignature($rawBody, $signature, $timestamp)) {
+            Log::warning('Invalid BillStack Webhook Signature detected.', [
+                'received' => $signature,
+                'timestamp' => $timestamp
             ]);
-            return response()->json(['status' => 'invalid signature'], 400);
-        }
-        Log::info('Heleket Signature Verified successfully.');
-
-        $status = strtolower($data['status'] ?? '');
-        $isFinal = (bool) ($data['is_final'] ?? false);
-        $reference = $data['order_id'] ?? '';
-
-        // 3. Strict Reference Prefix Guard
-        if (!str_starts_with($reference, 'DEP_CRYP_')) {
-            Log::warning('Heleket Webhook: Invalid Reference Prefix.', ['reference' => $reference]);
-            return response()->json(['status' => 'invalid reference'], 400);
+            return response()->json(['status' => false, 'message' => 'Invalid signature'], 400);
         }
 
-        Log::info('Heleket Status Check:', [
-            'reference' => $reference,
-            'status' => $status,
-            'is_final' => $isFinal
-        ]);
+        $payload = json_decode($rawBody, true) ?: $request->all();
+        Log::info('BillStack Webhook Payload:', ['payload' => $payload]);
 
-        // 4. Retrieve and Validate local payment record
-        $payment = \App\Models\Payment::where('reference', $reference)->first();
-        if (!$payment) {
-            Log::error("Heleket Webhook: Reference not found locally: {$reference}");
-            return response()->json(['status' => 'not found'], 404);
+        $data = $payload['data'] ?? $payload;
+        $status = strtolower($data['status'] ?? $payload['status'] ?? '');
+
+        // Settle transaction if status is successful/success/paid/completed
+        if (!in_array($status, ['success', 'successful', 'paid', 'completed'])) {
+            return response()->json(['status' => true, 'message' => 'Non-success event ignored']);
         }
 
-        // 5. Handle Failed Payments
-        if (in_array($status, ['failed', 'canceled', 'expired'])) {
-            $payment->update(['status' => 'failed']);
-            return response()->json(['status' => 'failure recorded']);
+        $amount = (float) ($data['amount'] ?? $data['settled_amount'] ?? 0);
+        if ($amount <= 0) {
+            Log::warning('BillStack Webhook: Zero or negative amount received.', ['data' => $data]);
+            return response()->json(['status' => true, 'message' => 'Zero amount ignored']);
         }
 
-        // 6. Handle Successful Payments
-        if (in_array($status, ['paid', 'completed', 'success']) && $isFinal === true) {
-            $amountInUsd = (float) ($data['amount'] ?? 0);
-            
-            // Amount Parity Check
-            if (abs($amountInUsd - (float)$payment->amount_usd) > 0.01) {
-                Log::warning('Heleket Webhook: Amount mismatch!', [
-                    'received' => $amountInUsd,
-                    'expected' => $payment->amount_usd
-                ]);
-            }
+        // Unique transaction reference from BillStack session or reference
+        $sessionId = $data['session_id'] ?? $data['reference'] ?? $data['transaction_reference'] ?? null;
+        $accountNumber = $data['account']['account_number'] ?? $data['account_number'] ?? null;
+        $bankName = $data['account']['bank_name'] ?? $data['bank_name'] ?? 'Virtual Account';
+        $customerEmail = $data['customer']['email'] ?? $data['email'] ?? null;
 
-            // Idempotency: Skip if already success
-            if ($payment->status === 'success') {
-                return response()->json(['status' => 'already processed']);
-            }
+        $ref = 'VA_' . ($sessionId ?: ('TRX_' . ($accountNumber ?: 'ACC') . '_' . time()));
 
-            try {
-                $user = User::find($payment->user_id);
-                if ($user) {
-                    $this->processSuccessfulHeleketPayment($user, $amountInUsd, $reference);
-                    Log::info("Heleket Payment Fulfillment Success: {$reference}");
-                }
-            } catch (\Exception $e) {
-                Log::error("Failed to process Heleket webhook for {$reference}: " . $e->getMessage());
-                return response()->json(['status' => 'database error'], 500);
-            }
+        // Idempotency: Skip if already processed
+        if (\App\Models\Payment::where('reference', $ref)->where('status', 'success')->exists()) {
+            return response()->json(['status' => true, 'message' => 'Already processed']);
         }
 
-        return response()->json(['status' => 'success']);
-    }
-
-    private function processSuccessfulHeleketPayment($user, $amountInUsd, $reference)
-    {
-        DB::transaction(function () use ($user, $amountInUsd, $reference) {
-            // 1. Pessimistic Lock on the payment record
-            $payment = \App\Models\Payment::where('reference', $reference)
-                ->lockForUpdate()
-                ->first();
-
-            if ($payment && $payment->status === 'success') {
-                Log::info("Heleket Atomic Guard: Payment already marked success for {$reference}, skipping credit.");
-                return;
-            }
-
-            // Check if transaction ledger entry already exists
-            $exists = \App\Models\Transaction::where('reference', $reference)
-                ->lockForUpdate()
-                ->exists();
-
-            if ($exists) {
-                Log::info("Heleket Atomic Guard: Transaction already exists for {$reference}, skipping credit.");
-                return;
-            }
-
-            // 2. Update the payment record
-            if ($payment) {
-                $payment->update([
-                    'amount' => $amountInUsd, 
-                    'amount_usd' => $amountInUsd,
-                    'currency' => 'USD',
-                    'status' => 'success',
-                    'method' => 'Heleket'
-                ]);
-            }
-
-            // 3. Lock user and credit wallet atomically
-            $lockedUser = User::where('id', $user->id)->lockForUpdate()->first();
-            if ($lockedUser) {
-                $lockedUser->addBalance($amountInUsd);
-
-                \App\Models\Transaction::add(
-                    $lockedUser->id, 
-                    $amountInUsd, 
-                    'credit', 
-                    'deposit', 
-                    "Deposit via Heleket Crypto",
-                    $reference
-                );
-
-                \App\Models\Notification::send(
-                    $lockedUser->id,
-                    "Crypto Deposit Successful",
-                    "Your wallet has been credited with " . money($amountInUsd) . " via Heleket.",
-                    'success',
-                    route('wallet.history')
-                );
-
-                // 4. Send Wallet Funded Email
-                try {
-                    Mail::send('emails.wallet_funded', [
-                        'transaction_id' => 'TXN-' . time(),
-                        'method' => 'Heleket Crypto',
-                        'amount' => $amountInUsd,
-                        'currency' => 'USD',
-                        'bonus' => 0
-                    ], function($message) use ($lockedUser) {
-                        $message->to($lockedUser->email)->subject('Wallet Funded Successfully');
-                    });
-                } catch (\Exception $e) {
-                    Log::error('Heleket Wallet Funded Email Error: ' . $e->getMessage());
+        // Match User
+        $user = null;
+        if (!empty($accountNumber)) {
+            $va = \App\Models\UserVirtualAccount::where('account_number', $accountNumber)->first();
+            if ($va) {
+                $user = $va->user;
+                if (!empty($va->bank_name)) {
+                    $bankName = $va->bank_name;
                 }
             }
-        });
+        }
+
+        if (!$user && !empty($customerEmail)) {
+            $user = User::where('email', $customerEmail)->first();
+        }
+
+        if (!$user && !empty($data['reference'])) {
+            $va = \App\Models\UserVirtualAccount::where('reference', $data['reference'])->first();
+            if ($va) {
+                $user = $va->user;
+            }
+        }
+
+        if (!$user) {
+            Log::error("BillStack Webhook: User not found for account {$accountNumber} or email {$customerEmail}");
+            return response()->json(['status' => false, 'message' => 'User not found'], 404);
+        }
+
+        try {
+            // Process wallet credit with atomic concurrency protection
+            $this->processSuccessfulPayment($user, $amount, $ref, "Virtual Account ({$bankName})", 'NGN');
+            Log::info("BillStack Webhook: Successfully credited user {$user->id} with NGN {$amount} (Ref: {$ref})");
+            return response()->json(['status' => true, 'message' => 'successful'], 200);
+        } catch (\Exception $e) {
+            Log::error("BillStack Webhook Processing Error for {$ref}: " . $e->getMessage());
+            return response()->json(['status' => false, 'message' => 'Internal processing error'], 500);
+        }
     }
 }

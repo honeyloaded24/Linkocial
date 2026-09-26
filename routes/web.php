@@ -122,7 +122,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/wallet', [App\Http\Controllers\PaymentController::class, 'deposit'])->name('wallet.index');
     Route::get('/wallet/history', [App\Http\Controllers\TransactionController::class, 'index'])->name('wallet.history');
     Route::post('/api/payments/korapay', [App\Http\Controllers\PaymentController::class, 'initializeKorapay'])->name('wallet.korapay.initialize');
-    Route::post('/api/payments/heleket', [App\Http\Controllers\PaymentController::class, 'initializeHeleket'])->name('wallet.heleket.initialize');
+    Route::post('/wallet/virtual-account/generate', [App\Http\Controllers\PaymentController::class, 'generateVirtualAccount'])->name('wallet.virtual-account.generate');
 
     // Support Tickets
     Route::get('/tickets', [App\Http\Controllers\TicketController::class, 'index'])->name('tickets.index');

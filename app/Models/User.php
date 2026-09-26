@@ -155,4 +155,14 @@ class User extends Authenticatable implements MustVerifyEmail
             $this->refresh();
         }
     }
+
+    public function virtualAccounts()
+    {
+        return $this->hasMany(UserVirtualAccount::class);
+    }
+
+    public function virtualAccount(string $bankId = '9PSB')
+    {
+        return $this->virtualAccounts()->where('bank_id', strtoupper($bankId))->first();
+    }
 }

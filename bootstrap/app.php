@@ -27,7 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->preventRequestForgery(except: [
 
             '/api/webhooks/korapay',
-            '/api/webhooks/heleket',
+            '/api/webhooks/billstack',
         ]);
 
         $middleware->append(\App\Http\Middleware\CheckMaintenanceMode::class);
