@@ -249,8 +249,8 @@ class VirtualNumberController extends Controller
             }
 
             // Provide a realistic pool buffer for SMSPool without exceeding what the user can afford
-            $markupMultiplier = 1 + ($this->getMarkupPercent() / 100);
-            $maxAffordableWholesale = round(max(0.00, $totalAvailableBalance / $markupMultiplier), 2);
+            $flatMarkup = $this->getMarkupFee();
+            $maxAffordableWholesale = max(0.00, round($totalAvailableBalance - $flatMarkup, 2));
             $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
             $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
@@ -671,7 +671,8 @@ class VirtualNumberController extends Controller
                 'success_rate' => $successRate,
                 'quote_price' => $userCost,
                 'formatted_quote' => money($userCost),
-                'markup_percent' => $this->getMarkupPercent(),
+                'markup_fee' => $this->getMarkupFee(),
+                'formatted_markup' => money($this->getMarkupFee()),
                 'user_balance' => $userBalance,
                 'formatted_balance' => money($userBalance),
                 'sufficient_balance' => $sufficient,
@@ -714,31 +715,27 @@ class VirtualNumberController extends Controller
     }
 
     /**
-     * Get the dynamic profit margin percentage for virtual numbers (default: 65%).
+     * Get the flat markup fee for virtual numbers (e.g. $1.00).
      */
-    public function getMarkupPercent(): float
+    public function getMarkupFee(): float
     {
-        return (float) \App\Models\Setting::get('vn_markup_percent', 65.0);
+        return (float) \App\Models\Setting::get('vn_markup', 1.00);
     }
 
     /**
-     * Calculate user retail price from wholesale price with percentage markup
+     * Calculate user retail price from wholesale price with flat markup (just like SMSPool)
      */
     public function calculateRetailPrice(float $wholesalePrice): float
     {
-        $percent = $this->getMarkupPercent();
-        return round($wholesalePrice * (1 + ($percent / 100)), 2);
+        $flatFee = $this->getMarkupFee();
+        return round($wholesalePrice + $flatFee, 2);
     }
 
     /**
-     * Legacy markup flat fee fallback.
+     * Legacy percentage helper kept for backward compatibility.
      */
-    protected function getMarkupFee(): float
+    public function getMarkupPercent(): float
     {
-        $markupSetting = (float) \App\Models\Setting::get('vn_markup', 1.00);
-        if ($markupSetting > 5.0 || ($markupSetting > 1.0 && $markupSetting < 2.0)) {
-            $markupSetting = 1.00;
-        }
-        return $markupSetting;
+        return (float) \App\Models\Setting::get('vn_markup_percent', 0.0);
     }
 }

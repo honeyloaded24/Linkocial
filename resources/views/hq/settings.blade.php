@@ -406,20 +406,12 @@
                                     <small class="text-muted" style="font-size: 0.75rem;">From <a href="https://grizzlysms.com" target="_blank" class="text-decoration-underline">grizzlysms.com</a></small>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Dynamic Profit Margin (%)</label>
-                                    <input type="number" step="0.5" min="0" name="vn_markup_percent" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('vn_markup_percent', 65.0) }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">Applied dynamically on wholesale quotes (e.g. 65 adds +65% margin).</small>
-                                </div>
-                                <div class="col-md-6">
-                                    @php
-                                        $rawMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
-                                        if ($rawMarkup > 5.0 || ($rawMarkup > 1.0 && $rawMarkup < 2.0)) {
-                                            $rawMarkup = 1.00;
-                                        }
-                                    @endphp
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Legacy Flat Markup (USD Fallback)</label>
-                                    <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format($rawMarkup, 2) }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">Fallback flat fee in case dynamic percentage is not applied.</small>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Fixed Profit Markup (USD)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text border-secondary bg-transparent text-muted">$</span>
+                                        <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format((float) \App\Models\Setting::get('vn_markup', 1.00), 2) }}" style="color: var(--text-main);">
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Flat profit amount added on top of provider wholesale prices (e.g. 1.00 adds +$1.00 to every number just like SMSPool).</small>
                                 </div>
                             </div>
 
