@@ -389,54 +389,45 @@
             </div>
         @endif
         <!-- Topbar -->
-        <header class="topbar px-3 px-md-4" style="position: relative; z-index: 100;">
-            <!-- Left Side: Hamburger & Balance Pill -->
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn d-lg-none me-1 p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle" title="Toggle Navigation">
-                    <i class="fa-solid fa-bars-staggered fs-4"></i>
+        <header class="topbar px-2 px-sm-3 px-md-4" style="position: relative; z-index: 100;">
+            @php
+                $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+                $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
+                $unreadCount = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count() : 0;
+                $latestNotifications = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get() : collect();
+            @endphp
+
+            <!-- Mobile Topbar: 5 items evenly distributed across the entire width -->
+            <div class="d-flex align-items-center justify-content-between w-100 d-lg-none">
+                <!-- 1. Hamburger -->
+                <button class="btn p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle" title="Toggle Navigation">
+                    <i class="fa-solid fa-bars-staggered fs-5"></i>
                 </button>
 
                 @auth
-                <!-- Balance Pill Button (with Eye Toggle) -->
-                <div class="d-flex align-items-center gap-1 gap-sm-2 px-2 px-sm-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem; height: 32px;" title="Current Balance">
+                <!-- 2. Balance Pill -->
+                <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem; height: 32px;" title="Current Balance">
                     <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
                         <i class="fa-solid fa-wallet text-muted me-1"></i>
-                        <span id="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
+                        <span class="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
                     </a>
                     <button type="button" class="btn btn-link p-0 text-muted border-0 lh-1" onclick="toggleTopbarBalance(this)" style="font-size: 0.78rem;" title="Show/Hide Balance">
-                        <i class="fa-regular fa-eye" id="topbarBalanceEye"></i>
+                        <i class="fa-regular fa-eye topbarBalanceEye"></i>
                     </button>
                 </div>
-                @endauth
-            </div>
-            
-            <!-- Right Side: Action Items -->
-            <div class="d-flex align-items-center gap-2 gap-md-3">
-                @auth
-                <!-- Fund Wallet Button -->
-                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm transition-hover px-2 px-md-3 py-1" style="height: 32px;" title="Fund Wallet">
+
+                <!-- 3. Fund Wallet Button (+) -->
+                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm px-2 py-1" style="height: 32px; min-width: 32px;" title="Fund Wallet">
                     <i class="fa-solid fa-plus"></i>
-                    <span class="d-none d-md-inline ms-1">Fund Wallet</span>
                 </a>
                 @endauth
 
-                <!-- Currency Switcher -->
-                <div class="dropdown me-md-1">
-                    @php
-                        $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
-                        $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
-                    @endphp
-                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-2 px-md-3 py-1 shadow-sm transition-hover" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 32px;" title="Change Currency">
-                        <span class="d-none d-md-inline-flex align-items-center gap-1">
-                            <i class="fa-solid fa-coins text-primary" style="color: var(--primary-color);"></i>
-                            <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
-                            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.75em; color: var(--primary-color);"></i>
-                        </span>
-                        <span class="d-inline d-md-none fw-bold" style="color: var(--primary-color); font-size: 0.85rem;">
-                            {{ $currentCurrency->symbol }}
-                        </span>
+                <!-- 4. Currency Switcher ($) -->
+                <div class="dropdown">
+                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-2 py-1 shadow-sm" type="button" id="currencyDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 32px; min-width: 32px;" title="Change Currency">
+                        <span class="fw-bold" style="color: var(--primary-color); font-size: 0.85rem;">{{ $currentCurrency->symbol }}</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdown" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdownMobile" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
                         @foreach($activeCurrencies as $cur)
                             <li>
                                 <form action="{{ route('currency.switch') }}" method="POST">
@@ -451,91 +442,166 @@
                     </ul>
                 </div>
 
-                <!-- Theme Switcher - Hidden on Mobile -->
-                <div class="theme-switch-wrapper d-none d-md-flex me-2">
-                    <i class="fa-solid fa-sun text-muted"></i>
-                    <label class="theme-switch" for="checkbox">
-                        <input type="checkbox" id="checkbox" checked />
-                        <div class="slider round"></div>
-                    </label>
-                    <i class="fa-solid fa-moon text-muted"></i>
-                </div>
-
-                <!-- User Tier Badge - Hidden on Mobile -->
                 @auth
-                    @php
-                        $roleBadges = [
-                            'admin' => ['label' => 'ADMIN HQ', 'class' => 'bg-primary text-white'],
-                            'reseller' => ['label' => 'GOLD RESELLER', 'class' => 'bg-info text-white'],
-                            'vip' => ['label' => 'VIP PARTNER', 'class' => 'bg-warning text-dark'],
-                            'user' => ['label' => 'SILVER PARTNER', 'class' => 'bg-light bg-opacity-10 text-muted']
-                        ];
-                        $badge = $roleBadges[Auth::user()->role ?? 'user'] ?? $roleBadges['user'];
-                    @endphp
-                    <span class="badge {{ $badge['class'] }} tier-badge shadow-sm d-none d-lg-inline-flex align-items-center">
-                        <i class="fa-solid fa-crown"></i>
-                        <span class="tier-label">{{ $badge['label'] }}</span>
-                    </span>
+                <!-- 5. Profile Avatar -->
+                <div class="dropdown">
+                    <a href="#" class="d-flex align-items-center text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false">
+                        <div class="rounded-circle bg-primary-custom text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 34px; height: 34px; font-size: 0.85rem;">
+                            {{ substr(Auth::user()->first_name ?? 'U', 0, 1) }}{{ substr(Auth::user()->last_name ?? 'U', 0, 1) }}
+                        </div>
+                        <i class="fa-solid fa-chevron-down small text-muted ms-1" style="font-size: 0.7em;"></i>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3">
+                        <li><a class="dropdown-item rounded p-2" href="{{ route('profile.index') }}"><i class="fa-solid fa-user-pen me-2 text-primary"></i> Edit Profile</a></li>
+                        <li><a class="dropdown-item rounded p-2" href="{{ route('wallet.index') }}"><i class="fa-solid fa-wallet me-2 text-primary"></i> My Wallet</a></li>
+                        <li><a class="dropdown-item rounded p-2" href="#" data-bs-toggle="modal" data-bs-target="#mobileNotificationsModal"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications @if($unreadCount > 0)<span class="badge bg-danger ms-2">{{ $unreadCount }}</span>@endif</a></li>
+                        <li><hr class="dropdown-divider opacity-10"></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item rounded p-2 text-danger">
+                                    <i class="fa-solid fa-right-from-bracket me-2"></i> Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                @else
+                <a href="{{ route('login') }}" class="btn btn-primary-custom px-3 py-1 rounded-pill fw-bold small shadow-sm" style="font-size: 0.8rem;">
+                    Login
+                </a>
                 @endauth
+            </div>
 
-                <!-- Notification Bell (Hidden on Mobile to Prevent Overflow) -->
-                <div class="dropdown d-none d-md-block">
+            <!-- Desktop Topbar (>= 992px) -->
+            <div class="d-none d-lg-flex align-items-center justify-content-between w-100">
+                <!-- Left: Balance Pill -->
+                <div class="d-flex align-items-center">
                     @auth
-                        @php
-                            $unreadCount = \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count();
-                            $latestNotifications = \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get();
-                        @endphp
-                        <a href="#" class="text-decoration-none position-relative p-2" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-main);">
-                            <i class="fa-solid fa-bell fs-5"></i>
-                            @if($unreadCount > 0)
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger border border-2 border-white" style="padding: 0.35rem; font-size: 0.5rem;">
-                                    {{ $unreadCount > 9 ? '9+' : $unreadCount }}
-                                </span>
-                            @endif
+                    <div class="d-flex align-items-center gap-2 px-3 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.82rem; height: 34px;" title="Current Balance">
+                        <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-wallet text-muted me-1"></i>
+                            <span class="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3" style="width: 320px; z-index: 2000;">
-                            <li class="p-2 border-bottom mb-2 d-flex justify-content-between align-items-center">
-                                <h6 class="fw-bold mb-0">Notifications</h6>
-                                <a href="#" class="small text-decoration-none text-primary fw-bold" style="font-size: 0.7rem;">Mark all as read</a>
-                            </li>
-                            <div style="max-height: 350px; overflow-y: auto;">
-                                @forelse($latestNotifications as $notif)
-                                    <li class="p-2 rounded hover-bg mb-1">
-                                        <a href="{{ $notif->link ?? '#' }}" class="text-decoration-none d-flex gap-3">
-                                            <div class="rounded-circle bg-{{ $notif->type }} bg-opacity-10 text-{{ $notif->type }} d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px;">
-                                                <i class="fa-solid fa-{{ $notif->type == 'success' ? 'check' : ($notif->type == 'danger' ? 'circle-exclamation' : ($notif->type == 'warning' ? 'triangle-exclamation' : 'info-circle')) }}"></i>
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold text-dark small">{{ $notif->title }}</div>
-                                                <div class="text-muted" style="font-size: 0.75rem; line-height: 1.3;">{{ Str::limit($notif->message, 60) }}</div>
-                                                <div class="text-muted mt-1" style="font-size: 0.65rem;">{{ $notif->created_at->diffForHumans() }}</div>
-                                            </div>
-                                        </a>
-                                    </li>
-                                @empty
-                                    <li class="p-4 text-center text-muted">
-                                        <i class="fa-solid fa-bell-slash fa-2x mb-2 opacity-20"></i>
-                                        <p class="small mb-0">No notifications yet</p>
-                                    </li>
-                                @endforelse
-                            </div>
-                        </ul>
+                        <button type="button" class="btn btn-link p-0 text-muted border-0 lh-1" onclick="toggleTopbarBalance(this)" style="font-size: 0.78rem;" title="Show/Hide Balance">
+                            <i class="fa-regular fa-eye topbarBalanceEye"></i>
+                        </button>
+                    </div>
                     @endauth
                 </div>
 
-                @auth
+                <!-- Right: Desktop Actions -->
+                <div class="d-flex align-items-center gap-3">
+                    @auth
+                    <!-- Fund Wallet Button -->
+                    <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm transition-hover px-3 py-1.5" style="height: 34px;" title="Fund Wallet">
+                        <i class="fa-solid fa-plus me-1"></i>
+                        <span>Fund Wallet</span>
+                    </a>
+                    @endauth
+
+                    <!-- Currency Switcher -->
+                    <div class="dropdown">
+                        <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-3 py-1.5 shadow-sm transition-hover" type="button" id="currencyDropdownDesktop" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 34px;" title="Change Currency">
+                            <i class="fa-solid fa-coins text-primary me-1" style="color: var(--primary-color);"></i>
+                            <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
+                            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.75em; color: var(--primary-color);"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdownDesktop" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
+                            @foreach($activeCurrencies as $cur)
+                                <li>
+                                    <form action="{{ route('currency.switch') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="currency_code" value="{{ $cur->code }}">
+                                        <button type="submit" class="dropdown-item rounded-3 py-2 {{ $currentCurrency->code == $cur->code ? 'bg-primary-soft fw-bold' : '' }}">
+                                            {{ $cur->code }} ({{ $cur->symbol }})
+                                        </button>
+                                    </form>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+
+                    <!-- Theme Switcher -->
+                    <div class="theme-switch-wrapper me-1">
+                        <i class="fa-solid fa-sun text-muted"></i>
+                        <label class="theme-switch" for="checkbox">
+                            <input type="checkbox" id="checkbox" checked />
+                            <div class="slider round"></div>
+                        </label>
+                        <i class="fa-solid fa-moon text-muted"></i>
+                    </div>
+
+                    <!-- User Tier Badge -->
+                    @auth
+                        @php
+                            $roleBadges = [
+                                'admin' => ['label' => 'ADMIN HQ', 'class' => 'bg-primary text-white'],
+                                'reseller' => ['label' => 'GOLD RESELLER', 'class' => 'bg-info text-white'],
+                                'vip' => ['label' => 'VIP PARTNER', 'class' => 'bg-warning text-dark'],
+                                'user' => ['label' => 'SILVER PARTNER', 'class' => 'bg-light bg-opacity-10 text-muted']
+                            ];
+                            $badge = $roleBadges[Auth::user()->role ?? 'user'] ?? $roleBadges['user'];
+                        @endphp
+                        <span class="badge {{ $badge['class'] }} tier-badge shadow-sm d-inline-flex align-items-center">
+                            <i class="fa-solid fa-crown"></i>
+                            <span class="tier-label">{{ $badge['label'] }}</span>
+                        </span>
+                    @endauth
+
+                    <!-- Notification Bell -->
+                    <div class="dropdown">
+                        @auth
+                            <a href="#" class="text-decoration-none position-relative p-2" data-bs-toggle="dropdown" aria-expanded="false" style="color: var(--text-main);">
+                                <i class="fa-solid fa-bell fs-5"></i>
+                                @if($unreadCount > 0)
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-circle bg-danger border border-2 border-white" style="padding: 0.35rem; font-size: 0.5rem;">
+                                        {{ $unreadCount > 9 ? '9+' : $unreadCount }}
+                                    </span>
+                                @endif
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3" style="width: 320px; z-index: 2000;">
+                                <li class="p-2 border-bottom mb-2 d-flex justify-content-between align-items-center">
+                                    <h6 class="fw-bold mb-0">Notifications</h6>
+                                    <a href="#" class="small text-decoration-none text-primary fw-bold" style="font-size: 0.7rem;">Mark all as read</a>
+                                </li>
+                                <div style="max-height: 350px; overflow-y: auto;">
+                                    @forelse($latestNotifications as $notif)
+                                        <li class="p-2 rounded hover-bg mb-1">
+                                            <a href="{{ $notif->link ?? '#' }}" class="text-decoration-none d-flex gap-3">
+                                                <div class="rounded-circle bg-{{ $notif->type }} bg-opacity-10 text-{{ $notif->type }} d-flex align-items-center justify-content-center flex-shrink-0" style="width: 35px; height: 35px;">
+                                                    <i class="fa-solid fa-{{ $notif->type == 'success' ? 'check' : ($notif->type == 'danger' ? 'circle-exclamation' : ($notif->type == 'warning' ? 'triangle-exclamation' : 'info-circle')) }}"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="fw-bold text-dark small">{{ $notif->title }}</div>
+                                                    <div class="text-muted" style="font-size: 0.75rem; line-height: 1.3;">{{ Str::limit($notif->message, 60) }}</div>
+                                                    <div class="text-muted mt-1" style="font-size: 0.65rem;">{{ $notif->created_at->diffForHumans() }}</div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                    @empty
+                                        <li class="p-4 text-center text-muted">
+                                            <i class="fa-solid fa-bell-slash fa-2x mb-2 opacity-20"></i>
+                                            <p class="small mb-0">No notifications yet</p>
+                                        </li>
+                                    @endforelse
+                                </div>
+                            </ul>
+                        @endauth
+                    </div>
+
+                    @auth
                     <!-- Profile Dropdown -->
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-decoration-none" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="rounded-circle bg-primary-custom text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 34px; height: 34px; font-size: 0.85rem;">
+                            <div class="rounded-circle bg-primary-custom text-white d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
                                 {{ substr(Auth::user()->first_name ?? 'U', 0, 1) }}{{ substr(Auth::user()->last_name ?? 'U', 0, 1) }}
                             </div>
-                            <i class="fa-solid fa-chevron-down small text-muted ms-1" style="font-size: 0.7em;"></i>
+                            <i class="fa-solid fa-chevron-down small text-muted ms-2"></i>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-2 premium-card mt-3">
                             <li><a class="dropdown-item rounded p-2" href="{{ route('profile.index') }}"><i class="fa-solid fa-user-pen me-2 text-primary"></i> Edit Profile</a></li>
                             <li><a class="dropdown-item rounded p-2" href="{{ route('wallet.index') }}"><i class="fa-solid fa-wallet me-2 text-primary"></i> My Wallet</a></li>
-                            <li class="d-md-none"><a class="dropdown-item rounded p-2" href="#" data-bs-toggle="modal" data-bs-target="#mobileNotificationsModal"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications @if(isset($unreadCount) && $unreadCount > 0)<span class="badge bg-danger ms-2">{{ $unreadCount }}</span>@endif</a></li>
                             <li><hr class="dropdown-divider opacity-10"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -547,11 +613,12 @@
                             </li>
                         </ul>
                     </div>
-                @else
+                    @else
                     <a href="{{ route('login') }}" class="btn btn-primary-custom px-4 py-2 rounded-pill fw-bold small shadow-sm">
                         <i class="fa-solid fa-right-to-bracket me-1"></i> Login
                     </a>
-                @endauth
+                    @endauth
+                </div>
             </div>
         </header>
 
@@ -659,29 +726,25 @@
 
         // Topbar Balance Visibility Toggle
         function toggleTopbarBalance(btn) {
-            const span = document.getElementById('topbarBalanceValue');
-            const eye = document.getElementById('topbarBalanceEye');
-            if (!span || !eye) return;
-            const raw = span.getAttribute('data-raw-balance');
-            const isHidden = span.innerText === '••••••';
-            if (isHidden) {
-                span.innerText = raw;
-                eye.className = 'fa-regular fa-eye';
-                localStorage.setItem('topbar_balance_hidden', '0');
-            } else {
-                span.innerText = '••••••';
-                eye.className = 'fa-regular fa-eye-slash';
-                localStorage.setItem('topbar_balance_hidden', '1');
-            }
+            const spans = document.querySelectorAll('.topbarBalanceValue, #topbarBalanceValue');
+            const eyes = document.querySelectorAll('.topbarBalanceEye, #topbarBalanceEye');
+            if (!spans.length) return;
+            const isHidden = spans[0].innerText.trim() === '••••••';
+            spans.forEach(span => {
+                const raw = span.getAttribute('data-raw-balance');
+                span.innerText = isHidden ? raw : '••••••';
+            });
+            eyes.forEach(eye => {
+                eye.className = isHidden ? 'fa-regular fa-eye topbarBalanceEye' : 'fa-regular fa-eye-slash topbarBalanceEye';
+            });
+            localStorage.setItem('topbar_balance_hidden', isHidden ? '0' : '1');
         }
         document.addEventListener('DOMContentLoaded', function() {
             if (localStorage.getItem('topbar_balance_hidden') === '1') {
-                const span = document.getElementById('topbarBalanceValue');
-                const eye = document.getElementById('topbarBalanceEye');
-                if (span && eye) {
-                    span.innerText = '••••••';
-                    eye.className = 'fa-regular fa-eye-slash';
-                }
+                const spans = document.querySelectorAll('.topbarBalanceValue, #topbarBalanceValue');
+                const eyes = document.querySelectorAll('.topbarBalanceEye, #topbarBalanceEye');
+                spans.forEach(span => span.innerText = '••••••');
+                eyes.forEach(eye => eye.className = 'fa-regular fa-eye-slash topbarBalanceEye');
             }
         });
 
