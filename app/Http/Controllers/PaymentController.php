@@ -321,33 +321,20 @@ class PaymentController extends Controller
             }
 
             // 3. Record in Financial Ledger (in USD base)
-            $desc = "Deposit via {$method}";
-            if ($fee > 0) {
-                $grossNaira = $amountInNaira + $fee;
-                $desc .= " (Gross: ₦" . number_format($grossNaira, 2) . ", Fee: ₦" . number_format($fee, 2) . ", Net: ₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})";
-            } else {
-                $desc .= " (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})";
-            }
-
             \App\Models\Transaction::add(
                 $lockedUser->id, 
                 $amountInUsd, 
                 'credit', 
                 'deposit', 
-                $desc,
+                "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
                 $reference
             );
 
             // 4. Send Notification & Email to user
-            $notifMsg = "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.";
-            if ($fee > 0) {
-                $notifMsg .= " (Fee: ₦" . number_format($fee, 2) . ")";
-            }
-
             \App\Models\Notification::send(
                 $lockedUser->id,
                 "Wallet Funded Successfully",
-                $notifMsg,
+                "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
                 'success',
                 route('wallet.history')
             );
