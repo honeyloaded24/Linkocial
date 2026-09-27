@@ -214,7 +214,15 @@ class VtuController extends Controller
             'meter_type' => 'required|string',
         ]);
 
-        $response = $this->vtuApi->validateMeter($request->meter_number, $request->disco, $request->meter_type);
+        $cleanMeter = preg_replace('/\D/', '', (string) $request->meter_number);
+        if (strlen($cleanMeter) < 6) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter a valid meter number with at least 6 digits.'
+            ]);
+        }
+
+        $response = $this->vtuApi->validateMeter($cleanMeter, $request->disco, $request->meter_type);
 
         $name = $response['extracted_name'] ?? \App\Services\GongozconceptApi::extractCustomerName($response);
 
@@ -228,7 +236,13 @@ class VtuController extends Controller
             ]);
         }
 
-        $errMsg = $response['message'] ?? ($response['detail'] ?? ($response['error'] ?? 'Could not verify meter. Please double-check your provider and meter number.'));
+        $errMsg = $response['message'] ?? ($response['detail'] ?? ($response['error'] ?? null));
+        if (is_array($errMsg)) {
+            $errMsg = implode(', ', array_filter($errMsg, 'is_string'));
+        }
+        if (empty($errMsg)) {
+            $errMsg = 'Could not verify meter. Please double-check your provider and meter number.';
+        }
 
         return response()->json([
             'success' => false,

@@ -30,40 +30,40 @@
                         
                         <div class="mb-4">
                             <label for="disco" class="form-label fw-bold">Electricity Provider (Disco)<span class="text-danger">*</span></label>
-                            <select class="form-select form-select-lg" id="disco" name="disco" required>
-                                <option value="" disabled selected>Select Provider</option>
-                                <option value="Ikeja Electric">Ikeja Electric</option>
-                                <option value="Eko Electric">Eko Electric</option>
-                                <option value="Abuja Electric">Abuja Electric</option>
-                                <option value="Kano Electric">Kano Electric</option>
-                                <option value="Enugu Electric">Enugu Electric</option>
-                                <option value="Port Harcourt Electric">Port Harcourt Electric</option>
-                                <option value="Ibadan Electric">Ibadan Electric</option>
-                                <option value="Kaduna Electric">Kaduna Electric</option>
-                                <option value="Jos Electric">Jos Electric</option>
-                                <option value="Benin Electric">Benin Electric</option>
-                                <option value="Yola Electric">Yola Electric</option>
-                                <option value="Aba Electric">Aba Electric (APLE)</option>
+                            <select class="form-select form-select-lg" id="disco" name="disco" required onchange="resetVerification()">
+                                <option value="" disabled selected>Select Electricity Provider</option>
+                                <option value="Ikeja Electric">Ikeja Electric (IKEDC - Lagos Mainland)</option>
+                                <option value="Eko Electric">Eko Electric (EKEDC - Lagos Island & Lekki)</option>
+                                <option value="Abuja Electric">Abuja Electric (AEDC - Abuja, Niger, Kogi, Nasarawa)</option>
+                                <option value="Kano Electric">Kano Electric (KEDCO - Kano, Katsina, Jigawa)</option>
+                                <option value="Enugu Electric">Enugu Electric (EEDC - Enugu, Abia, Imo, Anambra, Ebonyi)</option>
+                                <option value="Port Harcourt Electric">Port Harcourt Electric (PHED - Rivers, Bayelsa, Cross River, Akwa Ibom)</option>
+                                <option value="Ibadan Electric">Ibadan Electric (IBEDC - Oyo, Ogun, Osun, Kwara)</option>
+                                <option value="Kaduna Electric">Kaduna Electric (KAEDCO - Kaduna, Kebbi, Sokoto, Zamfara)</option>
+                                <option value="Jos Electric">Jos Electric (JED - Plateau, Bauchi, Benue, Gombe)</option>
+                                <option value="Benin Electric">Benin Electric (BEDC - Edo, Delta, Ondo, Ekiti)</option>
+                                <option value="Yola Electric">Yola Electric (YEDC - Adamawa, Borno, Taraba, Yobe)</option>
+                                <option value="Aba Electric">Aba Electric (APLE - Aba Ring-fenced Area)</option>
                             </select>
                         </div>
 
                         <div class="mb-4">
                             <label for="meter_type" class="form-label fw-bold">Meter Type<span class="text-danger">*</span></label>
-                            <select class="form-select form-select-lg" id="meter_type" name="meter_type" required>
-                                <option value="Prepaid">Prepaid</option>
-                                <option value="Postpaid">Postpaid</option>
+                            <select class="form-select form-select-lg" id="meter_type" name="meter_type" required onchange="resetVerification()">
+                                <option value="Prepaid">Prepaid (Token Meter)</option>
+                                <option value="Postpaid">Postpaid (Monthly Bill)</option>
                             </select>
                         </div>
 
                         <div class="mb-4">
                             <label for="meter_number" class="form-label fw-bold">Meter Number<span class="text-danger">*</span></label>
                             <div class="input-group input-group-lg">
-                                <input type="text" class="form-control border-end-0" id="meter_number" name="meter_number" placeholder="Enter Meter Number" required>
-                                <button type="button" class="btn btn-outline-info border-start-0 border" id="btnValidate" onclick="validateMeter()">
-                                    <i class="fa-solid fa-check-circle me-1"></i> Verify
+                                <input type="text" class="form-control border-end-0" id="meter_number" name="meter_number" placeholder="Enter Meter Number" required oninput="resetVerification()">
+                                <button type="button" class="btn btn-outline-info border-start-0 border px-3" id="btnValidate" onclick="validateMeter()">
+                                    <i class="fa-solid fa-check-circle me-1"></i> Verify Meter
                                 </button>
                             </div>
-                            <small id="meterName" class="form-text text-success fw-bold mt-2" style="display: none;"></small>
+                            <div id="meterName" class="mt-2" style="display: none;"></div>
                         </div>
 
                         <div class="mb-4">
@@ -115,19 +115,32 @@
 </div>
 
 <script>
+    function resetVerification() {
+        const meterNameLabel = document.getElementById('meterName');
+        if (meterNameLabel) {
+            meterNameLabel.style.display = 'none';
+            meterNameLabel.innerHTML = '';
+        }
+    }
+
     function validateMeter() {
         const disco = document.getElementById('disco').value;
         const meterType = document.getElementById('meter_type').value;
-        const meterNumber = document.getElementById('meter_number').value;
+        const meterNumber = document.getElementById('meter_number').value.trim();
         const meterNameLabel = document.getElementById('meterName');
         const btnValidate = document.getElementById('btnValidate');
 
-        if (!disco || !meterNumber || !meterType) {
-            alert('Please select provider, meter type, and enter meter number.');
+        if (!disco) {
+            alert('Please select your electricity distribution company (Disco).');
             return;
         }
 
-        btnValidate.innerHTML = 'Verifying...';
+        if (!meterNumber || meterNumber.replace(/\D/g, '').length < 6) {
+            alert('Please enter a valid meter number (at least 6 digits).');
+            return;
+        }
+
+        btnValidate.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Verifying...';
         btnValidate.disabled = true;
 
         fetch("{{ route('vtu.electricity.validate') }}", {
@@ -144,32 +157,34 @@
         })
         .then(response => response.json())
         .then(data => {
-            btnValidate.innerHTML = 'Verify Meter';
+            btnValidate.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> Verify Meter';
             btnValidate.disabled = false;
 
+            meterNameLabel.style.display = 'block';
+
             if (data.success) {
-                meterNameLabel.style.display = 'block';
-                let displayText = '<i class="fa-solid fa-circle-check me-1"></i> <strong>' + data.name + '</strong>';
+                let displayText = '<div class="alert alert-success py-2 px-3 mb-0 rounded-3 small border-0 bg-success bg-opacity-10 text-success">';
+                displayText += '<div class="d-flex align-items-center gap-2"><i class="fa-solid fa-circle-check fs-6"></i> <strong>' + data.name + '</strong></div>';
                 if (data.address) {
-                    displayText += '<br><small class="text-muted">' + data.address + '</small>';
+                    displayText += '<div class="text-muted mt-1" style="font-size: 0.8rem;">' + data.address + '</div>';
                 }
                 if (data.detectedMismatch && data.suggestedMeterType) {
                     document.getElementById('meter_type').value = data.suggestedMeterType;
-                    displayText += '<br><span class="badge bg-warning text-dark mt-1"><i class="fa-solid fa-arrows-rotate me-1"></i> Auto-switched to ' + data.suggestedMeterType + '</span>';
+                    displayText += '<div class="mt-1"><span class="badge bg-warning text-dark"><i class="fa-solid fa-arrows-rotate me-1"></i> Auto-detected ' + data.suggestedMeterType + '</span></div>';
                 }
+                displayText += '</div>';
                 meterNameLabel.innerHTML = displayText;
-                meterNameLabel.className = 'form-text text-success fw-bold mt-2';
             } else {
-                meterNameLabel.innerHTML = '<i class="fa-solid fa-circle-exclamation me-1"></i> ' + (data.message || 'Invalid meter number.');
-                meterNameLabel.className = 'form-text text-danger fw-bold mt-2';
-                meterNameLabel.style.display = 'block';
+                let errorHtml = '<div class="alert alert-danger py-2 px-3 mb-0 rounded-3 small border-0 bg-danger bg-opacity-10 text-danger">';
+                errorHtml += '<div class="d-flex align-items-center gap-2"><i class="fa-solid fa-circle-exclamation fs-6"></i> <span>' + (data.message || 'Could not verify meter. Please double-check your provider and meter number.') + '</span></div>';
+                errorHtml += '</div>';
+                meterNameLabel.innerHTML = errorHtml;
             }
         })
         .catch(error => {
-            btnValidate.innerHTML = 'Verify Meter';
+            btnValidate.innerHTML = '<i class="fa-solid fa-check-circle me-1"></i> Verify Meter';
             btnValidate.disabled = false;
-            meterNameLabel.innerHTML = 'Validation failed. Please try again.';
-            meterNameLabel.className = 'form-text text-danger font-weight-bold mt-2';
+            meterNameLabel.innerHTML = '<div class="alert alert-danger py-2 px-3 mb-0 rounded-3 small border-0 bg-danger bg-opacity-10 text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> Connection timeout while verifying meter. You may still proceed with payment.</div>';
             meterNameLabel.style.display = 'block';
         });
     }
