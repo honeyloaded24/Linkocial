@@ -906,6 +906,26 @@ class AdminController extends Controller
     }
 
     /**
+     * Toggle user Two-Factor Authentication (2FA) status from Admin HQ
+     */
+    public function toggleUser2fa($id)
+    {
+        $user = User::findOrFail($id);
+        $user->two_factor_enabled = !$user->two_factor_enabled;
+        if (!$user->two_factor_enabled) {
+            $user->two_factor_code = null;
+            $user->two_factor_expires_at = null;
+        }
+        $user->save();
+
+        $status = $user->two_factor_enabled ? 'enabled' : 'disabled';
+
+        \App\Models\ActivityLog::log("Admin {$status} 2FA for user #{$user->id} ({$user->username})", Auth::user());
+
+        return back()->with('success', "Two-Factor Authentication (2FA) has been {$status} for {$user->username}.");
+    }
+
+    /**
      * Login as user (Impersonation)
      */
     public function impersonate($id)

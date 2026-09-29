@@ -111,6 +111,14 @@
                 </button>
             </form>
         </div>
+        <div class="col">
+            <form action="{{ route('hq.users.toggle-2fa', $user->id) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn {{ $user->two_factor_enabled ? 'btn-danger' : 'btn-outline-secondary' }} w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2" style="font-size: 0.9rem;" onclick="return confirm('{{ $user->two_factor_enabled ? 'Disable 2FA for ' . $user->username . '? They will be able to log in without email verification code.' : 'Enable 2FA for ' . $user->username . '?' }}')">
+                    <i class="fa-solid fa-shield-halved fa-sm"></i> {{ $user->two_factor_enabled ? 'Disable 2FA' : 'Enable 2FA' }}
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Information Card -->
@@ -153,13 +161,20 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label text-muted fw-bold mb-1" style="font-size: 0.9rem;">Security (2FA)</label>
-                    <div class="form-control bg-light border-0 py-2 px-3 d-flex align-items-center gap-2 fw-bold" style="font-size: 1rem; opacity: 0.8; color: var(--text-main);">
-                        @if($user->google2fa_secret)
-                            <i class="fa-solid fa-shield-check text-primary"></i> Enabled
-                        @else
-                            <i class="fa-solid fa-shield text-muted"></i> Disabled
-                        @endif
+                    <label class="form-label text-muted fw-bold mb-1 d-flex justify-content-between align-items-center" style="font-size: 0.9rem;">
+                        <span>Security (Two-Factor 2FA)</span>
+                        <span class="badge {{ $user->two_factor_enabled ? 'bg-danger' : 'bg-secondary' }}">
+                            {{ $user->two_factor_enabled ? '2FA ACTIVE' : '2FA DISABLED' }}
+                        </span>
+                    </label>
+                    <div class="form-control bg-light border-0 py-2 px-3 d-flex align-items-center justify-content-between fw-bold" style="font-size: 1rem; opacity: 0.9; color: var(--text-main);">
+                        <div class="d-flex align-items-center gap-2">
+                            @if($user->two_factor_enabled)
+                                <i class="fa-solid fa-circle-check text-success"></i> <span class="text-success">Enabled (Email OTP on login)</span>
+                            @else
+                                <i class="fa-solid fa-circle-xmark text-muted"></i> <span class="text-muted">Disabled (Direct login without OTP)</span>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>

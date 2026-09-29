@@ -155,12 +155,25 @@
                             <div class="premium-card p-4 bg-danger bg-opacity-10 border-0">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="fw-bold mb-0 text-danger"><i class="fa-solid fa-shield-halved me-2"></i>Maintenance Mode</h6>
+                                        <h6 class="fw-bold mb-0 text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i>Maintenance Mode</h6>
                                         <p class="text-muted small mb-0">Immediately blocks all non-admin users from using the platform.</p>
                                     </div>
                                     <div class="form-check form-switch">
                                         <input type="hidden" name="maintenance_mode" value="0">
                                         <input class="form-check-input fs-3" type="checkbox" name="maintenance_mode" value="1" {{ \App\Models\Setting::get('maintenance_mode') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="premium-card p-4 bg-primary bg-opacity-10 border-0 mt-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-primary"><i class="fa-solid fa-shield-halved me-2"></i>Two-Factor Authentication (2FA) Master Switch</h6>
+                                        <p class="text-muted small mb-0">Global control for email OTP verification on login. When switched OFF, no users will be prompted for 2FA codes even if enabled on their profile.</p>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input type="hidden" name="two_factor_system_enabled" value="0">
+                                        <input class="form-check-input fs-3" type="checkbox" name="two_factor_system_enabled" value="1" {{ \App\Models\Setting::get('two_factor_system_enabled', '1') == '1' ? 'checked' : '' }}>
                                     </div>
                                 </div>
                             </div>

@@ -147,12 +147,12 @@
                             <h6 class="fw-bold mb-1">Two-Factor Authentication (2FA)</h6>
                             <p class="text-muted small mb-0">Protect your account with a secondary verification code sent to your email.</p>
                         </div>
-                        <form action="{{ route('profile.2fa.toggle') }}" method="POST">
+                        <form action="{{ route('profile.2fa.toggle') }}" method="POST" id="twoFactorForm">
                             @csrf
                             <div class="form-check form-switch">
                                 <input class="form-check-input ms-0" type="checkbox" role="switch" id="twoFactorToggle" 
                                     {{ $user->two_factor_enabled ? 'checked' : '' }} 
-                                    onchange="this.form.submit()" 
+                                    onchange="confirmToggle2FA(this)" 
                                     style="width: 3rem; height: 1.5rem; cursor: pointer;">
                             </div>
                         </form>
@@ -280,5 +280,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function confirmToggle2FA(checkbox) {
+    const isEnabling = checkbox.checked;
+    const msg = isEnabling 
+        ? "Enable Two-Factor Authentication (2FA)?\n\nYou will receive a 6-digit code on your email ({{ $user->email }}) whenever you log in."
+        : "Disable Two-Factor Authentication (2FA)?\n\nYour account will no longer require an email code to log in.";
+    if (confirm(msg)) {
+        checkbox.form.submit();
+    } else {
+        checkbox.checked = !isEnabling;
+    }
+}
 </script>
 @endsection

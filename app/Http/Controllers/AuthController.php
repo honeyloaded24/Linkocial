@@ -78,7 +78,8 @@ class AuthController extends Controller
             }
 
             // 2. Handle Two-Factor Authentication
-            if ($user->two_factor_enabled) {
+            $is2faGloballyEnabled = (bool) \App\Models\Setting::get('two_factor_system_enabled', true);
+            if ($user->two_factor_enabled && $is2faGloballyEnabled) {
                 Auth::logout();
                 $request->session()->put('2fa_user_id', $user->id);
                 $request->session()->put('2fa_remember', $remember);
@@ -276,15 +277,32 @@ class AuthController extends Controller
 
     public function verifyTwoFactor(Request $request)
     {
-        $request->validate(['code' => 'required|string|size:6']);
+        $rawCode = (string) $request->code;
+        $cleanCode = preg_replace('/\D/', '', $rawCode);
 
-        if (!session()->has('2fa_user_id')) {
-            return redirect()->route('login');
+        if (strlen($cleanCode) !== 6) {
+            return back()->with('error', 'Please enter a valid 6-digit verification code.');
         }
 
-        $user = User::findOrFail(session('2fa_user_id'));
+        if (!session()->has('2fa_user_id')) {
+            return redirect()->route('login')->with('error', 'Your verification session has expired. Please log in again.');
+        }
 
-        if ($user->two_factor_code && hash_equals((string) $user->two_factor_code, (string) $request->code) && now()->lt($user->two_factor_expires_at)) {
+        $user = User::find(session('2fa_user_id'));
+        if (!$user) {
+            session()->forget(['2fa_user_id', '2fa_remember']);
+            return redirect()->route('login')->with('error', 'User not found. Please log in again.');
+        }
+
+        $now = now();
+        $expiresAt = $user->two_factor_expires_at;
+        $isNotExpired = false;
+        if ($expiresAt) {
+            $carbonExpires = $expiresAt instanceof \Carbon\Carbon ? $expiresAt : \Carbon\Carbon::parse($expiresAt);
+            $isNotExpired = $now->lte($carbonExpires);
+        }
+
+        if ($user->two_factor_code && hash_equals((string) $user->two_factor_code, $cleanCode) && $isNotExpired) {
             // Success! Reset 2FA fields and log them in
             $user->update([
                 'two_factor_code' => null,
@@ -301,36 +319,52 @@ class AuthController extends Controller
             return redirect()->intended($user->isAdmin() ? 'hq/dashboard' : 'dashboard');
         }
 
-        return back()->with('error', 'Invalid or expired verification code.');
+        return back()->with('error', 'Invalid or expired verification code. Please check your latest email or request a new code.');
     }
 
     public function resendTwoFactor()
     {
         if (!session()->has('2fa_user_id')) {
-            return redirect()->route('login');
+            return redirect()->route('login')->with('error', 'Your verification session has expired. Please log in again.');
         }
 
         $user = User::findOrFail(session('2fa_user_id'));
-        $this->generateAndSend2FA($user);
+        $this->generateAndSend2FA($user, true); // Force new code on explicit resend click
 
-        return back()->with('success', 'A new code has been sent to your email.');
+        return back()->with('success', 'A new verification code has been sent to your email.');
     }
 
-    private function generateAndSend2FA($user)
+    private function generateAndSend2FA($user, $forceNew = false): bool
     {
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        
-        $user->update([
-            'two_factor_code' => $code,
-            'two_factor_expires_at' => now()->addMinutes(10)
-        ]);
+        $existingCode = $user->two_factor_code;
+        $expiresAt = $user->two_factor_expires_at;
+
+        $reuseCode = false;
+        if (!$forceNew && $existingCode && $expiresAt) {
+            $carbonExpires = $expiresAt instanceof \Carbon\Carbon ? $expiresAt : \Carbon\Carbon::parse($expiresAt);
+            // If code is still valid and has at least 5 minutes left
+            if ($carbonExpires->isFuture() && $carbonExpires->diffInMinutes(now()) <= 15) {
+                $code = $existingCode;
+                $reuseCode = true;
+            }
+        }
+
+        if (!$reuseCode) {
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $user->update([
+                'two_factor_code' => $code,
+                'two_factor_expires_at' => now()->addMinutes(15)
+            ]);
+        }
 
         try {
             \Illuminate\Support\Facades\Mail::send('emails.auth.otp', ['code' => $code, 'name' => $user->first_name], function($message) use ($user) {
                 $message->to($user->email)->subject('Security Verification Code 🔒');
             });
+            return true;
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("2FA Email failed: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("2FA Email failed for user #{$user->id} ({$user->email}): " . $e->getMessage());
+            return false;
         }
     }
 

@@ -40,6 +40,10 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $user->two_factor_enabled = !$user->two_factor_enabled;
+        if (!$user->two_factor_enabled) {
+            $user->two_factor_code = null;
+            $user->two_factor_expires_at = null;
+        }
         $user->save();
 
         $status = $user->two_factor_enabled ? 'enabled' : 'disabled';
