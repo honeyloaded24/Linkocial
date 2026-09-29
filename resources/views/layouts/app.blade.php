@@ -239,6 +239,9 @@
                                 <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-pen-to-square"></i> Blog Manager
                                 </a>
+                                <a href="{{ route('hq.broadcasts') }}" class="nav-link mb-2 {{ request()->routeIs('hq.broadcasts*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-bullhorn"></i> Notice Bar & Tickers
+                                </a>
                                 <a href="{{ route('hq.currencies') }}" class="nav-link mb-2 {{ request()->routeIs('hq.currencies*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-coins"></i> Currencies
                                 </a>
