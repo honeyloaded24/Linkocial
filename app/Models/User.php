@@ -42,6 +42,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'referral_code',
         'referred_by',
         'two_factor_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     public function isReseller()

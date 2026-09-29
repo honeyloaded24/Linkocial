@@ -304,10 +304,10 @@ class AuthController extends Controller
 
         if ($user->two_factor_code && hash_equals((string) $user->two_factor_code, $cleanCode) && $isNotExpired) {
             // Success! Reset 2FA fields and log them in
-            $user->update([
+            $user->forceFill([
                 'two_factor_code' => null,
                 'two_factor_expires_at' => null
-            ]);
+            ])->save();
 
             $remember = session('2fa_remember', false);
             session()->forget(['2fa_user_id', '2fa_remember']);
@@ -351,10 +351,10 @@ class AuthController extends Controller
 
         if (!$reuseCode) {
             $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-            $user->update([
+            $user->forceFill([
                 'two_factor_code' => $code,
                 'two_factor_expires_at' => now()->addMinutes(15)
-            ]);
+            ])->save();
         }
 
         try {
