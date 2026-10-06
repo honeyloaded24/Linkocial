@@ -541,6 +541,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             costDisplay.textContent = data.formatted_quote;
                             if (userBalanceDisplay) userBalanceDisplay.textContent = data.formatted_balance;
 
+                            // Dynamically update dropdown option text so dropdown and quote card always match 100%
+                            if (serviceTs && serviceTs.options && serviceTs.options[val]) {
+                                const currentOpt = serviceTs.options[val];
+                                const rawName = data.service_name || currentOpt.text.split(' — ')[0];
+                                const newText = `${rawName} — ${data.formatted_quote}`;
+                                if (currentOpt.text !== newText) {
+                                    serviceTs.updateOption(val, {
+                                        value: val,
+                                        text: newText,
+                                        formatted_price: data.formatted_quote
+                                    });
+                                }
+                            }
+
                             if (!data.sufficient_balance) {
                                 if (insufficientAlert) {
                                     const msgEl = document.getElementById('vn-insufficient-msg');

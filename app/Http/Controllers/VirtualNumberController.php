@@ -130,14 +130,11 @@ class VirtualNumberController extends Controller
                 }
             }
 
-            // Map to final array with dynamic markup percentage applied (default: 65%)
+            // Map to final array with dynamic markup fee applied
             $finalServices = [];
             foreach ($grouped as $service) {
-                // If there are multiple pools, sort prices and pick the active/median pool to avoid dead low-price traps
-                $prices = $service['prices'];
-                sort($prices);
-                $count = count($prices);
-                $chosenWholesale = ($count > 1) ? $prices[(int)floor($count / 2)] : $prices[0];
+                // Use minimum pool price (matches SMSPool low_price entry quote)
+                $chosenWholesale = min($service['prices']);
 
                 $retailPrice = $this->calculateRetailPrice($chosenWholesale);
                 $finalServices[] = [
@@ -204,8 +201,7 @@ class VirtualNumberController extends Controller
 
             // For Server 1 (SMSPool): verify real-time stock and active in-stock pool price
             if ($server === 'server1') {
-                $cacheKey = "smspool_live_quote_{$country}_{$productId}";
-                $liveInfo = Cache::get($cacheKey) ?: $this->smspool->getServiceLiveInfo($productId, $country);
+                $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
 
                 if ($liveInfo !== null) {
                     $stock = $liveInfo['stock'] ?? 0;
@@ -215,16 +211,17 @@ class VirtualNumberController extends Controller
                         ], 400);
                     }
 
-                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['low_price'];
+                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['price'];
                     }
-                } elseif (count($allPoolPrices) > 1) {
-                    sort($allPoolPrices);
-                    $activeWholesalePrice = $allPoolPrices[(int)floor(count($allPoolPrices) / 2)];
+                } elseif (count($allPoolPrices) > 0) {
+                    $activeWholesalePrice = min($allPoolPrices);
                 }
             }
 
-            // Calculate verified user cost with dynamic percentage markup
+            // Calculate verified user cost with dynamic markup
             $userCostUsd = $this->calculateRetailPrice($activeWholesalePrice);  
             $finalCheckCost = max(0.00, $userCostUsd);
 
@@ -254,10 +251,11 @@ class VirtualNumberController extends Controller
             $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
             $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
-            // Execute Purchase on chosen server
+            // Execute Purchase on chosen server (pricing_option = 0 for SMSPool cheapest pool)
             try {
-                $provider = $this->getProvider($server);
-                $buyResponse = $provider->buyNumber($country, $productId, $maxWholesale);
+                $buyResponse = ($server === 'server1')
+                    ? $this->smspool->buyNumber($country, $productId, $maxWholesale, 0)
+                    : $this->grizzly->buyNumber($country, $productId, $maxWholesale);
             } catch (\Exception $e) {
                 // Refund the reserved balance if purchase fails
                 DB::beginTransaction();
@@ -326,36 +324,15 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'Failed to obtain an order ID from SMS provider.'], 500);
             }
 
-            // Recalculate final user cost based on the real price returned by provider with dynamic markup
-            $finalUserCostUsd = max(0.00, $this->calculateRetailPrice($actualCostUsd));
+            // User is charged the exact contracted retail quote confirmed on screen
+            $finalUserCostUsd = $finalCheckCost;
 
-            // Database Transaction for finalizing and adjusting cost
+            // Database Transaction for finalizing order and transaction
             DB::beginTransaction();
             try {
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-                // Adjust balance based on the actual final cost vs our initial reserved estimate
-                $costDifference = round($finalUserCostUsd - $finalCheckCost, 4);
-                if ($costDifference > 0) {
-                    if (!$lockedUser->deductBalance($costDifference)) {
-                        // User cannot afford the extra cost - cancel immediately and refund
-                        try {
-                            $this->getProvider($server)->cancelOrder($apiOrderId);
-                        } catch (\Throwable $cancelErr) {
-                            Log::error('Failed to cancel order on price jump', [
-                                'order_id' => $apiOrderId,
-                                'error' => $cancelErr->getMessage()
-                            ]);
-                        }
-                        $lockedUser->addBalance($finalCheckCost);
-                        DB::commit();
-                        return response()->json(['error' => 'Provider price for this number exceeded your wallet balance. Your funds have been refunded.'], 402);
-                    }
-                } elseif ($costDifference < 0) {
-                    $lockedUser->addBalance(abs($costDifference));
-                }
-
-                // Record Financial Transaction
+                // Record Financial Transaction for the exact quoted price
                 if ($finalUserCostUsd > 0) {
                     $serverLabel = ($server === 'server2') ? 'Server 2 (Grizzly)' : 'Server 1';
                     Transaction::add(
@@ -625,7 +602,8 @@ class VirtualNumberController extends Controller
             // For Server 1 (SMSPool): query real-time in-stock pool price & stock availability
             if ($server === 'server1') {
                 $cacheKey = "smspool_live_quote_{$country}_{$productId}";
-                $liveInfo = Cache::remember($cacheKey, 30, function() use ($productId, $country) {
+                // Query live with 5s burst debounce
+                $liveInfo = Cache::remember($cacheKey, 5, function() use ($productId, $country) {
                     return $this->smspool->getServiceLiveInfo($productId, $country);
                 });
 
@@ -644,13 +622,13 @@ class VirtualNumberController extends Controller
                         ]);
                     }
 
-                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['low_price'];
+                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['price'];
                     }
-                } elseif (count($allPoolPrices) > 1) {
-                    // Fallback if success_rate endpoint is unreachable: use median pool to avoid dead low-price traps
-                    sort($allPoolPrices);
-                    $activeWholesalePrice = $allPoolPrices[(int)floor(count($allPoolPrices) / 2)];
+                } elseif (count($allPoolPrices) > 0) {
+                    $activeWholesalePrice = min($allPoolPrices);
                 }
             }
 
@@ -705,7 +683,7 @@ class VirtualNumberController extends Controller
         try {
             $pricesData = $this->getProvider($server)->getPricesForCountry($country);
             if (!empty($pricesData) && is_array($pricesData)) {
-                Cache::put($cacheKey, $pricesData, 300);
+                Cache::put($cacheKey, $pricesData, 60);
             }
             return $pricesData ?: [];
         } catch (\Throwable $e) {

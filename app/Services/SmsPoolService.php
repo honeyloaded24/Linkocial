@@ -94,10 +94,25 @@ class SmsPoolService
             if ($response->successful()) {
                 $data = $response->json();
                 if (is_array($data) && !empty($data)) {
-                    $item = $data[0];
+                    $item = null;
+                    if ($country !== null && count($data) > 1) {
+                        foreach ($data as $row) {
+                            if ((string)($row['country_id'] ?? $row['country'] ?? '') === (string)$country) {
+                                $item = $row;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$item) {
+                        $item = $data[0];
+                    }
+
+                    $lowPrice = isset($item['low_price']) ? (float)$item['low_price'] : null;
+                    $standardPrice = isset($item['price']) ? (float)$item['price'] : null;
+
                     return [
-                        'price' => isset($item['price']) ? (float)$item['price'] : null,
-                        'low_price' => isset($item['low_price']) ? (float)$item['low_price'] : null,
+                        'price' => $standardPrice,
+                        'low_price' => $lowPrice,
                         'stock' => isset($item['stock']) ? (int)$item['stock'] : 0,
                         'success_rate' => isset($item['success_rate']) ? (int)$item['success_rate'] : null,
                         'name' => $item['name'] ?? null,
@@ -115,12 +130,13 @@ class SmsPoolService
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */
-    public function buyNumber(string|int $country, string|int $service, ?float $maxPrice = null): array
+    public function buyNumber(string|int $country, string|int $service, ?float $maxPrice = null, int $pricingOption = 0): array
     {
         $params = [
             'country' => $country,
             'service' => $service,
             'key' => $this->apiKey,
+            'pricing_option' => $pricingOption,
         ];
 
         if ($maxPrice !== null) {
