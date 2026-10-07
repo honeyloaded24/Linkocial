@@ -70,7 +70,7 @@ class DashboardController extends Controller
 
         // 2. Fetch recent activities
         $recentActivities = \App\Models\Transaction::where('user_id', $user->id)
-            ->latest()
+            ->ordered()
             ->take(5)
             ->get();
 

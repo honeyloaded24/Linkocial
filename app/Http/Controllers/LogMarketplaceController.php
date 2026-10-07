@@ -254,7 +254,7 @@ class LogMarketplaceController extends Controller
                     DB::rollBack();
                     return back()->with('error', 'Insufficient wallet balance. Please fund your account.');
                 }
-                Transaction::add(
+                $debitTx = Transaction::add(
                     $user->id, 
                     $amountUsd, 
                     'debit', 
@@ -318,7 +318,9 @@ class LogMarketplaceController extends Controller
                     $amountUsd, 
                     'credit', 
                     'log_refund', 
-                    "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
+                    "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")",
+                    null,
+                    $debitTx->created_at ?? null
                 );
 
                 $order->update([

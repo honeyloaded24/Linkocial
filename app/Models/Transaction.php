@@ -17,14 +17,12 @@ class Transaction extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function add($userId, $amount, $type, $txType, $description = null, $ref = null)
+    public static function add($userId, $amount, $type, $txType, $description = null, $ref = null, $createdAt = null)
     {
         $user = \App\Models\User::find($userId);
         $before = (float)$user->balance;
         
-        // This helper assumes balance has already been updated or will be updated.
-        // Usually, we call this RIGHT AFTER saving the user balance.
-        return self::create([
+        $data = [
             'user_id' => $userId,
             'amount' => $amount,
             'type' => $type,
@@ -33,6 +31,30 @@ class Transaction extends Model
             'balance_after' => $before,
             'description' => $description,
             'reference' => $ref ?? strtoupper(Str::random(10)),
-        ]);
+        ];
+
+        if ($createdAt) {
+            $data['created_at'] = $createdAt;
+            $data['updated_at'] = $createdAt;
+        }
+
+        return self::create($data);
+    }
+
+    /**
+     * Scope to order transactions so debits precede corresponding refunds,
+     * while newest time periods always stay at the top.
+     */
+    public function scopeOrdered($query)
+    {
+        $driver = \Illuminate\Support\Facades\DB::getDriverName();
+        $minuteExpr = ($driver === 'sqlite') 
+            ? "strftime('%Y-%m-%d %H:%M', created_at)" 
+            : "DATE_FORMAT(created_at, '%Y-%m-%d %H:%i')";
+
+        return $query->orderByRaw("{$minuteExpr} DESC")
+                     ->orderByRaw("CASE WHEN type = 'debit' THEN 0 ELSE 1 END ASC")
+                     ->orderBy('created_at', 'desc')
+                     ->orderBy('id', 'asc');
     }
 }

@@ -1002,7 +1002,7 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         $deposits = \App\Models\Payment::where('user_id', $id)->latest()->get();
-        $transactions = \App\Models\Transaction::where('user_id', $id)->latest()->get();
+        $transactions = \App\Models\Transaction::where('user_id', $id)->ordered()->get();
 
         $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
 
@@ -1118,7 +1118,7 @@ class AdminController extends Controller
      */
     public function allTransactions(Request $request)
     {
-        $query = \App\Models\Transaction::with('user')->latest();
+        $query = \App\Models\Transaction::with('user')->ordered();
 
         // Filter by Type (Credit/Debit)
         if ($request->filled('type')) {
