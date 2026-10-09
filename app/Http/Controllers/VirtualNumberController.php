@@ -211,10 +211,11 @@ class VirtualNumberController extends Controller
                         ], 400);
                     }
 
-                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['low_price'];
-                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                    // Prioritize active live price over theoretical floor price
+                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['price'];
+                    } elseif (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['low_price'];
                     }
                 } elseif (count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
@@ -248,7 +249,7 @@ class VirtualNumberController extends Controller
             // Provide a realistic pool buffer for SMSPool without exceeding what the user can afford
             $flatMarkup = $this->getMarkupFee();
             $maxAffordableWholesale = max(0.00, round($totalAvailableBalance - $flatMarkup, 2));
-            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
+            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.15, 2);
             $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
             // Execute Purchase on chosen server (pricing_option = 0 for SMSPool cheapest pool)
@@ -599,13 +600,9 @@ class VirtualNumberController extends Controller
             $stockCount = null;
             $successRate = null;
 
-            // For Server 1 (SMSPool): query real-time in-stock pool price & stock availability
+            // For Server 1 (SMSPool): query real-time live price & stock availability directly on customer pick
             if ($server === 'server1') {
-                $cacheKey = "smspool_live_quote_{$country}_{$productId}";
-                // Query live with 5s burst debounce
-                $liveInfo = Cache::remember($cacheKey, 5, function() use ($productId, $country) {
-                    return $this->smspool->getServiceLiveInfo($productId, $country);
-                });
+                $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
 
                 if ($liveInfo !== null) {
                     $stockCount = $liveInfo['stock'] ?? 0;
@@ -622,10 +619,11 @@ class VirtualNumberController extends Controller
                         ]);
                     }
 
-                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['low_price'];
-                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                    // Prioritize real-time active price over theoretical floor price
+                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['price'];
+                    } elseif (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['low_price'];
                     }
                 } elseif (count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
