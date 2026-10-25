@@ -6,7 +6,7 @@
 @php
     /** @var \App\Models\User $user */
     $user = Auth::user();
-    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', $user->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', $user->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
 @endphp
 <div class="container-fluid">
     <!-- Broadcast / News Slider -->

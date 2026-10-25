@@ -181,7 +181,7 @@
 
                 @php
                     $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-                    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+                    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                     $ngnRate = $ngnCurrency->exchange_rate;
                     $currentRate = $currentCurrency->exchange_rate;
                 @endphp
@@ -190,7 +190,7 @@
                     @csrf
                     
                     <div class="mb-3">
-                        <label class="form-label text-muted x-small fw-bold text-uppercase">Amount ({{ Session::get('currency_code', auth()->user()->currency_code ?? 'USD') }})</label>
+                        <label class="form-label text-muted x-small fw-bold text-uppercase">Amount ({{ Session::get('currency_code', auth()->user()->currency_code ?? 'NGN') }})</label>
                         <div class="input-group">
                             <span class="input-group-text bg-transparent text-muted border-end-0" style="border-color: var(--border-color);">{{ get_currency_symbol() }}</span>
                             <input type="number" id="depositAmount" name="amount" class="form-control border-start-0 ps-0 fw-bold" placeholder="5000" min="1" step="any" required style="background-color: transparent; color: var(--text-main); border-color: var(--border-color);">

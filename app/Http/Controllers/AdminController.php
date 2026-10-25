@@ -600,7 +600,7 @@ class AdminController extends Controller
             \App\Models\Payment::create([
                 'user_id' => $user->id,
                 'amount' => $request->amount,
-                'currency' => $user->currency_code ?? 'USD',
+                'currency' => $user->currency_code ?? 'NGN',
                 'amount_usd' => $request->amount,
                 'reference' => $ref,
                 'status' => 'success',

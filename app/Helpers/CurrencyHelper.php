@@ -10,9 +10,16 @@ if (!function_exists('money')) {
      */
     function money($amount, $showSymbol = true, $forceCurrency = null)
     {
-        $currencyCode = $forceCurrency ?? Session::get('currency_code', auth()->user()->currency_code ?? 'USD');
+        $currencyCode = $forceCurrency ?? Session::get('currency_code', auth()->user()->currency_code ?? 'NGN');
         
         $currencyData = Cache::remember("currency_data_{$currencyCode}", 3600, function () use ($currencyCode) {
+            if ($currencyCode === 'USD') {
+                return [
+                    'symbol' => '$',
+                    'exchange_rate' => 1.0
+                ];
+            }
+
             $curr = Currency::where('code', $currencyCode)->first() 
                 ?? Currency::where('is_default', true)->first();
             
@@ -20,8 +27,8 @@ if (!function_exists('money')) {
                 'symbol' => $curr->symbol,
                 'exchange_rate' => (float)$curr->exchange_rate
             ] : [
-                'symbol' => '$',
-                'exchange_rate' => 1.0
+                'symbol' => '₦',
+                'exchange_rate' => 1450.0
             ];
         });
 
@@ -46,8 +53,8 @@ if (!function_exists('get_currency_symbol')) {
      */
     function get_currency_symbol()
     {
-        $currencyCode = Session::get('currency_code', auth()->user()->currency_code ?? 'USD');
+        $currencyCode = Session::get('currency_code', auth()->user()->currency_code ?? 'NGN');
         $currency = Currency::where('code', $currencyCode)->first() ?? Currency::where('is_default', true)->first();
-        return $currency ? $currency->symbol : '$';
+        return $currency ? $currency->symbol : '₦';
     }
 }

@@ -394,7 +394,7 @@
         <!-- Topbar -->
         <header class="topbar px-2 px-sm-3 px-md-4" style="position: relative; z-index: 100;">
             @php
-                $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'USD'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+                $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
                 $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
                 $unreadCount = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count() : 0;
                 $latestNotifications = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get() : collect();

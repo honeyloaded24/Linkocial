@@ -45,7 +45,7 @@ class PaymentController extends Controller
         ]);
 
         $user = $request->user();
-        $currencyCode = session('currency_code', $user->currency_code ?? 'USD');
+        $currencyCode = session('currency_code', $user->currency_code ?? 'NGN');
         $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
         $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
 
