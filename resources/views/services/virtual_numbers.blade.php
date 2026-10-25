@@ -132,11 +132,11 @@
                         <div class="p-3 rounded-3 mb-3 d-flex justify-content-between align-items-center" style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.12);">
                             <div>
                                 <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Price</span>
-                                <div class="fw-bold text-primary-custom text-nowrap font-monospace" id="vn-cost" style="font-size: 1.25rem; line-height: 1.2;">$0.00</div>
+                                <div class="fw-bold text-primary-custom text-nowrap font-monospace" id="vn-cost" style="font-size: 1.25rem; line-height: 1.2;">₦0.00</div>
                             </div>
                             <div class="text-end">
                                 <span class="text-muted d-block small fw-bold text-uppercase" style="font-size: 0.68rem; letter-spacing: 0.5px;">Your Balance</span>
-                                <div class="fw-semibold font-monospace text-nowrap" id="vn-user-balance" style="font-size: 0.90rem; color: var(--text-main);">$0.00</div>
+                                <div class="fw-semibold font-monospace text-nowrap" id="vn-user-balance" style="font-size: 0.90rem; color: var(--text-main);">₦0.00</div>
                             </div>
                         </div>
 

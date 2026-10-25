@@ -37,9 +37,6 @@ return [
 
 
 
-    'exchangerate' => [
-        'key' => env('EXCHANGERATE_API_KEY'),
-    ],
 
     'billstack' => [
         'secret_key' => env('BILLSTACK_SECRET_KEY'),

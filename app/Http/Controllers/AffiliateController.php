@@ -27,7 +27,7 @@ class AffiliateController extends Controller
     public function requestWithdrawal(Request $request)
     {
         $user = Auth::user();
-        $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 10.00);
+        $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 5000.00);
 
         $request->validate([
             'amount' => "required|numeric|min:{$minPayout}",

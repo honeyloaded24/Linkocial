@@ -96,28 +96,28 @@
         <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 bg-primary bg-opacity-10 border-0">
                 <h6 class="text-primary small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Amount Deposited</h6>
-                <h4 class="fw-bold mb-0 text-primary fs-5 fs-md-4">{{ money($totalDeposited, true, 'USD') }}</h4>
+                <h4 class="fw-bold mb-0 text-primary fs-5 fs-md-4">{{ money($totalDeposited) }}</h4>
                 <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Lifetime success deposits</small>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
                 <h6 class="text-danger small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Amount Spent</h6>
-                <h4 class="fw-bold mb-0 text-danger fs-5 fs-md-4">{{ money($totalSpent, true, 'USD') }}</h4>
+                <h4 class="fw-bold mb-0 text-danger fs-5 fs-md-4">{{ money($totalSpent) }}</h4>
                 <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Total order volume</small>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 border-0 shadow-sm">
                 <h6 class="text-warning small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Cost of Services</h6>
-                <h4 class="fw-bold mb-0 text-warning fs-5 fs-md-4">{{ money($totalCost, true, 'USD') }}</h4>
+                <h4 class="fw-bold mb-0 text-warning fs-5 fs-md-4">{{ money($totalCost) }}</h4>
                 <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Provider expenses</small>
             </div>
         </div>
         <div class="col-6 col-md-3">
             <div class="premium-card p-3 h-100 bg-success bg-opacity-10 border-0">
                 <h6 class="text-success small fw-bold text-uppercase mb-1" style="font-size: 0.72rem;">Platform Profit</h6>
-                <h4 class="fw-bold mb-0 text-success fs-5 fs-md-4">{{ money($totalProfit, true, 'USD') }}</h4>
+                <h4 class="fw-bold mb-0 text-success fs-5 fs-md-4">{{ money($totalProfit) }}</h4>
                 <small class="text-muted mt-2 d-block" style="font-size: 0.72rem;">Net margin</small>
             </div>
         </div>
@@ -135,7 +135,7 @@
         </div>
         <div class="col-md-4">
             <div class="premium-card p-4">
-                <h6 class="fw-bold text-muted mb-4 text-uppercase small">Profit Trend (USD)</h6>
+                <h6 class="fw-bold text-muted mb-4 text-uppercase small">Profit Trend (NGN)</h6>
                 <div style="height: 320px; width: 100%;">
                     <canvas id="profitChart"></canvas>
                 </div>
@@ -151,7 +151,7 @@
                 <div class="row text-center">
                     <div class="col-6 border-end">
                         <small class="text-muted d-block mb-1">Unused Deposits</small>
-                        <h4 class="fw-bold mb-0 fs-5 fs-md-4">{{ money($totalUserBalance, true, 'USD') }}</h4>
+                        <h4 class="fw-bold mb-0 fs-5 fs-md-4">{{ money($totalUserBalance) }}</h4>
                     </div>
                     <div class="col-6">
                         <small class="text-muted d-block mb-1">Pending Services</small>
@@ -170,15 +170,15 @@
                     </div>
                     <div class="col-6 col-sm-3 border-end border-sm-end">
                         <small class="text-muted d-block mb-1">Earned</small>
-                        <h5 class="fw-bold mb-0 text-success fs-6 fs-md-5">{{ money($totalCommissionEarned, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-success fs-6 fs-md-5">{{ money($totalCommissionEarned) }}</h5>
                     </div>
                     <div class="col-6 col-sm-3 border-end">
                         <small class="text-muted d-block mb-1">Pending</small>
-                        <h5 class="fw-bold mb-0 text-warning fs-6 fs-md-5">{{ money($pendingCommission, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-warning fs-6 fs-md-5">{{ money($pendingCommission) }}</h5>
                     </div>
                     <div class="col-6 col-sm-3">
                         <small class="text-muted d-block mb-1">Paid</small>
-                        <h5 class="fw-bold mb-0 text-info fs-6 fs-md-5">{{ money($totalCommissionWithdrawn, true, 'USD') }}</h5>
+                        <h5 class="fw-bold mb-0 text-info fs-6 fs-md-5">{{ money($totalCommissionWithdrawn) }}</h5>
                     </div>
                 </div>
             </div>
@@ -269,12 +269,7 @@
                             @endif
                         </td>
                         <td class="fw-bold text-dark text-nowrap">
-                            @if(isset($order->charge_ngn) && $order->charge_ngn > 0)
-                                <div style="font-size: 0.82rem;">{{ money($order->charge, true, 'USD') }}</div>
-                                <small class="text-muted fw-normal" style="font-size: 0.7rem;">(₦{{ number_format($order->charge_ngn, 2) }})</small>
-                            @else
-                                <span style="font-size: 0.82rem;">{{ money($order->charge, true, 'USD') }}</span>
-                            @endif
+                            <span style="font-size: 0.85rem;">{{ money($order->charge) }}</span>
                         </td>
                         <td class="text-nowrap">
                             @php

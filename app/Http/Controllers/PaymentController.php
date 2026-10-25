@@ -41,31 +41,16 @@ class PaymentController extends Controller
     public function initializeKorapay(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:0.01', 
+            'amount' => 'required|numeric|min:100', 
         ]);
 
         $user = $request->user();
-        $currencyCode = session('currency_code', $user->currency_code ?? 'NGN');
-        $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-        $currentCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? \App\Models\Currency::where('is_default', true)->first();
+        $chargeAmount = round((float) $request->amount, 2);
+        $chargeCurrency = 'NGN';
 
-        // 1. Determine the charge currency
-        $supportedKoraCurrencies = ['NGN', 'GHS', 'KES'];
-        $chargeCurrency = in_array($currentCurrency->code, $supportedKoraCurrencies) ? $currentCurrency->code : 'NGN';
-        
-        // 2. Calculate the amount in the charge currency
-        $amountInUsd = $request->amount / $currentCurrency->exchange_rate;
-        if ($amountInUsd < 1) {
-            return response()->json(['error' => 'The minimum deposit is $1.00.'], 422);
+        if ($chargeAmount < 100) {
+            return response()->json(['error' => 'The minimum deposit is ₦100.00.'], 422);
         }
-
-        if ($chargeCurrency === $currentCurrency->code) {
-            $chargeAmount = $request->amount;
-        } else {
-            $chargeAmount = $amountInUsd * $ngnCurrency->exchange_rate;
-        }
-        
-        $chargeAmount = round($chargeAmount, 2);
 
         try {
             $reference = 'DEP_KORA_' . time() . '_' . $user->id;
@@ -94,7 +79,7 @@ class PaymentController extends Controller
                     'user_id' => $user->id,
                     'amount' => $chargeAmount,
                     'currency' => $chargeCurrency,
-                    'amount_usd' => $amountInUsd,
+                    'amount_usd' => 0,
                     'reference' => $reference,
                     'status' => 'pending',
                     'method' => 'Korapay'
@@ -141,9 +126,15 @@ class PaymentController extends Controller
 
             if ($response->successful() && isset($result['status']) && $result['status'] === true && ($result['data']['status'] ?? '') === 'success') {
                 $data = $result['data'];
-                $amount = $data['amount'];
-                $currency = $data['currency'] ?? 'NGN';
+                $amount = (float) $data['amount'];
+                $currency = strtoupper($data['currency'] ?? 'NGN');
                 $customerEmail = $data['customer']['email'] ?? null;
+
+                // Enforce NGN currency
+                if ($currency !== 'NGN') {
+                    Log::warning("Korapay Verification: Rejected transaction {$reference} with currency {$currency} (expected NGN).");
+                    return;
+                }
 
                 // Priority 1: Match by reference in Payment record
                 $payment = \App\Models\Payment::where('reference', $reference)->first();
@@ -160,7 +151,7 @@ class PaymentController extends Controller
                 }
 
                 if ($user) {
-                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
+                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
                 } else {
                     Log::error("Korapay Verification: Could not find user for ref {$reference} or email {$customerEmail}");
                 }
@@ -207,9 +198,15 @@ class PaymentController extends Controller
         if (($event['event'] ?? '') === 'charge.success' && ($event['data']['status'] ?? '') === 'success') {
             $data = $event['data'];
             $reference = $data['reference'];
-            $amount = $data['amount'];
-            $currency = $data['currency'] ?? 'NGN';
+            $amount = (float) $data['amount'];
+            $currency = strtoupper($data['currency'] ?? 'NGN');
             $customerEmail = $data['customer']['email'] ?? null;
+
+            // Enforce NGN
+            if ($currency !== 'NGN') {
+                Log::warning("Korapay Webhook: Non-NGN transaction currency {$currency} rejected for reference {$reference}.");
+                return response()->json(['status' => 'unsupported currency'], 400);
+            }
 
             if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
                 return response()->json(['status' => 'already processed']);
@@ -232,7 +229,7 @@ class PaymentController extends Controller
                 }
 
                 if ($user) {
-                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', $currency);
+                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
                     DB::commit();
                 } else {
                     DB::rollBack();
@@ -250,10 +247,18 @@ class PaymentController extends Controller
     }
 
     /**
-     * Shared logic to credit wallet and award commissions
+     * Shared logic to credit wallet and award commissions (All in NGN)
      */
     public function processSuccessfulPayment($user, $amount, $reference, $method = 'Deposit', $currencyCode = 'NGN', $fee = 0.0)
     {
+        $currencyCode = strtoupper($currencyCode ?? 'NGN');
+        if ($currencyCode !== 'NGN') {
+            Log::warning("Payment Rejected: currency {$currencyCode} not accepted for ref {$reference}. Linkocial operates exclusively in NGN.");
+            return;
+        }
+
+        $amount = round((float) $amount, 2);
+
         // 1. Check if this payment reference has already been successfully processed (concurrency check)
         $alreadySuccess = \App\Models\Payment::where('reference', $reference)
             ->where('status', 'success')
@@ -264,7 +269,7 @@ class PaymentController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($user, $amount, $reference, $method, $currencyCode, $fee) {
+        DB::transaction(function () use ($user, $amount, $reference, $method, $fee) {
             // Re-verify under lock to prevent any race condition double-writes
             $lockedPayment = \App\Models\Payment::where('reference', $reference)
                 ->lockForUpdate()
@@ -274,45 +279,37 @@ class PaymentController extends Controller
                 return;
             }
 
-            // Get the exchange rate for the currency used in the transaction to convert to USD Master
-            $transactionCurrency = \App\Models\Currency::where('code', $currencyCode)->first() ?? (object)['exchange_rate' => 1450.0];
-            $rate = $transactionCurrency->exchange_rate;
-            $amountInUsd = $amount / $rate;
-
-            $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-            $ngnRate = $ngnCurrency->exchange_rate;
-            $amountInNaira = $amountInUsd * $ngnRate;
-
-            // Record/Update the payment history (idempotent update)
+            // Record/Update the payment history in NGN
             \App\Models\Payment::updateOrCreate(
                 ['reference' => $reference],
                 [
                     'user_id' => $user->id,
                     'amount' => $amount,
-                    'currency' => $currencyCode,
-                    'amount_usd' => $amountInUsd,
+                    'currency' => 'NGN',
+                    'amount_usd' => 0,
                     'status' => 'success',
                 ]
             );
 
-            // Lock and Credit the user's wallet with USD value
+            // Lock and Credit the user's wallet directly in NGN
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-            $lockedUser->addBalance($amountInUsd);
+            $lockedUser->addBalance($amount);
 
-            // --- Promo Bonus Logic (Calculated in USD base) ---
+            // --- Promo Bonus Logic (in NGN) ---
             $promoEnabled = \App\Models\Setting::get('promo_enabled') == '1';
             $promoExpiry = \App\Models\Setting::get('promo_expires_at');
             $promoMinNgn = (float) \App\Models\Setting::get('promo_min_amount', 1000);
             $promoPercent = (float) \App\Models\Setting::get('promo_bonus_percent', 10);
             
+            $bonusAmount = 0.0;
             if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
-                if ($amountInNaira >= $promoMinNgn) {
-                    $bonusAmountUsd = ($amountInUsd * $promoPercent) / 100;
-                    $lockedUser->addBalance($bonusAmountUsd);
+                if ($amount >= $promoMinNgn) {
+                    $bonusAmount = round(($amount * $promoPercent) / 100, 2);
+                    $lockedUser->addBalance($bonusAmount);
                     
                     \App\Models\Transaction::add(
                         $lockedUser->id, 
-                        $bonusAmountUsd, 
+                        $bonusAmount, 
                         'credit', 
                         'deposit', 
                         "Promo Bonus (+{$promoPercent}%) for deposit"
@@ -320,13 +317,13 @@ class PaymentController extends Controller
                 }
             }
 
-            // 3. Record in Financial Ledger (in USD base)
+            // 3. Record in Financial Ledger (in NGN)
             \App\Models\Transaction::add(
                 $lockedUser->id, 
-                $amountInUsd, 
+                $amount, 
                 'credit', 
                 'deposit', 
-                "Deposit via {$method} (₦" . number_format($amountInNaira, 2) . " / Ref: {$reference})",
+                "Deposit via {$method} (₦" . number_format($amount, 2) . " / Ref: {$reference})",
                 $reference
             );
 
@@ -334,7 +331,7 @@ class PaymentController extends Controller
             \App\Models\Notification::send(
                 $lockedUser->id,
                 "Wallet Funded Successfully",
-                "Your wallet has been credited with " . money($amountInUsd) . " via {$method}.",
+                "Your wallet has been credited with " . money($amount) . " via {$method}.",
                 'success',
                 route('wallet.history')
             );
@@ -344,8 +341,8 @@ class PaymentController extends Controller
                 Mail::send('emails.wallet_funded', [
                     'transaction_id' => 'TXN-' . time(),
                     'method' => $method,
-                    'amount' => $amountInNaira,
-                    'bonus' => isset($bonusAmountUsd) ? ($bonusAmountUsd * $ngnRate) : 0
+                    'amount' => $amount,
+                    'bonus' => $bonusAmount
                 ], function($message) use ($lockedUser) {
                     $message->to($lockedUser->email)->subject("Wallet Funded Successfully! 💰");
                 });
@@ -353,7 +350,7 @@ class PaymentController extends Controller
                 Log::error("Deposit email failed: " . $e->getMessage());
             }
 
-            // 5. Referral Commission Logic (Tiered: First vs Recurring)
+            // 5. Referral Commission Logic (in NGN)
             if ($lockedUser->referred_by) {
                 $referrer = User::find($lockedUser->referred_by);
                 if ($referrer) {
@@ -368,21 +365,21 @@ class PaymentController extends Controller
                     }
 
                     $commissionRate = $rate / 100;
-                    $commissionAmountUsd = $amountInUsd * $commissionRate;
+                    $commissionAmount = round($amount * $commissionRate, 2);
 
-                    $referrer->increment('commission_balance', $commissionAmountUsd);
-                    $referrer->increment('total_earned_commission', $commissionAmountUsd);
+                    $referrer->increment('commission_balance', $commissionAmount);
+                    $referrer->increment('total_earned_commission', $commissionAmount);
                     
                     \App\Models\AffiliateTransaction::log(
                         $referrer->id, 
-                        $commissionAmountUsd, 
+                        $commissionAmount, 
                         'credit', 
                         "{$typeLabel} Commission from {$lockedUser->username}"
                     );
 
                     try {
                         Mail::send('emails.affiliate_commission', [
-                            'amount' => ($commissionAmountUsd * $ngnRate),
+                            'amount' => $commissionAmount,
                             'from_user' => $lockedUser->username
                         ], function($message) use ($referrer) {
                             $message->to($referrer->email)->subject("You just earned money! 💸");
@@ -393,8 +390,8 @@ class PaymentController extends Controller
 
                     \App\Models\ActivityLog::log("Awarded referral commission", $referrer, [
                         'from_user' => $lockedUser->username,
-                        'deposit_amount_usd' => $amountInUsd,
-                        'commission_usd' => $commissionAmountUsd
+                        'deposit_amount_ngn' => $amount,
+                        'commission_ngn' => $commissionAmount
                     ]);
                 }
             }

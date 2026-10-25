@@ -222,9 +222,9 @@ class VirtualNumberController extends Controller
                 }
             }
 
-            // Calculate verified user cost with dynamic markup
-            $userCostUsd = $this->calculateRetailPrice($activeWholesalePrice);  
-            $finalCheckCost = max(0.00, $userCostUsd);
+            // Calculate verified user cost in NGN with dynamic markup
+            $userCostNgn = $this->calculateRetailPrice($activeWholesalePrice);  
+            $finalCheckCost = max(0.00, $userCostNgn);
 
             $totalAvailableBalance = 0.0;
             DB::beginTransaction();
@@ -247,8 +247,9 @@ class VirtualNumberController extends Controller
             }
 
             // Provide a realistic pool buffer for SMSPool without exceeding what the user can afford
-            $flatMarkup = $this->getMarkupFee();
-            $maxAffordableWholesale = max(0.00, round($totalAvailableBalance - $flatMarkup, 2));
+            $flatMarkupNgn = $this->getMarkupFee();
+            $providerRate = $this->getProviderRate();
+            $maxAffordableWholesale = max(0.00, round(($totalAvailableBalance - $flatMarkupNgn) / max(1.0, $providerRate), 2));
             $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.15, 2);
             $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
@@ -691,20 +692,36 @@ class VirtualNumberController extends Controller
     }
 
     /**
-     * Get the flat markup fee for virtual numbers (e.g. $1.00).
+     * Get the provider wholesale exchange rate (USD to NGN).
      */
-    public function getMarkupFee(): float
+    public function getProviderRate(): float
     {
-        return (float) \App\Models\Setting::get('vn_markup', 1.00);
+        return (float) \App\Models\Setting::get('provider_usd_rate', 1500.0);
     }
 
     /**
-     * Calculate user retail price from wholesale price with flat markup (just like SMSPool)
+     * Get the flat markup fee for virtual numbers in NGN.
+     */
+    public function getMarkupFee(): float
+    {
+        $rate = $this->getProviderRate();
+        $customNgn = \App\Models\Setting::get('vn_markup_ngn');
+        if ($customNgn !== null && is_numeric($customNgn)) {
+            return (float) $customNgn;
+        }
+        $usdMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
+        return round($usdMarkup * $rate, 2);
+    }
+
+    /**
+     * Calculate user retail price in NGN from wholesale USD quote with NGN markup.
      */
     public function calculateRetailPrice(float $wholesalePrice): float
     {
-        $flatFee = $this->getMarkupFee();
-        return round($wholesalePrice + $flatFee, 2);
+        $rate = $this->getProviderRate();
+        $flatFeeNgn = $this->getMarkupFee();
+        $wholesaleNgn = $wholesalePrice * $rate;
+        return round($wholesaleNgn + $flatFeeNgn, 2);
     }
 
     /**

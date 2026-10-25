@@ -158,7 +158,7 @@
             </div>
             <div class="modal-body p-4">
                 @php
-                    $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 10.00);
+                    $minPayout = (float) \App\Models\Setting::get('affiliate_min_payout', 5000.00);
                 @endphp
                 <div class="alert alert-info border-0 bg-primary bg-opacity-10 small mb-4">
                     <strong>Current Balance:</strong> {{ money($user->commission_balance) }}<br>
@@ -168,16 +168,16 @@
                 <form action="{{ route('affiliate.withdraw') }}" method="POST">
                     @csrf
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold text-uppercase">Amount to Withdraw (USD)</label>
+                        <label class="form-label text-muted small fw-bold text-uppercase">Amount to Withdraw (NGN)</label>
                         <div class="input-group">
-                            <span class="input-group-text border-secondary bg-transparent text-muted">$</span>
+                            <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
                             <input type="number" name="amount" class="form-control" placeholder="{{ $minPayout }}" min="{{ $minPayout }}" max="{{ $user->commission_balance }}" step="0.01" required>
                         </div>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label text-muted small fw-bold text-uppercase">Bank / Payment Details</label>
-                        <textarea name="bank_details" class="form-control" rows="5" placeholder="Bank Name: &#10;Account Number: &#10;Account Name: &#10;Or USDT/Crypto Address:" required></textarea>
+                        <textarea name="bank_details" class="form-control" rows="5" placeholder="Bank Name: &#10;Account Number: &#10;Account Name: &#10;" required></textarea>
                     </div>
 
                     <button type="submit" class="btn bg-primary-custom w-100 py-3 fw-bold" @if($user->commission_balance < $minPayout) disabled @endif>

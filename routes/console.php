@@ -20,9 +20,6 @@ Schedule::command('smm:sync-services')->dailyAt('00:00')->withoutOverlapping();
 // Schedule the Order Status Check to run every 5 minutes
 Schedule::command('smm:check-orders')->everyFiveMinutes()->withoutOverlapping();
 
-// Schedule Automated Currency Updates daily at 10 AM (with a 4% margin buffer)
-Schedule::command('currency:update-rates --buffer=4')->dailyAt('10:00')->withoutOverlapping();
-
 // Schedule background check for abandoned virtual number orders every minute
 Schedule::command('vn:check-expired')->everyMinute()->withoutOverlapping();
 

@@ -20,6 +20,7 @@ return new class extends Migration
             $ngn = DB::table('currencies')->where('code', 'NGN')->first();
             if ($ngn) {
                 DB::table('currencies')->where('code', 'NGN')->update([
+                    'exchange_rate' => 1.0000,
                     'is_default' => true,
                     'is_active' => true,
                 ]);
@@ -27,7 +28,7 @@ return new class extends Migration
                 DB::table('currencies')->insert([
                     'code' => 'NGN',
                     'symbol' => '₦',
-                    'exchange_rate' => 1450.0000,
+                    'exchange_rate' => 1.0000,
                     'is_default' => true,
                     'is_active' => true,
                     'created_at' => now(),
@@ -42,6 +43,28 @@ return new class extends Migration
                 'currency_code' => 'NGN',
             ]);
         }
+
+        // Ensure single currency settings exist in settings table
+        if (Schema::hasTable('settings')) {
+            $defaultSettings = [
+                'currency' => 'NGN',
+                'currency_symbol' => '₦',
+                'provider_usd_rate' => '1500',
+                'vn_markup_ngn' => '1500',
+                'affiliate_min_payout' => '5000',
+            ];
+
+            foreach ($defaultSettings as $key => $val) {
+                if (!DB::table('settings')->where('key', $key)->exists()) {
+                    DB::table('settings')->insert([
+                        'key' => $key,
+                        'value' => $val,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+        }
     }
 
     /**
@@ -49,6 +72,19 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        // Safe rollback: restore USD currency row if needed
+        if (Schema::hasTable('currencies')) {
+            if (!DB::table('currencies')->where('code', 'USD')->exists()) {
+                DB::table('currencies')->insert([
+                    'code' => 'USD',
+                    'symbol' => '$',
+                    'exchange_rate' => 1.0000,
+                    'is_default' => false,
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
     }
 };

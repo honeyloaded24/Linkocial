@@ -1,7 +1,7 @@
 @extends('layouts.marketing')
 
 @section('title', 'Buy Virtual Numbers for SMS Verification | ' . $siteName)
-@section('meta_description', 'Get instant disposable virtual numbers for SMS verification. Bypass restrictions securely for WhatsApp, Telegram, Tinder, OpenAI, and more. Prices starting from as low as $0.09.')
+@section('meta_description', 'Get instant disposable virtual numbers for SMS verification. Bypass restrictions securely for WhatsApp, Telegram, Tinder, OpenAI, and more. Prices starting from as low as ₦150.')
 
 @push('styles')
 <style>
@@ -73,7 +73,7 @@
     <div class="container">
         <div class="feature-tag">📱 Instant SMS Verification</div>
         <h1 class="display-4 fw-extrabold mb-3">Buy Virtual Numbers</h1>
-        <p class="fs-4 text-muted mb-4 mx-auto" style="max-width: 800px;">Bypass SMS verifications instantly and protect your privacy with premium disposable numbers. <br> <span class="fw-bold text-success">Prices starting from as low as $0.09.</span></p>
+        <p class="fs-4 text-muted mb-4 mx-auto" style="max-width: 800px;">Bypass SMS verifications instantly and protect your privacy with premium disposable numbers. <br> <span class="fw-bold text-success">Prices starting from as low as ₦150.</span></p>
         
         <div class="d-flex justify-content-center gap-3">
             <a href="{{ route('services.virtual-numbers') }}" class="btn-vn btn-lg">Get Your Number Now <i class="fa-solid fa-arrow-right ms-2"></i></a>
@@ -179,7 +179,7 @@
                         <i class="fa-solid fa-wallet"></i>
                     </div>
                     <h4 class="fw-bold mb-3">1. Top Up Wallet</h4>
-                    <p class="text-muted small mb-0">Deposit funds using our secure payment gateways. Pricing starts as low as $0.09 per verification.</p>
+                    <p class="text-muted small mb-0">Deposit funds using our secure payment gateways. Pricing starts as low as ₦150 per verification.</p>
                 </div>
             </div>
             <div class="col-md-4">

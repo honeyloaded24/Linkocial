@@ -14,7 +14,6 @@ use App\Http\Controllers\LandingController;
 // --- MARKETING & PUBLIC ROUTES ---
 Route::get('/', [LandingController::class, 'index'])->name('landing');
 Route::get('/sitemap.xml', [App\Http\Controllers\SitemapController::class, 'index']);
-Route::post('/currency/switch', [\App\Http\Controllers\CurrencyController::class, 'switch'])->name('currency.switch');
 
 // Platform-specific landing pages (e.g., /instagram-promotion, /tiktok-promotion)
 Route::get('/{platform}-promotion', [LandingController::class, 'platform'])
@@ -291,11 +290,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/sliders', [AdminController::class, 'hqStoreSlider'])->name('hq.sliders.store');
         Route::delete('/settings/sliders/{id}', [AdminController::class, 'hqDestroySlider'])->name('hq.sliders.destroy');
 
-        // Currency Management
-        Route::get('/currencies', [\App\Http\Controllers\CurrencyController::class, 'index'])->name('hq.currencies');
-        Route::post('/currencies', [\App\Http\Controllers\CurrencyController::class, 'store'])->name('hq.currencies.store');
-        Route::put('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'update'])->name('hq.currencies.update');
-        Route::delete('/currencies/{currency}', [\App\Http\Controllers\CurrencyController::class, 'destroy'])->name('hq.currencies.destroy');
     });
 });
 

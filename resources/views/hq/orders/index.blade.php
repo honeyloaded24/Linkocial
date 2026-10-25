@@ -88,7 +88,7 @@
                         </td>
                         <td class="fw-bold small">{{ number_format($order->quantity) }}</td>
                         <td>
-                            <div class="fw-bold text-dark">{{ money((float)$order->charge, true, 'USD') }} <span class="text-muted small">/ {{ money((float)$order->provider_cost, true, 'USD') }}</span></div>
+                            <div class="fw-bold text-dark">{{ money((float)$order->charge) }} <span class="text-muted small">/ {{ money((float)$order->provider_cost) }}</span></div>
                             <small class="text-success" style="font-size: 0.7rem;"><i class="fa-solid fa-chart-line"></i> Revenue Audit</small>
                         </td>
                         <td>

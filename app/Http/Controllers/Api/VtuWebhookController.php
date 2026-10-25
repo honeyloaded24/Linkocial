@@ -78,10 +78,10 @@ class VtuWebhookController extends Controller
                 if ($user) {
                     $user->addBalance($order->cost);
                     
-                    // The cost was deducted in USD
-                    $amountUsd = $order->cost;
+                    // The cost was charged in NGN
+                    $refundAmount = $order->cost;
                     $service = ucfirst($order->service_type);
-                    Transaction::add($user->id, $amountUsd, 'credit', 'vtu_refund', "Refund for failed {$service} purchase (Ref: {$apiReference})");
+                    Transaction::add($user->id, $refundAmount, 'credit', 'vtu_refund', "Refund for failed {$service} purchase (Ref: {$apiReference})");
                 }
 
                 Log::info("VTU Webhook: Successfully refunded order {$order->id}");

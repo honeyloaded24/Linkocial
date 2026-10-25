@@ -242,9 +242,6 @@
                                 <a href="{{ route('hq.broadcasts') }}" class="nav-link mb-2 {{ request()->routeIs('hq.broadcasts*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-bullhorn"></i> Notice Bar & Tickers
                                 </a>
-                                <a href="{{ route('hq.currencies') }}" class="nav-link mb-2 {{ request()->routeIs('hq.currencies*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-coins"></i> Currencies
-                                </a>
                             </div>
                         </div>
 
@@ -394,13 +391,11 @@
         <!-- Topbar -->
         <header class="topbar px-2 px-sm-3 px-md-4" style="position: relative; z-index: 100;">
             @php
-                $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
-                $activeCurrencies = \App\Models\Currency::where('is_active', true)->get();
                 $unreadCount = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count() : 0;
                 $latestNotifications = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get() : collect();
             @endphp
 
-            <!-- Mobile Topbar: 5 items evenly distributed across the entire width -->
+            <!-- Mobile Topbar: items evenly distributed across the width -->
             <div class="d-flex align-items-center justify-content-between w-100 d-lg-none">
                 <!-- 1. Hamburger -->
                 <button class="btn p-0 border-0 text-muted flex-shrink-0" id="sidebarToggle" title="Toggle Navigation">
@@ -424,26 +419,6 @@
                     <i class="fa-solid fa-plus"></i>
                 </a>
                 @endauth
-
-                <!-- 4. Currency Switcher ($) -->
-                <div class="dropdown">
-                    <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-2 py-1 shadow-sm" type="button" id="currencyDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 32px; min-width: 32px;" title="Change Currency">
-                        <span class="fw-bold" style="color: var(--primary-color); font-size: 0.85rem;">{{ $currentCurrency->symbol }}</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdownMobile" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
-                        @foreach($activeCurrencies as $cur)
-                            <li>
-                                <form action="{{ route('currency.switch') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="currency_code" value="{{ $cur->code }}">
-                                    <button type="submit" class="dropdown-item rounded-3 py-2 {{ $currentCurrency->code == $cur->code ? 'bg-primary-soft fw-bold' : '' }}">
-                                        {{ $cur->code }} ({{ $cur->symbol }})
-                                    </button>
-                                </form>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
 
                 @auth
                 <!-- 5. Profile Avatar -->
@@ -502,28 +477,6 @@
                         <span>Fund Wallet</span>
                     </a>
                     @endauth
-
-                    <!-- Currency Switcher -->
-                    <div class="dropdown">
-                        <button class="btn btn-sm text-main fw-bold rounded-pill d-flex align-items-center justify-content-center px-3 py-1.5 shadow-sm transition-hover" type="button" id="currencyDropdownDesktop" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); height: 34px;" title="Change Currency">
-                            <i class="fa-solid fa-coins text-primary me-1" style="color: var(--primary-color);"></i>
-                            <span style="color: var(--primary-color);">{{ $currentCurrency->code }}</span>
-                            <i class="fa-solid fa-chevron-down ms-1" style="font-size: 0.75em; color: var(--primary-color);"></i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 p-2 mt-2" aria-labelledby="currencyDropdownDesktop" style="z-index: 2001; min-width: 140px; max-height: 300px; overflow-y: auto;">
-                            @foreach($activeCurrencies as $cur)
-                                <li>
-                                    <form action="{{ route('currency.switch') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="currency_code" value="{{ $cur->code }}">
-                                        <button type="submit" class="dropdown-item rounded-3 py-2 {{ $currentCurrency->code == $cur->code ? 'bg-primary-soft fw-bold' : '' }}">
-                                            {{ $cur->code }} ({{ $cur->symbol }})
-                                        </button>
-                                    </form>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
 
                     <!-- Theme Switcher -->
                     <div class="theme-switch-wrapper me-1">

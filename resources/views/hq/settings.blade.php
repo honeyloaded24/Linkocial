@@ -428,12 +428,20 @@
                                     <small class="text-muted" style="font-size: 0.75rem;">From <a href="https://grizzlysms.com" target="_blank" class="text-decoration-underline">grizzlysms.com</a></small>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">Fixed Profit Markup (USD)</label>
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Fixed Profit Markup (NGN)</label>
                                     <div class="input-group">
-                                        <span class="input-group-text border-secondary bg-transparent text-muted">$</span>
-                                        <input type="number" step="0.01" min="0" name="vn_markup" class="form-control border-secondary bg-transparent py-2" value="{{ number_format((float) \App\Models\Setting::get('vn_markup', 1.00), 2) }}" style="color: var(--text-main);">
+                                        <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
+                                        <input type="number" step="1" min="0" name="vn_markup_ngn" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('vn_markup_ngn', 1500) }}" style="color: var(--text-main);">
                                     </div>
-                                    <small class="text-muted" style="font-size: 0.75rem;">Flat profit amount added on top of provider wholesale prices (e.g. 1.00 adds +$1.00 to every number just like SMSPool).</small>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Flat profit amount added in NGN on top of provider wholesale cost.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Provider Wholesale USD Rate (₦ / $)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
+                                        <input type="number" step="0.01" min="1" name="provider_usd_rate" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('provider_usd_rate', 1500.0) }}" style="color: var(--text-main);">
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">Platform conversion rate used to convert foreign provider wholesale costs into NGN.</small>
                                 </div>
                             </div>
 
@@ -466,17 +474,6 @@
                                 </div>
                             </div>
 
-                            <!-- Exchange Rate API -->
-                            <div class="row g-4 mb-4">
-                                <div class="col-12">
-                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Exchange Rate API (Currency Sync)</h6>
-                                    <small class="text-muted d-block mb-3">Sign up for a free API key at <a href="https://exchangerate-api.com" target="_blank">exchangerate-api.com</a>.</small>
-                                </div>
-                                <div class="col-md-12">
-                                    <label class="form-label text-muted small fw-bold text-uppercase">ExchangeRate-API Key</label>
-                                    <input type="text" name="exchangerate_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('exchangerate_api_key') }}" style="color: var(--text-main);">
-                                </div>
-                            </div>
 
                             <!-- SMTP Settings -->
                             <div class="row g-4 mb-4">

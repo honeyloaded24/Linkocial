@@ -179,34 +179,23 @@
                 <!-- Error Alert -->
                 <div id="paymentError" class="alert alert-danger d-none mb-3 rounded-3 border-0 bg-danger text-white py-2 small"></div>
 
-                @php
-                    $ngnCurrency = \App\Models\Currency::where('code', 'NGN')->first() ?? (object)['exchange_rate' => 1450.0];
-                    $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', auth()->user()->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
-                    $ngnRate = $ngnCurrency->exchange_rate;
-                    $currentRate = $currentCurrency->exchange_rate;
-                @endphp
-
                 <form id="korapayDepositForm" onsubmit="initiateKorapayDeposit(event)">
                     @csrf
                     
                     <div class="mb-3">
-                        <label class="form-label text-muted x-small fw-bold text-uppercase">Amount ({{ Session::get('currency_code', auth()->user()->currency_code ?? 'NGN') }})</label>
+                        <label class="form-label text-muted x-small fw-bold text-uppercase">Amount (NGN)</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-transparent text-muted border-end-0" style="border-color: var(--border-color);">{{ get_currency_symbol() }}</span>
-                            <input type="number" id="depositAmount" name="amount" class="form-control border-start-0 ps-0 fw-bold" placeholder="5000" min="1" step="any" required style="background-color: transparent; color: var(--text-main); border-color: var(--border-color);">
+                            <span class="input-group-text bg-transparent text-muted border-end-0" style="border-color: var(--border-color);">₦</span>
+                            <input type="number" id="depositAmount" name="amount" class="form-control border-start-0 ps-0 fw-bold" placeholder="5000" min="100" step="any" required style="background-color: transparent; color: var(--text-main); border-color: var(--border-color);">
                         </div>
-                        <div class="form-text mt-1 text-muted x-small" id="conversionHint"></div>
                     </div>
 
                     <!-- Quick Select Chips -->
                     <div class="mb-3">
                         <div class="d-flex flex-wrap gap-2">
-                            @php
-                                $quickAmounts = $currentCurrency->code === 'NGN' ? [2000, 5000, 10000, 20000] : [10, 25, 50, 100];
-                            @endphp
-                            @foreach($quickAmounts as $amt)
+                            @foreach([2000, 5000, 10000, 20000] as $amt)
                                 <button type="button" class="btn btn-sm bg-light bg-opacity-10 text-main flex-fill rounded-pill border-0 fw-bold py-1" onclick="setAmount({{ $amt }})">
-                                    {{ get_currency_symbol() }}{{ number_format($amt) }}
+                                    ₦{{ number_format($amt) }}
                                 </button>
                             @endforeach
                         </div>
@@ -242,10 +231,6 @@
 
 @push('scripts')
 <script>
-    const ngnRate = {{ $ngnRate }};
-    const currentRate = {{ $currentRate }};
-    const currentCode = "{{ $currentCurrency->code }}";
-
     // 1-Click Copy
     function copyAccount(elementId, btn) {
         const text = document.getElementById(elementId).innerText.trim();
@@ -329,42 +314,22 @@
 
     // Korapay Deposit Logic
     const amountInput = document.getElementById('depositAmount');
-    const conversionHint = document.getElementById('conversionHint');
     const payKorapayButton = document.getElementById('payKorapayButton');
-
-    function updateConversion() {
-        if (!amountInput) return;
-        const amount = parseFloat(amountInput.value) || 0;
-        if (currentCode === 'NGN') {
-            const usdEquiv = amount / currentRate;
-            conversionHint.innerHTML = `Equivalent: <span class="text-primary-custom fw-bold">$${usdEquiv.toFixed(2)} USD</span>`;
-        } else {
-            const ngnEquiv = (amount / currentRate) * ngnRate;
-            conversionHint.innerHTML = `Naira Equivalent: <span class="text-primary-custom fw-bold">₦${ngnEquiv.toFixed(2)}</span>`;
-        }
-    }
 
     function setAmount(amt) {
         if (!amountInput) return;
         amountInput.value = amt;
-        updateConversion();
-    }
-
-    if (amountInput) {
-        amountInput.addEventListener('input', updateConversion);
-        updateConversion();
     }
 
     async function initiateKorapayDeposit(event) {
         event.preventDefault();
         const amount = parseFloat(amountInput.value) || 0;
-        const usdAmount = amount / currentRate;
 
-        if (usdAmount < 1) {
+        if (amount < 100) {
             Swal.fire({
                 icon: 'info',
                 title: 'Minimum Deposit',
-                text: 'The minimum deposit amount is $1.00 (or equivalent).',
+                text: 'The minimum deposit amount is ₦100.00.',
                 confirmButtonColor: '#6366f1'
             });
             return;

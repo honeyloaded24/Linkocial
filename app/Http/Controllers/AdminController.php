@@ -38,8 +38,8 @@ class AdminController extends Controller
             + \App\Models\VtuOrder::where('status', 'completed')->count()
             + \App\Models\LogOrder::where('status', 'completed')->count();
 
-        // Financial Metrics (All reporting in USD Master)
-        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount_usd');
+        // Financial Metrics (All reporting in NGN)
+        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount');
         
         // SMM Spent (including all active non-refunded orders)
         $smmSpent = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
@@ -58,17 +58,12 @@ class AdminController extends Controller
         $vtuSpent = \App\Models\VtuOrder::whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
         $vtuCost = 0; // Local / direct VTU provider
         
-        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
-
-        // Logs Spent & Cost (converted from NGN to USD base)
-        $logSpent = (float) (\App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
-            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
-            ->value('total') ?? 0);
+        // Logs Spent & Cost in NGN
+        $logSpent = (float) \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])->sum('total_cost');
 
         $logCost = (float) (\App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
             ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
-            ->selectRaw("SUM((log_orders.quantity * log_products.base_api_price) / ?) as total", [$ngnRate])
-            ->value('total') ?? 0);
+            ->sum(\Illuminate\Support\Facades\DB::raw('log_orders.quantity * log_products.base_api_price')) ?? 0);
 
         $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
         $totalCost = $smmCost + $vnCost + $vtuCost + $logCost;
@@ -195,8 +190,7 @@ class AdminController extends Controller
             ];
         });
 
-        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) use ($ngnRate) {
-            $amountUsd = (float) ($order->amount_usd > 0 ? $order->amount_usd : ($order->total_cost / ($ngnRate ?: 1420.0)));
+        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
             return (object) [
                 'id' => $order->id,
                 'display_id' => '#LOG-' . $order->id,
@@ -205,7 +199,7 @@ class AdminController extends Controller
                 'user' => $order->user,
                 'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
                 'detail' => $order->quantity ? $order->quantity . ' item' . ($order->quantity > 1 ? 's' : '') : null,
-                'charge' => $amountUsd,
+                'charge' => (float) $order->total_cost,
                 'charge_ngn' => (float) $order->total_cost,
                 'status' => $order->status,
                 'created_at' => $order->created_at,
@@ -405,7 +399,7 @@ class AdminController extends Controller
                 'Email',
                 'Username',
                 'Role',
-                'Balance (USD)',
+                'Balance (NGN)',
                 'Joined Date'
             ]);
 
@@ -859,18 +853,14 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
-
-        // Stats across all product categories
+        // Stats across all product categories in NGN
         $smmSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
         $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $id)->whereIn('status', ['received', 'finished'])->sum('cost');
         $vtuSpent = \App\Models\VtuOrder::where('user_id', $id)->whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
-        $logSpent = (float) (\App\Models\LogOrder::where('user_id', $id)->whereIn('status', ['pending', 'completed'])
-            ->selectRaw("SUM(CASE WHEN amount_usd > 0 THEN amount_usd ELSE (total_cost / ?) END) as total", [$ngnRate])
-            ->value('total') ?? 0);
+        $logSpent = (float) \App\Models\LogOrder::where('user_id', $id)->whereIn('status', ['pending', 'completed'])->sum('total_cost');
 
         $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
-        $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount_usd');
+        $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount');
 
         $totalOrders = Order::where('user_id', $id)->count()
             + \App\Models\VirtualNumberOrder::where('user_id', $id)->count()
@@ -1004,53 +994,13 @@ class AdminController extends Controller
         $deposits = \App\Models\Payment::where('user_id', $id)->latest()->get();
         $transactions = \App\Models\Transaction::where('user_id', $id)->ordered()->get();
 
-        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.7656);
-
-        $recentSmm = Order::where('user_id', $id)->with('service')->latest()->take(25)->get()->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#' . $order->id,
-                'service_name' => $order->service->name ?? 'Social Boost Service',
-                'quantity' => $order->quantity ? number_format($order->quantity) : '1',
-                'charge' => (float) $order->charge,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-            ];
-        });
-
-        $recentVn = \App\Models\VirtualNumberOrder::where('user_id', $id)->latest()->take(25)->get()->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#VN-' . $order->id,
-                'service_name' => ($order->country ? $order->country . ' - ' : '') . ($order->product ?? 'Virtual Number'),
-                'quantity' => '1',
-                'charge' => (float) $order->cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-            ];
-        });
-
-        $recentVtu = \App\Models\VtuOrder::where('user_id', $id)->latest()->take(25)->get()->map(function ($order) {
-            $serviceType = ucfirst($order->service_type ?? 'Utility');
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#VTU-' . $order->id,
-                'service_name' => "VTU {$serviceType} ({$order->phone_or_meter})",
-                'quantity' => '1',
-                'charge' => (float) $order->cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-            ];
-        });
-
-        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(25)->get()->map(function ($order) use ($ngnRate) {
-            $amountUsd = (float) ($order->amount_usd > 0 ? $order->amount_usd : ($order->total_cost / ($ngnRate ?: 1420.0)));
+        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(25)->get()->map(function ($order) {
             return (object) [
                 'id' => $order->id,
                 'display_id' => '#LOG-' . $order->id,
                 'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
                 'quantity' => $order->quantity ? (string) $order->quantity : '1',
-                'charge' => $amountUsd,
+                'charge' => (float) $order->total_cost,
                 'status' => $order->status,
                 'created_at' => $order->created_at,
             ];
@@ -1453,8 +1403,7 @@ class AdminController extends Controller
         $sanitizedLog = $request->except([
             '_token', 'password', 'mail_password',
             'korapay_live_secret_key', 'korapay_test_secret_key',
-            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key',
-            'exchangerate_api_key'
+            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key'
         ]);
 
         \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $sanitizedLog);

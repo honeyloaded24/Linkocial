@@ -87,7 +87,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small text-muted fw-bold">PRICE RANGE (USD)</label>
+                    <label class="form-label small text-muted fw-bold">PRICE RANGE (NGN)</label>
                     <div class="input-group input-group-sm">
                         <input type="number" name="price_min" class="form-control bg-transparent border-secondary" placeholder="Min" value="{{ request('price_min') }}" style="color: var(--text-main);">
                         <span class="input-group-text bg-transparent border-secondary text-muted">-</span>
@@ -171,11 +171,11 @@
                                     @endforeach
                                 </td>
                                 <td class="text-danger fw-bold">
-                                    $ {{ number_format($service->mappings->min('original_price'), 2) }}
+                                    ₦ {{ number_format($service->mappings->min('original_price'), 2) }}
                                 </td>
                                 <td>
                                     <div class="input-group input-group-sm" style="width: 140px;">
-                                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-color); color: var(--text-muted);">$</span>
+                                        <span class="input-group-text bg-transparent border-end-0" style="border-color: var(--border-color); color: var(--text-muted);">₦</span>
                                         <input type="number" name="services[{{ $service->id }}][selling_price]" class="form-control border-start-0 ps-0" value="{{ number_format($service->selling_price, 2, '.', '') }}" step="any" style="background-color: transparent; color: var(--text-main); border-color: var(--border-color);">
                                     </div>
                                 </td>

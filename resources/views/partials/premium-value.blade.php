@@ -70,7 +70,7 @@
                             <div class="col-12">
                                 <div class="glass-card p-3 rounded-4 border border-white border-opacity-10 shadow-lg text-center" 
                                      style="backdrop-filter: blur(20px); background: rgba(255,255,255,0.02);">
-                                    <h6 class="text-white fw-bold mb-0 small">$0.0001 <span class="opacity-30 fw-normal">per interaction</span></h6>
+                                    <h6 class="text-white fw-bold mb-0 small">₦0.10 <span class="opacity-30 fw-normal">per interaction</span></h6>
                                 </div>
                             </div>
                         </div>
@@ -98,7 +98,7 @@
                                 </div>
                             </div>
                             <div class="text-center">
-                                <h4 class="text-white fw-bold mb-0">$0.0001 <span class="opacity-30 fs-6 fw-normal">per interaction</span></h4>
+                                <h4 class="text-white fw-bold mb-0">₦0.10 <span class="opacity-30 fs-6 fw-normal">per interaction</span></h4>
                             </div>
                         </div>
                         

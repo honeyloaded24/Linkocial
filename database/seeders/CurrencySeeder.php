@@ -19,7 +19,7 @@ class CurrencySeeder extends Seeder
             [
                 'code' => 'NGN',
                 'symbol' => '₦',
-                'exchange_rate' => 1450.0,
+                'exchange_rate' => 1.0,
                 'is_default' => true,
                 'is_active' => true
             ],

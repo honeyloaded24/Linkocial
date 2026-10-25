@@ -98,12 +98,13 @@ class SyncSmmServices extends Command
                     } else {
                         // Create a NEW service and mapping
                         DB::transaction(function () use ($provider, $providerServiceId, $name, $rate, $min, $max, $type, $category, $desc, $averageTime) {
+                            $usdRate = (float) \App\Models\Setting::get('provider_usd_rate', 1500.0);
                             $internalService = Service::create([
                                 'name' => "[Review] {$name}",
                                 'category' => $category,
                                 'description' => $desc,
                                 'average_time' => $averageTime,
-                                'selling_price' => $rate * 1.5, // Default markup
+                                'selling_price' => round($rate * $usdRate * 1.5, 2), // Default markup in NGN
                                 'min' => $min,
                                 'max' => $max,
                                 'is_active' => false, // New services must be reviewed

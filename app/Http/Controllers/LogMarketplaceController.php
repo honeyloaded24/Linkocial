@@ -127,13 +127,10 @@ class LogMarketplaceController extends Controller
             return back()->with('error', 'This product is currently unavailable for purchase because its pricing is not configured. Please contact support.');
         }
 
-        $totalCostNgn = $priceToChargeNgn * $request->quantity;
+        $totalCostNgn = round($priceToChargeNgn * $request->quantity, 2);
 
-        $ngnRate = (float) (\App\Models\Currency::where('code', 'NGN')->value('exchange_rate') ?? 1420.00);
-        $amountUsd = $totalCostNgn / $ngnRate;
-
-        if ($user->balance < $amountUsd) {
-            return back()->with('error', 'Insufficient wallet balance. You need ₦' . number_format($totalCostNgn, 2) . ' (~$' . number_format($amountUsd, 2) . ') to complete this purchase. Please fund your account.');
+        if ($user->balance < $totalCostNgn) {
+            return back()->with('error', 'Insufficient wallet balance. You need ₦' . number_format($totalCostNgn, 2) . ' to complete this purchase. Please fund your account.');
         }
 
         // Auto-heal missing columns on production
@@ -177,14 +174,14 @@ class LogMarketplaceController extends Controller
                     return back()->with('error', 'Not enough stock available at this moment. Please try a lower quantity.');
                 }
 
-                // Deduct balance atomically (USD base)
-                if (!$user->deductBalance($amountUsd)) {
+                // Deduct balance atomically in NGN
+                if (!$user->deductBalance($totalCostNgn)) {
                     DB::rollBack();
                     return back()->with('error', 'Insufficient wallet balance. Please fund your account.');
                 }
                 Transaction::add(
                     $user->id, 
-                    $amountUsd, 
+                    $totalCostNgn, 
                     'debit', 
                     'log_purchase', 
                     "Purchased {$request->quantity}x {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
@@ -205,7 +202,7 @@ class LogMarketplaceController extends Controller
                     'status' => 'completed',
                 ];
                 if ($hasAmountUsd) {
-                    $orderData['amount_usd'] = $amountUsd;
+                    $orderData['amount_usd'] = 0;
                 }
 
                 $order = LogOrder::create($orderData);
@@ -249,14 +246,14 @@ class LogMarketplaceController extends Controller
             DB::beginTransaction();
 
             try {
-                // Deduct from user balance atomically (USD base)
-                if (!$user->deductBalance($amountUsd)) {
+                // Deduct from user balance atomically in NGN
+                if (!$user->deductBalance($totalCostNgn)) {
                     DB::rollBack();
                     return back()->with('error', 'Insufficient wallet balance. Please fund your account.');
                 }
                 $debitTx = Transaction::add(
                     $user->id, 
-                    $amountUsd, 
+                    $totalCostNgn, 
                     'debit', 
                     'log_purchase', 
                     "Purchased {$request->quantity}x {$product->name} (₦" . number_format($totalCostNgn, 2) . ")"
@@ -277,7 +274,7 @@ class LogMarketplaceController extends Controller
                     'status' => 'pending',
                 ];
                 if ($hasAmountUsd) {
-                    $orderData['amount_usd'] = $amountUsd;
+                    $orderData['amount_usd'] = 0;
                 }
 
                 $order = LogOrder::create($orderData);
@@ -311,11 +308,11 @@ class LogMarketplaceController extends Controller
 
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
             } else {
-                // Atomic refund
-                $user->addBalance($amountUsd);
+                // Atomic refund in NGN
+                $user->addBalance($totalCostNgn);
                 Transaction::add(
                     $user->id, 
-                    $amountUsd, 
+                    $totalCostNgn, 
                     'credit', 
                     'log_refund', 
                     "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")",
