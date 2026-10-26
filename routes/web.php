@@ -233,7 +233,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/orders/{id}/resubmit', [AdminController::class, 'resubmitOrder'])->name('hq.orders.resubmit');
         Route::post('/orders/{id}/refill', [AdminController::class, 'refillOrder'])->name('hq.orders.refill');
 
+        // Provider Management & API Diagnostics
         Route::get('/providers', [AdminController::class, 'providers'])->name('hq.providers');
+        Route::post('/providers', [AdminController::class, 'storeProvider'])->name('hq.providers.store');
+        Route::patch('/providers/{id}/toggle', [AdminController::class, 'toggleProviderStatus'])->name('hq.providers.toggle');
+        Route::delete('/providers/{id}', [AdminController::class, 'destroyProvider'])->name('hq.providers.destroy');
+        Route::get('/providers/{id}/balance', [AdminController::class, 'providerBalance'])->name('hq.providers.balance');
+        Route::get('/providers/{id}/services-count', [AdminController::class, 'providerServicesCount'])->name('hq.providers.services-count');
+        Route::get('/providers/{id}/debug', [AdminController::class, 'debugProviderSync'])->name('hq.providers.debug');
+
+        // Provider Pricing & Markup Settings
+        Route::get('/providers/pricing', [AdminController::class, 'hqProviderPricingSettings'])->name('hq.providers.pricing');
+        Route::post('/providers/pricing', [AdminController::class, 'hqUpdateProviderPricingSettings'])->name('hq.providers.pricing.update');
+        Route::match(['get', 'post'], '/providers/pricing/preview', [AdminController::class, 'hqPreviewProviderSync'])->name('hq.providers.pricing.preview');
+        Route::post('/providers/pricing/sync', [AdminController::class, 'hqExecuteProviderSync'])->name('hq.providers.pricing.sync');
 
         Route::get('/virtual-numbers', [\App\Http\Controllers\AdminVirtualNumberController::class, 'index'])->name('hq.virtual-numbers');
         Route::post('/virtual-numbers/{id}/refund', [\App\Http\Controllers\AdminVirtualNumberController::class, 'refund'])->name('hq.virtual-numbers.refund');

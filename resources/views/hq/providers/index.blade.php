@@ -20,9 +20,14 @@
         <div class="premium-card p-0 h-100">
             <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0">Configured Providers</h5>
-                <button class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#addProviderModal" onclick="resetModal()">
-                    <i class="fa-solid fa-plus me-1"></i> Add Provider
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('hq.providers.pricing') }}" class="btn btn-outline-warning btn-sm px-3 rounded-pill text-dark fw-bold" style="background-color: #fef08a; border-color: #facc15;">
+                        <i class="fa-solid fa-tags me-1"></i> Pricing & Markup Settings
+                    </a>
+                    <button class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#addProviderModal" onclick="resetModal()">
+                        <i class="fa-solid fa-plus me-1"></i> Add Provider
+                    </button>
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover table-borderless align-middle mb-0">
@@ -63,6 +68,9 @@
                             </td>
                             <td class="text-end">
                                 <div class="d-flex justify-content-end gap-2">
+                                    <a href="{{ route('hq.providers.pricing', ['provider_id' => $provider->id]) }}" class="btn btn-sm btn-outline-warning rounded-circle" title="Pricing & Markup" style="width: 32px; height: 32px; padding: 0; line-height: 30px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-tags" style="font-size: 0.75rem;"></i>
+                                    </a>
                                     <a href="{{ route('hq.providers.debug', $provider->id) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-circle" title="Debug API Response" style="width: 32px; height: 32px; padding: 0; line-height: 30px; display: inline-flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-bug" style="font-size: 0.75rem;"></i>
                                     </a>

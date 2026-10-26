@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Provider;
 use Illuminate\Support\Facades\Auth;
 use App\Services\SmmProviderService;
+use App\Services\SmmPricingService;
 
 class AdminController extends Controller
 {
@@ -1668,5 +1669,135 @@ class AdminController extends Controller
             return back()->with('error', 'Execution error: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Show Provider Pricing & Markup Settings
+     */
+    public function hqProviderPricingSettings(Request $request)
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'pricing_mode')) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                // Ignore if in restricted environment
+            }
+        }
+
+        $providers = Provider::all();
+        $providerId = $request->query('provider_id');
+        $selectedProvider = $providerId ? Provider::find($providerId) : ($providers->firstWhere('name', 'Momopanel') ?? $providers->first());
+
+        $usdToNgnRate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
+        $pricingService = app(\App\Services\SmmPricingService::class);
+
+        $mappedCount = 0;
+        $activeMappedCount = 0;
+        if ($selectedProvider) {
+            $mappedCount = $selectedProvider->mappings()->count();
+            $activeMappedCount = $selectedProvider->mappings()->where('is_active', true)->count();
+        }
+
+        return view('hq.providers.pricing', compact(
+            'providers',
+            'selectedProvider',
+            'usdToNgnRate',
+            'mappedCount',
+            'activeMappedCount'
+        ));
+    }
+
+    /**
+     * Update Provider Pricing & Markup Settings
+     */
+    public function hqUpdateProviderPricingSettings(Request $request)
+    {
+        $request->validate([
+            'provider_id'        => 'required|exists:providers,id',
+            'currency'           => 'required|string|in:USD,NGN',
+            'pricing_mode'       => 'required|string|in:percentage,fixed_per_k,combined',
+            'percentage_markup'  => 'required|numeric|min:0|max:5000',
+            'fixed_markup_per_k' => 'required|numeric|min:0',
+            'min_selling_price'  => 'nullable|numeric|min:0',
+            'min_profit'         => 'nullable|numeric|min:0',
+            'rounding_rule'      => 'required|string|in:2_decimal,whole_naira,nearest_10',
+        ]);
+
+        $provider = Provider::findOrFail($request->provider_id);
+        
+        $oldSettings = [
+            'pricing_mode'      => $provider->getPricingMode(),
+            'percentage_markup' => $provider->getPercentageMarkup(),
+            'fixed_markup_per_k'=> $provider->getFixedMarkupPerK(),
+        ];
+
+        $provider->update([
+            'currency'           => strtoupper($request->currency),
+            'pricing_mode'       => $request->pricing_mode,
+            'percentage_markup'  => (float) $request->percentage_markup,
+            'fixed_markup_per_k' => (float) $request->fixed_markup_per_k,
+            'min_selling_price'  => $request->filled('min_selling_price') ? (float) $request->min_selling_price : null,
+            'min_profit'         => $request->filled('min_profit') ? (float) $request->min_profit : null,
+            'rounding_rule'      => $request->rounding_rule,
+        ]);
+
+        \App\Models\ActivityLog::log("Updated markup settings for provider {$provider->name}", auth()->user(), [
+            'provider_id'  => $provider->id,
+            'old_settings' => $oldSettings,
+            'new_settings' => [
+                'pricing_mode'      => $request->pricing_mode,
+                'percentage_markup' => (float) $request->percentage_markup,
+                'fixed_markup_per_k'=> (float) $request->fixed_markup_per_k,
+                'min_selling_price' => $request->min_selling_price,
+                'min_profit'        => $request->min_profit,
+                'rounding_rule'     => $request->rounding_rule,
+            ]
+        ]);
+
+        return redirect()->route('hq.providers.pricing', ['provider_id' => $provider->id])
+            ->with('success', "Pricing & markup settings for {$provider->name} saved successfully.");
+    }
+
+    /**
+     * Preview Momopanel price recalculation with live rates
+     */
+    public function hqPreviewProviderSync(Request $request, SmmPricingService $pricingService)
+    {
+        $request->validate([
+            'provider_id' => 'required|exists:providers,id',
+        ]);
+
+        $provider = Provider::findOrFail($request->provider_id);
+        $preview = $pricingService->previewProviderSync($provider);
+
+        if ($request->wantsJson()) {
+            return response()->json($preview);
+        }
+
+        if (!$preview['success']) {
+            return back()->with('error', $preview['error']);
+        }
+
+        return back()->with('sync_preview', $preview);
+    }
+
+    /**
+     * Execute live Momopanel service synchronization & update catalog selling prices
+     */
+    public function hqExecuteProviderSync(Request $request, SmmPricingService $pricingService)
+    {
+        $request->validate([
+            'provider_id' => 'required|exists:providers,id',
+        ]);
+
+        $provider = Provider::findOrFail($request->provider_id);
+        $result = $pricingService->executeProviderSync($provider);
+
+        if (!$result['success']) {
+            return back()->with('error', $result['error']);
+        }
+
+        return back()->with('success', $result['message']);
+    }
 }
+
 

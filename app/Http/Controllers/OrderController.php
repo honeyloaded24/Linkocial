@@ -69,19 +69,11 @@ class OrderController extends Controller
             return back()->with('error', $msg)->withInput();
         }
 
-        // Calculate base cost to user (Assuming selling_price is per 1000 items)
-        $baseCharge = ($service->selling_price / 1000) * $request->quantity;
-
-        // --- Apply Tiered Discounts ---
-        $discountPercent = 0;
-        if ($user->role === 'reseller') {
-            $discountPercent = (float) \App\Models\Setting::get('reseller_discount', 5);
-        } elseif ($user->role === 'vip') {
-            $discountPercent = (float) \App\Models\Setting::get('vip_discount', 10);
-        }
-
-        $discountAmount = ($baseCharge * $discountPercent) / 100;
-        $charge = $baseCharge - $discountAmount;
+        // Calculate charge using centralized SmmPricingService
+        $pricingService = app(\App\Services\SmmPricingService::class);
+        $chargeCalc = $pricingService->calculateCustomerCharge($service, (int) $request->quantity, $user);
+        $charge = $chargeCalc['final_charge'];
+        $discountPercent = $chargeCalc['discount_percent'];
 
         // 1. Begin Transaction for atomic balance check and deduction
         DB::beginTransaction();
@@ -202,10 +194,10 @@ class OrderController extends Controller
                 continue;
             }
 
-            // Calculate Charge
-            $baseCharge = ($service->selling_price / 1000) * $quantity;
-            $discountPercent = ($user->role === 'reseller') ? $resellerDiscount : (($user->role === 'vip') ? $vipDiscount : 0);
-            $charge = $baseCharge - (($baseCharge * $discountPercent) / 100);
+            // Calculate Charge using centralized SmmPricingService
+            $pricingService = app(\App\Services\SmmPricingService::class);
+            $chargeCalc = $pricingService->calculateCustomerCharge($service, $quantity, $user);
+            $charge = $chargeCalc['final_charge'];
 
             // Process Order with atomic balance deduction
             DB::beginTransaction();

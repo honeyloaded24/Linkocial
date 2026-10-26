@@ -252,8 +252,11 @@
                                 <i class="fa-solid fa-chevron-down fs-xs"></i>
                             </a>
                             <div class="collapse show" id="sysCollapse">
-                                <a href="{{ route('hq.providers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.providers*') ? 'active' : '' }}">
+                                <a href="{{ route('hq.providers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.providers') ? 'active' : '' }}">
                                     <i class="fa-solid fa-server"></i> Providers
+                                </a>
+                                <a href="{{ route('hq.providers.pricing') }}" class="nav-link mb-2 {{ request()->routeIs('hq.providers.pricing*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-tags"></i> Provider Pricing & Markup
                                 </a>
                                 <a href="{{ route('hq.withdrawals') }}" class="nav-link mb-2 {{ request()->routeIs('hq.withdrawals*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-money-bill-transfer"></i> Payouts
