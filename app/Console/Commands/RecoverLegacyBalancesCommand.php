@@ -10,6 +10,7 @@ use App\Services\CurrencyConversionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class RecoverLegacyBalancesCommand extends Command
@@ -69,6 +70,17 @@ class RecoverLegacyBalancesCommand extends Command
             }
         }
 
+        // Auto-run migration if tracking columns are missing
+        if (!Schema::hasColumn('users', 'currency_reconciliation_status')) {
+            $this->warn("Database schema is missing currency tracking columns. Running migrations automatically...");
+            try {
+                $this->call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                $this->error("Auto-migration notice: " . $e->getMessage());
+            }
+        }
+        $hasTrackingColumns = Schema::hasColumn('users', 'currency_reconciliation_status');
+
         $users = User::all();
         $totalUsers = $users->count();
 
@@ -90,9 +102,12 @@ class RecoverLegacyBalancesCommand extends Command
                 ->where('transaction_type', 'currency_migration')
                 ->exists();
 
-            if ($user->legacy_balance_recovered_at !== null 
-                || $user->currency_reconciliation_status === 'migrated'
-                || $hasMigrationTx) {
+            $isAlreadyRecovered = false;
+            if ($hasTrackingColumns) {
+                $isAlreadyRecovered = ($user->legacy_balance_recovered_at !== null || $user->currency_reconciliation_status === 'migrated');
+            }
+
+            if ($isAlreadyRecovered || $hasMigrationTx) {
                 $alreadyMigrated[] = [
                     'user' => $user,
                     'balance' => $balance,
@@ -248,14 +263,16 @@ class RecoverLegacyBalancesCommand extends Command
                     continue;
                 }
 
-                // Update user wallet balance and audit tracking fields
+                // Update user wallet balance
                 $lockedUser->balance = $newNgn;
-                $lockedUser->legacy_balance_usd = $oldUsd;
-                $lockedUser->legacy_recovery_rate = $rate;
-                $lockedUser->legacy_balance_recovered_at = now();
-                $lockedUser->currency_reconciliation_status = 'migrated';
                 $lockedUser->currency_code = 'NGN';
-                $lockedUser->reconciliation_notes = "Recovered legacy balance: {$oldUsd} USD converted at 1 USD = ₦{$rate} NGN to ₦" . number_format($newNgn, 2);
+                if ($hasTrackingColumns) {
+                    $lockedUser->legacy_balance_usd = $oldUsd;
+                    $lockedUser->legacy_recovery_rate = $rate;
+                    $lockedUser->legacy_balance_recovered_at = now();
+                    $lockedUser->currency_reconciliation_status = 'migrated';
+                    $lockedUser->reconciliation_notes = "Recovered legacy balance: {$oldUsd} USD converted at 1 USD = ₦{$rate} NGN to ₦" . number_format($newNgn, 2);
+                }
                 $lockedUser->save();
 
                 // Record in Financial Ledger
@@ -287,27 +304,29 @@ class RecoverLegacyBalancesCommand extends Command
             }
         }
 
-        // Mark already NGN accounts so they aren't repeatedly scanned
-        foreach ($alreadyNgn as $item) {
-            $u = $item['user'];
-            User::where('id', $u->id)
-                ->whereNull('currency_reconciliation_status')
-                ->update([
-                    'currency_reconciliation_status' => 'reconciled_ngn',
-                    'currency_code' => 'NGN',
-                    'reconciliation_notes' => $item['reason']
-                ]);
-        }
+        if ($hasTrackingColumns) {
+            // Mark already NGN accounts so they aren't repeatedly scanned
+            foreach ($alreadyNgn as $item) {
+                $u = $item['user'];
+                User::where('id', $u->id)
+                    ->whereNull('currency_reconciliation_status')
+                    ->update([
+                        'currency_reconciliation_status' => 'reconciled_ngn',
+                        'currency_code' => 'NGN',
+                        'reconciliation_notes' => $item['reason']
+                    ]);
+            }
 
-        // Mark ambiguous accounts for admin attention
-        foreach ($ambiguous as $item) {
-            $u = $item['user'];
-            User::where('id', $u->id)
-                ->whereNull('currency_reconciliation_status')
-                ->update([
-                    'currency_reconciliation_status' => 'flagged_ambiguous',
-                    'reconciliation_notes' => $item['reason']
-                ]);
+            // Mark ambiguous accounts for admin attention
+            foreach ($ambiguous as $item) {
+                $u = $item['user'];
+                User::where('id', $u->id)
+                    ->whereNull('currency_reconciliation_status')
+                    ->update([
+                        'currency_reconciliation_status' => 'flagged_ambiguous',
+                        'reconciliation_notes' => $item['reason']
+                    ]);
+            }
         }
 
         $this->newLine();

@@ -1500,12 +1500,27 @@ class AdminController extends Controller
         $lastUpdatedAt = \App\Models\Setting::get('exchange_rate_updated_at');
         $lastUpdatedBy = \App\Models\Setting::get('exchange_rate_updated_by');
 
-        // Audit stats
+        // Audit stats - verify tracking columns exist or run migrations
+        $hasTracking = \Illuminate\Support\Facades\Schema::hasColumn('users', 'currency_reconciliation_status');
+        if (!$hasTracking) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+                $hasTracking = \Illuminate\Support\Facades\Schema::hasColumn('users', 'currency_reconciliation_status');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Could not auto-migrate currency tracking columns: " . $e->getMessage());
+            }
+        }
+
         $totalUsers = \App\Models\User::count();
-        $migratedUsersCount = \App\Models\User::where('currency_reconciliation_status', 'migrated')
-            ->orWhereNotNull('legacy_balance_recovered_at')
-            ->count();
-        $ambiguousUsers = \App\Models\User::where('currency_reconciliation_status', 'flagged_ambiguous')->get();
+        $migratedUsersCount = 0;
+        $ambiguousUsers = collect();
+
+        if ($hasTracking) {
+            $migratedUsersCount = \App\Models\User::where('currency_reconciliation_status', 'migrated')
+                ->orWhereNotNull('legacy_balance_recovered_at')
+                ->count();
+            $ambiguousUsers = \App\Models\User::where('currency_reconciliation_status', 'flagged_ambiguous')->get();
+        }
 
         return view('hq.settings.currency', compact(
             'usdToNgnRate', 
