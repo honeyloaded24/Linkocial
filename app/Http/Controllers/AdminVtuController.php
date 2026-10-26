@@ -11,11 +11,23 @@ use Illuminate\Support\Facades\DB;
 class AdminVtuController extends Controller
 {
     /**
-     * Display a listing of the VTU orders.
+     * Display a listing of the VTU orders and financial records.
      */
     public function index(Request $request)
     {
         $query = VtuOrder::with('user')->latest();
+
+        // Date range filter
+        $startDate = null;
+        $endDate = null;
+        if ($request->filled('from_date')) {
+            $startDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($request->filled('to_date')) {
+            $endDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->where('created_at', '<=', $endDate);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -39,7 +51,10 @@ class AdminVtuController extends Controller
 
         $vtuOrders = $query->paginate(20)->withQueryString();
 
-        return view('hq.vtu.index', compact('vtuOrders'));
+        // Authoritative VTU product financial summary
+        $vtuStats = app(\App\Services\FinancialMetricsService::class)->getVtuSummary($startDate, $endDate);
+
+        return view('hq.vtu.index', compact('vtuOrders', 'vtuStats'));
     }
 
     /**

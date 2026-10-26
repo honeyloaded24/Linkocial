@@ -207,65 +207,97 @@
                     <div class="mb-4">
                         <h6 class="text-muted small fw-bold text-uppercase mb-3 px-3" style="letter-spacing: 1px;">Management HQ</h6>
                         
-                        <a href="{{ route('hq.dashboard') }}" class="nav-link {{ request()->routeIs('hq.dashboard') ? 'active' : '' }}">
+                        <!-- DASHBOARD OVERVIEW -->
+                        <a href="{{ route('hq.dashboard') }}" class="nav-link mb-2 {{ request()->routeIs('hq.dashboard') ? 'active' : '' }}">
                             <i class="fa-solid fa-chart-line"></i> Dashboard
                         </a>
-                        
-                        <!-- Collapsible Management -->
-                        <div class="px-3 py-2">
+
+                        <!-- PRODUCT 1: BOOST (SOCIAL MEDIA) -->
+                        <div class="px-3 py-1 mt-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px;">
+                                    <i class="fa-solid fa-rocket me-1"></i> BOOST
+                                </span>
+                            </div>
+                            <a href="{{ route('hq.orders') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.orders*') || request()->routeIs('hq.social*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-bullhorn text-danger"></i> SOCIAL
+                            </a>
+                            <a href="{{ route('hq.services') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.services*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-layer-group text-danger"></i> Services Catalog
+                            </a>
+                            <a href="{{ route('hq.providers') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.providers') ? 'active' : '' }}">
+                                <i class="fa-solid fa-server text-danger"></i> Providers
+                            </a>
+                            <a href="{{ route('hq.providers.pricing') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.providers.pricing*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-tags text-danger"></i> Pricing & Markup
+                            </a>
+                        </div>
+
+                        <!-- PRODUCT 2: VTU -->
+                        <div class="px-3 py-1 mt-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px;">
+                                    <i class="fa-solid fa-bolt me-1"></i> VTU
+                                </span>
+                            </div>
+                            <a href="{{ route('hq.vtu') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.vtu*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-mobile-screen text-success"></i> VTU Orders & Finance
+                            </a>
+                        </div>
+
+                        <!-- PRODUCT 3: LOGS MARKETPLACE -->
+                        <div class="px-3 py-1 mt-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px;">
+                                    <i class="fa-solid fa-boxes-stacked me-1"></i> LOGS MARKETPLACE
+                                </span>
+                            </div>
+                            <a href="{{ route('hq.logs.orders') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.logs.orders*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-receipt text-warning"></i> Marketplace Orders
+                            </a>
+                            <a href="{{ route('hq.logs.index') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.logs.index*') || request()->routeIs('hq.logs.product*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-box-open text-warning"></i> Manage Products
+                            </a>
+                        </div>
+
+                        <!-- PRODUCT 4: VIRTUAL NUMBER -->
+                        <div class="px-3 py-1 mt-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px;">
+                                    <i class="fa-solid fa-sim-card me-1"></i> VIRTUAL NUMBER
+                                </span>
+                            </div>
+                            <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.virtual-numbers*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-phone-volume text-info"></i> Number Records & Orders
+                            </a>
+                        </div>
+
+                        <hr class="mx-3 opacity-10 my-3">
+
+                        <!-- Collapsible General Management -->
+                        <div class="px-3 py-1">
                             <a class="nav-link p-0 mb-3 d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#mgmtCollapse" role="button" style="color: var(--text-muted);">
-                                <span class="small fw-bold">OPERATIONS</span>
+                                <span class="small fw-bold">GENERAL MANAGEMENT</span>
                                 <i class="fa-solid fa-chevron-down fs-xs"></i>
                             </a>
                             <div class="collapse show" id="mgmtCollapse">
                                 <a href="{{ route('hq.users') }}" class="nav-link mb-2 {{ request()->routeIs('hq.users*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-users-gears"></i> Users
                                 </a>
-                                <a href="{{ route('hq.services') }}" class="nav-link mb-2 {{ request()->routeIs('hq.services*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-layer-group"></i> Services
-                                </a>
-                                <a href="{{ route('hq.orders') }}" class="nav-link mb-2 {{ request()->routeIs('hq.orders*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-box-open"></i> Orders
-                                </a>
-                                <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.virtual-numbers*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-phone-volume"></i> Virtual Numbers
-                                </a>
-                                <a href="{{ route('hq.vtu') }}" class="nav-link mb-2 {{ request()->routeIs('hq.vtu*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-mobile-screen"></i> VTU Orders
-                                </a>
-                                <a href="{{ route('hq.logs.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.logs*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-box-open"></i> Logs & Accounts
-                                </a>
-                                <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-pen-to-square"></i> Blog Manager
-                                </a>
-                                <a href="{{ route('hq.broadcasts') }}" class="nav-link mb-2 {{ request()->routeIs('hq.broadcasts*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-bullhorn"></i> Notice Bar & Tickers
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Collapsible System -->
-                        <div class="px-3 py-2">
-                            <a class="nav-link p-0 mb-3 d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#sysCollapse" role="button" style="color: var(--text-muted);">
-                                <span class="small fw-bold">SYSTEM</span>
-                                <i class="fa-solid fa-chevron-down fs-xs"></i>
-                            </a>
-                            <div class="collapse show" id="sysCollapse">
-                                <a href="{{ route('hq.providers') }}" class="nav-link mb-2 {{ request()->routeIs('hq.providers') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-server"></i> Providers
-                                </a>
-                                <a href="{{ route('hq.providers.pricing') }}" class="nav-link mb-2 {{ request()->routeIs('hq.providers.pricing*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-tags"></i> Provider Pricing & Markup
+                                <a href="{{ route('hq.transactions') }}" class="nav-link mb-2 {{ request()->routeIs('hq.transactions*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-receipt"></i> Wallets & Ledger
                                 </a>
                                 <a href="{{ route('hq.withdrawals') }}" class="nav-link mb-2 {{ request()->routeIs('hq.withdrawals*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-money-bill-transfer"></i> Payouts
                                 </a>
-                                <a href="{{ route('hq.transactions') }}" class="nav-link mb-2 {{ request()->routeIs('hq.transactions*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-receipt"></i> Ledger
-                                </a>
                                 <a href="{{ route('hq.tickets') }}" class="nav-link mb-2 {{ request()->routeIs('hq.tickets*') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-headset"></i> Support
+                                    <i class="fa-solid fa-headset"></i> Support Tickets
+                                </a>
+                                <a href="{{ route('hq.broadcasts') }}" class="nav-link mb-2 {{ request()->routeIs('hq.broadcasts*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-bullhorn"></i> Notice Bar & Tickers
+                                </a>
+                                <a href="{{ route('hq.blog.index') }}" class="nav-link mb-2 {{ request()->routeIs('hq.blog*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-pen-to-square"></i> Blog Manager
                                 </a>
                                 <a href="{{ route('hq.activity-logs') }}" class="nav-link mb-2 {{ request()->routeIs('hq.activity-logs*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-clock-rotate-left"></i> Audit Logs
@@ -273,8 +305,18 @@
                                 <a href="{{ route('hq.queues') }}" class="nav-link mb-2 {{ request()->routeIs('hq.queues*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-bolt-lightning"></i> Queue Monitor
                                 </a>
+                            </div>
+                        </div>
+
+                        <!-- Collapsible Settings -->
+                        <div class="px-3 py-1 mt-2">
+                            <a class="nav-link p-0 mb-3 d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#sysCollapse" role="button" style="color: var(--text-muted);">
+                                <span class="small fw-bold">SETTINGS</span>
+                                <i class="fa-solid fa-chevron-down fs-xs"></i>
+                            </a>
+                            <div class="collapse show" id="sysCollapse">
                                 <a href="{{ route('hq.settings') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings') ? 'active' : '' }}">
-                                    <i class="fa-solid fa-gears"></i> Settings
+                                    <i class="fa-solid fa-gears"></i> General Settings
                                 </a>
                                 <a href="{{ route('hq.settings.currency') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings.currency*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-money-bill-transfer"></i> Currency & Rates

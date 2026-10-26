@@ -392,4 +392,172 @@ class FinancialMetricsService
 
         return round((float) $query->sum('total_cost'), 2);
     }
+
+    // =========================================================================
+    // PRODUCT-LEVEL FINANCIAL RECORD SUMMARIES
+    // =========================================================================
+
+    /**
+     * Get SMM (Social Boosting) product metrics and status breakdown.
+     */
+    public function getSmmSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $fxRate = $this->getExchangeRate();
+        $baseQuery = Order::query();
+        if ($startDate !== null && $endDate !== null) {
+            $baseQuery->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $baseQuery->where('created_at', '>=', $startDate);
+        }
+
+        $counts = [
+            'total'       => (clone $baseQuery)->count(),
+            'completed'   => (clone $baseQuery)->where('status', 'completed')->where('is_refunded', false)->count(),
+            'pending'     => (clone $baseQuery)->where('status', 'pending')->count(),
+            'processing'  => (clone $baseQuery)->whereIn('status', ['processing', 'in_progress'])->count(),
+            'partial'     => (clone $baseQuery)->where('status', 'partial')->count(),
+            'failed'      => (clone $baseQuery)->whereIn('status', ['failed', 'canceled'])->count(),
+        ];
+
+        $financials = (clone $baseQuery)->selectRaw("
+            COALESCE(SUM(
+                CASE 
+                    WHEN status = 'completed' AND is_refunded = 0 THEN charge
+                    WHEN status = 'partial' THEN 
+                        CASE 
+                            WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
+                            THEN (charge * 1.0 * (quantity - remains) / quantity)
+                            WHEN is_refunded = 0 THEN charge
+                            ELSE 0 
+                        END
+                    ELSE 0 
+                END
+            ), 0) as eligible_revenue,
+            COALESCE(SUM(
+                CASE 
+                    WHEN status = 'completed' AND is_refunded = 0 AND provider_cost IS NOT NULL THEN provider_cost
+                    WHEN status = 'partial' AND provider_cost IS NOT NULL THEN 
+                        CASE 
+                            WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
+                            THEN (provider_cost * 1.0 * (quantity - remains) / quantity)
+                            WHEN is_refunded = 0 THEN provider_cost
+                            ELSE 0 
+                        END
+                    ELSE 0 
+                END
+            ), 0) as eligible_cost_usd
+        ")->first();
+
+        $revenue = round((float) ($financials->eligible_revenue ?? 0.0), 2);
+        $costUsd = (float) ($financials->eligible_cost_usd ?? 0.0);
+        $costNgn = round($costUsd * $fxRate, 2);
+        $profit = round($revenue - $costNgn, 2);
+
+        return array_merge($counts, [
+            'revenue'          => $revenue,
+            'provider_cost'    => $costNgn,
+            'profit'           => $profit,
+            'exchange_rate'    => $fxRate,
+            'cost_is_recorded' => true,
+        ]);
+    }
+
+    /**
+     * Get Virtual Number product metrics and status breakdown.
+     */
+    public function getVirtualNumberSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $fxRate = $this->getExchangeRate();
+        $baseQuery = VirtualNumberOrder::query();
+        if ($startDate !== null && $endDate !== null) {
+            $baseQuery->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $baseQuery->where('created_at', '>=', $startDate);
+        }
+
+        $counts = [
+            'total'     => (clone $baseQuery)->count(),
+            'completed' => (clone $baseQuery)->whereIn('status', ['received', 'finished'])->count(),
+            'pending'   => (clone $baseQuery)->where('status', 'pending')->count(),
+            'failed'    => (clone $baseQuery)->where('status', 'canceled')->count(),
+        ];
+
+        $revenue = round((float) (clone $baseQuery)->whereIn('status', ['received', 'finished'])->sum('cost'), 2);
+        $costUsd = (float) (clone $baseQuery)->whereIn('status', ['received', 'finished'])->sum('provider_cost');
+        $costNgn = round($costUsd * $fxRate, 2);
+        $profit = round($revenue - $costNgn, 2);
+
+        return array_merge($counts, [
+            'revenue'          => $revenue,
+            'provider_cost'    => $costNgn,
+            'profit'           => $profit,
+            'exchange_rate'    => $fxRate,
+            'cost_is_recorded' => true,
+        ]);
+    }
+
+    /**
+     * Get VTU product metrics and status breakdown.
+     */
+    public function getVtuSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $baseQuery = VtuOrder::query();
+        if ($startDate !== null && $endDate !== null) {
+            $baseQuery->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $baseQuery->where('created_at', '>=', $startDate);
+        }
+
+        $counts = [
+            'total'     => (clone $baseQuery)->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'pending'   => (clone $baseQuery)->whereIn('status', ['pending', 'processing'])->count(),
+            'failed'    => (clone $baseQuery)->whereIn('status', ['failed', 'refunded'])->count(),
+        ];
+
+        $revenue = round((float) (clone $baseQuery)->where('status', 'completed')->sum('cost'), 2);
+        $providerCost = null; // Unrecorded in existing schema
+        $profit = $revenue; // Tracked customer revenue; wholesale provider cost is unrecorded
+
+        return array_merge($counts, [
+            'revenue'          => $revenue,
+            'provider_cost'    => $providerCost,
+            'profit'           => $profit,
+            'cost_is_recorded' => false,
+        ]);
+    }
+
+    /**
+     * Get Logs Marketplace product metrics and status breakdown.
+     */
+    public function getLogSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $baseQuery = LogOrder::query();
+        if ($startDate !== null && $endDate !== null) {
+            $baseQuery->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $baseQuery->where('created_at', '>=', $startDate);
+        }
+
+        $counts = [
+            'total'     => (clone $baseQuery)->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'pending'   => (clone $baseQuery)->where('status', 'pending')->count(),
+            'failed'    => (clone $baseQuery)->whereIn('status', ['failed', 'refunded'])->count(),
+        ];
+
+        $revenue = round((float) (clone $baseQuery)->where('status', 'completed')->sum('total_cost'), 2);
+        
+        $costQuery = (clone $baseQuery)->where('log_orders.status', 'completed')
+            ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id');
+        $cost = round((float) ($costQuery->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
+        $profit = round($revenue - $cost, 2);
+
+        return array_merge($counts, [
+            'revenue'          => $revenue,
+            'provider_cost'    => $cost,
+            'profit'           => $profit,
+            'cost_is_recorded' => true,
+        ]);
+    }
 }

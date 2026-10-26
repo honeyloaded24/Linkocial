@@ -1,19 +1,19 @@
 @extends('layouts.app')
 
-@section('header_title', 'HQ: Logs & Accounts Orders')
+@section('header_title', 'HQ: Logs Marketplace Orders & Financial Records')
 
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0">Logs & Accounts Marketplace Orders</h4>
-            <small class="text-muted">Track customer purchases and delivered account credentials across all categories.</small>
+            <small class="text-muted">Track customer purchases, delivered credentials, wholesale product costs, and gross profits.</small>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('hq.logs.index') }}" class="btn btn-outline-primary">
+            <a href="{{ route('hq.logs.index') }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
                 <i class="fa-solid fa-boxes-stacked me-1"></i> Manage Products
             </a>
-            <a href="{{ route('hq.dashboard') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('hq.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                 <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
             </a>
         </div>
@@ -26,16 +26,91 @@
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
+    <!-- Logs Marketplace Financial Summary Cards -->
+    @if(isset($logStats))
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Total Orders</span>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-box-open fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1">{{ number_format($logStats['total']) }}</h3>
+                    <div class="small text-muted d-flex gap-2 flex-wrap" style="font-size: 0.72rem;">
+                        <span class="text-success"><i class="fa-solid fa-check"></i> {{ number_format($logStats['completed']) }} Done</span>
+                        <span class="text-warning"><i class="fa-solid fa-clock"></i> {{ number_format($logStats['pending']) }} Pend</span>
+                        <span class="text-danger"><i class="fa-solid fa-times"></i> {{ number_format($logStats['failed']) }} Fail</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Total Revenue</span>
+                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-money-bill-wave fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-success">₦{{ number_format($logStats['revenue'], 2) }}</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        Completed marketplace sales
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Product Cost</span>
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-tags fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-warning">₦{{ number_format($logStats['provider_cost'], 2) }}</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        Recorded wholesale catalog cost
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Total Profit</span>
+                    <div class="bg-info bg-opacity-10 text-info rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-chart-line fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-info">₦{{ number_format($logStats['profit'], 2) }}</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        Realized gross margin
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="premium-card p-4">
-        <!-- Search and Filter Row -->
+        <!-- Search and Date Filter Row -->
         <form action="{{ route('hq.logs.orders') }}" method="GET" class="row g-3 mb-4 align-items-center">
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-end-0 border-secondary"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                     <input type="text" name="search" class="form-control border-start-0 border-secondary bg-transparent" placeholder="Search Product, External ID, or User..." value="{{ request('search') }}" style="color: var(--text-main);">
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <select name="status" class="form-select border-secondary bg-transparent" style="color: var(--text-main);">
                     <option value="">All Statuses</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
@@ -44,12 +119,20 @@
                     <option value="refunded" {{ request('status') === 'refunded' ? 'selected' : '' }}>Refunded</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-2">
-                <button type="submit" class="btn btn-primary-custom flex-grow-1">Filter</button>
-                @if(request('search') || request('status'))
-                    <a href="{{ route('hq.logs.orders') }}" class="btn btn-outline-secondary">Clear</a>
-                @endif
+            <div class="col-md-2">
+                <input type="date" name="from_date" class="form-control border-secondary bg-transparent" value="{{ request('from_date') }}" title="From Date" style="color: var(--text-main);">
             </div>
+            <div class="col-md-2">
+                <input type="date" name="to_date" class="form-control border-secondary bg-transparent" value="{{ request('to_date') }}" title="To Date" style="color: var(--text-main);">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary-custom w-100" title="Filter"><i class="fa-solid fa-filter"></i></button>
+            </div>
+            @if(request('search') || request('status') || request('from_date') || request('to_date'))
+            <div class="col-12 mt-2">
+                <a href="{{ route('hq.logs.orders') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-times me-1"></i> Clear Filters</a>
+            </div>
+            @endif
         </form>
 
         <div class="table-responsive">

@@ -1,13 +1,101 @@
 @extends('layouts.app')
 
-@section('header_title', 'HQ: VTU Orders')
+@section('header_title', 'HQ: VTU Orders & Financial Records')
 
 @section('content')
 <div class="container-fluid">
+    <!-- Header Title & Action -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h4 class="fw-bold mb-0">VTU Airtime, Data & Utility Orders</h4>
+            <small class="text-muted">Track virtual top-up transactions, customer billing, and network delivery statuses.</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('hq.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- VTU Financial Summary Cards -->
+    @if(isset($vtuStats))
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Total Orders</span>
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-mobile-screen fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1">{{ number_format($vtuStats['total']) }}</h3>
+                    <div class="small text-muted d-flex gap-2 flex-wrap" style="font-size: 0.72rem;">
+                        <span class="text-success"><i class="fa-solid fa-check"></i> {{ number_format($vtuStats['completed']) }} Done</span>
+                        <span class="text-warning"><i class="fa-solid fa-clock"></i> {{ number_format($vtuStats['pending']) }} Pend</span>
+                        <span class="text-danger"><i class="fa-solid fa-times"></i> {{ number_format($vtuStats['failed']) }} Fail</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Total Revenue</span>
+                    <div class="bg-success bg-opacity-10 text-success rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-money-bill-wave fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-success">₦{{ number_format($vtuStats['revenue'], 2) }}</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        Completed customer charges
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Provider Cost</span>
+                    <div class="bg-secondary bg-opacity-10 text-muted rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-receipt fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-muted">₦0.00</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        <span class="badge bg-secondary bg-opacity-25 text-muted px-2 py-1"><i class="fa-solid fa-info-circle me-1"></i>Unrecorded Direct API</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+            <div class="premium-card p-3 h-100 d-flex flex-column justify-content-between">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Tracked Margin</span>
+                    <div class="bg-info bg-opacity-10 text-info rounded-circle p-2" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-chart-line fs-6"></i>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="fw-bold mb-1 text-info">₦{{ number_format($vtuStats['profit'], 2) }}</h3>
+                    <div class="small text-muted" style="font-size: 0.72rem;">
+                        Tracked revenue volume
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="premium-card p-4">
-        <!-- Search and Filter Row -->
+        <!-- Search and Date Filter Row -->
         <form action="{{ route('hq.vtu') }}" method="GET" class="row g-3 mb-4 align-items-center">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-end-0 border-secondary"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                     <input type="text" name="search" class="form-control border-start-0 border-secondary bg-transparent" placeholder="Search Phone/Meter, Ref, or User..." value="{{ request('search') }}" style="color: var(--text-main);">
@@ -31,11 +119,17 @@
                 </select>
             </div>
             <div class="col-md-2">
-                <button type="submit" class="btn btn-primary-custom w-100">Filter</button>
+                <input type="date" name="from_date" class="form-control border-secondary bg-transparent" value="{{ request('from_date') }}" title="From Date" style="color: var(--text-main);">
             </div>
-            @if(request('search') || request('status') || request('service_type'))
             <div class="col-md-2">
-                <a href="{{ route('hq.vtu') }}" class="btn btn-outline-secondary w-100">Clear</a>
+                <input type="date" name="to_date" class="form-control border-secondary bg-transparent" value="{{ request('to_date') }}" title="To Date" style="color: var(--text-main);">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary-custom w-100" title="Filter"><i class="fa-solid fa-filter"></i></button>
+            </div>
+            @if(request('search') || request('status') || request('service_type') || request('from_date') || request('to_date'))
+            <div class="col-12 mt-2">
+                <a href="{{ route('hq.vtu') }}" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-times me-1"></i> Clear Filters</a>
             </div>
             @endif
         </form>

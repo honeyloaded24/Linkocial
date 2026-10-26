@@ -17,6 +17,18 @@ class AdminVirtualNumberController extends Controller
     {
         $query = VirtualNumberOrder::with('user')->latest();
 
+        // Date range filter
+        $startDate = null;
+        $endDate = null;
+        if ($request->filled('from_date')) {
+            $startDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($request->filled('to_date')) {
+            $endDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->where('created_at', '<=', $endDate);
+        }
+
         // Search by phone number, service, or user
         if ($request->filled('search')) {
             $search = $request->search;
@@ -38,15 +50,16 @@ class AdminVirtualNumberController extends Controller
 
         $orders = $query->paginate(30)->withQueryString();
 
-        $vnStats = [
-            'total' => VirtualNumberOrder::count(),
-            'pending' => VirtualNumberOrder::where('status', 'pending')->count(),
-            'received' => VirtualNumberOrder::where('status', 'received')->count(),
-            'canceled' => VirtualNumberOrder::where('status', 'canceled')->count(),
-            'finished' => VirtualNumberOrder::where('status', 'finished')->count(),
-            'total_revenue' => VirtualNumberOrder::whereIn('status', ['received', 'finished'])->sum('cost'),
-            'total_cost' => VirtualNumberOrder::whereIn('status', ['received', 'finished'])->sum('provider_cost'),
-        ];
+        // Authoritative Virtual Number financial summary
+        $summary = app(\App\Services\FinancialMetricsService::class)->getVirtualNumberSummary($startDate, $endDate);
+
+        $vnStats = array_merge($summary, [
+            'total_revenue' => $summary['revenue'],
+            'total_cost'    => $summary['provider_cost'],
+            'received'      => $summary['completed'],
+            'canceled'      => $summary['failed'],
+            'finished'      => 0,
+        ]);
 
         return view('hq.virtual_numbers.index', compact('orders', 'vnStats'));
     }

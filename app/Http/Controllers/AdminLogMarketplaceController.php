@@ -108,6 +108,18 @@ class AdminLogMarketplaceController extends Controller
     {
         $query = LogOrder::with('user', 'product')->latest();
 
+        // Date range filter
+        $startDate = null;
+        $endDate = null;
+        if ($request->filled('from_date')) {
+            $startDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($request->filled('to_date')) {
+            $endDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->where('created_at', '<=', $endDate);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -125,8 +137,12 @@ class AdminLogMarketplaceController extends Controller
             $query->where('status', $request->status);
         }
 
-        $orders = $query->paginate(20);
-        return view('hq.logs.orders', compact('orders'));
+        $orders = $query->paginate(20)->withQueryString();
+
+        // Authoritative Logs Marketplace financial summary
+        $logStats = app(\App\Services\FinancialMetricsService::class)->getLogSummary($startDate, $endDate);
+
+        return view('hq.logs.orders', compact('orders', 'logStats'));
     }
 
     public function storeCategory(Request $request)

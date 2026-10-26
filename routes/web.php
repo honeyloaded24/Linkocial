@@ -227,6 +227,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/blog/{id}', [App\Http\Controllers\AdminBlogController::class, 'destroy'])->name('hq.blog.destroy');
         
         Route::get('/orders', [AdminController::class, 'orders'])->name('hq.orders');
+        Route::get('/social', [AdminController::class, 'orders'])->name('hq.social');
         Route::get('/orders/{id}', [AdminController::class, 'showOrder'])->name('hq.orders.show');
         Route::post('/orders/{id}/complete', [AdminController::class, 'forceCompleteOrder'])->name('hq.orders.complete');
         Route::post('/orders/{id}/cancel', [AdminController::class, 'cancelAndRefundOrder'])->name('hq.orders.cancel');

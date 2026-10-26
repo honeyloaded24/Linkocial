@@ -311,4 +311,268 @@ class FinancialMetricsServiceTest extends TestCase
         $this->assertEquals(3000.00, $metrics['totalProfit']); // 7200 spent - 4200 cost = 3000 gross profit
         $this->assertEquals(1500.0, $metrics['exchangeRate']);
     }
+
+    /**
+     * Test SMM Product Summary returns accurate counts, USD-to-NGN converted costs, and profits.
+     */
+    public function test_smm_summary_metrics_and_status_counts(): void
+    {
+        Setting::set('usd_to_ngn_rate', '1500');
+        $user = User::factory()->create();
+
+        // Completed SMM order: charge 4,000 NGN, cost $1.00 USD -> ₦1,500 NGN cost
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/boost',
+            'quantity'      => 1000,
+            'charge'        => 4000.00,
+            'provider_cost' => 1.00,
+            'status'        => 'completed',
+            'is_refunded'   => false,
+        ]);
+
+        // Pending SMM order: charge 1,500 NGN
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/boost',
+            'quantity'      => 500,
+            'charge'        => 1500.00,
+            'provider_cost' => 0.40,
+            'status'        => 'pending',
+            'is_refunded'   => false,
+        ]);
+
+        // Partial SMM order: 50% fulfilled (remains 500 out of 1000)
+        // charge 2,000 NGN -> ₦1,000 eligible revenue; provider cost $0.60 USD -> $0.30 eligible * 1,500 = ₦450 cost
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/boost',
+            'quantity'      => 1000,
+            'remains'       => 500,
+            'charge'        => 2000.00,
+            'provider_cost' => 0.60,
+            'status'        => 'partial',
+            'is_refunded'   => false,
+        ]);
+
+        // Canceled/Failed SMM order
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/boost',
+            'quantity'      => 200,
+            'charge'        => 800.00,
+            'provider_cost' => 0.20,
+            'status'        => 'canceled',
+            'is_refunded'   => true,
+        ]);
+
+        $summary = $this->service->getSmmSummary();
+
+        $this->assertEquals(4, $summary['total']);
+        $this->assertEquals(1, $summary['completed']);
+        $this->assertEquals(1, $summary['pending']);
+        $this->assertEquals(1, $summary['partial']);
+        $this->assertEquals(1, $summary['failed']);
+        $this->assertEquals(5000.00, $summary['revenue']); // 4000 + 1000 prorated
+        $this->assertEquals(1950.00, $summary['provider_cost']); // 1500 + 450 prorated
+        $this->assertEquals(3050.00, $summary['profit']); // 5000 - 1950
+    }
+
+    /**
+     * Test Virtual Number Product Summary calculations with USD provider cost conversion.
+     */
+    public function test_virtual_number_summary_metrics_and_status_counts(): void
+    {
+        Setting::set('usd_to_ngn_rate', '1500');
+        $user = User::factory()->create();
+
+        // 1. Received order: cost 1500 NGN, provider_cost $0.50 USD -> ₦750 NGN
+        VirtualNumberOrder::create([
+            'user_id'       => $user->id,
+            'fivesim_id'    => 'vn_sum_01',
+            'phone_number'  => '+2348000000001',
+            'country'       => 'Nigeria',
+            'operator'      => 'SMSPool',
+            'product'       => 'WhatsApp',
+            'cost'          => 1500.00,
+            'provider_cost' => 0.50,
+            'status'        => 'received',
+        ]);
+
+        // 2. Finished order: cost 1200 NGN, provider_cost $0.40 USD -> ₦600 NGN
+        VirtualNumberOrder::create([
+            'user_id'       => $user->id,
+            'fivesim_id'    => 'vn_sum_02',
+            'phone_number'  => '+2348000000002',
+            'country'       => 'Nigeria',
+            'operator'      => 'SMSPool',
+            'product'       => 'Telegram',
+            'cost'          => 1200.00,
+            'provider_cost' => 0.40,
+            'status'        => 'finished',
+        ]);
+
+        // 3. Pending order: cost 1000 NGN
+        VirtualNumberOrder::create([
+            'user_id'       => $user->id,
+            'fivesim_id'    => 'vn_sum_03',
+            'phone_number'  => '+2348000000003',
+            'country'       => 'Nigeria',
+            'operator'      => 'SMSPool',
+            'product'       => 'Instagram',
+            'cost'          => 1000.00,
+            'provider_cost' => 0.30,
+            'status'        => 'pending',
+        ]);
+
+        // 4. Canceled order: cost 800 NGN
+        VirtualNumberOrder::create([
+            'user_id'       => $user->id,
+            'fivesim_id'    => 'vn_sum_04',
+            'phone_number'  => '+2348000000004',
+            'country'       => 'Nigeria',
+            'operator'      => 'SMSPool',
+            'product'       => 'Twitter',
+            'cost'          => 800.00,
+            'provider_cost' => 0.20,
+            'status'        => 'canceled',
+        ]);
+
+        $summary = $this->service->getVirtualNumberSummary();
+
+        $this->assertEquals(4, $summary['total']);
+        $this->assertEquals(2, $summary['completed']);
+        $this->assertEquals(1, $summary['pending']);
+        $this->assertEquals(1, $summary['failed']);
+        $this->assertEquals(2700.00, $summary['revenue']); // 1500 + 1200
+        $this->assertEquals(1350.00, $summary['provider_cost']); // 750 + 600
+        $this->assertEquals(1350.00, $summary['profit']); // 2700 - 1350
+    }
+
+    /**
+     * Test VTU Product Summary calculations and unrecorded wholesale cost handling.
+     */
+    public function test_vtu_summary_metrics_and_status_counts(): void
+    {
+        $user = User::factory()->create();
+
+        VtuOrder::create([
+            'user_id'         => $user->id,
+            'phone_or_meter'  => '08012345678',
+            'service_type'    => 'airtime',
+            'network'         => 'MTN',
+            'cost'            => 1000.00,
+            'status'          => 'completed',
+            'api_reference'   => 'VTU_TST_01',
+        ]);
+
+        VtuOrder::create([
+            'user_id'         => $user->id,
+            'phone_or_meter'  => '08012345679',
+            'service_type'    => 'data',
+            'network'         => 'AIRTEL',
+            'cost'            => 2500.00,
+            'status'          => 'completed',
+            'api_reference'   => 'VTU_TST_02',
+        ]);
+
+        VtuOrder::create([
+            'user_id'         => $user->id,
+            'phone_or_meter'  => '08012345680',
+            'service_type'    => 'electricity',
+            'network'         => 'IKEDC',
+            'cost'            => 5000.00,
+            'status'          => 'pending',
+            'api_reference'   => 'VTU_TST_03',
+        ]);
+
+        VtuOrder::create([
+            'user_id'         => $user->id,
+            'phone_or_meter'  => '08012345681',
+            'service_type'    => 'data',
+            'network'         => 'GLO',
+            'cost'            => 1200.00,
+            'status'          => 'refunded',
+            'api_reference'   => 'VTU_TST_04',
+        ]);
+
+        $summary = $this->service->getVtuSummary();
+
+        $this->assertEquals(4, $summary['total']);
+        $this->assertEquals(2, $summary['completed']);
+        $this->assertEquals(1, $summary['pending']);
+        $this->assertEquals(1, $summary['failed']);
+        $this->assertEquals(3500.00, $summary['revenue']); // 1000 + 2500
+        $this->assertNull($summary['provider_cost']); // Unrecorded wholesale cost
+        $this->assertFalse($summary['cost_is_recorded']);
+        $this->assertEquals(3500.00, $summary['profit']);
+    }
+
+    /**
+     * Test Logs Marketplace Product Summary calculations with joined product cost.
+     */
+    public function test_log_summary_metrics_and_status_counts(): void
+    {
+        $user = User::factory()->create();
+
+        $product = LogProduct::create([
+            'name'           => 'Facebook Aged 2018',
+            'type'           => 'api',
+            'base_api_price' => 300.00,
+            'unit_price'     => 500.00,
+            'our_price'      => 500.00,
+            'is_active'      => true,
+            'in_stock'       => 10,
+        ]);
+
+        // Completed order: 2 items @ ₦500 = ₦1,000 revenue. Cost = 2 * 300 = ₦600.
+        LogOrder::create([
+            'user_id'           => $user->id,
+            'log_product_id'    => $product->id,
+            'product_name'      => $product->name,
+            'quantity'          => 2,
+            'unit_cost'         => 500.00,
+            'total_cost'        => 1000.00,
+            'status'            => 'completed',
+            'external_order_id' => 'LOG_TST_01',
+        ]);
+
+        // Pending order: 1 item
+        LogOrder::create([
+            'user_id'           => $user->id,
+            'log_product_id'    => $product->id,
+            'product_name'      => $product->name,
+            'quantity'          => 1,
+            'unit_cost'         => 500.00,
+            'total_cost'        => 500.00,
+            'status'            => 'pending',
+            'external_order_id' => 'LOG_TST_02',
+        ]);
+
+        // Failed order: 1 item
+        LogOrder::create([
+            'user_id'           => $user->id,
+            'log_product_id'    => $product->id,
+            'product_name'      => $product->name,
+            'quantity'          => 1,
+            'unit_cost'         => 500.00,
+            'total_cost'        => 500.00,
+            'status'            => 'failed',
+            'external_order_id' => 'LOG_TST_03',
+        ]);
+
+        $summary = $this->service->getLogSummary();
+
+        $this->assertEquals(3, $summary['total']);
+        $this->assertEquals(1, $summary['completed']);
+        $this->assertEquals(1, $summary['pending']);
+        $this->assertEquals(1, $summary['failed']);
+        $this->assertEquals(1000.00, $summary['revenue']);
+        $this->assertEquals(600.00, $summary['provider_cost']);
+        $this->assertEquals(400.00, $summary['profit']);
+    }
 }

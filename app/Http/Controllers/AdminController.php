@@ -543,11 +543,23 @@ class AdminController extends Controller
     }
 
     /**
-     * List all platform orders
+     * List all platform orders (Social Media Boosting / Boost)
      */
     public function orders(Request $request)
     {
         $query = Order::with(['user', 'service'])->latest();
+
+        // Date range filter
+        $startDate = null;
+        $endDate = null;
+        if ($request->filled('from_date')) {
+            $startDate = \Carbon\Carbon::parse($request->from_date)->startOfDay();
+            $query->where('created_at', '>=', $startDate);
+        }
+        if ($request->filled('to_date')) {
+            $endDate = \Carbon\Carbon::parse($request->to_date)->endOfDay();
+            $query->where('created_at', '<=', $endDate);
+        }
 
         // Filter by Status
         if ($request->filled('status') && $request->status !== 'all') {
@@ -568,16 +580,23 @@ class AdminController extends Controller
 
         $orders = $query->paginate(50)->withQueryString();
 
-        // Calculate counts for tabs
+        // Authoritative SMM financial summary for the specified date range
+        $smmStats = app(\App\Services\FinancialMetricsService::class)->getSmmSummary($startDate, $endDate);
+
+        // Calculate counts for tabs with consistent date filtering
+        $countQuery = Order::query();
+        if ($startDate) $countQuery->where('created_at', '>=', $startDate);
+        if ($endDate) $countQuery->where('created_at', '<=', $endDate);
+
         $counts = [
-            'all' => Order::count(),
-            'pending' => Order::where('status', 'pending')->count(),
-            'processing' => Order::whereIn('status', ['processing', 'in_progress'])->count(),
-            'completed' => Order::where('status', 'completed')->count(),
-            'failed' => Order::whereIn('status', ['failed', 'canceled'])->count(),
+            'all' => (clone $countQuery)->count(),
+            'pending' => (clone $countQuery)->where('status', 'pending')->count(),
+            'processing' => (clone $countQuery)->whereIn('status', ['processing', 'in_progress'])->count(),
+            'completed' => (clone $countQuery)->where('status', 'completed')->count(),
+            'failed' => (clone $countQuery)->whereIn('status', ['failed', 'canceled'])->count(),
         ];
 
-        return view('hq.orders.index', compact('orders', 'counts'));
+        return view('hq.orders.index', compact('orders', 'counts', 'smmStats'));
     }
 
     /**
