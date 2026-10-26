@@ -1488,4 +1488,140 @@ class AdminController extends Controller
             return back()->with('error', 'Synchronization failed: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Show Currency & Exchange Rate Settings
+     */
+    public function hqCurrencySettings()
+    {
+        $conversionService = app(\App\Services\CurrencyConversionService::class);
+        $usdToNgnRate = $conversionService->getUsdToNgnRate();
+        $ngnToUsdRate = $conversionService->getNgnToUsdRate();
+        $lastUpdatedAt = \App\Models\Setting::get('exchange_rate_updated_at');
+        $lastUpdatedBy = \App\Models\Setting::get('exchange_rate_updated_by');
+
+        // Audit stats
+        $totalUsers = \App\Models\User::count();
+        $migratedUsersCount = \App\Models\User::where('currency_reconciliation_status', 'migrated')
+            ->orWhereNotNull('legacy_balance_recovered_at')
+            ->count();
+        $ambiguousUsers = \App\Models\User::where('currency_reconciliation_status', 'flagged_ambiguous')->get();
+
+        return view('hq.settings.currency', compact(
+            'usdToNgnRate', 
+            'ngnToUsdRate', 
+            'lastUpdatedAt', 
+            'lastUpdatedBy',
+            'totalUsers',
+            'migratedUsersCount',
+            'ambiguousUsers'
+        ));
+    }
+
+    /**
+     * Save exchange rate settings
+     */
+    public function hqUpdateCurrencySettings(Request $request)
+    {
+        $request->validate([
+            'usd_to_ngn_rate' => 'required|numeric|gt:0',
+            'ngn_to_usd_rate' => 'nullable|numeric|gt:0',
+        ]);
+
+        $usdRate = (float) $request->usd_to_ngn_rate;
+
+        // Mathematical consistency validation
+        if ($request->filled('ngn_to_usd_rate')) {
+            $reverseRate = (float) $request->ngn_to_usd_rate;
+            $product = $usdRate * $reverseRate;
+            // Ensure product is approximately 1 (within 5% tolerance)
+            if (abs($product - 1.0) > 0.05) {
+                return back()->withInput()->with('error', 'Inconsistent exchange rates. 1 NGN to USD must mathematically approximate 1 / (USD to NGN rate). Product was ' . round($product, 4) . ' instead of ~1.0.');
+            }
+        }
+
+        $conversionService = app(\App\Services\CurrencyConversionService::class);
+        $adminIdentifier = auth()->user()->username ?? auth()->user()->email ?? 'Administrator';
+
+        $conversionService->updateRates($usdRate, $adminIdentifier);
+
+        return back()->with('success', 'Exchange rates successfully updated and saved. Active rate: 1 USD = ₦' . number_format($usdRate, 2) . ' NGN.');
+    }
+
+    /**
+     * Reconcile an individual ambiguous user account manually
+     */
+    public function hqReconcileUser(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'action' => 'required|in:convert_as_usd,mark_as_ngn,set_custom',
+            'custom_balance' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:500'
+        ]);
+
+        $user = \App\Models\User::findOrFail($request->user_id);
+        $conversionService = app(\App\Services\CurrencyConversionService::class);
+        $rate = $conversionService->getUsdToNgnRate();
+        $oldBalance = (float) $user->balance;
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $rate, $oldBalance) {
+            $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+
+            if ($request->action === 'convert_as_usd') {
+                $newBalance = round($oldBalance * $rate, 2);
+                $lockedUser->balance = $newBalance;
+                $lockedUser->legacy_balance_usd = $oldBalance;
+                $lockedUser->legacy_recovery_rate = $rate;
+                $lockedUser->legacy_balance_recovered_at = now();
+                $lockedUser->currency_reconciliation_status = 'migrated';
+                $lockedUser->currency_code = 'NGN';
+                $lockedUser->reconciliation_notes = "Manual reconciliation by " . auth()->user()->username . ": Converted \${$oldBalance} USD at ₦{$rate} = ₦{$newBalance}. " . ($request->notes ?? '');
+                $lockedUser->save();
+
+                \App\Models\Transaction::create([
+                    'user_id' => $lockedUser->id,
+                    'amount' => $newBalance - $oldBalance,
+                    'type' => 'credit',
+                    'transaction_type' => 'currency_migration',
+                    'balance_before' => $oldBalance,
+                    'balance_after' => $newBalance,
+                    'description' => "Manual reconciliation: Converted \${$oldBalance} USD to ₦" . number_format($newBalance, 2) . " NGN",
+                    'reference' => 'MANREC_' . strtoupper(\Illuminate\Support\Str::random(8)),
+                ]);
+            } elseif ($request->action === 'mark_as_ngn') {
+                $lockedUser->currency_reconciliation_status = 'reconciled_ngn';
+                $lockedUser->currency_code = 'NGN';
+                $lockedUser->reconciliation_notes = "Manual reconciliation by " . auth()->user()->username . ": Confirmed balance ₦{$oldBalance} was already NGN. " . ($request->notes ?? '');
+                $lockedUser->save();
+            } elseif ($request->action === 'set_custom') {
+                $newBalance = (float) $request->custom_balance;
+                $lockedUser->balance = $newBalance;
+                $lockedUser->currency_reconciliation_status = 'manually_reconciled';
+                $lockedUser->currency_code = 'NGN';
+                $lockedUser->reconciliation_notes = "Manual override by " . auth()->user()->username . ": Adjusted from {$oldBalance} to ₦{$newBalance}. " . ($request->notes ?? '');
+                $lockedUser->save();
+
+                \App\Models\Transaction::create([
+                    'user_id' => $lockedUser->id,
+                    'amount' => abs($newBalance - $oldBalance),
+                    'type' => $newBalance >= $oldBalance ? 'credit' : 'debit',
+                    'transaction_type' => 'manual_adjustment',
+                    'balance_before' => $oldBalance,
+                    'balance_after' => $newBalance,
+                    'description' => "Manual balance reconciliation adjustment",
+                    'reference' => 'MANREC_' . strtoupper(\Illuminate\Support\Str::random(8)),
+                ]);
+            }
+
+            \App\Models\ActivityLog::log("Manually reconciled user #{$lockedUser->id} currency balance", auth()->user(), [
+                'action' => $request->action,
+                'old_balance' => $oldBalance,
+                'new_balance' => $lockedUser->balance,
+                'notes' => $request->notes,
+            ]);
+        });
+
+        return back()->with('success', 'User balance successfully reconciled.');
+    }
 }

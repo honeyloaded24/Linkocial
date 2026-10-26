@@ -40,6 +40,11 @@
                             <i class="fa-solid fa-images me-1"></i> Dashboard Slider
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <a href="{{ route('hq.settings.currency') }}" class="nav-link py-3 fw-bold border-0 text-success" id="currency-tab">
+                            <i class="fa-solid fa-money-bill-transfer me-1"></i> Currency & Rates
+                        </a>
+                    </li>
                 </ul>
 
                 <form id="mainSettingsForm" action="{{ route('hq.settings.update') }}" method="POST" enctype="multipart/form-data">

@@ -19,7 +19,7 @@ class CurrencySeeder extends Seeder
             [
                 'code' => 'NGN',
                 'symbol' => '₦',
-                'exchange_rate' => 1.0,
+                'exchange_rate' => 1450.0,
                 'is_default' => true,
                 'is_active' => true
             ],
@@ -31,5 +31,14 @@ class CurrencySeeder extends Seeder
                 $currency
             );
         }
+
+        \App\Models\Setting::updateOrCreate(
+            ['key' => 'usd_to_ngn_rate'],
+            ['value' => '1500']
+        );
+        \App\Models\Setting::updateOrCreate(
+            ['key' => 'ngn_to_usd_rate'],
+            ['value' => '0.0006666667']
+        );
     }
 }

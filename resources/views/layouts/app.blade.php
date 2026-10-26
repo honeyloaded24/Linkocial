@@ -270,8 +270,11 @@
                                 <a href="{{ route('hq.queues') }}" class="nav-link mb-2 {{ request()->routeIs('hq.queues*') ? 'active' : '' }}">
                                     <i class="fa-solid fa-bolt-lightning"></i> Queue Monitor
                                 </a>
-                                <a href="{{ route('hq.settings') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings*') ? 'active' : '' }}">
+                                <a href="{{ route('hq.settings') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings') ? 'active' : '' }}">
                                     <i class="fa-solid fa-gears"></i> Settings
+                                </a>
+                                <a href="{{ route('hq.settings.currency') }}" class="nav-link mb-2 {{ request()->routeIs('hq.settings.currency*') ? 'active' : '' }}">
+                                    <i class="fa-solid fa-money-bill-transfer"></i> Currency & Rates
                                 </a>
                             </div>
                         </div>

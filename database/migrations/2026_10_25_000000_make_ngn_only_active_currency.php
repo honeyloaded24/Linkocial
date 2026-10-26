@@ -49,6 +49,8 @@ return new class extends Migration
             $defaultSettings = [
                 'currency' => 'NGN',
                 'currency_symbol' => '₦',
+                'usd_to_ngn_rate' => '1500',
+                'ngn_to_usd_rate' => '0.0006666667',
                 'provider_usd_rate' => '1500',
                 'vn_markup_ngn' => '1500',
                 'affiliate_min_payout' => '5000',

@@ -44,3 +44,43 @@ if (!function_exists('get_currency_code')) {
         return config('app.currency', 'NGN');
     }
 }
+
+if (!function_exists('usd_to_ngn')) {
+    /**
+     * Convert USD amount to NGN using the configured exchange rate.
+     */
+    function usd_to_ngn($usdAmount, int $decimals = 2): float
+    {
+        return app(\App\Services\CurrencyConversionService::class)->usdToNgn($usdAmount, $decimals);
+    }
+}
+
+if (!function_exists('ngn_to_usd')) {
+    /**
+     * Convert NGN amount to USD using the configured exchange rate.
+     */
+    function ngn_to_usd($ngnAmount, int $decimals = 4): float
+    {
+        return app(\App\Services\CurrencyConversionService::class)->ngnToUsd($ngnAmount, $decimals);
+    }
+}
+
+if (!function_exists('get_usd_to_ngn_rate')) {
+    /**
+     * Get current configured USD to NGN exchange rate (e.g. 1500).
+     */
+    function get_usd_to_ngn_rate(): float
+    {
+        return app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
+    }
+}
+
+if (!function_exists('get_ngn_to_usd_rate')) {
+    /**
+     * Get reverse NGN to USD rate.
+     */
+    function get_ngn_to_usd_rate(): float
+    {
+        return app(\App\Services\CurrencyConversionService::class)->getNgnToUsdRate();
+    }
+}

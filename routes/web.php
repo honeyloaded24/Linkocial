@@ -290,6 +290,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/sliders', [AdminController::class, 'hqStoreSlider'])->name('hq.sliders.store');
         Route::delete('/settings/sliders/{id}', [AdminController::class, 'hqDestroySlider'])->name('hq.sliders.destroy');
 
+        // Currency & Exchange Rate Settings
+        Route::get('/settings/currency', [AdminController::class, 'hqCurrencySettings'])->name('hq.settings.currency');
+        Route::post('/settings/currency', [AdminController::class, 'hqUpdateCurrencySettings'])->name('hq.settings.currency.update');
+        Route::post('/settings/currency/reconcile-user', [AdminController::class, 'hqReconcileUser'])->name('hq.settings.currency.reconcile-user');
+
     });
 });
 
