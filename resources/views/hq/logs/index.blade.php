@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-0">Logs Marketplace Products</h4>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
-                <i class="fa-solid fa-folder-plus"></i> New Category
+                <i class="fa-solid fa-folder-tree me-1"></i> Manage Categories
             </button>
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#createProductModal">
                 <i class="fa-solid fa-plus"></i> New Local Product
@@ -204,26 +204,147 @@
     </div>
 </div>
 
-<!-- Create Category Modal -->
-<div class="modal fade" id="createCategoryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content border-0 rounded-4 shadow-lg" action="{{ route('hq.logs.category.store') }}" method="POST">
-            @csrf
+<!-- Manage / Create Category Modal -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1" aria-labelledby="manageCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Create Local Category</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3">
+                        <i class="fa-solid fa-folder-tree fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="manageCategoryModalLabel">Manage Product Categories</h5>
+                        <small class="text-muted">Create new categories or manage and delete existing ones.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body py-3">
-                <div class="mb-3">
-                    <label class="form-label fw-bold small">Category Name</label>
-                    <input type="text" class="form-control" name="name" required placeholder="e.g. Gmail Accounts">
+                <!-- Create New Category Form -->
+                <form action="{{ route('hq.logs.category.store') }}" method="POST" class="p-3 rounded-3 bg-light border mb-4">
+                    @csrf
+                    <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.5px;">Create New Category</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="name" required placeholder="e.g. Gmail Accounts, Instagram Logs..." autocomplete="off">
+                        <button type="submit" class="btn btn-primary-custom px-4">
+                            <i class="fa-solid fa-plus me-1"></i> Add Category
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Existing Categories List -->
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                        <span class="fw-bold small text-uppercase text-muted" style="letter-spacing: 0.5px;">
+                            Existing Categories ({{ $categories->count() }})
+                        </span>
+                        <small class="text-muted" style="font-size: 0.75rem;">Categories with products require reassignment before deletion</small>
+                    </div>
+
+                    @if($categories->isEmpty())
+                        <div class="text-center py-4 text-muted border rounded-3 bg-light">
+                            <i class="fa-regular fa-folder-open fs-2 mb-2 opacity-50"></i>
+                            <p class="mb-0 small">No categories found. Create your first category above.</p>
+                        </div>
+                    @else
+                        <div class="border rounded-3 overflow-hidden">
+                            <div class="table-responsive" style="max-height: 400px;">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="bg-light text-muted small text-uppercase" style="font-size: 0.72rem;">
+                                        <tr>
+                                            <th class="ps-3 py-2">Category Name</th>
+                                            <th class="py-2 text-center">Assigned Products</th>
+                                            <th class="pe-3 py-2 text-end">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($categories as $cat)
+                                        @php $pCount = $cat->products_count ?? $cat->products()->count(); @endphp
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <i class="fa-solid fa-folder text-warning fs-6"></i>
+                                                    <span class="fw-bold fs-7">{{ $cat->name }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                @if($pCount > 0)
+                                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                                        {{ $pCount }} {{ Str::plural('product', $pCount) }}
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-secondary bg-opacity-10 text-muted border border-secondary border-opacity-25 rounded-pill px-2 py-1" style="font-size: 0.75rem;">
+                                                        0 products (Empty)
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="pe-3 text-end">
+                                                @if($pCount == 0)
+                                                    <form action="{{ route('hq.logs.category.delete', $cat->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete the category \'{{ addslashes($cat->name) }}\'? This action cannot be undone.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" title="Delete category">
+                                                            <i class="fa-solid fa-trash-can me-1"></i> Delete
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <!-- Category has products: offer safe reassignment dialog -->
+                                                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-bs-toggle="collapse" data-bs-target="#reassignBox{{ $cat->id }}" aria-expanded="false" title="Delete or reassign products">
+                                                        <i class="fa-solid fa-trash-can me-1"></i> Delete
+                                                    </button>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @if($pCount > 0)
+                                        <tr class="collapse bg-light" id="reassignBox{{ $cat->id }}">
+                                            <td colspan="3" class="p-3">
+                                                <div class="p-3 rounded-3 bg-white border border-danger border-opacity-25 shadow-sm">
+                                                    <div class="d-flex align-items-center gap-2 text-danger fw-bold small mb-2">
+                                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                                        <span>Category Contains {{ $pCount }} Product(s)</span>
+                                                    </div>
+                                                    <p class="small text-muted mb-3">
+                                                        To prevent accidental data loss, products must be reassigned before deleting <strong>{{ $cat->name }}</strong>. Select another category below to transfer these products to, then proceed:
+                                                    </p>
+                                                    <form action="{{ route('hq.logs.category.delete', $cat->id) }}" method="POST" class="row g-2 align-items-center" onsubmit="return confirm('Reassign all {{ $pCount }} product(s) to the selected category and permanently delete category \'{{ addslashes($cat->name) }}\'?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <div class="col-md-7 col-sm-12">
+                                                            <select name="reassign_to" class="form-select form-select-sm" required>
+                                                                <option value="" disabled selected>-- Select Target Category --</option>
+                                                                @foreach($categories as $targetCat)
+                                                                    @if($targetCat->id != $cat->id)
+                                                                        <option value="{{ $targetCat->id }}">{{ $targetCat->name }}</option>
+                                                                    @endif
+                                                                @endforeach
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-md-5 col-sm-12 d-flex gap-2">
+                                                            <button type="submit" class="btn btn-sm btn-danger rounded-pill px-3 flex-grow-1">
+                                                                <i class="fa-solid fa-right-left me-1"></i> Reassign & Delete
+                                                            </button>
+                                                            <button type="button" class="btn btn-sm btn-light rounded-pill px-2" data-bs-toggle="collapse" data-bs-target="#reassignBox{{ $cat->id }}">
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        @endif
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
             <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary-custom px-4">Create Category</button>
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 

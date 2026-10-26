@@ -47,7 +47,7 @@ class AdminLogMarketplaceController extends Controller
             ->latest()
             ->paginate(20)
             ->withQueryString();
-        $categories = LogCategory::all();
+        $categories = LogCategory::withCount('products')->orderBy('name')->get();
 
         $counts = [
             'all' => LogProduct::count(),
@@ -152,11 +152,51 @@ class AdminLogMarketplaceController extends Controller
         return back()->with('success', 'Local category created successfully.');
     }
 
-    public function deleteCategory($id)
+    /**
+     * Delete an existing log product category safely.
+     * Prevents accidental data loss by verifying assigned products before deletion.
+     */
+    public function deleteCategory(Request $request, $id)
     {
-        $cat = LogCategory::findOrFail($id);
-        $cat->delete();
-        return back()->with('success', 'Category deleted.');
+        try {
+            $cat = LogCategory::findOrFail($id);
+            $productCount = $cat->products()->count();
+
+            // Safe handling when products are currently assigned to this category
+            if ($productCount > 0) {
+                // If administrator supplied a valid target category to reassign products to
+                if ($request->filled('reassign_to') && (int)$request->reassign_to !== (int)$cat->id) {
+                    $targetCategory = LogCategory::find($request->reassign_to);
+                    if ($targetCategory) {
+                        DB::transaction(function () use ($cat, $targetCategory) {
+                            LogProduct::where('log_category_id', $cat->id)
+                                ->update(['log_category_id' => $targetCategory->id]);
+                            $cat->delete();
+                        });
+
+                        \App\Models\ActivityLog::log("Deleted category '{$cat->name}' and reassigned {$productCount} product(s) to '{$targetCategory->name}'", auth()->user());
+
+                        return back()->with('success', "Category '{$cat->name}' deleted successfully. {$productCount} product(s) were safely reassigned to '{$targetCategory->name}'.");
+                    }
+                }
+
+                // Default safe behavior: block deletion until products are removed or reassigned
+                return back()->with('error', "Cannot delete category '{$cat->name}': it currently contains {$productCount} product(s). Please reassign or remove the products before deleting this category to prevent accidental data loss.");
+            }
+
+            // Category is empty (0 products assigned), safe to delete
+            $catName = $cat->name;
+            $cat->delete();
+
+            \App\Models\ActivityLog::log("Deleted empty category '{$catName}'", auth()->user());
+
+            return back()->with('success', "Category '{$catName}' deleted successfully.");
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return back()->with('error', 'Category not found or has already been deleted.');
+        } catch (\Throwable $e) {
+            Log::error("Failed to delete log category #{$id}: " . $e->getMessage());
+            return back()->with('error', 'An error occurred while deleting the category. Please try again.');
+        }
     }
 
     public function storeProduct(Request $request)
