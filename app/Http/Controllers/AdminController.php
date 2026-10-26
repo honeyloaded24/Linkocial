@@ -1679,7 +1679,46 @@ class AdminController extends Controller
             try {
                 \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
             } catch (\Throwable $e) {
-                // Ignore if in restricted environment
+                \Illuminate\Support\Facades\Log::warning("Artisan migrate auto-call failed: " . $e->getMessage());
+            }
+
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'pricing_mode')) {
+                try {
+                    \Illuminate\Support\Facades\Schema::table('providers', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'currency')) {
+                            $table->string('currency', 10)->default('USD');
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'pricing_mode')) {
+                            $table->string('pricing_mode', 30)->default('percentage');
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'percentage_markup')) {
+                            $table->decimal('percentage_markup', 8, 2)->default(30.00);
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'fixed_markup_per_k')) {
+                            $table->decimal('fixed_markup_per_k', 12, 2)->default(0.00);
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'min_selling_price')) {
+                            $table->decimal('min_selling_price', 12, 2)->nullable();
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'min_profit')) {
+                            $table->decimal('min_profit', 12, 2)->nullable();
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'rounding_rule')) {
+                            $table->string('rounding_rule', 30)->default('2_decimal');
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'last_synced_at')) {
+                            $table->timestamp('last_synced_at')->nullable();
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'last_sync_status')) {
+                            $table->string('last_sync_status', 50)->nullable();
+                        }
+                        if (!\Illuminate\Support\Facades\Schema::hasColumn('providers', 'last_sync_message')) {
+                            $table->text('last_sync_message')->nullable();
+                        }
+                    });
+                } catch (\Throwable $e2) {
+                    \Illuminate\Support\Facades\Log::warning("Direct schema alter failed: " . $e2->getMessage());
+                }
             }
         }
 
@@ -1688,13 +1727,17 @@ class AdminController extends Controller
         $selectedProvider = $providerId ? Provider::find($providerId) : ($providers->firstWhere('name', 'Momopanel') ?? $providers->first());
 
         $usdToNgnRate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
-        $pricingService = app(\App\Services\SmmPricingService::class);
 
         $mappedCount = 0;
         $activeMappedCount = 0;
         if ($selectedProvider) {
-            $mappedCount = $selectedProvider->mappings()->count();
-            $activeMappedCount = $selectedProvider->mappings()->where('is_active', true)->count();
+            try {
+                $mappedCount = $selectedProvider->mappings()->count();
+                $activeMappedCount = $selectedProvider->mappings()->where('is_active', true)->count();
+            } catch (\Throwable $e) {
+                $mappedCount = 0;
+                $activeMappedCount = 0;
+            }
         }
 
         return view('hq.providers.pricing', compact(

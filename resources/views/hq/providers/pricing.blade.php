@@ -7,7 +7,7 @@
     <!-- Header / Navigation Bar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('hq.providers.index') }}" class="btn btn-light rounded-pill px-3 shadow-sm border">
+            <a href="{{ route('hq.providers') }}" class="btn btn-light rounded-pill px-3 shadow-sm border">
                 <i class="fa-solid fa-arrow-left me-1"></i> Back to Providers
             </a>
             <div>
@@ -59,7 +59,7 @@
     @if(!$selectedProvider)
         <div class="alert alert-warning p-4 rounded-4 shadow-sm">
             <h5 class="fw-bold mb-2"><i class="fa-solid fa-triangle-exclamation me-2"></i> No SMM Provider Found</h5>
-            <p class="mb-0">Please create and configure the Momopanel provider first in <a href="{{ route('hq.providers.index') }}" class="fw-bold">API Providers</a>.</p>
+            <p class="mb-0">Please create and configure the Momopanel provider first in <a href="{{ route('hq.providers') }}" class="fw-bold">API Providers</a>.</p>
         </div>
     @else
 
@@ -122,7 +122,7 @@
                         <span class="badge bg-secondary bg-opacity-25 text-muted rounded-pill px-2">Not Run</span>
                     @endif
                     <span class="small fw-bold">
-                        {{ $selectedProvider->last_synced_at ? \Carbon\Carbon::parse($selectedProvider->last_synced_at)->diffForHumans() : 'Never' }}
+                        {{ ($selectedProvider->last_synced_at instanceof \Carbon\Carbon) ? $selectedProvider->last_synced_at->diffForHumans() : (!empty($selectedProvider->last_synced_at) ? \Carbon\Carbon::parse($selectedProvider->last_synced_at)->diffForHumans() : 'Never') }}
                     </span>
                 </div>
                 <small class="text-muted text-truncate d-block mt-1" title="{{ $selectedProvider->last_sync_message ?? 'Ready to synchronize' }}">
@@ -537,15 +537,15 @@
     const sampleRates = [0.50, 1.00, 2.50, 5.00, 10.00];
 
     function calculatePrice(usdRate) {
-        const isUsd = (currencySelect.value === 'USD');
+        const isUsd = currencySelect ? (currencySelect.value === 'USD') : true;
         const costNgn = isUsd ? (usdRate * fxRate) : usdRate;
 
-        const mode = modeSelect.value;
-        const pct = parseFloat(pctInput.value) || 0;
-        const fixed = parseFloat(fixedInput.value) || 0;
-        const minProfit = parseFloat(minProfitInput.value) || 0;
-        const minSelling = parseFloat(minSellingInput.value) || 0;
-        const rounding = roundingSelect.value;
+        const mode = modeSelect ? modeSelect.value : 'percentage';
+        const pct = pctInput ? (parseFloat(pctInput.value) || 0) : 30;
+        const fixed = fixedInput ? (parseFloat(fixedInput.value) || 0) : 0;
+        const minProfit = minProfitInput ? (parseFloat(minProfitInput.value) || 0) : 0;
+        const minSelling = minSellingInput ? (parseFloat(minSellingInput.value) || 0) : 0;
+        const rounding = roundingSelect ? roundingSelect.value : '2_decimal';
 
         let rawPrice = costNgn;
         if (mode === 'fixed_per_k') {

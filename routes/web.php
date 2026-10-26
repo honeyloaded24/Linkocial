@@ -235,6 +235,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Provider Management & API Diagnostics
         Route::get('/providers', [AdminController::class, 'providers'])->name('hq.providers');
+        Route::get('/providers-list', [AdminController::class, 'providers'])->name('hq.providers.index');
         Route::post('/providers', [AdminController::class, 'storeProvider'])->name('hq.providers.store');
         Route::patch('/providers/{id}/toggle', [AdminController::class, 'toggleProviderStatus'])->name('hq.providers.toggle');
         Route::delete('/providers/{id}', [AdminController::class, 'destroyProvider'])->name('hq.providers.destroy');

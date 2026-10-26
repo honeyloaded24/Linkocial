@@ -14,34 +14,34 @@ return new class extends Migration
         if (Schema::hasTable('providers')) {
             Schema::table('providers', function (Blueprint $table) {
                 if (!Schema::hasColumn('providers', 'currency')) {
-                    $table->string('currency', 10)->default('USD')->after('api_key');
+                    $table->string('currency', 10)->default('USD');
                 }
                 if (!Schema::hasColumn('providers', 'pricing_mode')) {
-                    $table->string('pricing_mode', 30)->default('percentage')->after('currency');
+                    $table->string('pricing_mode', 30)->default('percentage');
                 }
                 if (!Schema::hasColumn('providers', 'percentage_markup')) {
-                    $table->decimal('percentage_markup', 8, 2)->default(30.00)->after('pricing_mode');
+                    $table->decimal('percentage_markup', 8, 2)->default(30.00);
                 }
                 if (!Schema::hasColumn('providers', 'fixed_markup_per_k')) {
-                    $table->decimal('fixed_markup_per_k', 12, 2)->default(0.00)->after('percentage_markup');
+                    $table->decimal('fixed_markup_per_k', 12, 2)->default(0.00);
                 }
                 if (!Schema::hasColumn('providers', 'min_selling_price')) {
-                    $table->decimal('min_selling_price', 12, 2)->nullable()->after('fixed_markup_per_k');
+                    $table->decimal('min_selling_price', 12, 2)->nullable();
                 }
                 if (!Schema::hasColumn('providers', 'min_profit')) {
-                    $table->decimal('min_profit', 12, 2)->nullable()->after('min_selling_price');
+                    $table->decimal('min_profit', 12, 2)->nullable();
                 }
                 if (!Schema::hasColumn('providers', 'rounding_rule')) {
-                    $table->string('rounding_rule', 30)->default('2_decimal')->after('min_profit');
+                    $table->string('rounding_rule', 30)->default('2_decimal');
                 }
                 if (!Schema::hasColumn('providers', 'last_synced_at')) {
-                    $table->timestamp('last_synced_at')->nullable()->after('rounding_rule');
+                    $table->timestamp('last_synced_at')->nullable();
                 }
                 if (!Schema::hasColumn('providers', 'last_sync_status')) {
-                    $table->string('last_sync_status', 50)->nullable()->after('last_synced_at');
+                    $table->string('last_sync_status', 50)->nullable();
                 }
                 if (!Schema::hasColumn('providers', 'last_sync_message')) {
-                    $table->text('last_sync_message')->nullable()->after('last_sync_status');
+                    $table->text('last_sync_message')->nullable();
                 }
             });
         }
