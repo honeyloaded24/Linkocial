@@ -39,36 +39,13 @@ class AdminController extends Controller
             + \App\Models\VtuOrder::where('status', 'completed')->count()
             + \App\Models\LogOrder::where('status', 'completed')->count();
 
-        // Financial Metrics (All reporting in NGN)
-        $totalDeposited = \App\Models\Payment::where('status', 'success')->sum('amount');
-        
-        // SMM Spent (including all active non-refunded orders)
-        $smmSpent = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
-            ->where('is_refunded', false)
-            ->sum('charge');
-            
-        $smmCost = Order::whereIn('status', ['pending', 'processing', 'in_progress', 'completed', 'partial'])
-            ->where('is_refunded', false)
-            ->sum('provider_cost');
-        
-        // Virtual Numbers Spent (including active non-refunded)
-        $vnSpent = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('cost');
-        $vnCost = \App\Models\VirtualNumberOrder::whereIn('status', ['pending', 'received', 'finished'])->sum('provider_cost');
-
-        // VTU Spent
-        $vtuSpent = \App\Models\VtuOrder::whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
-        $vtuCost = 0; // Local / direct VTU provider
-        
-        // Logs Spent & Cost in NGN
-        $logSpent = (float) \App\Models\LogOrder::whereIn('status', ['pending', 'completed'])->sum('total_cost');
-
-        $logCost = (float) (\App\Models\LogOrder::whereIn('status', ['pending', 'completed'])
-            ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
-            ->sum(\Illuminate\Support\Facades\DB::raw('log_orders.quantity * log_products.base_api_price')) ?? 0);
-
-        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
-        $totalCost = $smmCost + $vnCost + $vtuCost + $logCost;
-        $totalProfit = $totalSpent - $totalCost;
+        // Financial Metrics (Authoritative calculation in NGN via FinancialMetricsService)
+        $financialService = app(\App\Services\FinancialMetricsService::class);
+        $financialPerformance = $financialService->getAdminFinancialPerformance();
+        $totalDeposited = $financialPerformance['totalDeposited'];
+        $totalSpent     = $financialPerformance['totalSpent'];
+        $totalCost      = $financialPerformance['totalCost'];
+        $totalProfit    = $financialPerformance['totalProfit'];
 
         // Affiliate Metrics
         $totalCommissionEarned = User::sum('total_earned_commission');
@@ -77,68 +54,8 @@ class AdminController extends Controller
 
         $pendingServices = Service::where('is_active', false)->count();
 
-        // --- CHART DATA (Last 30 Days - Aggregated & Cached) ---
-        $chartData = \Illuminate\Support\Facades\Cache::remember('admin_dashboard_chart_v2', 300, function () {
-            $startDate = now()->subDays(29)->startOfDay();
-
-            $smmStats = Order::where('created_at', '>=', $startDate)
-                ->where('is_refunded', false)
-                ->selectRaw("DATE(created_at) as date, count(*) as count, sum(charge - coalesce(provider_cost, 0)) as profit")
-                ->groupBy('date')
-                ->get()
-                ->keyBy('date');
-
-            $vnStats = \App\Models\VirtualNumberOrder::where('created_at', '>=', $startDate)
-                ->whereIn('status', ['received', 'finished', 'pending'])
-                ->selectRaw("DATE(created_at) as date, count(*) as count, sum(cost - coalesce(provider_cost, 0)) as profit")
-                ->groupBy('date')
-                ->get()
-                ->keyBy('date');
-
-            $vtuCounts = \App\Models\VtuOrder::where('created_at', '>=', $startDate)
-                ->selectRaw("DATE(created_at) as date, count(*) as count")
-                ->groupBy('date')
-                ->pluck('count', 'date');
-
-            $logCounts = \App\Models\LogOrder::where('created_at', '>=', $startDate)
-                ->selectRaw("DATE(created_at) as date, count(*) as count")
-                ->groupBy('date')
-                ->pluck('count', 'date');
-
-            $userCounts = User::where('created_at', '>=', $startDate)
-                ->selectRaw("DATE(created_at) as date, count(*) as count")
-                ->groupBy('date')
-                ->pluck('count', 'date');
-
-            $days = [];
-            $orderData = [];
-            $profitData = [];
-            $userData = [];
-
-            for ($i = 29; $i >= 0; $i--) {
-                $targetDate = now()->subDays($i);
-                $dateKey = $targetDate->format('Y-m-d');
-                $days[] = $targetDate->format('M d');
-
-                $smmCount = (int) ($smmStats[$dateKey]->count ?? 0);
-                $smmProfit = (float) ($smmStats[$dateKey]->profit ?? 0);
-                $vnCount = (int) ($vnStats[$dateKey]->count ?? 0);
-                $vnProfit = (float) ($vnStats[$dateKey]->profit ?? 0);
-                $vtuCount = (int) ($vtuCounts[$dateKey] ?? 0);
-                $logCount = (int) ($logCounts[$dateKey] ?? 0);
-
-                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount;
-                $profitData[] = round($smmProfit + $vnProfit, 2);
-                $userData[] = (int) ($userCounts[$dateKey] ?? 0);
-            }
-
-            return [
-                'labels' => $days,
-                'orders' => $orderData,
-                'profits' => $profitData,
-                'users' => $userData,
-            ];
-        });
+        // --- CHART DATA (Last 30 Days - Aggregated & Cached with Accurate FX & Realized Profit) ---
+        $chartData = $financialService->getAdmin30DayChartData();
 
         // --- RECENT PLATFORM ORDERS (Unified across all products & users) ---
         $recentSmm = Order::with(['user', 'service'])->latest()->take(10)->get()->map(function ($order) {
@@ -854,14 +771,10 @@ class AdminController extends Controller
     {
         $user = User::findOrFail($id);
 
-        // Stats across all product categories in NGN
-        $smmSpent = Order::where('user_id', $id)->whereIn('status', ['completed', 'partial'])->where('is_refunded', false)->sum('charge');
-        $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $id)->whereIn('status', ['received', 'finished'])->sum('cost');
-        $vtuSpent = \App\Models\VtuOrder::where('user_id', $id)->whereIn('status', ['pending', 'processing', 'completed'])->sum('cost');
-        $logSpent = (float) \App\Models\LogOrder::where('user_id', $id)->whereIn('status', ['pending', 'completed'])->sum('total_cost');
-
-        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
-        $totalDeposits = \App\Models\Payment::where('user_id', $id)->where('status', 'success')->sum('amount');
+        // Stats across all product categories in NGN using authoritative FinancialMetricsService
+        $financialService = app(\App\Services\FinancialMetricsService::class);
+        $totalSpent = $financialService->getUserTotalSpent($id);
+        $totalDeposits = $financialService->getUserTotalDeposits($id);
 
         $totalOrders = Order::where('user_id', $id)->count()
             + \App\Models\VirtualNumberOrder::where('user_id', $id)->count()

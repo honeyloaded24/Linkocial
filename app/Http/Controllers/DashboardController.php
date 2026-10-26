@@ -15,29 +15,10 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // 1. Calculate stats
-        $smmSpent = Order::where('user_id', $user->id)
-            ->whereIn('status', ['completed', 'partial'])
-            ->where('is_refunded', false)
-            ->sum('charge');
-
-        $vnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
-            ->whereIn('status', ['received', 'finished'])
-            ->sum('cost');
-
-        $vtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'processing', 'completed'])
-            ->sum('cost');
-
-        $logSpent = (float) \App\Models\LogOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'completed'])
-            ->sum('total_cost');
-
-        $totalSpent = $smmSpent + $vnSpent + $vtuSpent + $logSpent;
-
-        $totalDeposits = (float) \App\Models\Payment::where('user_id', $user->id)
-            ->where('status', 'success')
-            ->sum('amount');
+        // 1. Calculate stats using authoritative FinancialMetricsService
+        $financialService = app(\App\Services\FinancialMetricsService::class);
+        $totalSpent = $financialService->getUserTotalSpent($user->id);
+        $totalDeposits = $financialService->getUserTotalDeposits($user->id);
 
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
@@ -71,52 +52,9 @@ class DashboardController extends Controller
             ->take(5)
             ->get();
 
-        // 3. Calculate growth (simplified for demo)
-        $thisWeekSmmSpent = Order::where('user_id', $user->id)
-            ->whereIn('status', ['completed', 'partial'])
-            ->where('is_refunded', false)
-            ->where('created_at', '>=', now()->startOfWeek())
-            ->sum('charge');
-
-        $thisWeekVnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
-            ->whereIn('status', ['received', 'finished'])
-            ->where('created_at', '>=', now()->startOfWeek())
-            ->sum('cost');
-
-        $thisWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'processing', 'completed'])
-            ->where('created_at', '>=', now()->startOfWeek())
-            ->sum('cost');
-
-        $thisWeekLogSpent = (float) \App\Models\LogOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'completed'])
-            ->where('created_at', '>=', now()->startOfWeek())
-            ->sum('total_cost');
-
-        $thisWeekSpent = $thisWeekSmmSpent + $thisWeekVnSpent + $thisWeekVtuSpent + $thisWeekLogSpent;
-        
-        $lastWeekSmmSpent = Order::where('user_id', $user->id)
-            ->whereIn('status', ['completed', 'partial'])
-            ->where('is_refunded', false)
-            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
-            ->sum('charge');
-
-        $lastWeekVnSpent = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
-            ->whereIn('status', ['received', 'finished'])
-            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
-            ->sum('cost');
-
-        $lastWeekVtuSpent = \App\Models\VtuOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'processing', 'completed'])
-            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
-            ->sum('cost');
-
-        $lastWeekLogSpent = (float) \App\Models\LogOrder::where('user_id', $user->id)
-            ->whereIn('status', ['pending', 'completed'])
-            ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
-            ->sum('total_cost');
-
-        $lastWeekSpent = $lastWeekSmmSpent + $lastWeekVnSpent + $lastWeekVtuSpent + $lastWeekLogSpent;
+        // 3. Calculate growth using consistent financial calculation
+        $thisWeekSpent = $financialService->getUserSpentPeriod($user->id, now()->startOfWeek());
+        $lastWeekSpent = $financialService->getUserSpentPeriod($user->id, now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek());
 
         $growth = 0;
         if ($lastWeekSpent > 0) {
