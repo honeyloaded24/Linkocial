@@ -134,6 +134,10 @@ class DashboardController extends Controller
             $sliders = collect();
         }
 
+        $conversionService = app(\App\Services\CurrencyConversionService::class);
+        $exchangeRate = $conversionService->getUsdToNgnRate();
+        $usdBalance = $exchangeRate > 0 ? round(((float)$user->balance) / $exchangeRate, 2) : 0.0;
+
         return view('dashboard.index', compact(
             'totalSpent', 
             'totalDeposits',
@@ -142,7 +146,9 @@ class DashboardController extends Controller
             'recentActivities',
             'growth',
             'channels',
-            'sliders'
+            'sliders',
+            'exchangeRate',
+            'usdBalance'
         ));
     }
     public function services()

@@ -106,4 +106,34 @@ class WalletRecoveryAndExchangeRateSettingsTest extends TestCase
         $this->assertEquals($initialBalance, $user->balance);
         $this->assertEquals(70500.00, $user->balance);
     }
+
+    /**
+     * Test wallet balance card USD equivalent calculation at admin rate of 1550.
+     */
+    public function test_wallet_balance_card_usd_equivalent_and_rate_display(): void
+    {
+        $conversionService = app(\App\Services\CurrencyConversionService::class);
+        Setting::set('usd_to_ngn_rate', '1550');
+
+        $rate = $conversionService->getUsdToNgnRate();
+        $this->assertEquals(1550.0, $rate);
+
+        // 1. Balance of ₦1,550 -> $1.00
+        $this->assertEquals(1.00, round(1550 / $rate, 2));
+
+        // 2. Balance of ₦15,500 -> $10.00
+        $this->assertEquals(10.00, round(15500 / $rate, 2));
+
+        // 3. Balance of ₦70,500 -> $45.48
+        $this->assertEquals(45.48, round(70500 / $rate, 2));
+
+        // 4. Balance of ₦0 -> $0.00
+        $this->assertEquals(0.00, round(0 / $rate, 2));
+
+        // 5. Test dynamic rate update to 1600 without code change
+        Setting::set('usd_to_ngn_rate', '1600');
+        $newRate = $conversionService->getUsdToNgnRate();
+        $this->assertEquals(1600.0, $newRate);
+        $this->assertEquals(44.06, round(70500 / $newRate, 2));
+    }
 }

@@ -7,6 +7,8 @@
     /** @var \App\Models\User $user */
     $user = Auth::user();
     $currentCurrency = \App\Models\Currency::where('code', Session::get('currency_code', $user->currency_code ?? 'NGN'))->first() ?? \App\Models\Currency::where('is_default', true)->first();
+    $exchangeRate = $exchangeRate ?? (app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate());
+    $usdBalance = $usdBalance ?? ($exchangeRate > 0 ? round(((float)($user->balance ?? 0)) / $exchangeRate, 2) : 0.0);
 @endphp
 <div class="container-fluid">
     <!-- Broadcast / News Slider -->
@@ -62,6 +64,14 @@
                                 <span id="hidden-balance" style="display: none;">🤑🤑🤑🤑</span>
                                 <i class="fa-solid fa-eye-slash fa-xs text-white-50 ms-2" id="toggle-balance-icon" style="font-size: 0.4em; cursor: pointer;" onclick="toggleBalance()"></i>
                             </h1>
+                        </div>
+                        
+                        <!-- USD Equivalent & Dynamic Admin Exchange Rate -->
+                        <div class="d-flex align-items-center flex-wrap gap-1 mt-1 small" style="font-size: 0.85rem;">
+                            <span class="text-white-50">USD Balance:</span>
+                            <span class="fw-bold text-success" id="actual-usd-balance">${{ number_format($usdBalance, 2) }}</span>
+                            <span class="fw-bold text-success" id="hidden-usd-balance" style="display: none;">$***</span>
+                            <span class="text-white-50 ms-1">(Rate: ₦{{ number_format($exchangeRate, (floor($exchangeRate) == $exchangeRate ? 0 : 2)) }}/$)</span>
                         </div>
                         
                         <a href="{{ route('wallet.index') }}" class="btn btn-sm bg-white text-dark rounded-pill px-3 py-1 mt-3 fw-bold d-inline-flex align-items-center gap-2 shadow-sm" style="font-size: 0.85rem; transition: transform 0.2s;">
@@ -319,16 +329,26 @@
     function toggleBalance() {
         const actualBalance = document.getElementById('actual-balance');
         const hiddenBalance = document.getElementById('hidden-balance');
+        const actualUsdBalance = document.getElementById('actual-usd-balance');
+        const hiddenUsdBalance = document.getElementById('hidden-usd-balance');
         const icon = document.getElementById('toggle-balance-icon');
         
         if (actualBalance.style.display === 'none') {
             actualBalance.style.display = 'inline';
             hiddenBalance.style.display = 'none';
+            if (actualUsdBalance && hiddenUsdBalance) {
+                actualUsdBalance.style.display = 'inline';
+                hiddenUsdBalance.style.display = 'none';
+            }
             icon.classList.remove('fa-eye');
             icon.classList.add('fa-eye-slash');
         } else {
             actualBalance.style.display = 'none';
             hiddenBalance.style.display = 'inline';
+            if (actualUsdBalance && hiddenUsdBalance) {
+                actualUsdBalance.style.display = 'none';
+                hiddenUsdBalance.style.display = 'inline';
+            }
             icon.classList.remove('fa-eye-slash');
             icon.classList.add('fa-eye');
         }
