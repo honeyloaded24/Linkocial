@@ -57,11 +57,16 @@ class LogProduct extends Model
             return (float) ($this->our_price > 0 ? $this->our_price : $this->unit_price);
         }
 
-        $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20.0);
         $wholesale = $this->getWholesalePrice();
 
         if ($wholesale > 0) {
-            return round($wholesale * (1 + ($markupRate / 100)), 2);
+            try {
+                $calc = app(\App\Services\ProductPricingService::class)->calculateSellingPrice($wholesale, \App\Services\ProductPricingService::PRODUCT_LOGS);
+                return (float) $calc['selling_price'];
+            } catch (\Throwable $e) {
+                $markupRate = (float) \App\Models\Setting::get('markup_logs_market', 20.0);
+                return round($wholesale * (1 + ($markupRate / 100)), 2);
+            }
         }
 
         return (float) ($this->our_price > 0 ? $this->our_price : $this->unit_price);

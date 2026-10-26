@@ -91,9 +91,12 @@ class VtuCableService
             return null;
         }
 
-        $markupRate = (float) Setting::get('markup_vtu_cable', 0);
-        $multiplier = 1 + ($markupRate / 100);
-
-        return round($basePrice * $multiplier, 2);
+        try {
+            $calc = app(ProductPricingService::class)->calculateSellingPrice($basePrice, ProductPricingService::PRODUCT_VTU);
+            return (float) $calc['selling_price'];
+        } catch (\Throwable $e) {
+            $markupRate = (float) Setting::get('markup_vtu_cable', 0);
+            return round($basePrice * (1 + ($markupRate / 100)), 2);
+        }
     }
 }

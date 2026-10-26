@@ -696,7 +696,11 @@ class VirtualNumberController extends Controller
      */
     public function getProviderRate(): float
     {
-        return (float) \App\Models\Setting::get('provider_usd_rate', 1500.0);
+        try {
+            return app(\App\Services\ProductPricingService::class)->getFixRate(\App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS);
+        } catch (\Throwable $e) {
+            return (float) \App\Models\Setting::get('provider_usd_rate', 1500.0);
+        }
     }
 
     /**
@@ -704,13 +708,18 @@ class VirtualNumberController extends Controller
      */
     public function getMarkupFee(): float
     {
-        $rate = $this->getProviderRate();
-        $customNgn = \App\Models\Setting::get('vn_markup_ngn');
-        if ($customNgn !== null && is_numeric($customNgn)) {
-            return (float) $customNgn;
+        try {
+            $settings = app(\App\Services\ProductPricingService::class)->getPricingSettings(\App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS);
+            return $settings->getFixedMarkup();
+        } catch (\Throwable $e) {
+            $rate = $this->getProviderRate();
+            $customNgn = \App\Models\Setting::get('vn_markup_ngn');
+            if ($customNgn !== null && is_numeric($customNgn)) {
+                return (float) $customNgn;
+            }
+            $usdMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
+            return round($usdMarkup * $rate, 2);
         }
-        $usdMarkup = (float) \App\Models\Setting::get('vn_markup', 1.00);
-        return round($usdMarkup * $rate, 2);
     }
 
     /**
@@ -718,10 +727,15 @@ class VirtualNumberController extends Controller
      */
     public function calculateRetailPrice(float $wholesalePrice): float
     {
-        $rate = $this->getProviderRate();
-        $flatFeeNgn = $this->getMarkupFee();
-        $wholesaleNgn = $wholesalePrice * $rate;
-        return round($wholesaleNgn + $flatFeeNgn, 2);
+        try {
+            $calc = app(\App\Services\ProductPricingService::class)->calculateSellingPrice($wholesalePrice, \App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS);
+            return (float) $calc['selling_price'];
+        } catch (\Throwable $e) {
+            $rate = $this->getProviderRate();
+            $flatFeeNgn = $this->getMarkupFee();
+            $wholesaleNgn = $wholesalePrice * $rate;
+            return round($wholesaleNgn + $flatFeeNgn, 2);
+        }
     }
 
     /**

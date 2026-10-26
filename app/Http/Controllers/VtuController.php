@@ -37,8 +37,13 @@ class VtuController extends Controller
 
         $user = Auth::user();
         $baseAmountNgn = (float) $request->amount;
-        $markupRate = (float) \App\Models\Setting::get('markup_vtu_airtime', 0);
-        $chargedAmountNgn = round($baseAmountNgn * (1 + ($markupRate / 100)), 2);
+        try {
+            $calc = app(\App\Services\ProductPricingService::class)->calculateSellingPrice($baseAmountNgn, \App\Services\ProductPricingService::PRODUCT_VTU);
+            $chargedAmountNgn = (float) $calc['selling_price'];
+        } catch (\Throwable $e) {
+            $markupRate = (float) \App\Models\Setting::get('markup_vtu_airtime', 0);
+            $chargedAmountNgn = round($baseAmountNgn * (1 + ($markupRate / 100)), 2);
+        }
 
         DB::beginTransaction();
 
@@ -256,8 +261,13 @@ class VtuController extends Controller
 
         $user = Auth::user();
         $baseAmountNgn = (float) $request->amount;
-        $markupRate = (float) \App\Models\Setting::get('markup_vtu_electricity', 0);
-        $chargedAmountNgn = round($baseAmountNgn * (1 + ($markupRate / 100)), 2);
+        try {
+            $calc = app(\App\Services\ProductPricingService::class)->calculateSellingPrice($baseAmountNgn, \App\Services\ProductPricingService::PRODUCT_VTU);
+            $chargedAmountNgn = (float) $calc['selling_price'];
+        } catch (\Throwable $e) {
+            $markupRate = (float) \App\Models\Setting::get('markup_vtu_electricity', 0);
+            $chargedAmountNgn = round($baseAmountNgn * (1 + ($markupRate / 100)), 2);
+        }
 
         DB::beginTransaction();
 

@@ -155,6 +155,23 @@
                     @csrf
                     <input type="hidden" name="provider_id" value="{{ $selectedProvider->id }}">
 
+                    <!-- Active Fix Rate -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Active Fix Rate (1 USD in NGN)</label>
+                        <div class="input-group input-group-lg shadow-sm rounded-3">
+                            <span class="input-group-text bg-light border-secondary text-muted fw-bold">$1 USD =</span>
+                            <span class="input-group-text bg-light border-secondary text-success fw-bold">₦</span>
+                            <input type="number" 
+                                   step="any" 
+                                   min="0.0001" 
+                                   id="fixRateInput" 
+                                   name="fix_rate" 
+                                   class="form-control form-control-lg border-secondary fw-bold text-success font-monospace" 
+                                   value="{{ old('fix_rate', $usdToNgnRate) }}">
+                        </div>
+                        <div class="form-text small">Authoritative exchange rate used to convert wholesale USD rates to NGN.</div>
+                    </div>
+
                     <!-- Field 1: Provider Wholesale Currency -->
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -520,7 +537,7 @@
 
 @push('scripts')
 <script>
-    const fxRate = {{ $usdToNgnRate }};
+    const fixRateInput = document.getElementById('fixRateInput');
     const modeSelect = document.getElementById('pricingModeSelect');
     const pctInput = document.getElementById('percentageMarkupInput');
     const fixedInput = document.getElementById('fixedMarkupInput');
@@ -538,7 +555,8 @@
 
     function calculatePrice(usdRate) {
         const isUsd = currencySelect ? (currencySelect.value === 'USD') : true;
-        const costNgn = isUsd ? (usdRate * fxRate) : usdRate;
+        const currentFx = fixRateInput ? (parseFloat(fixRateInput.value) || {{ $usdToNgnRate }}) : {{ $usdToNgnRate }};
+        const costNgn = isUsd ? (usdRate * currentFx) : usdRate;
 
         const mode = modeSelect ? modeSelect.value : 'percentage';
         const pct = pctInput ? (parseFloat(pctInput.value) || 0) : 30;
@@ -610,7 +628,7 @@
     }
 
     // Attach listeners
-    [modeSelect, pctInput, fixedInput, minProfitInput, minSellingInput, roundingSelect, currencySelect].forEach(el => {
+    [fixRateInput, modeSelect, pctInput, fixedInput, minProfitInput, minSellingInput, roundingSelect, currencySelect].forEach(el => {
         if (el) el.addEventListener('input', refreshSimulator);
     });
     if (testUsd) testUsd.addEventListener('input', refreshSimulator);

@@ -11,6 +11,9 @@
             <small class="text-muted">Track virtual top-up transactions, customer billing, and network delivery statuses.</small>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ route('hq.vtu.pricing') }}" class="btn btn-outline-success btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-tags me-1"></i> Pricing & Markup
+            </a>
             <a href="{{ route('hq.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                 <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
             </a>

@@ -53,10 +53,13 @@ class VtuDataService
             return null;
         }
 
-        $markupRate = (float) Setting::get('markup_vtu_data', 0);
-        $multiplier = 1 + ($markupRate / 100);
-
-        return round($basePrice * $multiplier, 2);
+        try {
+            $calc = app(ProductPricingService::class)->calculateSellingPrice($basePrice, ProductPricingService::PRODUCT_VTU);
+            return (float) $calc['selling_price'];
+        } catch (\Throwable $e) {
+            $markupRate = (float) Setting::get('markup_vtu_data', 0);
+            return round($basePrice * (1 + ($markupRate / 100)), 2);
+        }
     }
 
     /**
@@ -65,8 +68,7 @@ class VtuDataService
     public static function getPlansWithCustomerPrices(): array
     {
         $rawPlans = self::getRawPlans();
-        $markupRate = (float) Setting::get('markup_vtu_data', 0);
-        $multiplier = 1 + ($markupRate / 100);
+        $pricingService = app(ProductPricingService::class);
 
         $result = [];
         foreach ($rawPlans as $net => $plans) {
@@ -78,7 +80,14 @@ class VtuDataService
                 }
 
                 $basePrice = (float) $plan['price'];
-                $finalPrice = round($basePrice * $multiplier, 2);
+                try {
+                    $calc = $pricingService->calculateSellingPrice($basePrice, ProductPricingService::PRODUCT_VTU);
+                    $finalPrice = (float) $calc['selling_price'];
+                } catch (\Throwable $e) {
+                    $markupRate = (float) Setting::get('markup_vtu_data', 0);
+                    $finalPrice = round($basePrice * (1 + ($markupRate / 100)), 2);
+                }
+
                 $result[$net][] = [
                     'id' => $plan['id'],
                     'name' => $plan['name'],

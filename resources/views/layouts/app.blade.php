@@ -240,8 +240,11 @@
                                     <i class="fa-solid fa-bolt me-1"></i> VTU
                                 </span>
                             </div>
-                            <a href="{{ route('hq.vtu') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.vtu*') ? 'active' : '' }}">
+                            <a href="{{ route('hq.vtu') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.vtu') ? 'active' : '' }}">
                                 <i class="fa-solid fa-mobile-screen text-success"></i> VTU Orders & Finance
+                            </a>
+                            <a href="{{ route('hq.vtu.pricing') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.vtu.pricing*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-tags text-success"></i> Pricing & Markup
                             </a>
                         </div>
 
@@ -258,6 +261,9 @@
                             <a href="{{ route('hq.logs.index') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.logs.index*') || request()->routeIs('hq.logs.product*') ? 'active' : '' }}">
                                 <i class="fa-solid fa-box-open text-warning"></i> Manage Products
                             </a>
+                            <a href="{{ route('hq.logs.pricing') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.logs.pricing*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-tags text-warning"></i> Pricing & Markup
+                            </a>
                         </div>
 
                         <!-- PRODUCT 4: VIRTUAL NUMBER -->
@@ -267,8 +273,11 @@
                                     <i class="fa-solid fa-sim-card me-1"></i> VIRTUAL NUMBER
                                 </span>
                             </div>
-                            <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.virtual-numbers*') ? 'active' : '' }}">
+                            <a href="{{ route('hq.virtual-numbers') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.virtual-numbers') ? 'active' : '' }}">
                                 <i class="fa-solid fa-phone-volume text-info"></i> Number Records & Orders
+                            </a>
+                            <a href="{{ route('hq.virtual-numbers.pricing') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.virtual-numbers.pricing*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-tags text-info"></i> Pricing & Markup
                             </a>
                         </div>
 

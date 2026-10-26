@@ -1688,6 +1688,7 @@ class AdminController extends Controller
     {
         $request->validate([
             'provider_id'        => 'required|exists:providers,id',
+            'fix_rate'           => 'nullable|numeric|min:0.0001',
             'currency'           => 'required|string|in:USD,NGN',
             'pricing_mode'       => 'required|string|in:percentage,fixed_per_k,combined',
             'percentage_markup'  => 'required|numeric|min:0|max:5000',
@@ -1696,6 +1697,10 @@ class AdminController extends Controller
             'min_profit'         => 'nullable|numeric|min:0',
             'rounding_rule'      => 'required|string|in:2_decimal,whole_naira,nearest_10',
         ]);
+
+        if ($request->filled('fix_rate') && (float) $request->fix_rate > 0) {
+            app(\App\Services\CurrencyConversionService::class)->updateRates((float) $request->fix_rate, auth()->user()?->username ?? 'admin');
+        }
 
         $provider = Provider::findOrFail($request->provider_id);
         

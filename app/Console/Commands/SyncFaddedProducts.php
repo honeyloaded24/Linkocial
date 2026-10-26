@@ -48,6 +48,7 @@ class SyncFaddedProducts extends Command
             return 0;
         }
 
+        $pricingService = app(\App\Services\ProductPricingService::class);
         $markupRate = (float) Setting::get('markup_logs_market', 20.0);
         $markupMultiplier = 1 + ($markupRate / 100);
 
@@ -133,9 +134,15 @@ class SyncFaddedProducts extends Command
 
                 // If Fadded's original price changed, update base_api_price, unit_price, and recalculate our_price with margin
                 if ($price > 0) {
+                    try {
+                        $calc = $pricingService->calculateSellingPrice($price, \App\Services\ProductPricingService::PRODUCT_LOGS);
+                        $sellingPrice = (float) $calc['selling_price'];
+                    } catch (\Throwable $e) {
+                        $sellingPrice = round($price * $markupMultiplier, 2);
+                    }
                     $updateData['base_api_price'] = $price;
                     $updateData['unit_price'] = $price;
-                    $updateData['our_price'] = round($price * $markupMultiplier, 2);
+                    $updateData['our_price'] = $sellingPrice;
                 }
 
                 // Only fill category/description if currently blank
@@ -149,7 +156,12 @@ class SyncFaddedProducts extends Command
                 $existing->update($updateData);
             } else {
                 // New product: add with provider wholesale price and margin-calculated selling price
-                $calculatedSellingPrice = round($price * $markupMultiplier, 2);
+                try {
+                    $calc = $pricingService->calculateSellingPrice($price, \App\Services\ProductPricingService::PRODUCT_LOGS);
+                    $calculatedSellingPrice = (float) $calc['selling_price'];
+                } catch (\Throwable $e) {
+                    $calculatedSellingPrice = round($price * $markupMultiplier, 2);
+                }
                 LogProduct::create([
                     'type' => 'api',
                     'api_product_key' => $key,

@@ -7,6 +7,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h4 class="fw-bold mb-0">Logs Marketplace Products</h4>
         <div class="d-flex gap-2">
+            <a href="{{ route('hq.logs.pricing') }}" class="btn btn-outline-warning">
+                <i class="fa-solid fa-tags me-1"></i> Pricing & Markup
+            </a>
             <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#createCategoryModal">
                 <i class="fa-solid fa-folder-tree me-1"></i> Manage Categories
             </button>

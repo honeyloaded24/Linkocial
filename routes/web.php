@@ -251,13 +251,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/providers/pricing/sync', [AdminController::class, 'hqExecuteProviderSync'])->name('hq.providers.pricing.sync');
 
         Route::get('/virtual-numbers', [\App\Http\Controllers\AdminVirtualNumberController::class, 'index'])->name('hq.virtual-numbers');
+        Route::get('/virtual-numbers/pricing', [\App\Http\Controllers\AdminVirtualNumberController::class, 'pricing'])->name('hq.virtual-numbers.pricing');
+        Route::post('/virtual-numbers/pricing', [\App\Http\Controllers\AdminVirtualNumberController::class, 'updatePricing'])->name('hq.virtual-numbers.pricing.update');
         Route::post('/virtual-numbers/{id}/refund', [\App\Http\Controllers\AdminVirtualNumberController::class, 'refund'])->name('hq.virtual-numbers.refund');
 
         Route::get('/vtu', [\App\Http\Controllers\AdminVtuController::class, 'index'])->name('hq.vtu');
+        Route::get('/vtu/pricing', [\App\Http\Controllers\AdminVtuController::class, 'pricing'])->name('hq.vtu.pricing');
+        Route::post('/vtu/pricing', [\App\Http\Controllers\AdminVtuController::class, 'updatePricing'])->name('hq.vtu.pricing.update');
         Route::post('/vtu/{id}/refund', [\App\Http\Controllers\AdminVtuController::class, 'refund'])->name('hq.vtu.refund');
 
         // Logs Marketplace Admin
         Route::get('/logs', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'index'])->name('hq.logs.index');
+        Route::get('/logs/pricing', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'pricing'])->name('hq.logs.pricing');
+        Route::post('/logs/pricing', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updatePricing'])->name('hq.logs.pricing.update');
         Route::match(['get', 'post'], '/logs/sync', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'sync'])->name('hq.logs.sync');
         Route::post('/logs/{id}/price', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updatePrice'])->name('hq.logs.price');
         Route::post('/logs/{id}/toggle', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'toggleStatus'])->name('hq.logs.toggle');

@@ -11,6 +11,9 @@
             <small class="text-muted">Track virtual phone orders, SMS verifications, wholesale provider costs, and net profits.</small>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ route('hq.virtual-numbers.pricing') }}" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-tags me-1"></i> Pricing & Markup
+            </a>
             <a href="{{ route('hq.dashboard') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                 <i class="fa-solid fa-arrow-left me-1"></i> Dashboard
             </a>

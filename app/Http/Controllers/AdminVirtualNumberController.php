@@ -118,4 +118,51 @@ class AdminVirtualNumberController extends Controller
             return back()->with('error', 'Failed to process refund: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Show Virtual Numbers Pricing & Markup Settings
+     */
+    public function pricing(\App\Services\ProductPricingService $pricingService)
+    {
+        $settings = $pricingService->getPricingSettings(\App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS);
+
+        $vnStats = app(\App\Services\FinancialMetricsService::class)->getVirtualNumberSummary(null, null);
+
+        $hasServer1 = !empty(\App\Models\Setting::get('smspool_api_key'));
+        $hasServer2 = !empty(\App\Models\Setting::get('grizzly_api_key'));
+
+        return view('hq.virtual_numbers.pricing', compact(
+            'settings',
+            'vnStats',
+            'hasServer1',
+            'hasServer2'
+        ));
+    }
+
+    /**
+     * Update Virtual Numbers Pricing & Markup Settings
+     */
+    public function updatePricing(Request $request, \App\Services\ProductPricingService $pricingService)
+    {
+        $request->validate([
+            'fix_rate'           => 'required|numeric|min:0.0001',
+            'currency'           => 'required|string|in:USD,NGN',
+            'pricing_mode'       => 'required|string|in:percentage,fixed,combined,fixed_per_k',
+            'percentage_markup'  => 'required|numeric|min:0|max:5000',
+            'fixed_markup'       => 'required|numeric|min:0',
+            'min_selling_price'  => 'nullable|numeric|min:0',
+            'min_profit'         => 'nullable|numeric|min:0',
+            'rounding_rule'      => 'required|string|in:2_decimal,whole_naira,nearest_10',
+        ]);
+
+        $pricingService->updatePricingSettings(
+            \App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS,
+            $request->all(),
+            auth()->user()
+        );
+
+        return redirect()->route('hq.virtual-numbers.pricing')
+            ->with('success', 'Pricing & markup settings for Virtual Numbers saved successfully.');
+    }
 }
+
