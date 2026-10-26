@@ -112,14 +112,24 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $rules = [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'referral_code' => 'nullable|string',
-            'terms' => 'required|accepted',
+            'first_name' => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\'\.]+$/u'],
+            'last_name' => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\'\.]+$/u'],
+            'username' => ['required', 'string', 'alpha_dash', 'max:30', 'unique:users'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'referral_code' => ['nullable', 'string', 'alpha_dash', 'max:30'],
+            'terms' => ['required', 'accepted'],
         ];
+
+        // Explicit check against URLs, domains, and promotional spam content in names & username
+        $spamPattern = '/(https?:\/\/|www\.|\.com|\.org|\.net|\.io|\.xyz|\.ru|\.top|\.online|t\.me\/|telegram|crypto|bitcoin|usdt|ethereum|wallet|giveaway|investment)/i';
+        if (
+            preg_match($spamPattern, (string)$request->input('first_name')) ||
+            preg_match($spamPattern, (string)$request->input('last_name')) ||
+            preg_match($spamPattern, (string)$request->input('username'))
+        ) {
+            return back()->withErrors(['first_name' => 'Name or username contains prohibited promotional, crypto, or link content.'])->withInput();
+        }
 
         $secret = env('TURNSTILE_SECRET_KEY');
         $isConfigured = !empty($secret) && $secret !== 'your_secret_key_here';
@@ -132,6 +142,12 @@ class AuthController extends Controller
             'terms.required' => 'You must agree to our Terms & Conditions to join.',
             'terms.accepted' => 'You must agree to our Terms & Conditions to join.',
             'cf-turnstile-response.required' => 'Security verification is required.',
+            'first_name.regex' => 'The first name may only contain letters, spaces, hyphens, and apostrophes.',
+            'last_name.regex' => 'The last name may only contain letters, spaces, hyphens, and apostrophes.',
+            'first_name.max' => 'The first name may not be greater than 50 characters.',
+            'last_name.max' => 'The last name may not be greater than 50 characters.',
+            'username.alpha_dash' => 'The username may only contain letters, numbers, dashes, and underscores.',
+            'username.max' => 'The username may not be greater than 30 characters.',
         ]);
 
         if ($isConfigured && !$this->verifyTurnstile($request->input('cf-turnstile-response'))) {
@@ -144,10 +160,10 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'username' => $validated['username'],
-            'email' => $validated['email'],
+            'first_name' => trim(strip_tags($validated['first_name'])),
+            'last_name' => trim(strip_tags($validated['last_name'])),
+            'username' => strtolower(trim(strip_tags($validated['username']))),
+            'email' => strtolower(trim($validated['email'])),
             'password' => Hash::make($validated['password']),
             'balance' => 0.00,
             'referred_by' => $referrer ? $referrer->id : null,

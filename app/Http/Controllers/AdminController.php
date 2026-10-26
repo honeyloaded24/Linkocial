@@ -955,15 +955,36 @@ class AdminController extends Controller
      */
     public function updateUserDetails(Request $request, $id)
     {
+        $spamPattern = '/(https?:\/\/|www\.|\.com|\.org|\.net|\.io|\.xyz|\.ru|\.top|\.online|t\.me\/|telegram|crypto|bitcoin|usdt|ethereum|wallet|giveaway|investment)/i';
+        if (
+            preg_match($spamPattern, (string)$request->input('first_name')) ||
+            preg_match($spamPattern, (string)$request->input('last_name')) ||
+            preg_match($spamPattern, (string)$request->input('username'))
+        ) {
+            return back()->withErrors(['first_name' => 'Name or username contains prohibited promotional, crypto, or link content.'])->withInput();
+        }
+
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $id,
-            'username' => 'required|string|unique:users,username,' . $id,
+            'first_name' => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\'\.]+$/u'],
+            'last_name' => ['required', 'string', 'max:50', 'regex:/^[\p{L}\s\-\'\.]+$/u'],
+            'email' => 'required|email|max:255|unique:users,email,' . $id,
+            'username' => ['required', 'string', 'alpha_dash', 'max:30', 'unique:users,username,' . $id],
+        ], [
+            'first_name.regex' => 'The first name may only contain letters, spaces, hyphens, and apostrophes.',
+            'last_name.regex' => 'The last name may only contain letters, spaces, hyphens, and apostrophes.',
+            'first_name.max' => 'The first name may not be greater than 50 characters.',
+            'last_name.max' => 'The last name may not be greater than 50 characters.',
+            'username.alpha_dash' => 'The username may only contain letters, numbers, dashes, and underscores.',
+            'username.max' => 'The username may not be greater than 30 characters.',
         ]);
 
         $user = User::findOrFail($id);
-        $user->update($request->only(['first_name', 'last_name', 'email', 'username']));
+        $user->update([
+            'first_name' => trim(strip_tags($request->input('first_name'))),
+            'last_name' => trim(strip_tags($request->input('last_name'))),
+            'email' => strtolower(trim($request->input('email'))),
+            'username' => strtolower(trim(strip_tags($request->input('username')))),
+        ]);
 
         return back()->with('success', 'User information updated successfully.');
     }

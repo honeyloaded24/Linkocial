@@ -12,7 +12,7 @@ use App\Http\Controllers\PaymentController;
 */
 
 // Protected API routes
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Return current user details
     Route::get('/user', function (Request $request) {
         return $request->user();

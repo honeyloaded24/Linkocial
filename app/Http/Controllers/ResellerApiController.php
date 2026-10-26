@@ -27,6 +27,10 @@ class ResellerApiController extends Controller
             return response()->json(['error' => 'Account is suspended or invalid API key.'], 403);
         }
 
+        if (!$user->hasVerifiedEmail()) {
+            return response()->json(['error' => 'Email verification required before accessing API services.'], 403);
+        }
+
         switch ($request->action) {
             case 'services':
                 return $this->services();
