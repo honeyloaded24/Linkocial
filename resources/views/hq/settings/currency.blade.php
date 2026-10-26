@@ -204,16 +204,41 @@
                     </div>
                 </div>
 
-                <div class="p-3 rounded-4 bg-light bg-opacity-50 border small">
+                <div class="p-3 rounded-4 bg-light bg-opacity-50 border small mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="text-muted">Command Line Tool:</span>
+                        <span class="text-muted">Terminal Command:</span>
                         <code class="text-primary fw-bold">wallet:recover-legacy-balances</code>
                     </div>
-                    <p class="text-muted small mb-2">
-                        To run automated balance audit and conversion from terminal:
-                    </p>
-                    <pre class="bg-dark text-success p-2 rounded small mb-0 font-monospace" style="font-size: 0.75rem;">php artisan wallet:recover-legacy-balances --apply</pre>
+                    <pre class="bg-dark text-success p-2 rounded small mb-3 font-monospace" style="font-size: 0.75rem;">php artisan wallet:recover-legacy-balances --apply</pre>
+
+                    <!-- Web-based Execution Controls -->
+                    <div class="d-flex gap-2">
+                        <form method="POST" action="{{ route('hq.settings.currency.run-recovery') }}" class="flex-grow-1">
+                            @csrf
+                            <input type="hidden" name="recovery_action" value="dry_run">
+                            <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill w-100 fw-bold">
+                                <i class="fa-solid fa-magnifying-glass me-1"></i> Preview Dry-Run
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('hq.settings.currency.run-recovery') }}" class="flex-grow-1" onsubmit="return confirm('WARNING: Are you sure you want to execute live balance recovery for all eligible USD accounts at 1 USD = ₦{{ $usdToNgnRate }}?');">
+                            @csrf
+                            <input type="hidden" name="recovery_action" value="apply">
+                            <button type="submit" class="btn btn-sm btn-danger rounded-pill w-100 fw-bold">
+                                <i class="fa-solid fa-bolt me-1"></i> Apply Recovery Now
+                            </button>
+                        </form>
+                    </div>
                 </div>
+
+                @if(session('recovery_output'))
+                <!-- Console Output Modal / Box -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-muted text-uppercase mb-1">
+                        <i class="fa-solid fa-terminal me-1"></i> Recovery Execution Output:
+                    </label>
+                    <pre class="bg-dark text-light p-3 rounded-4 font-monospace small shadow-sm overflow-auto" style="max-height: 250px; font-size: 0.72rem; white-space: pre-wrap;">{{ session('recovery_output') }}</pre>
+                </div>
+                @endif
             </div>
         </div>
 

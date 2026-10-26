@@ -1624,4 +1624,34 @@ class AdminController extends Controller
 
         return back()->with('success', 'User balance successfully reconciled.');
     }
+
+    /**
+     * Run wallet recovery command directly from Admin interface (Dry Run or Apply)
+     */
+    public function hqRunWalletRecovery(Request $request)
+    {
+        $action = $request->input('recovery_action', 'dry_run');
+        $params = [];
+
+        if ($action === 'apply') {
+            $params['--apply'] = true;
+            $params['--force'] = true;
+        }
+
+        try {
+            \Illuminate\Support\Facades\Artisan::call('wallet:recover-legacy-balances', $params);
+            $output = \Illuminate\Support\Facades\Artisan::output();
+
+            \App\Models\ActivityLog::log("Executed wallet recovery command via Admin HQ ({$action})", auth()->user(), [
+                'action' => $action,
+                'output' => substr($output, 0, 500)
+            ]);
+
+            return back()->with('recovery_output', $output)
+                         ->with($action === 'apply' ? 'success' : 'info', $action === 'apply' ? 'Wallet recovery successfully executed!' : 'Dry run audit completed. See output log below.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Execution error: ' . $e->getMessage());
+        }
+    }
 }
+

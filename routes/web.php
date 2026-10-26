@@ -294,6 +294,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/settings/currency', [AdminController::class, 'hqCurrencySettings'])->name('hq.settings.currency');
         Route::post('/settings/currency', [AdminController::class, 'hqUpdateCurrencySettings'])->name('hq.settings.currency.update');
         Route::post('/settings/currency/reconcile-user', [AdminController::class, 'hqReconcileUser'])->name('hq.settings.currency.reconcile-user');
+        Route::post('/settings/currency/run-recovery', [AdminController::class, 'hqRunWalletRecovery'])->name('hq.settings.currency.run-recovery');
 
     });
 });
