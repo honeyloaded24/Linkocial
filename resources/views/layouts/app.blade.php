@@ -448,8 +448,13 @@
         <!-- Topbar -->
         <header class="topbar px-2 px-sm-3 px-md-4" style="position: relative; z-index: 100;">
             @php
-                $unreadCount = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count() : 0;
-                $latestNotifications = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get() : collect();
+                try {
+                    $unreadCount = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->where('is_read', false)->count() : 0;
+                    $latestNotifications = Auth::check() ? \App\Models\Notification::where('user_id', Auth::id())->latest()->take(5)->get() : collect();
+                } catch (\Throwable $e) {
+                    $unreadCount = 0;
+                    $latestNotifications = collect();
+                }
             @endphp
 
             <!-- Mobile Topbar: items evenly distributed across the width -->

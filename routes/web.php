@@ -70,6 +70,7 @@ Route::get('/buy-audiomack-plays', [LandingController::class, 'audiomackPlays'])
 Route::get('/about', function() { return view('info.about'); })->name('info.about');
 Route::get('/faq', function() { return view('info.faq'); })->name('info.faq');
 Route::get('/contact', function() { return view('info.contact'); })->name('info.contact');
+Route::redirect('/support', '/contact')->name('support');
 
 // Blog Routes
 Route::get('/blog', [\App\Http\Controllers\BlogController::class, 'index'])->name('info.blog');
@@ -136,6 +137,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // New Coming Soon Services
     Route::get('/orders/virtual-numbers', [App\Http\Controllers\VirtualNumberController::class, 'index'])->name('services.virtual-numbers');
+    Route::get('/virtual-numbers/portal', [App\Http\Controllers\VirtualNumberController::class, 'index'])->name('virtual-numbers.index');
     Route::post('/orders/virtual-numbers/purchase', [App\Http\Controllers\VirtualNumberController::class, 'purchase'])->name('virtual-numbers.purchase');
     Route::get('/orders/virtual-numbers/history', [App\Http\Controllers\VirtualNumberController::class, 'history'])->name('virtual-numbers.history');
     Route::get('/api/virtual-numbers/countries', [\App\Http\Controllers\VirtualNumberController::class, 'getCountries']);
@@ -288,6 +290,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/providers/{id}/services-count', [AdminController::class, 'providerServicesCount']);
         Route::get('/providers/{id}/debug-sync', [AdminController::class, 'debugProviderSync'])->name('hq.providers.debug');
         Route::get('/activity-logs', [AdminController::class, 'activityLogs'])->name('hq.activity-logs');
+        Route::get('/logs/activity', [AdminController::class, 'activityLogs'])->name('hq.logs');
         Route::get('/queues', [AdminController::class, 'queueStatus'])->name('hq.queues');
         Route::get('/financial-transactions', [AdminController::class, 'allTransactions'])->name('hq.transactions');
         

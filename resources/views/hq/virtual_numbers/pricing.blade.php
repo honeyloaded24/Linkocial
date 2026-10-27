@@ -346,7 +346,7 @@
                         <a href="{{ route('hq.virtual-numbers') }}" class="btn btn-outline-info rounded-pill w-100 fw-bold py-2 shadow-sm text-start">
                             <i class="fa-solid fa-list-ol me-2"></i> View Number Records & Orders
                         </a>
-                        <a href="{{ route('virtual-numbers.index') }}" target="_blank" class="btn btn-light rounded-pill w-100 fw-bold py-2 shadow-sm border text-start">
+                        <a href="{{ route('services.virtual-numbers') }}" target="_blank" class="btn btn-light rounded-pill w-100 fw-bold py-2 shadow-sm border text-start">
                             <i class="fa-solid fa-arrow-up-right-from-square me-2"></i> Open Customer Number Portal
                         </a>
                     </div>

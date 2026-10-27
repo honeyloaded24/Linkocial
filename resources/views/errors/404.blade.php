@@ -1,29 +1,195 @@
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - Page Not Found | Linkocial</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5 CSS & FontAwesome -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-body: #0b0f19;
+            --bg-card: #111827;
+            --border-card: rgba(255, 255, 255, 0.08);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
 
-@section('header_title', '404 - Page Not Found')
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 1.5rem;
+        }
 
-@section('content')
-<div class="container py-5">
-    <div class="row justify-content-center align-items-center" style="min-height: 70vh;">
-        <div class="col-md-6 text-center">
-            <div class="mb-5">
-                <h1 class="display-1 fw-bold text-primary-custom" style="font-size: 10rem; opacity: 0.2;">404</h1>
-                <div class="mt-n5 position-relative" style="margin-top: -80px;">
-                    <img src="https://cdn-icons-png.flaticon.com/512/2748/2748558.png" alt="Not Found" width="200" class="img-fluid mb-4">
-                    <h2 class="fw-bold text-dark">Lost in the sauce?</h2>
-                    <p class="text-muted fs-5 mb-5">The page you're looking for has moved, expired, or never existed. Let's get you back to safety.</p>
-                    
-                    <div class="d-flex justify-content-center gap-3">
-                        <a href="{{ route('dashboard') }}" class="btn btn-primary-custom px-5 py-3 rounded-pill fw-bold shadow-sm">
-                            <i class="fa-solid fa-house me-2"></i> Take Me Home
-                        </a>
-                        <a href="{{ config('app.url') }}/support" class="btn btn-outline-secondary px-5 py-3 rounded-pill fw-bold">
-                            <i class="fa-solid fa-headset me-2"></i> Get Help
-                        </a>
-                    </div>
-                </div>
-            </div>
+        .error-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-card);
+            border-radius: 28px;
+            padding: 3.5rem 2.5rem;
+            max-width: 620px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .error-card::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(59, 130, 246, 0.05) 50%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .error-code {
+            font-family: 'Outfit', sans-serif;
+            font-size: 6.5rem;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -2px;
+        }
+
+        .icon-circle {
+            width: 84px;
+            height: 84px;
+            background: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+            border-radius: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            font-size: 2.2rem;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.25);
+        }
+
+        h2 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.85rem;
+            color: var(--text-main);
+            margin-bottom: 1rem;
+        }
+
+        p.description {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .btn-home {
+            background: var(--primary-gradient);
+            color: #ffffff;
+            border: none;
+            padding: 0.85rem 2rem;
+            font-weight: 700;
+            border-radius: 50rem;
+            transition: all 0.25s ease;
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(99, 102, 241, 0.5);
+            color: #ffffff;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border: 1px solid var(--border-card);
+            padding: 0.85rem 1.75rem;
+            font-weight: 600;
+            border-radius: 50rem;
+            transition: all 0.25s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .btn-support {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .btn-support:hover {
+            color: #6366f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="icon-circle">
+            <i class="fa-solid fa-compass"></i>
+        </div>
+        
+        <div class="error-code">404</div>
+        
+        <h2>Page Not Found</h2>
+        
+        <p class="description">
+            The page you are looking for might have been moved, renamed, or is temporarily unavailable. Let's get you back on track.
+        </p>
+
+        <div class="d-flex flex-wrap justify-content-center gap-3 mb-4">
+            <a href="{{ url('/') }}" class="btn-home">
+                <i class="fa-solid fa-house"></i> Take Me Home
+            </a>
+            <button onclick="window.history.back()" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i> Go Back
+            </button>
+        </div>
+
+        <div>
+            <a href="{{ url('/contact') }}" class="btn-support">
+                <i class="fa-solid fa-headset"></i> Need help finding something? Contact Support
+            </a>
         </div>
     </div>
-</div>
-@endsection
+</body>
+</html>

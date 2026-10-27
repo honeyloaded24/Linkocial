@@ -24,10 +24,14 @@ class Setting extends Model
             return ($val !== null && $val !== '') ? $val : $default;
         }
 
-        $value = Cache::remember("setting_{$key}", 3600, function () use ($key) {
-            $setting = self::where('key', $key)->first();
-            return $setting ? $setting->value : null;
-        });
+        try {
+            $value = Cache::remember("setting_{$key}", 3600, function () use ($key) {
+                $setting = self::where('key', $key)->first();
+                return $setting ? $setting->value : null;
+            });
+        } catch (\Throwable $e) {
+            return $default;
+        }
 
         self::$runtimeCache[$key] = $value;
         return ($value !== null && $value !== '') ? $value : $default;

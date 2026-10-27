@@ -13,7 +13,7 @@
         </div>
 
         <!-- Filter Bar -->
-        <form action="{{ route('hq.logs') }}" method="GET" class="row g-2 mb-4">
+        <form action="{{ route('hq.activity-logs') }}" method="GET" class="row g-2 mb-4">
             <div class="col-md-5">
                 <div class="input-group">
                     <span class="input-group-text bg-transparent border-end-0 border-secondary"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
@@ -28,7 +28,7 @@
             </div>
             @if(request()->anyFilled(['search', 'action']))
             <div class="col-md-2">
-                <a href="{{ route('hq.logs') }}" class="btn btn-outline-secondary w-100">Reset</a>
+                <a href="{{ route('hq.activity-logs') }}" class="btn btn-outline-secondary w-100">Reset</a>
             </div>
             @endif
         </form>
