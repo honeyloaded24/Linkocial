@@ -211,20 +211,35 @@ class VirtualNumberController extends Controller
                         ], 400);
                     }
 
-                    // Prioritize active live price over theoretical floor price
-                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['price'];
-                    } elseif (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                    // Prioritize cheapest active in-stock pool price (low_price) matching pricing_option = 0 purchase routing
+                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['low_price'];
+                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['price'];
                     }
                 } elseif (count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
                 }
             }
 
-            // Calculate verified user cost in NGN with dynamic markup
+            // Calculate authoritative verified user cost in NGN with dynamic markup
             $userCostNgn = $this->calculateRetailPrice($activeWholesalePrice);  
             $finalCheckCost = max(0.00, $userCostNgn);
+
+            // Dynamic Safe Pricing: Protect customer against material price increases between quotation and purchase
+            if ($request->filled('expected_price')) {
+                $expectedPrice = (float) $request->input('expected_price');
+                // If current dynamic price exceeds quoted price by more than ₦1.00 tolerance, require re-confirmation
+                if ($finalCheckCost > ($expectedPrice + 1.00)) {
+                    return response()->json([
+                        'error' => "Provider price for {$serviceName} has updated from " . money($expectedPrice) . " to " . money($finalCheckCost) . ". Please review the updated quotation and confirm your order.",
+                        'price_changed' => true,
+                        'old_price' => $expectedPrice,
+                        'new_price' => $finalCheckCost,
+                        'formatted_new_price' => money($finalCheckCost),
+                    ], 409);
+                }
+            }
 
             $totalAvailableBalance = 0.0;
             DB::beginTransaction();
@@ -250,7 +265,7 @@ class VirtualNumberController extends Controller
             $flatMarkupNgn = $this->getMarkupFee();
             $providerRate = $this->getProviderRate();
             $maxAffordableWholesale = max(0.00, round(($totalAvailableBalance - $flatMarkupNgn) / max(1.0, $providerRate), 2));
-            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.15, 2);
+            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
             $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
 
             // Execute Purchase on chosen server (pricing_option = 0 for SMSPool cheapest pool)
@@ -334,15 +349,17 @@ class VirtualNumberController extends Controller
             try {
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-                // Record Financial Transaction for the exact quoted price
+                // Record Financial Transaction for the exact quoted price with complete pricing metadata
                 if ($finalUserCostUsd > 0) {
                     $serverLabel = ($server === 'server2') ? 'Server 2 (Grizzly)' : 'Server 1';
+                    $rate = $this->getProviderRate();
+                    $markupNgn = $this->getMarkupFee();
                     Transaction::add(
                         $lockedUser->id, 
                         $finalUserCostUsd, 
                         'debit', 
                         'virtual_number', 
-                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}])"
+                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}]) [Rate: \${$actualCostUsd} @ ₦" . number_format($rate, 2) . "/$, Markup: ₦" . number_format($markupNgn, 2) . "]"
                     );
                 }
 
@@ -620,11 +637,11 @@ class VirtualNumberController extends Controller
                         ]);
                     }
 
-                    // Prioritize real-time active price over theoretical floor price
-                    if (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['price'];
-                    } elseif (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                    // Prioritize cheapest active in-stock pool price (low_price) matching pricing_option = 0 purchase routing
+                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
                         $activeWholesalePrice = (float)$liveInfo['low_price'];
+                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                        $activeWholesalePrice = (float)$liveInfo['price'];
                     }
                 } elseif (count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
@@ -657,6 +674,7 @@ class VirtualNumberController extends Controller
                 'formatted_remaining' => money($remainingBalance),
                 'shortfall' => $shortfall,
                 'formatted_shortfall' => money($shortfall),
+                'quote_timestamp' => now()->timestamp,
             ]);
         } catch (\Throwable $e) {
             Log::error('SMS Live Quote Error: ' . $e->getMessage());

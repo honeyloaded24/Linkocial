@@ -537,6 +537,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (requestedServer !== currentServer) return;
                         if (quoteLoading) quoteLoading.classList.add('d-none');
                         if (data.success) {
+                            currentQuotedPrice = data.quote_price;
                             if (quoteContent) quoteContent.classList.remove('d-none');
                             costDisplay.textContent = data.formatted_quote;
                             if (userBalanceDisplay) userBalanceDisplay.textContent = data.formatted_balance;
@@ -609,6 +610,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    let currentQuotedPrice = null;
+
     // Handle Form Submit (Purchase)
     document.getElementById('vn-form').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -629,20 +632,31 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 server: currentServer,
                 country: selectedCountry,
-                product: selectedProduct
+                product: selectedProduct,
+                expected_price: currentQuotedPrice
             })
         })
         .then(res => res.json())
         .then(res => {
             buyBtn.disabled = false;
-            buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
+            buyBtn.innerHTML = '<span>Purchase Number</span> <i class="fa-solid fa-arrow-right ms-2"></i>';
             
             if (res.error) {
-                errorBox.innerHTML = res.error;
-                errorBox.classList.remove('d-none');
+                if (res.price_changed && res.new_price) {
+                    currentQuotedPrice = res.new_price;
+                    costDisplay.textContent = res.formatted_new_price;
+                    errorBox.innerHTML = '<div class="alert alert-warning mb-0 py-2"><i class="fa-solid fa-triangle-exclamation me-1"></i> ' + res.error + '</div>';
+                    errorBox.classList.remove('d-none');
+                    buyBtn.disabled = false;
+                    buyBtn.innerHTML = '<span>Confirm & Purchase (' + res.formatted_new_price + ')</span> <i class="fa-solid fa-arrow-right ms-2"></i>';
+                } else {
+                    errorBox.innerHTML = res.error;
+                    errorBox.classList.remove('d-none');
+                }
             } else if (res.success && res.order) {
                 // Success! Create active order card
                 addOrderCard(res.order);
+                currentQuotedPrice = null;
                 // Clear selection
                 if (serviceTs) {
                     serviceTs.clear();
@@ -656,7 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             buyBtn.disabled = false;
-            buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
+            buyBtn.innerHTML = '<span>Purchase Number</span> <i class="fa-solid fa-arrow-right ms-2"></i>';
             errorBox.innerHTML = 'A network error occurred. Please try again.';
             errorBox.classList.remove('d-none');
         });
