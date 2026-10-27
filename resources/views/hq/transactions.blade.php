@@ -67,8 +67,12 @@
                             <div class="text-muted" style="font-size: 0.7rem;">{{ $tx->created_at->format('H:i') }}</div>
                         </td>
                         <td>
-                            <div class="fw-bold" style="font-size: 0.85rem;">{{ $tx->user->username }}</div>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ $tx->user->email }}</small>
+                            @if($tx->user)
+                                <div class="fw-bold" style="font-size: 0.85rem;">{{ $tx->user->username }}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;">{{ $tx->user->email }}</small>
+                            @else
+                                <span class="text-muted small">System / Deleted User</span>
+                            @endif
                         </td>
                         <td>
                             <div class="small fw-bold">{{ $tx->description }}</div>

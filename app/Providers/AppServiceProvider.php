@@ -117,21 +117,40 @@ class AppServiceProvider extends ServiceProvider
 
         // Global Site Data Sharing
         view()->composer('*', function ($view) {
-            $siteName = \App\Models\Setting::get('site_name', 'Linkocial');
-            $siteLogo = \App\Models\Setting::get('site_logo');
-            $siteLogoLight = \App\Models\Setting::get('site_logo_light', $siteLogo);
-            $siteLogoDark = \App\Models\Setting::get('site_logo_dark', $siteLogo);
-            $siteFavicon = \App\Models\Setting::get('site_favicon');
-            
-            // Shared Stats for Footer/Trust
-            $stats = [
-                'total_orders' => \App\Models\Order::count() + 12500, // Hardening with baseline
-                'active_users' => \App\Models\User::count() + 850,
-                'total_services' => \App\Models\Service::count(),
-            ];
+            $viewName = $view->getName();
+            $isErrorView = str_starts_with($viewName, 'errors.') || str_starts_with($viewName, 'errors::');
 
-            // Platform Channels for Navigation
-            $channels = \App\Models\Service::getChannels();
+            $siteName = 'Linkocial';
+            $siteLogo = null;
+            $siteLogoLight = null;
+            $siteLogoDark = null;
+            $siteFavicon = null;
+            $stats = [
+                'total_orders' => 12500,
+                'active_users' => 850,
+                'total_services' => 0,
+            ];
+            $channels = collect();
+
+            if (!$isErrorView) {
+                try {
+                    $siteName = \App\Models\Setting::get('site_name', 'Linkocial');
+                    $siteLogo = \App\Models\Setting::get('site_logo');
+                    $siteLogoLight = \App\Models\Setting::get('site_logo_light', $siteLogo);
+                    $siteLogoDark = \App\Models\Setting::get('site_logo_dark', $siteLogo);
+                    $siteFavicon = \App\Models\Setting::get('site_favicon');
+
+                    $stats = [
+                        'total_orders' => \App\Models\Order::count() + 12500,
+                        'active_users' => \App\Models\User::count() + 850,
+                        'total_services' => \App\Models\Service::count(),
+                    ];
+
+                    $channels = \App\Models\Service::getChannels();
+                } catch (\Throwable $e) {
+                    // Safe fallback prevents database/connection errors from turning any view into a 500 error
+                }
+            }
 
             $view->with(compact('siteName', 'siteLogo', 'siteLogoLight', 'siteLogoDark', 'siteFavicon', 'stats', 'channels'));
         });

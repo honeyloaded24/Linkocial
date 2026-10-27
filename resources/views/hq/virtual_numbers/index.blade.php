@@ -146,8 +146,12 @@
                 @forelse($orders as $order)
                 <tr>
                     <td>
-                        <div class="fw-bold fs-7">{{ $order->user->username }}</div>
-                        <div class="small text-muted">{{ $order->user->email }}</div>
+                        @if($order->user)
+                            <div class="fw-bold fs-7">{{ $order->user->username }}</div>
+                            <div class="small text-muted">{{ $order->user->email }}</div>
+                        @else
+                            <span class="text-muted small">Deleted User</span>
+                        @endif
                     </td>
                     <td>
                         <div class="fw-bold fs-7 text-capitalize">{{ str_replace('_', ' ', $order->product) }}</div>

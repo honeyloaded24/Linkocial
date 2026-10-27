@@ -170,8 +170,12 @@
                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 font-monospace px-2 py-1" style="font-size: 0.75rem; font-weight: 700; letter-spacing: 0.3px;">#{{ $order->id }}</span>
                         </td>
                         <td>
-                            <div class="fw-bold" style="font-size: 0.85rem;">{{ $order->user->username }}</div>
-                            <small class="text-muted" style="font-size: 0.75rem;">{{ $order->user->email }}</small>
+                            @if($order->user)
+                                <div class="fw-bold" style="font-size: 0.85rem;">{{ $order->user->username }}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;">{{ $order->user->email }}</small>
+                            @else
+                                <span class="text-muted small">Deleted User</span>
+                            @endif
                         </td>
                         <td>
                             <div class="fw-bold text-truncate" style="max-width: 200px; font-size: 0.85rem;">{{ $order->service->name ?? 'Deleted Service' }}</div>

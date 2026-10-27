@@ -81,4 +81,32 @@ class ErrorPagesAndRouteMismatchTest extends TestCase
         $value = Setting::get('non_existent_random_key_xyz', 'fallback_value');
         $this->assertEquals('fallback_value', $value);
     }
+
+    /**
+     * Test ProductPricingService handles non-positive fix_rate and negative cost gracefully without throwing 500 exceptions.
+     */
+    public function test_product_pricing_service_resilient_to_invalid_inputs(): void
+    {
+        $service = app(\App\Services\ProductPricingService::class);
+
+        // When fix_rate is 0 or negative, it must fall back to platform rate and not throw InvalidArgumentException
+        $converted = $service->convertProviderCostToNgn(1.50, 'USD', 0.0);
+        $this->assertGreaterThan(0, $converted);
+
+        // Negative rawCost should clamp to 0 without throwing
+        $convertedNegative = $service->convertProviderCostToNgn(-10.0, 'USD', 1500.0);
+        $this->assertEquals(0.0, $convertedNegative);
+    }
+
+    /**
+     * Test ProductPricingSetting model getFixRate returns default when stored fix_rate is 0 or null.
+     */
+    public function test_product_pricing_setting_model_fix_rate_fallback(): void
+    {
+        $settingZero = new \App\Models\ProductPricingSetting(['fix_rate' => 0]);
+        $this->assertEquals(1500.0, $settingZero->getFixRate());
+
+        $settingNull = new \App\Models\ProductPricingSetting(['fix_rate' => null]);
+        $this->assertEquals(1500.0, $settingNull->getFixRate());
+    }
 }

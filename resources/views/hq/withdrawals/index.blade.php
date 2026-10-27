@@ -33,8 +33,12 @@
                     @forelse($withdrawals as $w)
                     <tr>
                         <td class="px-3">
-                            <div class="fw-bold" style="font-size: 0.85rem;">{{ $w->user->username }}</div>
-                            <small class="text-muted" style="font-size: 0.75rem;">Bal: {{ money($w->user->commission_balance) }}</small>
+                            @if($w->user)
+                                <div class="fw-bold" style="font-size: 0.85rem;">{{ $w->user->username }}</div>
+                                <small class="text-muted" style="font-size: 0.75rem;">Bal: {{ money($w->user->commission_balance) }}</small>
+                            @else
+                                <span class="text-muted small">Deleted User</span>
+                            @endif
                         </td>
                         <td class="fw-bold text-success">{{ money($w->amount) }}</td>
                         <td>
@@ -62,7 +66,7 @@
                                         </div>
                                         <div class="modal-body">
                                             <div class="alert alert-info border-0 small mb-4">
-                                                <strong>User Details:</strong> {{ $w->user->username }} ({{ $w->user->email }})<br>
+                                                <strong>User Details:</strong> {{ $w->user->username ?? 'Unknown' }} ({{ $w->user->email ?? 'N/A' }})<br>
                                                 <strong>Amount:</strong> {{ money($w->amount) }}<br>
                                                 <hr>
                                                 <strong>Payment Instructions:</strong><br>

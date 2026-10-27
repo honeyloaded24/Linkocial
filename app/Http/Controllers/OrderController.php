@@ -142,6 +142,14 @@ class OrderController extends Controller
         // 3. Dispatch the Job to handle the external API call asynchronously
         ProcessSmmOrder::dispatch($order, $service);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'order'   => $order,
+                'message' => 'Order placed successfully!' . ($discountPercent > 0 ? " Your {$discountPercent}% Tier Discount was applied." : ""),
+            ]);
+        }
+
         // 4. Instantly redirect back with a success message
         return redirect()->route('orders.index')->with('success', 'Order placed successfully! ' . ($discountPercent > 0 ? "Your {$discountPercent}% Tier Discount was applied." : ""));
     }

@@ -44,7 +44,8 @@ class ProductPricingSetting extends Model
      */
     public function getFixRate(): float
     {
-        return $this->fix_rate !== null ? (float) $this->fix_rate : 1500.0;
+        $rate = (float) ($this->fix_rate ?? 0);
+        return $rate > 0 ? $rate : 1500.0;
     }
 
     /**

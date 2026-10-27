@@ -289,18 +289,21 @@ class ProductPricingService
      */
     public function convertProviderCostToNgn(float $rawCost, string $currency = 'USD', float $fixRate = 1500.0): float
     {
-        if ($rawCost < 0) {
-            throw new InvalidArgumentException("Provider cost cannot be negative.");
-        }
-
-        if ($rawCost == 0.0) {
+        if ($rawCost <= 0.0) {
             return 0.0;
         }
 
         $curr = strtoupper($currency);
         if ($curr === 'USD') {
-            if ($fixRate <= 0) {
-                throw new InvalidArgumentException("Active fix rate is zero or invalid.");
+            if ($fixRate <= 0.0) {
+                try {
+                    $fixRate = (float) $this->currencyService->getUsdToNgnRate();
+                } catch (\Throwable $e) {
+                    $fixRate = 1500.0;
+                }
+                if ($fixRate <= 0.0) {
+                    $fixRate = 1500.0;
+                }
             }
             return round($rawCost * $fixRate, 4);
         }

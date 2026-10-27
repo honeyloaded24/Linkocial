@@ -49,8 +49,8 @@
                     </td>
                     <td>{{ $order->created_at->format('M d, Y h:i A') }}</td>
                     <td>
-                        <span class="d-block text-truncate" style="max-width: 200px;" title="{{ $order->service->name }}">
-                            {{ $order->service->name }}
+                        <span class="d-block text-truncate" style="max-width: 200px;" title="{{ $order->service->name ?? ($order->service_name ?? 'Service Unavailable') }}">
+                            {{ $order->service->name ?? ($order->service_name ?? 'Service Unavailable') }}
                         </span>
                     </td>
                     <td>

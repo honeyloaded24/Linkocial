@@ -400,7 +400,7 @@
             <a href="{{ route('legal.terms') }}" class="nav-link">
                 <i class="fa-solid fa-file-contract"></i> Terms of Service
             </a>
-@endguest
+@endauth
         </div>
 
         @auth
