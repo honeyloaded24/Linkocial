@@ -109,4 +109,31 @@ class ErrorPagesAndRouteMismatchTest extends TestCase
         $settingNull = new \App\Models\ProductPricingSetting(['fix_rate' => null]);
         $this->assertEquals(1500.0, $settingNull->getFixRate());
     }
+
+    /**
+     * Test HQ user transactions page view renders with empty collections without errors.
+     */
+    public function test_hq_user_transactions_view_renders_cleanly(): void
+    {
+        $mockUser = (object)[
+            'id' => 999,
+            'username' => 'testuser',
+            'first_name' => 'Test',
+            'last_name' => 'User',
+            'email' => 'test@example.com',
+            'balance' => 5000.00
+        ];
+
+        $view = view('hq.users.transactions', [
+            'user' => $mockUser,
+            'deposits' => collect([]),
+            'transactions' => collect([]),
+            'orders' => collect([])
+        ])->render();
+
+        $this->assertStringContainsString('Activity History: testuser', $view);
+        $this->assertStringContainsString('No deposits found for this user', $view);
+        $this->assertStringContainsString('No ledger transactions recorded yet', $view);
+        $this->assertStringContainsString('No orders found for this user', $view);
+    }
 }

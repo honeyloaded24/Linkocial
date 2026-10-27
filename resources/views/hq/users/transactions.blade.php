@@ -48,12 +48,12 @@
                         <tbody>
                             @forelse($deposits as $payment)
                             <tr>
-                                <td class="px-4 py-3 small">{{ $payment->created_at->format('M d, Y h:i A') }}</td>
-                                <td class="py-3 fw-bold text-success">{{ money($payment->amount) }}</td>
+                                <td class="px-4 py-3 small">{{ $payment->created_at ? $payment->created_at->format('M d, Y h:i A') : 'N/A' }}</td>
+                                <td class="py-3 fw-bold text-success">{{ money($payment->amount ?? 0) }}</td>
                                 <td class="py-3 small text-muted text-uppercase">{{ str_replace('_', ' ', $payment->payment_method ?? 'gateway') }}</td>
                                 <td class="px-4 py-3 text-end">
-                                    <div class="text-muted small mb-1" style="font-size: 0.7rem;">{{ $payment->reference }}</div>
-                                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($payment->status) }}</span>
+                                    <div class="text-muted small mb-1" style="font-size: 0.7rem;">{{ $payment->reference ?? 'N/A' }}</div>
+                                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-1 rounded-pill" style="font-size: 0.65rem;">{{ strtoupper($payment->status ?? 'SUCCESS') }}</span>
                                 </td>
                             </tr>
                             @empty
@@ -86,19 +86,19 @@
                             @forelse($transactions ?? [] as $tx)
                             <tr>
                                 <td class="px-4 py-3">
-                                    <div class="fw-bold small">{{ $tx->created_at->format('M d, Y h:i A') }}</div>
-                                    <div class="text-muted" style="font-size: 0.65rem;">{{ $tx->reference }}</div>
+                                    <div class="fw-bold small">{{ $tx->created_at ? $tx->created_at->format('M d, Y h:i A') : 'N/A' }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">{{ $tx->reference ?? 'N/A' }}</div>
                                 </td>
                                 <td class="py-3">
-                                    <span class="badge bg-{{ $tx->type === 'credit' ? 'success' : 'danger' }} bg-opacity-10 text-{{ $tx->type === 'credit' ? 'success' : 'danger' }} px-3 py-1 rounded-pill" style="font-size: 0.65rem;">
-                                        {{ strtoupper($tx->type) }} ({{ strtoupper($tx->transaction_type) }})
+                                    <span class="badge bg-{{ ($tx->type ?? 'debit') === 'credit' ? 'success' : 'danger' }} bg-opacity-10 text-{{ ($tx->type ?? 'debit') === 'credit' ? 'success' : 'danger' }} px-3 py-1 rounded-pill" style="font-size: 0.65rem;">
+                                        {{ strtoupper($tx->type ?? 'DEBIT') }} ({{ strtoupper($tx->transaction_type ?? 'TX') }})
                                     </span>
                                 </td>
-                                <td class="py-3 fw-bold text-{{ $tx->type === 'credit' ? 'success' : 'danger' }}">
-                                    {{ $tx->type === 'credit' ? '+' : '-' }} {{ money($tx->amount) }}
+                                <td class="py-3 fw-bold text-{{ ($tx->type ?? 'debit') === 'credit' ? 'success' : 'danger' }}">
+                                    {{ ($tx->type ?? 'debit') === 'credit' ? '+' : '-' }} {{ money($tx->amount ?? 0) }}
                                 </td>
-                                <td class="py-3 small fw-bold">{{ money($tx->balance_after) }}</td>
-                                <td class="px-4 py-3 small text-muted">{{ $tx->description }}</td>
+                                <td class="py-3 small fw-bold">{{ money($tx->balance_after ?? 0) }}</td>
+                                <td class="px-4 py-3 small text-muted">{{ $tx->description ?? '' }}</td>
                             </tr>
                             @empty
                             <tr>
@@ -130,14 +130,14 @@
                             <tr>
                                 <td class="px-4 py-3">
                                     <div class="fw-bold small">{{ $order->display_id ?? ('#' . $order->id) }}</div>
-                                    <div class="text-muted" style="font-size: 0.65rem;">{{ $order->created_at->format('M d, Y') }}</div>
+                                    <div class="text-muted" style="font-size: 0.65rem;">{{ $order->created_at ? ($order->created_at instanceof \Carbon\Carbon ? $order->created_at->format('M d, Y') : \Carbon\Carbon::parse($order->created_at)->format('M d, Y')) : 'N/A' }}</div>
                                 </td>
                                 <td class="py-3">
                                     <div class="fw-bold small text-truncate" style="max-width: 250px;">{{ $order->service_name ?? ($order->service->name ?? 'Service') }}</div>
-                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill" style="font-size: 0.6rem;">{{ strtoupper($order->status) }}</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill" style="font-size: 0.6rem;">{{ strtoupper($order->status ?? 'PENDING') }}</span>
                                 </td>
-                                <td class="py-3 small">{{ is_numeric($order->quantity) ? number_format($order->quantity) : ($order->quantity ?? '1') }}</td>
-                                <td class="px-4 py-3 text-end fw-bold">{{ money($order->charge) }}</td>
+                                <td class="py-3 small">{{ is_numeric($order->quantity ?? null) ? number_format($order->quantity) : ($order->quantity ?? '1') }}</td>
+                                <td class="px-4 py-3 text-end fw-bold">{{ money($order->charge ?? 0) }}</td>
                             </tr>
                             @empty
                             <tr>

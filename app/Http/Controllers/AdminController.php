@@ -927,7 +927,45 @@ class AdminController extends Controller
         $deposits = \App\Models\Payment::where('user_id', $id)->latest()->get();
         $transactions = \App\Models\Transaction::where('user_id', $id)->ordered()->get();
 
-        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(25)->get()->map(function ($order) {
+        $recentSmm = Order::where('user_id', $id)->with('service')->latest()->take(50)->get()->map(function ($order) {
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#' . $order->id,
+                'service_name' => $order->service->name ?? 'Social Boost Service',
+                'quantity' => $order->quantity ? (string) $order->quantity : '1',
+                'charge' => (float) $order->charge,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentVn = \App\Models\VirtualNumberOrder::where('user_id', $id)->latest()->take(50)->get()->map(function ($order) {
+            $serviceName = ($order->country ? $order->country . ' - ' : '') . ($order->product ?? 'Virtual Number');
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VN-' . $order->id,
+                'service_name' => $serviceName,
+                'quantity' => '1',
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentVtu = \App\Models\VtuOrder::where('user_id', $id)->latest()->take(50)->get()->map(function ($order) {
+            $serviceType = ucfirst($order->service_type ?? 'Utility');
+            return (object) [
+                'id' => $order->id,
+                'display_id' => '#VTU-' . $order->id,
+                'service_name' => "VTU {$serviceType}",
+                'quantity' => '1',
+                'charge' => (float) $order->cost,
+                'status' => $order->status,
+                'created_at' => $order->created_at,
+            ];
+        });
+
+        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(50)->get()->map(function ($order) {
             return (object) [
                 'id' => $order->id,
                 'display_id' => '#LOG-' . $order->id,
@@ -939,10 +977,10 @@ class AdminController extends Controller
             ];
         });
 
-        $orders = $recentSmm
-            ->concat($recentVn)
-            ->concat($recentVtu)
-            ->concat($recentLogs)
+        $orders = collect($recentSmm)
+            ->concat(collect($recentVn))
+            ->concat(collect($recentVtu))
+            ->concat(collect($recentLogs))
             ->sortByDesc('created_at')
             ->values()
             ->take(50);
