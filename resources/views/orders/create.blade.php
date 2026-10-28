@@ -1,12 +1,13 @@
 @extends('layouts.app')
 
-@section('header_title', 'New Order')
+@section('header_title', 'BOOST')
 
 @section('content')
 <div class="container-fluid">
     <div class="row justify-content-center">
         <div class="col-xl-10">
             @include('partials.service_ticker', ['service' => 'smm'])
+            @include('partials.boost_nav')
             <!-- Channel Selector -->
             <div class="mb-4">
                 <h6 class="text-muted small fw-bold text-uppercase mb-3">Choose a Channel</h6>
@@ -25,7 +26,12 @@
             <div class="row g-4">
                 <div class="col-lg-7">
                     <div class="premium-card p-4 h-100">
-                        <h4 class="fw-bold mb-4">Place a New Order</h4>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+                            <h4 class="fw-bold mb-0">Place a BOOST Order</h4>
+                            <a href="{{ route('orders.index') }}" class="btn btn-outline-primary rounded-pill fw-bold btn-sm px-3 shadow-sm">
+                                <i class="fa-solid fa-clock-rotate-left me-1"></i> Order History
+                            </a>
+                        </div>
                         
                         <form action="{{ route('orders.store') }}" method="POST" id="newOrderForm">
                             @csrf

@@ -354,11 +354,11 @@
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-pie"></i> Dashboard
                 </a>
-                <a href="{{ route('orders.create') }}" class="nav-link {{ request()->routeIs('orders.create') ? 'active' : '' }}">
-                    <i class="fa-solid fa-cart-shopping"></i> New Order
+                <a href="{{ route('orders.create') }}" class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-rocket"></i> BOOST
                 </a>
-                <a href="{{ route('orders.index') }}" class="nav-link {{ request()->routeIs('orders.index') ? 'active' : '' }}">
-                    <i class="fa-solid fa-list-ul"></i> Order History
+                <a href="{{ route('vtu.index') }}" class="nav-link {{ request()->routeIs('vtu.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-bolt"></i> VTU
                 </a>
                 <a href="{{ route('wallet.index') }}" class="nav-link {{ request()->routeIs('wallet.index') ? 'active' : '' }}">
                     <i class="fa-solid fa-wallet"></i> Fund Wallet
@@ -372,9 +372,6 @@
                 <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.index') || request()->routeIs('logs.show') ? 'active' : '' }}">
                     <i class="fa-solid fa-box-open"></i> Logs Marketplace <span class="badge bg-success ms-1" style="font-size: 0.6rem;">HOT</span>
                 </a>
-                <a href="{{ route('logs.history') }}" class="nav-link {{ request()->routeIs('logs.history') || request()->routeIs('logs.order') ? 'active' : '' }}">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Logs Purchases
-                </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates
                 </a>
@@ -384,9 +381,7 @@
                 <a href="{{ route('tickets.index') }}" class="nav-link {{ request()->routeIs('tickets.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-life-ring"></i> Support Tickets
                 </a>
-
-
-@endif
+            @endif
 
 
 @else

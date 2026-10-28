@@ -557,4 +557,18 @@ class VtuController extends Controller
             return back()->with('error', 'Cable provider is currently unreachable. Your funds have been automatically refunded.');
         }
     }
+
+    // ==========================================
+    // ORDER HISTORY
+    // ==========================================
+    public function history(Request $request)
+    {
+        $orders = VtuOrder::where('user_id', Auth::id())
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('vtu.history', compact('orders'));
+    }
 }
+

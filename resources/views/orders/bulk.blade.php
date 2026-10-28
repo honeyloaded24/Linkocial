@@ -3,13 +3,18 @@
 @section('header_title', 'Bulk Order')
 
 @section('content')
-<div class="row justify-content-center">
-    <div class="col-12 col-lg-8">
-        <div class="premium-card p-4 p-md-5">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h4 class="fw-bold mb-0">Bulk Order Portal</h4>
-                <a href="{{ route('orders.create') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">Single Order</a>
-            </div>
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            @include('partials.boost_nav')
+            <div class="premium-card p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold mb-0">Bulk Order Portal</h4>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('orders.create') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold">Single Order</a>
+                        <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold">Order History</a>
+                    </div>
+                </div>
 
             <div class="alert bg-primary bg-opacity-10 border-0 mb-4">
                 <h6 class="fw-bold text-primary mb-2"><i class="fa-solid fa-circle-info me-2"></i> How to use:</h6>
@@ -72,5 +77,6 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection

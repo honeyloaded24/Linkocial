@@ -142,7 +142,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/orders/virtual-numbers/history', [App\Http\Controllers\VirtualNumberController::class, 'history'])->name('virtual-numbers.history');
     Route::get('/api/virtual-numbers/countries', [\App\Http\Controllers\VirtualNumberController::class, 'getCountries']);
 
-    // VTU Services (Airtime, Data, Electricity)
+    // VTU Services (Airtime, Data, Electricity, Cable)
+    Route::get('/vtu', [App\Http\Controllers\VtuController::class, 'airtime'])->name('vtu.index');
+    Route::get('/vtu/history', [App\Http\Controllers\VtuController::class, 'history'])->name('vtu.history');
     Route::get('/vtu/airtime', [App\Http\Controllers\VtuController::class, 'airtime'])->name('vtu.airtime');
     Route::post('/vtu/airtime/purchase', [App\Http\Controllers\VtuController::class, 'purchaseAirtime'])->name('vtu.airtime.purchase');
     

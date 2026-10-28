@@ -5,6 +5,7 @@
 @section('content')
 <div class="container-fluid">
     @include('partials.service_ticker', ['service' => 'vtu'])
+    @include('partials.vtu_nav')
 
     <div class="row mb-4">
         <div class="col-12">

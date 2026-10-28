@@ -1,32 +1,36 @@
 @extends('layouts.app')
 
-@section('header_title', 'Order History')
+@section('header_title', 'BOOST Order History')
 
 @section('content')
-<div class="row mb-4">
-    <div class="col-12">
-        @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show border-0 rounded-3" style="background-color: rgba(20, 184, 166, 0.1); color: var(--accent-color);" role="alert">
-                <i class="fa-solid fa-circle-check me-2"></i> <strong>Success!</strong> {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show border-0 rounded-3" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444;" role="alert">
-                <i class="fa-solid fa-triangle-exclamation me-2"></i> <strong>Error!</strong> {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-    </div>
-</div>
+<div class="container-fluid">
+    @include('partials.service_ticker', ['service' => 'smm'])
+    @include('partials.boost_nav')
 
-<div class="premium-card p-0">
-    <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center flex-wrap gap-3">
-        <h5 class="fw-bold mb-0">Your Recent Orders</h5>
-        <a href="{{ route('orders.create') }}" class="btn bg-primary-custom text-white btn-sm px-3 rounded-pill shadow-sm">
-            <i class="fa-solid fa-plus me-1"></i> New Order
-        </a>
+    <div class="row mb-4">
+        <div class="col-12">
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show border-0 rounded-3" style="background-color: rgba(20, 184, 166, 0.1); color: var(--accent-color);" role="alert">
+                    <i class="fa-solid fa-circle-check me-2"></i> <strong>Success!</strong> {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show border-0 rounded-3" style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444;" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> <strong>Error!</strong> {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+        </div>
     </div>
+
+    <div class="premium-card p-0">
+        <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h5 class="fw-bold mb-0">Your Recent BOOST Orders</h5>
+            <a href="{{ route('orders.create') }}" class="btn bg-primary-custom text-white btn-sm px-3 rounded-pill shadow-sm">
+                <i class="fa-solid fa-rocket me-1"></i> New BOOST Order
+            </a>
+        </div>
     
     <div class="table-responsive">
         <table class="table table-hover table-borderless align-middle mb-0">
@@ -100,5 +104,6 @@
         {{ $orders->links('pagination::bootstrap-5') }}
     </div>
     @endif
+</div>
 </div>
 @endsection
