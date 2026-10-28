@@ -116,6 +116,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the gift card orders for the user.
+     */
+    public function giftCardOrders()
+    {
+        return $this->hasMany(GiftCardOrder::class);
+    }
+
+    /**
      * Get the support tickets for the user.
      */
     public function tickets()

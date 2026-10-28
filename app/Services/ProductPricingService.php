@@ -28,6 +28,7 @@ class ProductPricingService
     public const PRODUCT_LOGS = 'logs';
     public const PRODUCT_VIRTUAL_NUMBERS = 'virtual_numbers';
     public const PRODUCT_BOOST = 'boost';
+    public const PRODUCT_GIFT_CARDS = 'gift_cards';
 
     /**
      * Get default baseline configuration for a product.
@@ -37,6 +38,18 @@ class ProductPricingService
         $platformFxRate = $this->currencyService->getUsdToNgnRate();
 
         switch ($productKey) {
+            case self::PRODUCT_GIFT_CARDS:
+                return [
+                    'currency'           => 'USD',
+                    'fix_rate'           => $platformFxRate,
+                    'pricing_mode'       => 'percentage',
+                    'percentage_markup'  => 0.0,
+                    'fixed_markup'       => 0.0,
+                    'min_selling_price'  => null,
+                    'min_profit'         => null,
+                    'rounding_rule'      => '2_decimal',
+                ];
+
             case self::PRODUCT_VTU:
                 $dataMarkup = (float) Setting::get('markup_vtu_data', 0.0);
                 return [

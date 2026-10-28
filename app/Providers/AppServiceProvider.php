@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Support\Facades\Schema::defaultStringLength(191);
 
+        \Illuminate\Support\Facades\Gate::policy(\App\Models\GiftCardOrder::class, \App\Policies\GiftCardOrderPolicy::class);
+
         // Dynamic SMTP overrides from Database Settings
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {

@@ -58,4 +58,11 @@ return [
         'url' => env('FADDED_API_URL', env('FADDED_URL', env('LOGS_API_URL', 'https://fadded.net/api/v1/reseller'))),
     ],
 
+    'prestmit' => [
+        'mode' => env('PRESTMIT_MODE', 'sandbox'),
+        'api_key' => env('PRESTMIT_API_KEY'),
+        'base_url' => env('PRESTMIT_BASE_URL', 'https://api.prestmit.com/v1'),
+        'webhook_secret' => env('PRESTMIT_WEBHOOK_SECRET'),
+    ],
+
 ];
