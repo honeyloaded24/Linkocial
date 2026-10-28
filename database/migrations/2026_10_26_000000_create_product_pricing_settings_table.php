@@ -65,6 +65,16 @@ return new class extends Migration
                 'min_profit' => null,
                 'rounding_rule' => '2_decimal',
             ],
+            'boost' => [
+                'currency' => 'USD',
+                'fix_rate' => (float) (\App\Models\Setting::get('pricing_boost_fix_rate', \App\Models\Setting::get('boost_fix_rate', $defaultUsdRate))),
+                'pricing_mode' => 'percentage',
+                'percentage_markup' => 30.00,
+                'fixed_markup' => 0.00,
+                'min_selling_price' => null,
+                'min_profit' => null,
+                'rounding_rule' => '2_decimal',
+            ],
         ];
 
         foreach ($initials as $key => $vals) {

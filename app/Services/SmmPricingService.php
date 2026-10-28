@@ -23,10 +23,30 @@ class SmmPricingService
     }
 
     /**
-     * Get the authoritative USD to NGN exchange rate.
+     * Get the authoritative USD to NGN exchange rate for BOOST/SMM.
+     * Operates independently using BOOST-specific isolated configuration.
      */
     public function getExchangeRate(): float
     {
+        // 1. Check isolated BOOST setting in settings table
+        $boostRate = \App\Models\Setting::get('pricing_boost_fix_rate', \App\Models\Setting::get('boost_fix_rate', null));
+        if ($boostRate !== null && is_numeric($boostRate) && (float) $boostRate > 0) {
+            return (float) $boostRate;
+        }
+
+        // 2. Check product_pricing_settings table for 'boost' product key
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('product_pricing_settings')) {
+                $setting = \App\Models\ProductPricingSetting::where('product_key', 'boost')->first();
+                if ($setting && (float) $setting->fix_rate > 0) {
+                    return (float) $setting->fix_rate;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Ignore database/schema check failure in transient environments
+        }
+
+        // 3. Fallback to platform currency rate to prevent unexpected rate resets
         return $this->currencyService->getUsdToNgnRate();
     }
 

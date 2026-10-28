@@ -69,15 +69,13 @@
         <div class="col-md-3">
             <div class="premium-card p-3 shadow-sm h-100 border-start border-4 border-success">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="small text-muted text-uppercase fw-bold">Active FX Rate</span>
-                    <a href="{{ route('hq.settings.currency') }}" class="btn btn-sm btn-link p-0 text-decoration-none small" title="Configure in Currency Settings">
-                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                    </a>
+                    <span class="small text-muted text-uppercase fw-bold">Active Fix Rate</span>
+                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2">BOOST Isolated</span>
                 </div>
-                <div class="fs-4 fw-bold text-success font-monospace">
+                <div class="fs-4 fw-bold text-success font-monospace" id="metricFixRateDisplay">
                     $1 = ₦{{ number_format($usdToNgnRate, 2) }}
                 </div>
-                <small class="text-muted d-block mt-1">Reused from HQ Exchange Rates</small>
+                <small class="text-muted d-block mt-1">Configured specifically for BOOST services</small>
             </div>
         </div>
 
@@ -169,7 +167,7 @@
                                    class="form-control form-control-lg border-secondary fw-bold text-success font-monospace" 
                                    value="{{ old('fix_rate', $usdToNgnRate) }}">
                         </div>
-                        <div class="form-text small">Authoritative exchange rate used to convert wholesale USD rates to NGN.</div>
+                        <div class="form-text small">Authoritative exchange rate used to convert wholesale USD rates to NGN for BOOST services.</div>
                     </div>
 
                     <!-- Field 1: Provider Wholesale Currency -->

@@ -79,9 +79,13 @@ class ProductPricingService
 
             case self::PRODUCT_BOOST:
             default:
+                $boostRate = Setting::get('pricing_boost_fix_rate', Setting::get('boost_fix_rate', null));
+                $effectiveBoostRate = ($boostRate !== null && is_numeric($boostRate) && (float) $boostRate > 0)
+                    ? (float) $boostRate
+                    : $platformFxRate;
                 return [
                     'currency'           => 'USD',
-                    'fix_rate'           => $platformFxRate,
+                    'fix_rate'           => $effectiveBoostRate,
                     'pricing_mode'       => 'percentage',
                     'percentage_markup'  => 30.0,
                     'fixed_markup'       => 0.0,
@@ -135,7 +139,7 @@ class ProductPricingService
 
         // 2. Fallback to settings table
         $currency = Setting::get("pricing_{$productKey}_currency", $defaults['currency']);
-        $fixRate = (float) Setting::get("pricing_{$productKey}_fix_rate", $defaults['fix_rate']);
+        $fixRate = (float) Setting::get("pricing_{$productKey}_fix_rate", Setting::get("{$productKey}_fix_rate", $defaults['fix_rate']));
         $pricingMode = Setting::get("pricing_{$productKey}_pricing_mode", $defaults['pricing_mode']);
         $percentage = (float) Setting::get("pricing_{$productKey}_percentage_markup", $defaults['percentage_markup']);
         $fixed = (float) Setting::get("pricing_{$productKey}_fixed_markup", $defaults['fixed_markup']);
@@ -259,6 +263,7 @@ class ProductPricingService
             Setting::set('markup_vtu_cable', (string) $percentage);
             Setting::set('markup_vtu_electricity', (string) $percentage);
         } elseif ($productKey === self::PRODUCT_BOOST) {
+            Setting::set('boost_fix_rate', (string) $fixRate);
             // Synchronize Momopanel provider model if present
             $provider = Provider::where('name', 'Momopanel')->first() ?? Provider::first();
             if ($provider) {

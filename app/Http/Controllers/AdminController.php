@@ -1814,7 +1814,7 @@ class AdminController extends Controller
         $providerId = $request->query('provider_id');
         $selectedProvider = $providerId ? Provider::find($providerId) : ($providers->firstWhere('name', 'Momopanel') ?? $providers->first());
 
-        $usdToNgnRate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
+        $usdToNgnRate = app(\App\Services\SmmPricingService::class)->getExchangeRate();
 
         $mappedCount = 0;
         $activeMappedCount = 0;
@@ -1855,7 +1855,30 @@ class AdminController extends Controller
         ]);
 
         if ($request->filled('fix_rate') && (float) $request->fix_rate > 0) {
-            app(\App\Services\CurrencyConversionService::class)->updateRates((float) $request->fix_rate, auth()->user()?->username ?? 'admin');
+            $boostRate = (float) $request->fix_rate;
+            \App\Models\Setting::set('pricing_boost_fix_rate', (string) $boostRate);
+            \App\Models\Setting::set('boost_fix_rate', (string) $boostRate);
+            \App\Models\Setting::clearCache();
+
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('product_pricing_settings')) {
+                    \App\Models\ProductPricingSetting::updateOrCreate(
+                        ['product_key' => 'boost'],
+                        [
+                            'fix_rate'           => $boostRate,
+                            'currency'           => strtoupper($request->currency),
+                            'pricing_mode'       => $request->pricing_mode,
+                            'percentage_markup'  => (float) $request->percentage_markup,
+                            'fixed_markup'       => (float) $request->fixed_markup_per_k,
+                            'min_selling_price'  => $request->filled('min_selling_price') ? (float) $request->min_selling_price : null,
+                            'min_profit'         => $request->filled('min_profit') ? (float) $request->min_profit : null,
+                            'rounding_rule'      => $request->rounding_rule,
+                        ]
+                    );
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Could not persist boost fix_rate: " . $e->getMessage());
+            }
         }
 
         $provider = Provider::findOrFail($request->provider_id);
