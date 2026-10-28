@@ -100,7 +100,7 @@ class SyncBillstackTransaction extends Command
             }
         }
 
-        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 65.0);
+        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 45.0);
         $netAmount = round($amount - $depositFee, 2);
 
         if ($netAmount <= 0) {

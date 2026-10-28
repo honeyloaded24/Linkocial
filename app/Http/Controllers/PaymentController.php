@@ -30,8 +30,9 @@ class PaymentController extends Controller
         $virtualAccounts = $user ? $user->virtualAccounts()->get()->keyBy('bank_id') : collect();
         $account9psb = $virtualAccounts->get('9PSB');
         $accountPalmpay = $virtualAccounts->get('PALMPAY');
+        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 45.0);
 
-        return view('wallet.index', compact('isForeigner', 'cfCountry', 'account9psb', 'accountPalmpay'));
+        return view('wallet.index', compact('isForeigner', 'cfCountry', 'account9psb', 'accountPalmpay', 'depositFee'));
     }
 
 
@@ -555,8 +556,8 @@ class PaymentController extends Controller
             return response()->json(['status' => false, 'message' => 'User not found'], 404);
         }
 
-        // Calculate deposit fee (Default 65 Naira)
-        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 65.0);
+        // Calculate deposit fee (Default 45 Naira if unconfigured)
+        $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 45.0);
         $netAmount = round($amount - $depositFee, 2);
 
         if ($netAmount <= 0) {

@@ -41,6 +41,28 @@
                 <span><strong>Instant Auto-Credit:</strong> Transfers to either account below are credited to your balance automatically within seconds.</span>
             </div>
 
+            <!-- Deposit Fee Notice -->
+            @php
+                $configuredFee = isset($depositFee) ? (float) $depositFee : (float) \App\Models\Setting::get('billstack_deposit_fee', 45.0);
+                $displayFee = ($configuredFee == (int) $configuredFee) ? number_format($configuredFee, 0) : number_format($configuredFee, 2);
+            @endphp
+
+            @if($configuredFee > 0)
+                <div class="p-2.5 px-3 mb-3 rounded-3 d-flex align-items-start gap-2 small" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); color: var(--text-main);">
+                    <i class="fa-solid fa-circle-info text-warning mt-0.5"></i>
+                    <div>
+                        <strong>Deposit Fee Notice:</strong> A ₦{{ $displayFee }} fee will be deducted from every deposit. The amount credited to your wallet will be your deposit amount minus the applicable fee.
+                    </div>
+                </div>
+            @else
+                <div class="p-2.5 px-3 mb-3 rounded-3 d-flex align-items-start gap-2 small text-success" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <i class="fa-solid fa-circle-check text-success mt-0.5"></i>
+                    <div>
+                        <strong>Deposit Fee Notice:</strong> No deposit fee is charged on virtual account transfers. The full deposit amount will be credited to your wallet.
+                    </div>
+                </div>
+            @endif
+
             <!-- 2 Compact Bank Cards -->
             <div class="row g-3">
                 
