@@ -182,7 +182,7 @@ class VtuController extends Controller
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase", null, $debitTx->created_at ?? null);
 
-                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase data.');
+                $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
             }
         } catch (\Throwable $e) {
@@ -193,8 +193,112 @@ class VtuController extends Controller
             ]);
             $user->addBalance($chargedAmountNgn);
             Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Data provider is currently unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', "We couldn't process your request right now. Please try again shortly.");
         }
+    }
+
+    /**
+     * Sanitize Gongoz / VTU provider error messages for data subscriptions into neutral customer-facing text.
+     * Prevents provider identity (Gongoz), internal technical details, and raw endpoints from leaking.
+     * Preserves raw response in protected application logs for developer debugging.
+     */
+    protected function sanitizeDataErrorMessage($response): string
+    {
+        $rawMessage = '';
+
+        if (is_array($response)) {
+            if (isset($response['error'])) {
+                if (is_array($response['error'])) {
+                    $first = reset($response['error']);
+                    $rawMessage = is_string($first) ? $first : (is_array($first) ? json_encode($first) : (string) $first);
+                } elseif (is_string($response['error'])) {
+                    $rawMessage = $response['error'];
+                }
+            } elseif (isset($response['message']) && is_string($response['message'])) {
+                $rawMessage = $response['message'];
+            } elseif (isset($response['detail']) && is_string($response['detail'])) {
+                $rawMessage = $response['detail'];
+            } elseif (isset($response['msg']) && is_string($response['msg'])) {
+                $rawMessage = $response['msg'];
+            } elseif (isset($response['body']) && is_string($response['body'])) {
+                $rawMessage = strip_tags($response['body']);
+            }
+        } elseif (is_string($response)) {
+            $rawMessage = $response;
+        }
+
+        // Preserve detailed diagnostic information in protected application logs
+        Log::warning('Gongoz Data Subscription Provider Error:', [
+            'raw_message' => $rawMessage,
+            'response' => $response,
+            'user_id' => Auth::id(),
+        ]);
+
+        $lower = strtolower(trim((string) $rawMessage));
+
+        $defaultUnavailable = 'This data plan is currently unavailable. Please select another plan or try again later.';
+        $defaultTryAgain = "We couldn't process your request right now. Please try again shortly.";
+        $defaultServiceUnavailable = 'This service is temporarily unavailable. Please try again later.';
+
+        if (empty($lower)) {
+            return $defaultUnavailable;
+        }
+
+        // 1. Authentication, token, config, provider credentials, or internal server errors
+        if (
+            str_contains($lower, 'token') ||
+            str_contains($lower, 'api key') ||
+            str_contains($lower, 'unauthorized') ||
+            str_contains($lower, 'configuration') ||
+            str_contains($lower, 'settings') ||
+            str_contains($lower, 'endpoint') ||
+            str_contains($lower, 'exception') ||
+            str_contains($lower, 'http') ||
+            str_contains($lower, '500') ||
+            str_contains($lower, '502') ||
+            str_contains($lower, '503')
+        ) {
+            return $defaultServiceUnavailable;
+        }
+
+        // 2. Connectivity, timeout, unreachable or processing errors
+        if (
+            str_contains($lower, 'connect') ||
+            str_contains($lower, 'timeout') ||
+            str_contains($lower, 'timed out') ||
+            str_contains($lower, 'unreachable') ||
+            str_contains($lower, 'temporarily unavailable') ||
+            str_contains($lower, 'try again') ||
+            str_contains($lower, 'gateway')
+        ) {
+            return $defaultTryAgain;
+        }
+
+        // 3. Provider branding (Gongoz / Gongozconcept), plan availability, SME, or network errors
+        // e.g., "GONGOZ SME not available on this network currently"
+        if (
+            str_contains($lower, 'gongoz') ||
+            str_contains($lower, 'not available') ||
+            str_contains($lower, 'unavailable') ||
+            str_contains($lower, 'out of stock') ||
+            str_contains($lower, 'sme') ||
+            str_contains($lower, 'plan') ||
+            str_contains($lower, 'network')
+        ) {
+            return $defaultUnavailable;
+        }
+
+        // 4. Safe user validation error (e.g. "Invalid phone number", "Please enter a valid mobile number")
+        // Ensure no provider names, URLs, brackets, or code symbols exist
+        if (
+            strlen($rawMessage) <= 120 &&
+            !preg_match('/(https?:\/\/|www\.|\.com|\.php|\{|\}|\[|\]|<|>|\/|\\\)/i', $rawMessage) &&
+            !preg_match('/\b(gongozconcept|gongoz|api|vtu|disco|smartcard)\b/i', $rawMessage)
+        ) {
+            return $rawMessage;
+        }
+
+        return $defaultUnavailable;
     }
 
     // ==========================================
