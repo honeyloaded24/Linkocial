@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   phpunit:
-    name: PHPUnit Tests (PHP 8.3)
+    name: PHPUnit Tests (PHP 8.4)
     runs-on: ubuntu-latest
 
     steps:
@@ -24,7 +24,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.4'
           extensions: mbstring, xml, ctype, iconv, pdo_sqlite, sqlite3, bcmath, curl
           coverage: none
 
