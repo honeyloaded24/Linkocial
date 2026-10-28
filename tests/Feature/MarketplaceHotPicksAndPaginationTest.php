@@ -243,4 +243,74 @@ class MarketplaceHotPicksAndPaginationTest extends TestCase
         $page2Response->assertSee('Previous');
         $page2Response->assertSee('Next');
     }
+
+    /**
+     * Test 7: Category bar is placed above HOT PICKS section in page layout.
+     */
+    public function test_category_bar_appears_above_hot_picks_in_rendered_html(): void
+    {
+        $response = $this->actingAs($this->customer)->get(route('logs.index'));
+        $response->assertStatus(200);
+
+        $content = $response->getContent();
+        $categoryBarPos = strpos($content, 'id="marketplace-category-tabs"');
+        $hotPicksPos = strpos($content, 'hot-picks-section');
+
+        $this->assertNotFalse($categoryBarPos);
+        $this->assertNotFalse($hotPicksPos);
+        $this->assertTrue(
+            $categoryBarPos < $hotPicksPos,
+            "The category bar must appear above HOT PICKS in the page layout."
+        );
+    }
+
+    /**
+     * Test 8: Asynchronous category switching returns JSON with rendered catalogue HTML without full page reload.
+     */
+    public function test_category_switch_via_ajax_returns_json_and_catalogue_html(): void
+    {
+        $catA = LogCategory::create(['name' => 'Netflix Premium', 'is_active' => true]);
+        $catB = LogCategory::create(['name' => 'Spotify Family', 'is_active' => true]);
+
+        LogProduct::create([
+            'name' => 'Netflix 4K UHD 1 Month',
+            'log_category_id' => $catA->id,
+            'type' => 'local',
+            'our_price' => 3000,
+            'in_stock' => 10,
+            'is_active' => true,
+        ]);
+        LogProduct::create([
+            'name' => 'Spotify Premium 3 Months',
+            'log_category_id' => $catB->id,
+            'type' => 'local',
+            'our_price' => 2000,
+            'in_stock' => 8,
+            'is_active' => true,
+        ]);
+
+        // AJAX request to switch to Netflix category
+        $ajaxResponse = $this->actingAs($this->customer)->getJson(route('logs.index', ['category' => $catA->id]), [
+            'X-Requested-With' => 'XMLHttpRequest',
+        ]);
+
+        $ajaxResponse->assertStatus(200);
+        $ajaxResponse->assertJsonStructure([
+            'success',
+            'html',
+            'category_id',
+            'category_name',
+            'total',
+        ]);
+        $this->assertTrue($ajaxResponse->json('success'));
+        $this->assertEquals($catA->id, $ajaxResponse->json('category_id'));
+        $this->assertEquals('Netflix Premium', $ajaxResponse->json('category_name'));
+        $this->assertEquals(1, $ajaxResponse->json('total'));
+
+        // HTML returned in JSON contains Netflix and not Spotify
+        $html = $ajaxResponse->json('html');
+        $this->assertStringContainsString('Netflix 4K UHD 1 Month', $html);
+        $this->assertStringNotContainsString('Spotify Premium 3 Months', $html);
+    }
 }
+

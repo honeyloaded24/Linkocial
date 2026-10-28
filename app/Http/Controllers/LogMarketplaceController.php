@@ -121,6 +121,17 @@ class LogMarketplaceController extends Controller
             $hotProducts = collect();
         }
 
+        if ($request->ajax() || $request->wantsJson()) {
+            $html = view('logs.partials.catalogue_section', compact('products', 'selectedCategory', 'totalActiveCount', 'hotPickIds'))->render();
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'category_id' => $selectedCategory ? $selectedCategory->id : '',
+                'category_name' => $selectedCategory ? $selectedCategory->name : 'All',
+                'total' => $products->total(),
+            ]);
+        }
+
         return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory', 'totalActiveCount', 'hotPickIds'));
     }
 
