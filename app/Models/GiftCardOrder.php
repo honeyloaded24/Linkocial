@@ -121,50 +121,111 @@ class GiftCardOrder extends Model
 
     /**
      * Safely transition order to target lifecycle status.
+     * Concurrency-safe: executes inside a DB transaction with row-level locking (lockForUpdate)
+     * and validates against the freshly reloaded database state.
      *
      * @throws DomainException if transition is disallowed.
      */
-    public function transitionTo(string $targetStatus, ?string $details = null): bool
+    public function transitionTo(string $targetStatus, ?string $details = null, ?string $providerRef = null): bool
     {
-        if (!$this->canTransitionTo($targetStatus)) {
-            throw new DomainException("Invalid status transition from '{$this->status}' to '{$targetStatus}'.");
-        }
-
-        // Idempotent: already at target status
-        if ($this->status === $targetStatus) {
+        // Unpersisted instance fallback (e.g. before initial DB save or in unit tests)
+        if (!$this->exists) {
+            if (!$this->canTransitionTo($targetStatus)) {
+                throw new DomainException("Invalid status transition from '{$this->status}' to '{$targetStatus}'.");
+            }
+            if ($this->status === $targetStatus) {
+                if ($details !== null) {
+                    $this->status_details = $details;
+                }
+                if ($providerRef !== null) {
+                    $this->provider_reference = $providerRef;
+                }
+                return true;
+            }
+            $this->status = $targetStatus;
             if ($details !== null) {
                 $this->status_details = $details;
-                $this->save();
             }
+            if ($providerRef !== null) {
+                $this->provider_reference = $providerRef;
+            }
+            $this->stampLifecycleTime($targetStatus);
             return true;
         }
 
-        $this->status = $targetStatus;
+        // Persisted model: execute inside a database transaction with pessimistic row-locking
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($targetStatus, $details, $providerRef) {
+            /** @var static|null $lockedOrder */
+            $lockedOrder = static::where('id', $this->id)->lockForUpdate()->first();
 
-        if ($details !== null) {
-            $this->status_details = $details;
-        }
+            if (!$lockedOrder) {
+                throw new DomainException("GiftCardOrder #{$this->id} not found in database for status transition.");
+            }
 
-        if ($targetStatus === self::STATUS_COMPLETED) {
-            $this->completed_at = now();
-        } elseif ($targetStatus === self::STATUS_FAILED) {
-            $this->failed_at = now();
-        } elseif ($targetStatus === self::STATUS_REFUNDED) {
-            $this->refunded_at = now();
-        }
+            // Validate against the freshly locked database status, preventing stale in-memory models from racing
+            if (!$lockedOrder->canTransitionTo($targetStatus)) {
+                $this->refresh();
+                throw new DomainException("Invalid status transition from '{$lockedOrder->status}' to '{$targetStatus}'.");
+            }
 
-        return $this->save();
+            // Idempotent: already at target status in the database
+            if ($lockedOrder->status === $targetStatus) {
+                $updated = false;
+                if ($details !== null && $lockedOrder->status_details !== $details) {
+                    $lockedOrder->status_details = $details;
+                    $updated = true;
+                }
+                if ($providerRef !== null && $lockedOrder->provider_reference !== $providerRef) {
+                    $lockedOrder->provider_reference = $providerRef;
+                    $updated = true;
+                }
+                if ($updated) {
+                    $lockedOrder->save();
+                }
+                $this->refresh();
+                return true;
+            }
+
+            $lockedOrder->status = $targetStatus;
+
+            if ($details !== null) {
+                $lockedOrder->status_details = $details;
+            }
+
+            if ($providerRef !== null) {
+                $lockedOrder->provider_reference = $providerRef;
+            }
+
+            $lockedOrder->stampLifecycleTime($targetStatus);
+            $lockedOrder->save();
+
+            // Synchronize the current calling model instance with the committed database state
+            $this->refresh();
+            return true;
+        });
     }
 
     /**
-     * Transition order to processing.
+     * Stamp the appropriate lifecycle timestamp.
+     */
+    protected function stampLifecycleTime(string $targetStatus): void
+    {
+        $now = now();
+        if ($targetStatus === self::STATUS_COMPLETED && empty($this->completed_at)) {
+            $this->completed_at = $now;
+        } elseif ($targetStatus === self::STATUS_FAILED && empty($this->failed_at)) {
+            $this->failed_at = $now;
+        } elseif ($targetStatus === self::STATUS_REFUNDED && empty($this->refunded_at)) {
+            $this->refunded_at = $now;
+        }
+    }
+
+    /**
+     * Transition order to processing atomically with optional provider reference.
      */
     public function markAsProcessing(?string $providerRef = null, ?string $details = null): bool
     {
-        if ($providerRef !== null) {
-            $this->provider_reference = $providerRef;
-        }
-        return $this->transitionTo(self::STATUS_PROCESSING, $details);
+        return $this->transitionTo(self::STATUS_PROCESSING, $details, $providerRef);
     }
 
     /**
@@ -199,12 +260,35 @@ class GiftCardOrder extends Model
     {
         $message = $details ?: 'Provider request timed out; awaiting async verification.';
         
-        if ($this->status === self::STATUS_PENDING) {
-            return $this->markAsProcessing(null, $message);
+        if (!$this->exists) {
+            if ($this->status === self::STATUS_PENDING) {
+                return $this->markAsProcessing(null, $message);
+            }
+            $this->status_details = $message;
+            return true;
         }
 
-        $this->status_details = $message;
-        return $this->save();
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($message) {
+            /** @var static|null $lockedOrder */
+            $lockedOrder = static::where('id', $this->id)->lockForUpdate()->first();
+            if (!$lockedOrder) {
+                return false;
+            }
+
+            // If pending, safely transition to processing
+            if ($lockedOrder->status === self::STATUS_PENDING) {
+                $lockedOrder->status = self::STATUS_PROCESSING;
+                $lockedOrder->status_details = $message;
+                $lockedOrder->save();
+            } elseif (!$lockedOrder->isTerminal()) {
+                // If already processing or failed, record timeout details without overriding status or terminal states
+                $lockedOrder->status_details = $message;
+                $lockedOrder->save();
+            }
+
+            $this->refresh();
+            return true;
+        });
     }
 
     public function isPending(): bool

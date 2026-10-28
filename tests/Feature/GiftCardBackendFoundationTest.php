@@ -121,22 +121,27 @@ class GiftCardBackendFoundationTest extends TestCase
             'status'  => GiftCardOrder::STATUS_PENDING,
         ]);
 
-        // 1. Pending -> Processing
+        // 1. Pending -> Processing (with provider reference)
         $this->assertTrue($order->canTransitionTo(GiftCardOrder::STATUS_PROCESSING));
-        $order->status = GiftCardOrder::STATUS_PROCESSING;
+        $this->assertTrue($order->markAsProcessing('PREST-REF-1001', 'Dispatched to provider'));
+        $this->assertEquals(GiftCardOrder::STATUS_PROCESSING, $order->status);
         $this->assertTrue($order->isProcessing());
+        $this->assertEquals('PREST-REF-1001', $order->provider_reference);
 
         // Repeated processing of same state must return true (idempotent)
         $this->assertTrue($order->canTransitionTo(GiftCardOrder::STATUS_PROCESSING));
+        $this->assertTrue($order->markAsProcessing('PREST-REF-1001', 'Duplicate callback received'));
 
         // 2. Processing -> Completed
         $this->assertTrue($order->canTransitionTo(GiftCardOrder::STATUS_COMPLETED));
-        $order->status = GiftCardOrder::STATUS_COMPLETED;
+        $this->assertTrue($order->markAsCompleted('Voucher issued successfully'));
+        $this->assertEquals(GiftCardOrder::STATUS_COMPLETED, $order->status);
         $this->assertTrue($order->isCompleted());
         $this->assertTrue($order->isTerminal());
 
         // Repeated completion of already completed order must return true (idempotent)
         $this->assertTrue($order->canTransitionTo(GiftCardOrder::STATUS_COMPLETED));
+        $this->assertTrue($order->markAsCompleted('Second completion event'));
     }
 
     /**
@@ -169,7 +174,8 @@ class GiftCardBackendFoundationTest extends TestCase
 
         // Failed -> Refunded is valid
         $this->assertTrue($order->canTransitionTo(GiftCardOrder::STATUS_REFUNDED));
-        $order->status = GiftCardOrder::STATUS_REFUNDED;
+        $this->assertTrue($order->markAsRefunded('Customer refunded due to provider rejection'));
+        $this->assertEquals(GiftCardOrder::STATUS_REFUNDED, $order->status);
         $this->assertTrue($order->isRefunded());
         $this->assertTrue($order->isTerminal());
 
@@ -189,16 +195,19 @@ class GiftCardBackendFoundationTest extends TestCase
 
         $this->assertTrue($order->isPending());
 
-        // Simulating handleTimeout logic
-        if ($order->status === GiftCardOrder::STATUS_PENDING) {
-            $order->status = GiftCardOrder::STATUS_PROCESSING;
-            $order->status_details = 'Provider timed out; awaiting async verification.';
-        }
+        // Call handleTimeout
+        $order->handleTimeout('Provider HTTP timeout after 30 seconds');
 
         $this->assertEquals(GiftCardOrder::STATUS_PROCESSING, $order->status);
         $this->assertFalse($order->isFailed());
         $this->assertFalse($order->isRefunded());
-        $this->assertStringContainsString('Provider timed out', $order->status_details);
+        $this->assertStringContainsString('Provider HTTP timeout', $order->status_details);
+
+        // Repeated timeout on already processing order should retain processing status
+        $order->handleTimeout('Second timeout reminder');
+        $this->assertEquals(GiftCardOrder::STATUS_PROCESSING, $order->status);
+        $this->assertFalse($order->isFailed());
+        $this->assertFalse($order->isRefunded());
     }
 
     /**
@@ -238,18 +247,36 @@ class GiftCardBackendFoundationTest extends TestCase
 
     /**
      * Test Prestmit service boundary throws and makes NO external HTTP requests when unconfigured.
+     * Verifies that missing credentials or missing explicit base URL cause safe failure.
      */
     public function test_prestmit_service_safety_when_unconfigured(): void
     {
         Http::fake();
 
+        // Case 1: Both credentials and base_url absent
         config([
             'services.prestmit.api_key' => null,
-            'services.prestmit.base_url' => 'https://api.prestmit.com/v1',
+            'services.prestmit.base_url' => null,
         ]);
 
         $service = new PrestmitGiftCardService();
         $this->assertFalse($service->isConfigured());
+
+        // Case 2: API key present but base_url absent (verifies no implicit default URL)
+        config([
+            'services.prestmit.api_key' => 'secret_test_key_123',
+            'services.prestmit.base_url' => null,
+        ]);
+        $serviceNoUrl = new PrestmitGiftCardService();
+        $this->assertFalse($serviceNoUrl->isConfigured());
+
+        // Case 3: Base URL present but API key absent
+        config([
+            'services.prestmit.api_key' => null,
+            'services.prestmit.base_url' => 'https://api.prestmit.com/v1',
+        ]);
+        $serviceNoKey = new PrestmitGiftCardService();
+        $this->assertFalse($serviceNoKey->isConfigured());
 
         $this->expectException(GiftCardProviderNotConfiguredException::class);
         $service->getAvailableProducts();
@@ -259,7 +286,44 @@ class GiftCardBackendFoundationTest extends TestCase
     }
 
     /**
-     * Test authorization policy allows owning customer and admin, blocks others.
+     * Test Prestmit service makes NO external HTTP requests even when credentials are configured in Phase 1.
+     */
+    public function test_prestmit_service_makes_no_network_calls_even_when_configured(): void
+    {
+        Http::fake();
+
+        config([
+            'services.prestmit.api_key' => 'verified_partner_key',
+            'services.prestmit.base_url' => 'https://partner.prestmit.example/api',
+            'services.prestmit.mode' => 'sandbox',
+        ]);
+
+        $service = new PrestmitGiftCardService();
+        $this->assertTrue($service->isConfigured());
+        $this->assertEquals('sandbox', $service->getMode());
+        $this->assertEquals('https://partner.prestmit.example/api', $service->getBaseUrl());
+
+        // Phase 1 safe placeholders: no outbound calls even with credentials
+        $products = $service->getAvailableProducts();
+        $this->assertIsArray($products);
+        $this->assertEmpty($products);
+
+        $details = $service->getProductDetails('amazon_us');
+        $this->assertNull($details);
+
+        $status = $service->getOrderStatus('TEST-REF-123');
+        $this->assertIsArray($status);
+        $this->assertEquals('awaiting_provider_verification', $status['status']);
+
+        // Assert strictly zero HTTP network calls were made
+        Http::assertNothingSent();
+    }
+
+    /**
+     * Test authorization policy:
+     * - viewAny(): strictly restricted to administrators.
+     * - view(): restricted to owning customer and administrators.
+     * - update() and delete(): strictly restricted to administrators.
      */
     public function test_gift_card_order_policy_authorization(): void
     {
@@ -270,7 +334,12 @@ class GiftCardBackendFoundationTest extends TestCase
             'status'  => GiftCardOrder::STATUS_PENDING,
         ]);
 
-        // Owning customer can view their order
+        // 1. viewAny(): Only admin passes; ordinary users are blocked
+        $this->assertTrue($policy->viewAny($this->admin));
+        $this->assertFalse($policy->viewAny($this->customer));
+        $this->assertFalse($policy->viewAny($this->otherCustomer));
+
+        // 2. view(): Owning customer can view their own order
         $this->assertTrue($policy->view($this->customer, $order));
 
         // Administrator can view any order
@@ -279,13 +348,15 @@ class GiftCardBackendFoundationTest extends TestCase
         // Another customer CANNOT view this order
         $this->assertFalse($policy->view($this->otherCustomer, $order));
 
-        // Only admin can update
+        // 3. update(): Only admin can update
         $this->assertTrue($policy->update($this->admin, $order));
         $this->assertFalse($policy->update($this->customer, $order));
+        $this->assertFalse($policy->update($this->otherCustomer, $order));
 
-        // Only admin can delete
+        // 4. delete(): Only admin can delete
         $this->assertTrue($policy->delete($this->admin, $order));
         $this->assertFalse($policy->delete($this->customer, $order));
+        $this->assertFalse($policy->delete($this->otherCustomer, $order));
     }
 
     /**

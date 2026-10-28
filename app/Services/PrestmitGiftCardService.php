@@ -31,11 +31,11 @@ class PrestmitGiftCardService implements GiftCardProviderInterface
 
     /**
      * Check if valid provider credentials are configured in the environment.
-     * Prevents any external API calls when credentials are absent.
+     * Prevents any external API calls when credentials or explicit base URL are absent.
      */
     public function isConfigured(): bool
     {
-        return !empty($this->apiKey) && !empty($this->baseUrl);
+        return !empty(trim((string) $this->apiKey)) && !empty(trim((string) $this->baseUrl));
     }
 
     /**

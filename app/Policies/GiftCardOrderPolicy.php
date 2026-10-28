@@ -8,11 +8,12 @@ use App\Models\User;
 class GiftCardOrderPolicy
 {
     /**
-     * Determine whether the user can view any gift card orders.
+     * Determine whether the user can view any gift card orders (general administrative listing).
+     * Strictly restricted to administrators. Customer-specific order history is accessed through $user->giftCardOrders().
      */
     public function viewAny(User $user): bool
     {
-        return $user !== null;
+        return $user->isAdmin();
     }
 
     /**
