@@ -35,6 +35,11 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if(session('error'))
+                <div class="alert alert-danger bg-danger text-white border-0">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -78,7 +83,7 @@
                                 </span>
                             </td>
                             <td>{{ $user->created_at->format('M d, Y') }}</td>
-                            <td class="text-end d-flex justify-content-end gap-2">
+                            <td class="text-end d-flex justify-content-end gap-2 flex-wrap">
                                 <a href="{{ route('hq.users.show', $user->id) }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                                     Details
                                 </a>
@@ -88,6 +93,15 @@
                                 <button class="btn btn-sm btn-primary-custom rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#balanceModal{{ $user->id }}">
                                     Balance
                                 </button>
+                                @if(auth()->id() !== $user->id)
+                                    <form action="{{ route('hq.users.destroy', $user->id) }}" method="POST" class="d-inline" onsubmit="return confirmRemoveUser(event, '{{ addslashes($user->name) }}', '{{ addslashes($user->email) }}');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Remove User">
+                                            Remove
+                                        </button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                         @endforeach
@@ -176,4 +190,36 @@
     </div>
 </div>
 @endforeach
+
+<script>
+function confirmRemoveUser(event, name, email) {
+    const identifier = (name && name.trim()) ? `${name} (${email})` : email;
+
+    // Step 1: First confirmation dialog
+    const firstConfirm = window.confirm(`Are you sure you want to remove user ${identifier}?`);
+    if (!firstConfirm) {
+        event.preventDefault();
+        return false;
+    }
+
+    // Step 2: Second confirmation dialog (irreversibility warning)
+    const secondConfirm = window.confirm(`WARNING: Removing user ${identifier} may be irreversible.\n\nAre you absolutely sure you want to proceed with removing this user account?`);
+    if (!secondConfirm) {
+        event.preventDefault();
+        return false;
+    }
+
+    // Both confirmed: prevent repeated submissions while removal is processing
+    const form = event.currentTarget || event.target;
+    const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+    if (submitBtn) {
+        setTimeout(() => {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+        }, 1);
+    }
+
+    return true;
+}
+</script>
 @endsection

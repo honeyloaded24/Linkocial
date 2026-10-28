@@ -257,7 +257,9 @@ class AdminController extends Controller
      */
     public function users(Request $request)
     {
-        $query = User::latest();
+        $query = User::where(function($q) {
+            $q->whereNull('status')->orWhere('status', '!=', 'removed');
+        })->latest();
         
         if ($request->has('search') && $request->search != '') {
             $search = $request->search;
@@ -280,7 +282,9 @@ class AdminController extends Controller
     {
         $fileName = 'users_export_' . date('Y-m-d_His') . '.csv';
 
-        $query = User::query();
+        $query = User::where(function($q) {
+            $q->whereNull('status')->orWhere('status', '!=', 'removed');
+        });
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -846,6 +850,99 @@ class AdminController extends Controller
         \App\Models\ActivityLog::log("Admin {$status} 2FA for user #{$user->id} ({$user->username})", Auth::user());
 
         return back()->with('success', "Two-Factor Authentication (2FA) has been {$status} for {$user->username}.");
+    }
+
+    /**
+     * Remove a registered user from Admin HQ with financial protection and security guards.
+     */
+    public function destroyUser(Request $request, $id)
+    {
+        // 1. Enforce strict server-side administrator authorization
+        if (!Auth::check() || !Auth::user()->isAdmin()) {
+            abort(403, 'Unauthorized access. Only administrators can remove users.');
+        }
+
+        // 2. Validate user ID format
+        if (!is_numeric($id) || (int) $id <= 0) {
+            return back()->with('error', 'Invalid user identifier provided.');
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return back()->with('error', 'User not found or has already been removed.');
+        }
+
+        // 3. Security Guard: Prevent admin from deleting their own account
+        if (Auth::id() == $user->id) {
+            return back()->with('error', 'You cannot remove your own administrator account.');
+        }
+
+        // 4. Security Guard: Prevent removal of primary administrator account (ID: 1)
+        if ($user->id == 1) {
+            return back()->with('error', 'The primary administrator account is protected and cannot be removed.');
+        }
+
+        // 5. Security Guard: Prevent removal of the final active administrator
+        if ($user->isAdmin()) {
+            $activeAdminsCount = User::where(function ($q) {
+                $q->where('role', 'admin')->orWhere('is_admin', true);
+            })
+            ->where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'removed');
+            })
+            ->count();
+
+            if ($activeAdminsCount <= 1) {
+                return back()->with('error', 'Cannot remove the last active administrator account.');
+            }
+        }
+
+        $userIdentifier = $user->name ? "{$user->name} ({$user->email})" : $user->email;
+
+        // 6. Inspect dependencies & financial history to protect financial records
+        $hasFinancialHistory = $user->transactions()->exists()
+            || $user->orders()->exists()
+            || \App\Models\Payment::where('user_id', $user->id)->exists()
+            || \App\Models\VirtualNumberOrder::where('user_id', $user->id)->exists()
+            || \App\Models\VtuOrder::where('user_id', $user->id)->exists()
+            || \App\Models\LogOrder::where('user_id', $user->id)->exists()
+            || \App\Models\WithdrawalRequest::where('user_id', $user->id)->exists();
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Terminate active sessions for this user so they cannot continue using the platform
+            \Illuminate\Support\Facades\DB::table('sessions')->where('user_id', $user->id)->delete();
+
+            if ($hasFinancialHistory) {
+                // Safe account removal: preserve financial transactions, orders, and ledger records
+                $user->forceFill([
+                    'is_active' => false,
+                    'status' => 'removed',
+                    'api_key' => null,
+                    'remember_token' => null,
+                ])->save();
+
+                $message = "User #{$user->id} ({$userIdentifier}) was successfully removed from registered users.";
+            } else {
+                // No financial or transactional records exist: safe to delete cleanly
+                $user->delete();
+                $message = "User #{$user->id} ({$userIdentifier}) was successfully removed.";
+            }
+
+            \App\Models\ActivityLog::log("Admin removed user #{$user->id} ({$userIdentifier})", Auth::user(), [
+                'target_user_id' => $user->id,
+                'target_email' => $user->email,
+                'preserved_financial_history' => $hasFinancialHistory,
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            return back()->with('success', $message);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Failed to remove user #{$id}: " . $e->getMessage());
+            return back()->with('error', 'An error occurred while attempting to remove the user. Please try again.');
+        }
     }
 
     /**

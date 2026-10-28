@@ -219,6 +219,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/users/{id}/role', [AdminController::class, 'updateRole'])->name('hq.users.role');
         Route::patch('/users/{id}/toggle-status', [AdminController::class, 'toggleUserStatus'])->name('hq.users.toggle-status');
         Route::post('/users/{id}/toggle-2fa', [AdminController::class, 'toggleUser2fa'])->name('hq.users.toggle-2fa');
+        Route::delete('/users/{id}', [AdminController::class, 'destroyUser'])->name('hq.users.destroy');
         
         // Admin Blog Management
         Route::get('/blog', [App\Http\Controllers\AdminBlogController::class, 'index'])->name('hq.blog.index');
