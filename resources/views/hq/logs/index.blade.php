@@ -6,7 +6,13 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h4 class="fw-bold mb-0">Logs Marketplace Products</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#manageHotPicksModal">
+                <i class="fa-solid fa-fire text-danger me-1"></i> Manage HOT PICKS
+                @if(count($hotPickIds) > 0)
+                    <span class="badge bg-danger rounded-pill ms-1">{{ count($hotPickIds) }}</span>
+                @endif
+            </button>
             <a href="{{ route('hq.logs.pricing') }}" class="btn btn-outline-warning">
                 <i class="fa-solid fa-tags me-1"></i> Pricing & Markup
             </a>
@@ -100,7 +106,14 @@
                             <div class="d-flex align-items-center gap-2">
                                 {!! $product->getIconHtml(36) !!}
                                 <div>
-                                    <div class="fw-bold" style="font-size: 0.85rem; word-break: break-word; overflow-wrap: anywhere;">{{ $product->name }}</div>
+                                    <div class="fw-bold d-flex align-items-center flex-wrap gap-1" style="font-size: 0.85rem; word-break: break-word; overflow-wrap: anywhere;">
+                                        <span>{{ $product->name }}</span>
+                                        @if(in_array($product->id, $hotPickIds))
+                                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger" style="font-size: 0.65rem;">
+                                                <i class="fa-solid fa-fire"></i> HOT PICK
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if($product->type === 'api')
                                         <small class="text-muted" style="font-size: 0.75rem;">Key: {{ $product->api_product_key }}</small>
                                     @endif
@@ -166,6 +179,12 @@
                         </td>
                         <td class="text-end">
                             <div class="d-flex justify-content-end gap-1">
+                                <form action="{{ route('hq.logs.hot-picks.toggle', $product->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm {{ in_array($product->id, $hotPickIds) ? 'btn-danger text-white' : 'btn-outline-danger' }}" title="{{ in_array($product->id, $hotPickIds) ? 'Remove from HOT PICKS' : 'Add to HOT PICKS' }}">
+                                        <i class="fa-solid fa-fire"></i>
+                                    </button>
+                                </form>
                                 <form action="{{ route('hq.logs.toggle', $product->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @if($product->is_active)
@@ -466,4 +485,125 @@
     </div>
 @endforeach
 
+<!-- Manage HOT PICKS Modal -->
+<div class="modal fade" id="manageHotPicksModal" tabindex="-1" aria-labelledby="manageHotPicksLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg text-start">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="manageHotPicksLabel">
+                    <i class="fa-solid fa-fire text-danger me-2"></i> Manage HOT PICKS 🔥
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div class="alert alert-info border-0 rounded-3 small py-2 mb-3">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Only products explicitly selected here or toggled with <i class="fa-solid fa-fire text-danger"></i> appear in the <strong>HOT PICKS 🔥</strong> section on the customer marketplace. You can reorder, add, or remove items at any time without deleting the products.
+                </div>
+
+                <!-- Currently Selected Hot Picks List -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small text-uppercase text-muted mb-0">Current HOT PICKS ({{ count($hotPickIds) }})</h6>
+                        @if(count($hotPickIds) > 0)
+                            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Active on Frontend</span>
+                        @endif
+                    </div>
+                    @php
+                        $hotProductsList = collect($hotPickIds)->map(function($id) use ($allActiveProducts) {
+                            return $allActiveProducts->firstWhere('id', (int)$id);
+                        })->filter();
+                    @endphp
+
+                    @if($hotProductsList->isEmpty())
+                        <div class="p-4 text-center border rounded-3 bg-light text-muted">
+                            <i class="fa-solid fa-fire-flame-simple fa-2x mb-2 text-secondary opacity-50"></i>
+                            <div class="fw-semibold">No products currently selected for HOT PICKS</div>
+                            <small class="text-muted">Select an active product below or use the 🔥 button in the table to feature it.</small>
+                        </div>
+                    @else
+                        <div class="list-group">
+                            @foreach($hotProductsList as $index => $hotProd)
+                                <div class="list-group-item d-flex align-items-center justify-content-between p-2 rounded-3 mb-2 border">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-dark rounded-circle px-2 py-1 small fw-bold" style="width: 26px; text-align: center;">{{ $index + 1 }}</span>
+                                        {!! $hotProd->getIconHtml(32) !!}
+                                        <div>
+                                            <div class="fw-bold small">{{ $hotProd->name }}</div>
+                                            <span class="badge bg-secondary-subtle text-secondary" style="font-size: 0.7rem;">{{ $hotProd->category->name ?? 'General' }}</span>
+                                            <span class="text-success fw-bold ms-2" style="font-size: 0.75rem;">₦{{ number_format($hotProd->getRetailPrice(), 2) }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-1">
+                                        <!-- Move Up -->
+                                        <form action="{{ route('hq.logs.hot-picks.reorder') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="id" value="{{ $hotProd->id }}">
+                                            <input type="hidden" name="direction" value="up">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary py-1 px-2" {{ $index === 0 ? 'disabled' : '' }} title="Move Up">
+                                                <i class="fa-solid fa-arrow-up"></i>
+                                            </button>
+                                        </form>
+                                        <!-- Move Down -->
+                                        <form action="{{ route('hq.logs.hot-picks.reorder') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="id" value="{{ $hotProd->id }}">
+                                            <input type="hidden" name="direction" value="down">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary py-1 px-2" {{ $index === count($hotProductsList) - 1 ? 'disabled' : '' }} title="Move Down">
+                                                <i class="fa-solid fa-arrow-down"></i>
+                                            </button>
+                                        </form>
+                                        <!-- Remove from Hot Picks -->
+                                        <form action="{{ route('hq.logs.hot-picks.toggle', $hotProd->id) }}" method="POST" class="d-inline ms-1">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-2" title="Remove from HOT PICKS without deleting product">
+                                                <i class="fa-solid fa-xmark me-1"></i> Remove
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Add New Product to Hot Picks -->
+                <div class="border-top pt-3">
+                    <h6 class="fw-bold small text-uppercase text-muted mb-2">Add Product to HOT PICKS</h6>
+                    @php
+                        $availableToAdd = $allActiveProducts->reject(function($p) use ($hotPickIds) {
+                            return in_array($p->id, $hotPickIds);
+                        });
+                    @endphp
+                    @if($availableToAdd->isEmpty())
+                        <div class="small text-muted fst-italic">All active products are already in HOT PICKS.</div>
+                    @else
+                        <form action="{{ route('hq.logs.hot-picks.update') }}" method="POST" class="d-flex gap-2">
+                            @csrf
+                            @foreach($hotPickIds as $existingId)
+                                <input type="hidden" name="product_ids[]" value="{{ $existingId }}">
+                            @endforeach
+                            <select name="product_ids[]" class="form-select form-select-sm" required>
+                                <option value="" disabled selected>-- Select a product to add to HOT PICKS --</option>
+                                @foreach($availableToAdd as $addProd)
+                                    <option value="{{ $addProd->id }}">
+                                        {{ $addProd->name }} ({{ $addProd->category->name ?? 'General' }} - ₦{{ number_format($addProd->getRetailPrice(), 2) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-danger text-nowrap px-3">
+                                <i class="fa-solid fa-plus me-1"></i> Add to HOT PICKS
+                            </button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+

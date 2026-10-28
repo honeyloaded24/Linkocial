@@ -272,6 +272,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::match(['get', 'post'], '/logs/sync', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'sync'])->name('hq.logs.sync');
         Route::post('/logs/{id}/price', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updatePrice'])->name('hq.logs.price');
         Route::post('/logs/{id}/toggle', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'toggleStatus'])->name('hq.logs.toggle');
+        Route::post('/logs/hot-picks', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'updateHotPicks'])->name('hq.logs.hot-picks.update');
+        Route::post('/logs/hot-picks/toggle/{id}', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'toggleHotPick'])->name('hq.logs.hot-picks.toggle');
+        Route::post('/logs/hot-picks/reorder', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'reorderHotPicks'])->name('hq.logs.hot-picks.reorder');
         Route::get('/logs/orders', [\App\Http\Controllers\AdminLogMarketplaceController::class, 'orders'])->name('hq.logs.orders');
         
         // Local Logs Routes

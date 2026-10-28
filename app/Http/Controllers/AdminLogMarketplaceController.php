@@ -7,6 +7,7 @@ use App\Models\LogProduct;
 use App\Models\LogCategory;
 use App\Models\LogOrder;
 use App\Models\LogItem;
+use App\Models\Setting;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -55,7 +56,10 @@ class AdminLogMarketplaceController extends Controller
             'api' => LogProduct::where('type', 'api')->count(),
         ];
 
-        return view('hq.logs.index', compact('products', 'categories', 'counts'));
+        $hotPickIds = json_decode(Setting::get('marketplace_hot_picks', '[]'), true) ?: [];
+        $allActiveProducts = LogProduct::where('is_active', true)->orderBy('name')->get();
+
+        return view('hq.logs.index', compact('products', 'categories', 'counts', 'hotPickIds', 'allActiveProducts'));
     }
 
     public function sync(Request $request)
@@ -524,6 +528,128 @@ class AdminLogMarketplaceController extends Controller
 
         return redirect()->route('hq.logs.pricing')
             ->with('success', 'Pricing & markup settings for Logs Marketplace saved successfully.');
+    }
+
+    /**
+     * Toggle a product in/out of HOT PICKS
+     */
+    public function toggleHotPick(Request $request, $id)
+    {
+        $product = LogProduct::findOrFail($id);
+        $hotPickIds = json_decode(Setting::get('marketplace_hot_picks', '[]'), true) ?: [];
+        $id = (int)$id;
+
+        if (in_array($id, $hotPickIds)) {
+            $hotPickIds = array_values(array_filter($hotPickIds, fn($val) => (int)$val !== $id));
+            if (Schema::hasColumn('log_products', 'is_hot')) {
+                $product->update(['is_hot' => false, 'hot_order' => 0]);
+            }
+            $isHot = false;
+            $msg = "Removed '{$product->name}' from HOT PICKS.";
+        } else {
+            $hotPickIds[] = $id;
+            if (Schema::hasColumn('log_products', 'is_hot')) {
+                $product->update(['is_hot' => true, 'hot_order' => count($hotPickIds)]);
+            }
+            $isHot = true;
+            $msg = "Added '{$product->name}' to HOT PICKS.";
+        }
+
+        Setting::set('marketplace_hot_picks', json_encode(array_values(array_unique($hotPickIds))));
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'is_hot' => $isHot,
+                'message' => $msg,
+                'hot_pick_ids' => $hotPickIds,
+            ]);
+        }
+
+        return back()->with('success', $msg);
+    }
+
+    /**
+     * Update the entire HOT PICKS selection and ordering
+     */
+    public function updateHotPicks(Request $request)
+    {
+        $request->validate([
+            'product_ids'   => 'nullable|array',
+            'product_ids.*' => 'integer|exists:log_products,id',
+        ]);
+
+        $rawIds = $request->input('product_ids', []);
+        $orderedIds = array_values(array_unique(array_map('intval', (array)$rawIds)));
+
+        Setting::set('marketplace_hot_picks', json_encode($orderedIds));
+
+        if (Schema::hasColumn('log_products', 'is_hot')) {
+            LogProduct::query()->update(['is_hot' => false, 'hot_order' => 0]);
+            foreach ($orderedIds as $index => $pid) {
+                LogProduct::where('id', $pid)->update([
+                    'is_hot' => true,
+                    'hot_order' => $index + 1,
+                ]);
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'HOT PICKS updated successfully.',
+                'hot_picks' => $orderedIds,
+            ]);
+        }
+
+        return back()->with('success', 'HOT PICKS updated successfully.');
+    }
+
+    /**
+     * Move a HOT PICK product up or down in display order
+     */
+    public function reorderHotPicks(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+            'direction' => 'required|string|in:up,down',
+        ]);
+
+        $id = (int)$request->id;
+        $direction = $request->direction;
+        $hotPickIds = json_decode(Setting::get('marketplace_hot_picks', '[]'), true) ?: [];
+
+        $index = array_search($id, $hotPickIds);
+        if ($index !== false) {
+            if ($direction === 'up' && $index > 0) {
+                $temp = $hotPickIds[$index - 1];
+                $hotPickIds[$index - 1] = $hotPickIds[$index];
+                $hotPickIds[$index] = $temp;
+            } elseif ($direction === 'down' && $index < count($hotPickIds) - 1) {
+                $temp = $hotPickIds[$index + 1];
+                $hotPickIds[$index + 1] = $hotPickIds[$index];
+                $hotPickIds[$index] = $temp;
+            }
+
+            $hotPickIds = array_values($hotPickIds);
+            Setting::set('marketplace_hot_picks', json_encode($hotPickIds));
+
+            if (Schema::hasColumn('log_products', 'is_hot')) {
+                foreach ($hotPickIds as $idx => $pid) {
+                    LogProduct::where('id', $pid)->update(['hot_order' => $idx + 1]);
+                }
+            }
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'HOT PICKS reordered successfully.',
+                'hot_picks' => $hotPickIds,
+            ]);
+        }
+
+        return back()->with('success', 'HOT PICKS order updated.');
     }
 }
 

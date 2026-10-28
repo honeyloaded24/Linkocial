@@ -7,6 +7,7 @@ use App\Models\LogCategory;
 use App\Models\LogProduct;
 use App\Models\LogOrder;
 use App\Models\Transaction;
+use App\Models\Setting;
 use App\Services\FaddedApi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -36,10 +37,26 @@ class LogMarketplaceController extends Controller
             }
         }
 
-        $categories = LogCategory::where('is_active', true)->orWhereNull('is_active')->get();
-        if ($categories->isEmpty()) {
-            $categories = LogCategory::all();
+        $categoryQuery = LogCategory::query();
+        if (Schema::hasColumn('log_categories', 'is_active')) {
+            $categoryQuery->where(function($q) {
+                $q->where('is_active', true)->orWhereNull('is_active');
+            });
         }
+        $categories = $categoryQuery
+            ->withCount(['products' => function($q) {
+                $q->where('is_active', true);
+            }])
+            ->orderBy('name')
+            ->get();
+
+        if ($categories->isEmpty()) {
+            $categories = LogCategory::withCount(['products' => function($q) {
+                $q->where('is_active', true);
+            }])->orderBy('name')->get();
+        }
+
+        $totalActiveCount = LogProduct::where('is_active', true)->count();
         
         $query = LogProduct::with('category')->where('is_active', true);
 
@@ -74,21 +91,37 @@ class LogMarketplaceController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
+        // Regular catalogue pagination (16 items per page)
         $products = $query
             ->orderByRaw("CASE WHEN type = 'local' THEN 0 ELSE 1 END ASC")
             ->orderByRaw("CASE WHEN in_stock > 0 THEN 0 ELSE 1 END ASC")
             ->orderBy('name', 'asc')
-            ->get();
+            ->paginate(16)
+            ->withQueryString();
 
-        // Hot products (most sold recently, prioritizing local products)
-        $hotProducts = LogProduct::where('is_active', true)
-            ->withCount('logOrders as sales_count')
-            ->orderByRaw("CASE WHEN type = 'local' THEN 0 ELSE 1 END ASC")
-            ->orderBy('sales_count', 'desc')
-            ->take(3)
-            ->get();
+        // HOT PICKS: Exclusively products explicitly selected by an administrator
+        // No automatic selection based on sales, stock, price, or popularity!
+        $hotPickIds = json_decode(Setting::get('marketplace_hot_picks', '[]'), true) ?: [];
+        $hotPickIds = array_values(array_filter(array_map('intval', (array)$hotPickIds)));
 
-        return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory'));
+        if (!empty($hotPickIds)) {
+            $hotMap = LogProduct::with('category')
+                ->where('is_active', true)
+                ->whereIn('id', $hotPickIds)
+                ->get()
+                ->keyBy('id');
+
+            $hotProducts = collect();
+            foreach ($hotPickIds as $hId) {
+                if ($hotMap->has($hId)) {
+                    $hotProducts->push($hotMap->get($hId));
+                }
+            }
+        } else {
+            $hotProducts = collect();
+        }
+
+        return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory', 'totalActiveCount', 'hotPickIds'));
     }
 
     public function show($id)

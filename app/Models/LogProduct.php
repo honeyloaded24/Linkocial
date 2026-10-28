@@ -9,8 +9,17 @@ class LogProduct extends Model
     protected $fillable = [
         'type', 'log_category_id', 'api_product_id', 'api_product_key', 
         'name', 'description', 'icon', 'base_api_price', 'unit_price', 
-        'our_price', 'in_stock', 'is_active'
+        'our_price', 'in_stock', 'is_active', 'is_hot', 'hot_order'
     ];
+
+    /**
+     * Check if product is featured in HOT PICKS (either through admin setting or database column)
+     */
+    public function isHotPick(): bool
+    {
+        $hotPickIds = json_decode(\App\Models\Setting::get('marketplace_hot_picks', '[]'), true) ?: [];
+        return in_array($this->id, $hotPickIds) || (bool)($this->is_hot ?? false);
+    }
 
     public function category()
     {
