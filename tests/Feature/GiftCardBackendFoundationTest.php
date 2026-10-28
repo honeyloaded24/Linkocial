@@ -39,7 +39,7 @@ class GiftCardBackendFoundationTest extends TestCase
         Setting::set('usd_to_ngn_rate', '1500');
         Setting::set('provider_usd_rate', '1500');
 
-        $this->customer = new User([
+        $this->customer = (new User())->forceFill([
             'id' => 9881,
             'name' => 'Gift Card Customer',
             'email' => 'gccustomer@linkocial.test',
@@ -50,7 +50,7 @@ class GiftCardBackendFoundationTest extends TestCase
             'currency_code' => 'NGN',
         ]);
 
-        $this->otherCustomer = new User([
+        $this->otherCustomer = (new User())->forceFill([
             'id' => 9882,
             'name' => 'Other Customer',
             'email' => 'other@linkocial.test',
@@ -61,7 +61,7 @@ class GiftCardBackendFoundationTest extends TestCase
             'currency_code' => 'NGN',
         ]);
 
-        $this->admin = new User([
+        $this->admin = (new User())->forceFill([
             'id' => 9883,
             'name' => 'HQ Admin',
             'email' => 'hqadmin@linkocial.test',
