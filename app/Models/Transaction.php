@@ -12,9 +12,62 @@ class Transaction extends Model
         'balance_before', 'balance_after', 'description', 'reference'
     ];
 
+    protected $appends = ['customer_description'];
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get customer-safe description without internal provider or pricing metadata.
+     */
+    public function getCustomerDescriptionAttribute(): ?string
+    {
+        $desc = $this->attributes['description'] ?? null;
+        if ($desc === null) {
+            return null;
+        }
+        return self::sanitizeDescriptionForCustomer($desc);
+    }
+
+    /**
+     * Sanitize transaction description for customer-facing views.
+     * Strips provider names, server routing identifiers, wholesale provider costs,
+     * internal exchange rates, and internal markup amounts.
+     */
+    public static function sanitizeDescriptionForCustomer(?string $description): ?string
+    {
+        if ($description === null || trim($description) === '') {
+            return $description;
+        }
+
+        $sanitized = $description;
+
+        // 1. Remove bracketed rate & markup blocks: e.g. [Rate: $1.13 @ ₦1,350.00/$, Markup: ₦1,000.00]
+        $sanitized = preg_replace('/\s*\[Rate:[^\]]*\]?/i', '', $sanitized);
+        $sanitized = preg_replace('/\s*\[Markup:[^\]]*\]?/i', '', $sanitized);
+
+        // 2. Remove provider/server bracketed tags: e.g. [Server 1], [Server 2 (Grizzly)], [SMSPool], [Grizzly SMS], [Server 2]
+        $sanitized = preg_replace('/\s*\[(?:Server\s*\d*(?:\s*\([^)]*\))?|SMSPool|Grizzly(?:\s*SMS)?)[^\]]*\]/i', '', $sanitized);
+
+        // 3. Remove any trailing unclosed rate/markup fragments
+        $sanitized = preg_replace('/\s*\[Rate:.*$/i', '', $sanitized);
+        $sanitized = preg_replace('/\s*\[Markup:.*$/i', '', $sanitized);
+
+        // 4. Normalize spacing around punctuation and parentheses
+        $sanitized = preg_replace('/\s+/', ' ', $sanitized);
+        $sanitized = preg_replace('/\s*\)/', ')', $sanitized);
+        $sanitized = preg_replace('/\(\s*/', '(', $sanitized);
+
+        // 5. Ensure balanced parentheses if trailing closing bracket was stripped or missing
+        $openCount = substr_count($sanitized, '(');
+        $closeCount = substr_count($sanitized, ')');
+        if ($openCount > $closeCount) {
+            $sanitized .= str_repeat(')', $openCount - $closeCount);
+        }
+
+        return trim($sanitized);
     }
 
     public static function add($userId, $amount, $type, $txType, $description = null, $ref = null, $createdAt = null)

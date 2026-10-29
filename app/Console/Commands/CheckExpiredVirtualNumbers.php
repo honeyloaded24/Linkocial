@@ -89,7 +89,7 @@ class CheckExpiredVirtualNumbers extends Command
                         $lockedOrder->cost, 
                         'credit', 
                         'refund', 
-                        "Refund for abandoned Virtual Number ({$lockedOrder->product})"
+                        "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})"
                     );
                 }
             }

@@ -65,7 +65,7 @@
                             </div>
                         </td>
                         <td>
-                            <div class="text-muted small" style="max-width: 300px;">{{ $tx->description }}</div>
+                            <div class="text-muted small" style="max-width: 300px;">{{ $tx->customer_description }}</div>
                         </td>
                         <td>
                             <div class="fw-bold small">{{ money((float)$tx->balance_after) }}</div>

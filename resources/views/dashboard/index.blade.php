@@ -291,7 +291,7 @@
                                 <small class="text-muted" style="font-size: 0.7rem;">{{ $activity->created_at->format('h:i A') }}</small>
                             </td>
                             <td>
-                                <span class="fw-medium" style="font-size: 0.85rem; color: var(--text-main);">{{ $activity->description ?? ucfirst(str_replace('_', ' ', $activity->transaction_type)) }}</span>
+                                <span class="fw-medium" style="font-size: 0.85rem; color: var(--text-main);">{{ $activity->customer_description ?? ucfirst(str_replace('_', ' ', $activity->transaction_type)) }}</span>
                             </td>
                             <td class="fw-medium {{ $activity->type === 'credit' ? 'text-success' : 'text-danger' }}" style="font-size: 0.85rem;">
                                 {{ $activity->type === 'credit' ? '+' : '-' }}{{ money((float)$activity->amount) }}
