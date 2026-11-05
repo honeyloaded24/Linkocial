@@ -22,10 +22,6 @@ class MarketplaceAllCategoriesViewTest extends TestCase
 
         config(['app.key' => 'base64:6Cu/hK4AZGsLNd5d0v9676W8/Y3aR5A5nL3x02H8/Yo=']);
 
-        try {
-            Artisan::call('migrate', ['--force' => true]);
-        } catch (\Throwable $e) {}
-
         $this->customer = (new User())->forceFill([
             'first_name' => 'Marketplace',
             'last_name' => 'Tester',
@@ -253,15 +249,25 @@ class MarketplaceAllCategoriesViewTest extends TestCase
     }
 
     /**
-     * Test 7: Category model getIconHtml returns correct platform icons and styling.
+     * Test 7: Category model getIconHtml returns correct platform icons using word boundaries without false positives.
      */
     public function test_log_category_get_icon_html_auto_detection(): void
     {
+        // Platforms matching with word boundaries
         $ig = new LogCategory(['name' => 'Instagram Logs']);
         $this->assertStringContainsString('fa-brands fa-instagram', $ig->getIconHtml());
 
+        $igWord = new LogCategory(['name' => 'IG Aged Accounts']);
+        $this->assertStringContainsString('fa-brands fa-instagram', $igWord->getIconHtml());
+
         $tt = new LogCategory(['name' => 'TikTok Accounts']);
         $this->assertStringContainsString('fa-brands fa-tiktok', $tt->getIconHtml());
+
+        $fb = new LogCategory(['name' => 'FB Marketplace Verified']);
+        $this->assertStringContainsString('fa-brands fa-facebook-f', $fb->getIconHtml());
+
+        $twitter = new LogCategory(['name' => 'Twitter/X Accounts']);
+        $this->assertStringContainsString('fa-brands fa-x-twitter', $twitter->getIconHtml());
 
         $snap = new LogCategory(['name' => 'Snapchat Scores']);
         $this->assertStringContainsString('fa-brands fa-snapchat', $snap->getIconHtml());
@@ -269,7 +275,128 @@ class MarketplaceAllCategoriesViewTest extends TestCase
         $wa = new LogCategory(['name' => 'WhatsApp Channels']);
         $this->assertStringContainsString('fa-brands fa-whatsapp', $wa->getIconHtml());
 
-        $gen = new LogCategory(['name' => 'Custom Specialty Category']);
-        $this->assertStringContainsString('fa-solid fa-layer-group', $gen->getIconHtml());
+        $tg = new LogCategory(['name' => 'TG Premium Subscribers']);
+        $this->assertStringContainsString('fa-brands fa-telegram', $tg->getIconHtml());
+
+        // False positive prevention: ambiguous words should NOT trigger platforms
+        $digital = new LogCategory(['name' => 'Digital Marketing Services']);
+        $this->assertStringNotContainsString('fa-brands fa-instagram', $digital->getIconHtml());
+        $this->assertStringContainsString('fa-solid fa-layer-group', $digital->getIconHtml());
+
+        $chatGpt = new LogCategory(['name' => 'ChatGPT Plus Accounts']);
+        $this->assertStringNotContainsString('fa-brands fa-telegram', $chatGpt->getIconHtml());
+        $this->assertStringContainsString('fa-solid fa-layer-group', $chatGpt->getIconHtml());
+
+        $wallet = new LogCategory(['name' => 'Wallet Recovery Guides']);
+        $this->assertStringNotContainsString('fa-brands fa-whatsapp', $wallet->getIconHtml());
+        $this->assertStringContainsString('fa-solid fa-layer-group', $wallet->getIconHtml());
+
+        $software = new LogCategory(['name' => 'Software License Keys']);
+        $this->assertStringNotContainsString('fa-brands fa-whatsapp', $software->getIconHtml());
+        $this->assertStringContainsString('fa-solid fa-layer-group', $software->getIconHtml());
+    }
+
+    /**
+     * Test 8: Malicious icon values (XSS, javascript:, invalid classes, directory traversal) are sanitized and neutralized.
+     */
+    public function test_malicious_icon_values_are_sanitized_and_neutralized(): void
+    {
+        // 1. Script tag injection in icon attribute
+        $xssCategory = new LogCategory(['name' => 'XSS Test']);
+        $xssCategory->icon = '<script>alert("xss")</script>';
+        $html1 = $xssCategory->getIconHtml();
+        $this->assertStringNotContainsString('<script>', $html1);
+        $this->assertStringNotContainsString('alert(', $html1);
+
+        // 2. Attribute breakout in icon
+        $attrBreakout = new LogCategory(['name' => 'Breakout Test']);
+        $attrBreakout->icon = '"><img src=x onerror=alert(1)>';
+        $html2 = $attrBreakout->getIconHtml();
+        $this->assertStringNotContainsString('onerror', $html2);
+        $this->assertStringNotContainsString('<script>', $html2);
+
+        // 3. javascript: URI in icon
+        $jsCategory = new LogCategory(['name' => 'JS URI Test']);
+        $jsCategory->icon = 'javascript:alert(document.cookie)';
+        $html3 = $jsCategory->getIconHtml();
+        $this->assertStringNotContainsString('javascript:', $html3);
+
+        // 4. Invalid Font Awesome class containing malicious characters
+        $maliciousFa = new LogCategory(['name' => 'Malicious FA']);
+        $maliciousFa->icon = 'fa-solid fa-user" onmouseover="alert(1)"';
+        $html4 = $maliciousFa->getIconHtml();
+        $this->assertStringNotContainsString('onmouseover', $html4);
+
+        // 5. Directory traversal in local icon path
+        $traversal = new LogCategory(['name' => 'Traversal Test']);
+        $traversal->icon = '/storage/../../etc/passwd';
+        $html5 = $traversal->getIconHtml();
+        $this->assertStringNotContainsString('etc/passwd', $html5);
+
+        // 6. Valid safe local storage path is allowed and properly escaped
+        $validLocal = new LogCategory(['name' => 'Valid Local Icon']);
+        $validLocal->icon = 'storage/categories/custom_badge.png';
+        $html6 = $validLocal->getIconHtml();
+        $this->assertStringContainsString('<img src=', $html6);
+        $this->assertStringContainsString('storage/categories/custom_badge.png', $html6);
+
+        // 7. Valid safe Font Awesome class is allowed
+        $validFa = new LogCategory(['name' => 'Valid FA Icon']);
+        $validFa->icon = 'fa-solid fa-shield-halved';
+        $html7 = $validFa->getIconHtml();
+        $this->assertStringContainsString('fa-solid fa-shield-halved', $html7);
+
+        // 8. Valid safe HTTPS URL is allowed and escaped
+        $validUrl = new LogCategory(['name' => 'Valid Remote Icon']);
+        $validUrl->icon = 'https://linkocial.com/assets/images/sample.png';
+        $html8 = $validUrl->getIconHtml();
+        $this->assertStringContainsString('<img src="https://linkocial.com/assets/images/sample.png"', $html8);
+    }
+
+    /**
+     * Test 9: Active products count explicitly counts is_active = true and never trusts unfiltered products_count.
+     */
+    public function test_active_products_count_ignores_unfiltered_products_count(): void
+    {
+        $cat = LogCategory::create(['name' => 'Reliability Test Category', 'is_active' => true]);
+
+        // 2 active products
+        $this->createProduct([
+            'name' => 'Active Product 1',
+            'log_category_id' => $cat->id,
+            'is_active' => true,
+        ]);
+        $this->createProduct([
+            'name' => 'Active Product 2',
+            'log_category_id' => $cat->id,
+            'is_active' => true,
+        ]);
+
+        // 3 inactive products
+        for ($j = 1; $j <= 3; $j++) {
+            $this->createProduct([
+                'name' => 'Inactive Product ' . $j,
+                'log_category_id' => $cat->id,
+                'is_active' => false,
+            ]);
+        }
+
+        // Simulate a query that loaded total products_count = 5 (without is_active filter)
+        $simulatedUnfilteredCat = clone $cat;
+        $simulatedUnfilteredCat->setAttribute('products_count', 5);
+
+        // Even with products_count = 5 in attributes, active_products_count MUST strictly be 2!
+        $this->assertEquals(2, $simulatedUnfilteredCat->active_products_count);
+
+        // Test in-memory collection counting when relations are loaded
+        $eagerLoadedCat = LogCategory::with('products')->find($cat->id);
+        $this->assertCount(5, $eagerLoadedCat->products);
+        $this->assertEquals(2, $eagerLoadedCat->active_products_count);
+
+        // Test eager-loaded constrained active_products_count
+        $queryLoadedCat = LogCategory::where('id', $cat->id)
+            ->withCount(['products as active_products_count' => fn($q) => $q->where('is_active', true)])
+            ->first();
+        $this->assertEquals(2, $queryLoadedCat->active_products_count);
     }
 }

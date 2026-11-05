@@ -44,16 +44,26 @@ class LogMarketplaceController extends Controller
             });
         }
         $categories = $categoryQuery
-            ->withCount(['products' => function($q) {
-                $q->where('is_active', true);
-            }])
+            ->withCount([
+                'products as active_products_count' => function($q) {
+                    $q->where('is_active', true);
+                },
+                'products' => function($q) {
+                    $q->where('is_active', true);
+                }
+            ])
             ->orderBy('name')
             ->get();
 
         if ($categories->isEmpty()) {
-            $categories = LogCategory::withCount(['products' => function($q) {
-                $q->where('is_active', true);
-            }])->orderBy('name')->get();
+            $categories = LogCategory::withCount([
+                'products as active_products_count' => function($q) {
+                    $q->where('is_active', true);
+                },
+                'products' => function($q) {
+                    $q->where('is_active', true);
+                }
+            ])->orderBy('name')->get();
         }
 
         $totalActiveCount = LogProduct::where('is_active', true)->count();
