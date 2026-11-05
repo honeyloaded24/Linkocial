@@ -28,8 +28,9 @@ class SyncFaddedProducts extends Command
     {
         $this->info('Starting Fadded API products synchronization...');
 
-        $apiKey = Setting::get('fadded_api_key') ?: config('services.fadded.key');
-        if (empty($apiKey)) {
+        $rawKey = Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $apiKey = $rawKey !== null ? trim((string)$rawKey) : '';
+        if (empty($apiKey) && !$api->isConfigured()) {
             $this->warn('Fadded API key is not configured. Please set your API key in HQ Settings or .env.');
             return 1;
         }

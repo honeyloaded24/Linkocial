@@ -1474,6 +1474,12 @@ class AdminController extends Controller
         $settings = $request->except(['_token', 'platforms', 'descriptions', 'site_logo_light', 'site_logo_dark', 'site_favicon', 'site_og_image']);
 
         foreach ($settings as $key => $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+            if ($key === 'fadded_api_url' && !empty($value)) {
+                $value = \App\Services\FaddedApi::normalizeApiUrl($value);
+            }
             \App\Models\Setting::set($key, $value);
         }
 
@@ -1492,7 +1498,8 @@ class AdminController extends Controller
         $sanitizedLog = $request->except([
             '_token', 'password', 'mail_password',
             'korapay_live_secret_key', 'korapay_test_secret_key',
-            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key'
+            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key',
+            'fadded_api_key'
         ]);
 
         \App\Models\ActivityLog::log("Updated global site settings", auth()->user(), $sanitizedLog);

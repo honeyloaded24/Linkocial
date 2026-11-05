@@ -64,7 +64,8 @@ class AdminLogMarketplaceController extends Controller
 
     public function sync(Request $request)
     {
-        $apiKey = \App\Models\Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $rawKey = \App\Models\Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $apiKey = $rawKey !== null ? trim((string)$rawKey) : '';
         $api = app(\App\Services\FaddedApi::class);
 
         if (empty($apiKey) && !$api->isConfigured()) {

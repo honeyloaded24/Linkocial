@@ -8,20 +8,68 @@ use App\Models\Setting;
 
 class FaddedApi
 {
+    public const DEFAULT_BASE_URL = 'https://api.fadded.net/api/v1/reseller';
+
     protected $baseUrl;
     protected $apiKey;
 
     public function __construct()
     {
-        $url = Setting::get('fadded_api_url') ?: config('services.fadded.url', 'https://fadded.net/api/v1/reseller');
-        
-        // Auto-correct legacy/wrong URLs
-        if (empty($url) || $url === 'https://fadded.net/api' || $url === 'https://fadded.net/api/') {
-            $url = 'https://fadded.net/api/v1/reseller';
+        $dbUrl = Setting::get('fadded_api_url');
+        if (!empty($dbUrl)) {
+            $normalizedDb = self::normalizeApiUrl($dbUrl);
+            // If the database has an old fadded.net URL or incomplete path, migrate it in DB
+            if ($normalizedDb !== $dbUrl && str_contains($dbUrl, 'fadded.net')) {
+                try {
+                    Setting::set('fadded_api_url', $normalizedDb);
+                } catch (\Throwable $e) {
+                    // Safe fallback if DB is temporarily locked or offline
+                }
+            }
         }
 
-        $this->baseUrl = rtrim($url, '/');
-        $this->apiKey = Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $url = Setting::get('fadded_api_url') ?: config('services.fadded.url', self::DEFAULT_BASE_URL);
+        $this->baseUrl = self::normalizeApiUrl($url);
+
+        $rawKey = Setting::get('fadded_api_key') ?: config('services.fadded.key');
+        $this->apiKey = $rawKey !== null ? trim((string)$rawKey) : null;
+    }
+
+    /**
+     * Normalize Fadded API URL to ensure the api.fadded.net host and /api/v1/reseller path are used.
+     */
+    public static function normalizeApiUrl(?string $url): string
+    {
+        if (empty($url) || trim($url) === '') {
+            return self::DEFAULT_BASE_URL;
+        }
+
+        $url = trim($url);
+
+        // Replace any legacy fadded.net hostname with api.fadded.net
+        $url = preg_replace('#^https?://(www\.)?fadded\.net#i', 'https://api.fadded.net', $url);
+
+        // Strip trailing slashes
+        $url = rtrim($url, '/');
+
+        // If URL is just host or missing /api/v1/reseller, normalize to full base path
+        if ($url === 'https://api.fadded.net' || $url === 'https://api.fadded.net/api' || $url === 'https://api.fadded.net/api/v1') {
+            return self::DEFAULT_BASE_URL;
+        }
+
+        // Strip endpoint suffixes if user entered a full endpoint URL
+        $url = preg_replace('#/(products|order|balance)$#i', '', $url);
+
+        return rtrim($url, '/');
+    }
+
+    /**
+     * Get the full endpoint URL for a given action.
+     */
+    public function getEndpointUrl(string $endpoint): string
+    {
+        $base = self::normalizeApiUrl($this->baseUrl);
+        return rtrim($base, '/') . '/' . ltrim($endpoint, '/');
     }
 
     /**
@@ -45,10 +93,7 @@ class FaddedApi
         }
 
         try {
-            $url = $this->baseUrl;
-            if (!str_ends_with($url, '/products')) {
-                $url .= '/products';
-            }
+            $url = $this->getEndpointUrl('products');
 
             $response = Http::timeout(45)
                 ->retry(2, 500)
@@ -71,13 +116,15 @@ class FaddedApi
             $msg = $response->json('message') ?? 'Unknown error';
             return [
                 'success' => false,
+                'status' => $response->status(),
+                'code' => $response->json('code'),
                 'message' => "Fadded API ({$url}) returned status {$response->status()}: {$msg}"
             ];
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             Log::error('Fadded getProducts timeout/connection error: ' . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Unable to connect to Fadded (Timeout). The provider’s server (fadded.net) took too long to respond or is temporarily unreachable. Please try again in a few moments.'
+                'message' => 'Unable to connect to Fadded (Timeout). The provider’s server (api.fadded.net) took too long to respond or is temporarily unreachable. Please try again in a few moments.'
             ];
         } catch (\Exception $e) {
             Log::error('Fadded getProducts error: ' . $e->getMessage());
@@ -101,13 +148,7 @@ class FaddedApi
         }
 
         try {
-            $url = $this->baseUrl;
-            if (str_ends_with($url, '/products') || str_ends_with($url, '/order')) {
-                $url = dirname($url);
-            }
-            if (!str_ends_with($url, '/balance')) {
-                $url .= '/balance';
-            }
+            $url = $this->getEndpointUrl('balance');
 
             $response = Http::timeout(20)
                 ->withHeaders([
@@ -126,6 +167,8 @@ class FaddedApi
 
             return [
                 'success' => false,
+                'status' => $response->status(),
+                'code' => $response->json('code'),
                 'message' => $response->json('message') ?? ('Status ' . $response->status())
             ];
         } catch (\Exception $e) {
@@ -149,13 +192,7 @@ class FaddedApi
         }
 
         try {
-            $url = $this->baseUrl;
-            if (str_ends_with($url, '/products') || str_ends_with($url, '/balance')) {
-                $url = dirname($url);
-            }
-            if (!str_ends_with($url, '/order')) {
-                $url .= '/order';
-            }
+            $url = $this->getEndpointUrl('order');
 
             $response = Http::timeout(35)
                 ->withHeaders([
@@ -176,6 +213,8 @@ class FaddedApi
 
             return [
                 'success' => false,
+                'status' => $response->status(),
+                'code' => $response->json('code'),
                 'message' => $response->json('message') ?? ('Provider error ' . $response->status())
             ];
         } catch (\Exception $e) {

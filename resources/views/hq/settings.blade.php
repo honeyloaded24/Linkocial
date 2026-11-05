@@ -458,12 +458,12 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Fadded API Key</label>
-                                    <input type="text" name="fadded_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('fadded_api_key', config('services.fadded.key')) }}" style="color: var(--text-main);">
+                                    <input type="text" name="fadded_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ trim(\App\Models\Setting::get('fadded_api_key', config('services.fadded.key')) ?? '') }}" style="color: var(--text-main);">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Fadded API URL / Endpoint</label>
-                                    <input type="text" name="fadded_api_url" class="form-control border-secondary bg-transparent py-2" placeholder="https://fadded.net/api/v1/reseller" value="{{ \App\Models\Setting::get('fadded_api_url', config('services.fadded.url')) }}" style="color: var(--text-main);">
-                                    <small class="text-muted" style="font-size: 0.75rem;">Default: <code>https://fadded.net/api/v1/reseller</code></small>
+                                    <input type="text" name="fadded_api_url" class="form-control border-secondary bg-transparent py-2" placeholder="https://api.fadded.net/api/v1/reseller" value="{{ \App\Services\FaddedApi::normalizeApiUrl(\App\Models\Setting::get('fadded_api_url', config('services.fadded.url')) ?: 'https://api.fadded.net/api/v1/reseller') }}" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Default: <code>https://api.fadded.net/api/v1/reseller</code></small>
                                 </div>
                             </div>
 
