@@ -115,16 +115,15 @@ class FinancialMetricsService
         // 1. Lifetime Successful Deposits
         $totalDeposited = round((float) Payment::where('status', 'success')->sum('amount'), 2);
 
-        // 2. SMM Spent & Provider Cost
+        // 2. SMM Spent & Provider Cost in NGN
         $smmMetrics = $this->getSmmPlatformMetrics();
         $smmSpent = $smmMetrics['spent'];
-        $smmCostUsd = $smmMetrics['cost_usd'];
-        $smmCostNgn = round($smmCostUsd * $fxRate, 2);
+        $smmCostNgn = $smmMetrics['cost'];
 
-        // 3. Virtual Numbers Spent & Provider Cost (SMSPool / Grizzly wholesale in USD converted to NGN)
-        $vnSpent = round((float) VirtualNumberOrder::whereIn('status', ['received', 'finished'])->sum('cost'), 2);
-        $vnCostUsd = (float) VirtualNumberOrder::whereIn('status', ['received', 'finished'])->sum('provider_cost');
-        $vnCostNgn = round($vnCostUsd * $fxRate, 2);
+        // 3. Virtual Numbers Spent & Provider Cost in NGN
+        $vnMetrics = $this->getVirtualNumberPlatformMetrics();
+        $vnSpent = $vnMetrics['spent'];
+        $vnCostNgn = $vnMetrics['cost'];
 
         // 4. VTU Spent & Provider Cost
         $vtuSpent = round((float) VtuOrder::where('status', 'completed')->sum('cost'), 2);
@@ -139,7 +138,7 @@ class FinancialMetricsService
         // Aggregations
         $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent, 2);
         $totalCost = round($smmCostNgn + $vnCostNgn + $vtuCostNgn + $logCostNgn, 2);
-        $totalProfit = round($totalSpent - $totalCost, 2);
+        $totalProfit = max(0.0, round($totalSpent - $totalCost, 2));
 
         return [
             'totalDeposited' => $totalDeposited,
@@ -168,7 +167,7 @@ class FinancialMetricsService
      */
     public function getAdmin30DayChartData(): array
     {
-        return Cache::remember('admin_dashboard_chart_v3', 300, function () {
+        return Cache::remember('admin_dashboard_chart_v4', 300, function () {
             $startDate = now()->subDays(29)->startOfDay();
             $fxRate = $this->getExchangeRate();
 
@@ -181,10 +180,39 @@ class FinancialMetricsService
                     count(*) as count, 
                     sum(
                         CASE 
-                            WHEN status = 'completed' THEN (charge - (coalesce(provider_cost, 0) * {$fxRate}))
+                            WHEN status = 'completed' THEN (
+                                (CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) - 
+                                (CASE 
+                                    WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END)
+                            )
                             WHEN status = 'partial' AND remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN ((charge - (coalesce(provider_cost, 0) * {$fxRate})) * 1.0 * (quantity - remains) / quantity)
-                            ELSE (charge - (coalesce(provider_cost, 0) * {$fxRate}))
+                            THEN (
+                                (
+                                    (CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) - 
+                                    (CASE 
+                                        WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                                        WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                        WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                        WHEN provider_cost <= charge THEN provider_cost
+                                        ELSE charge
+                                    END)
+                                ) * 1.0 * (quantity - remains) / quantity
+                            )
+                            ELSE (
+                                (CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) - 
+                                (CASE 
+                                    WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END)
+                            )
                         END
                     ) as profit
                 ")
@@ -195,7 +223,20 @@ class FinancialMetricsService
             // Virtual Numbers daily orders and profit in NGN (fulfilled received/finished only)
             $vnStats = VirtualNumberOrder::where('created_at', '>=', $startDate)
                 ->whereIn('status', ['received', 'finished'])
-                ->selectRaw("DATE(created_at) as date, count(*) as count, sum(cost - (coalesce(provider_cost, 0) * {$fxRate})) as profit")
+                ->selectRaw("
+                    DATE(created_at) as date, 
+                    count(*) as count, 
+                    sum(
+                        (CASE WHEN cost <= 100 THEN (cost * {$fxRate}) ELSE cost END) - 
+                        (CASE 
+                            WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                            WHEN cost <= 100 THEN (provider_cost * {$fxRate})
+                            WHEN (provider_cost * {$fxRate}) <= cost THEN (provider_cost * {$fxRate})
+                            WHEN provider_cost <= cost THEN provider_cost
+                            ELSE cost
+                        END)
+                    ) as profit
+                ")
                 ->groupBy('date')
                 ->get()
                 ->keyBy('date');
@@ -238,7 +279,7 @@ class FinancialMetricsService
                 $logCount = (int) ($logCounts[$dateKey] ?? 0);
 
                 $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount;
-                $profitData[] = round($smmProfit + $vnProfit, 2);
+                $profitData[] = max(0.0, round($smmProfit + $vnProfit, 2));
                 $userData[] = (int) ($userCounts[$dateKey] ?? 0);
             }
 
@@ -273,16 +314,20 @@ class FinancialMetricsService
             $query->where('created_at', '>=', $startDate);
         }
 
+        $fxRate = $this->getExchangeRate();
+
         // Single SQL expression handles completed orders and partial delivered portions
         $result = $query->selectRaw("
             COALESCE(SUM(
                 CASE 
-                    WHEN status = 'completed' AND is_refunded = 0 THEN charge
+                    WHEN status = 'completed' AND is_refunded = 0 THEN 
+                        CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                     WHEN status = 'partial' THEN 
                         CASE 
                             WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN (charge * 1.0 * (quantity - remains) / quantity)
-                            WHEN is_refunded = 0 THEN charge
+                            THEN ((CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) * 1.0 * (quantity - remains) / quantity)
+                            WHEN is_refunded = 0 THEN 
+                                CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                             ELSE 0 
                         END
                     ELSE 0 
@@ -294,19 +339,23 @@ class FinancialMetricsService
     }
 
     /**
-     * Compute platform-wide SMM spent (in NGN) and provider cost (in USD).
+     * Compute platform-wide SMM spent (in NGN) and provider cost (in NGN).
      */
     protected function getSmmPlatformMetrics(): array
     {
+        $fxRate = $this->getExchangeRate();
+
         $result = Order::selectRaw("
             COALESCE(SUM(
                 CASE 
-                    WHEN status = 'completed' AND is_refunded = 0 THEN charge
+                    WHEN status = 'completed' AND is_refunded = 0 THEN 
+                        CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                     WHEN status = 'partial' THEN 
                         CASE 
                             WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN (charge * 1.0 * (quantity - remains) / quantity)
-                            WHEN is_refunded = 0 THEN charge
+                            THEN ((CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) * 1.0 * (quantity - remains) / quantity)
+                            WHEN is_refunded = 0 THEN 
+                                CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                             ELSE 0 
                         END
                     ELSE 0 
@@ -314,22 +363,49 @@ class FinancialMetricsService
             ), 0) as eligible_spent,
             COALESCE(SUM(
                 CASE 
-                    WHEN status = 'completed' AND is_refunded = 0 AND provider_cost IS NOT NULL THEN provider_cost
-                    WHEN status = 'partial' AND provider_cost IS NOT NULL THEN 
+                    WHEN status = 'completed' AND is_refunded = 0 AND provider_cost IS NOT NULL AND provider_cost > 0 THEN 
+                        CASE 
+                            WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                            WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                            WHEN provider_cost <= charge THEN provider_cost
+                            ELSE charge
+                        END
+                    WHEN status = 'partial' AND provider_cost IS NOT NULL AND provider_cost > 0 THEN 
                         CASE 
                             WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN (provider_cost * 1.0 * (quantity - remains) / quantity)
-                            WHEN is_refunded = 0 THEN provider_cost
+                            THEN (
+                                (CASE 
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END) * 1.0 * (quantity - remains) / quantity
+                            )
+                            WHEN is_refunded = 0 THEN 
+                                CASE 
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END
                             ELSE 0 
                         END
                     ELSE 0 
                 END
-            ), 0) as eligible_cost_usd
+            ), 0) as eligible_cost_ngn
         ")->first();
 
+        $spent = round((float) ($result->eligible_spent ?? 0.0), 2);
+        $cost = round((float) ($result->eligible_cost_ngn ?? 0.0), 2);
+
+        if ($cost > $spent) {
+            $cost = $spent;
+        }
+
         return [
-            'spent'    => round((float) ($result->eligible_spent ?? 0.0), 2),
-            'cost_usd' => (float) ($result->eligible_cost_usd ?? 0.0),
+            'spent'    => $spent,
+            'cost'     => $cost,
+            'cost_usd' => $fxRate > 0 ? round($cost / $fxRate, 4) : 0.0,
         ];
     }
 
@@ -350,7 +426,58 @@ class FinancialMetricsService
             $query->where('created_at', '>=', $startDate);
         }
 
-        return round((float) $query->sum('cost'), 2);
+        $fxRate = $this->getExchangeRate();
+
+        $result = $query->selectRaw("
+            COALESCE(SUM(
+                CASE 
+                    WHEN cost <= 100 THEN (cost * {$fxRate})
+                    ELSE cost
+                END
+            ), 0) as eligible_spent
+        ")->value('eligible_spent');
+
+        return round((float) $result, 2);
+    }
+
+    /**
+     * Compute platform-wide Virtual Number customer spent (in NGN) and provider cost (in NGN).
+     */
+    protected function getVirtualNumberPlatformMetrics(): array
+    {
+        $fxRate = $this->getExchangeRate();
+
+        $result = VirtualNumberOrder::whereIn('status', ['received', 'finished'])
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE 
+                        WHEN cost <= 100 THEN (cost * {$fxRate})
+                        ELSE cost
+                    END
+                ), 0) as eligible_spent,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                        WHEN cost <= 100 THEN (provider_cost * {$fxRate})
+                        WHEN (provider_cost * {$fxRate}) <= cost THEN (provider_cost * {$fxRate})
+                        WHEN provider_cost <= cost THEN provider_cost
+                        ELSE cost
+                    END
+                ), 0) as eligible_cost_ngn
+            ")->first();
+
+        $spent = round((float) ($result->eligible_spent ?? 0.0), 2);
+        $cost = round((float) ($result->eligible_cost_ngn ?? 0.0), 2);
+
+        if ($cost > $spent) {
+            $cost = $spent;
+        }
+
+        return [
+            'spent'    => $spent,
+            'cost'     => $cost,
+            'cost_usd' => $fxRate > 0 ? round($cost / $fxRate, 4) : 0.0,
+        ];
     }
 
     /**
@@ -422,12 +549,14 @@ class FinancialMetricsService
         $financials = (clone $baseQuery)->selectRaw("
             COALESCE(SUM(
                 CASE 
-                    WHEN status = 'completed' AND is_refunded = 0 THEN charge
+                    WHEN status = 'completed' AND is_refunded = 0 THEN 
+                        CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                     WHEN status = 'partial' THEN 
                         CASE 
                             WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN (charge * 1.0 * (quantity - remains) / quantity)
-                            WHEN is_refunded = 0 THEN charge
+                            THEN ((CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END) * 1.0 * (quantity - remains) / quantity)
+                            WHEN is_refunded = 0 THEN 
+                                CASE WHEN charge <= 100 THEN (charge * {$fxRate}) ELSE charge END
                             ELSE 0 
                         END
                     ELSE 0 
@@ -435,23 +564,41 @@ class FinancialMetricsService
             ), 0) as eligible_revenue,
             COALESCE(SUM(
                 CASE 
-                    WHEN status = 'completed' AND is_refunded = 0 AND provider_cost IS NOT NULL THEN provider_cost
-                    WHEN status = 'partial' AND provider_cost IS NOT NULL THEN 
+                    WHEN status = 'completed' AND is_refunded = 0 AND provider_cost IS NOT NULL AND provider_cost > 0 THEN 
+                        CASE 
+                            WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                            WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                            WHEN provider_cost <= charge THEN provider_cost
+                            ELSE charge
+                        END
+                    WHEN status = 'partial' AND provider_cost IS NOT NULL AND provider_cost > 0 THEN 
                         CASE 
                             WHEN remains IS NOT NULL AND remains > 0 AND quantity > 0 AND remains < quantity 
-                            THEN (provider_cost * 1.0 * (quantity - remains) / quantity)
-                            WHEN is_refunded = 0 THEN provider_cost
+                            THEN (
+                                (CASE 
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END) * 1.0 * (quantity - remains) / quantity
+                            )
+                            WHEN is_refunded = 0 THEN 
+                                CASE 
+                                    WHEN charge <= 100 THEN (provider_cost * {$fxRate})
+                                    WHEN (provider_cost * {$fxRate}) <= charge THEN (provider_cost * {$fxRate})
+                                    WHEN provider_cost <= charge THEN provider_cost
+                                    ELSE charge
+                                END
                             ELSE 0 
                         END
                     ELSE 0 
                 END
-            ), 0) as eligible_cost_usd
+            ), 0) as eligible_cost_ngn
         ")->first();
 
         $revenue = round((float) ($financials->eligible_revenue ?? 0.0), 2);
-        $costUsd = (float) ($financials->eligible_cost_usd ?? 0.0);
-        $costNgn = round($costUsd * $fxRate, 2);
-        $profit = round($revenue - $costNgn, 2);
+        $costNgn = min($revenue, round((float) ($financials->eligible_cost_ngn ?? 0.0), 2));
+        $profit = max(0.0, round($revenue - $costNgn, 2));
 
         return array_merge($counts, [
             'revenue'          => $revenue,
@@ -482,10 +629,27 @@ class FinancialMetricsService
             'failed'    => (clone $baseQuery)->where('status', 'canceled')->count(),
         ];
 
-        $revenue = round((float) (clone $baseQuery)->whereIn('status', ['received', 'finished'])->sum('cost'), 2);
-        $costUsd = (float) (clone $baseQuery)->whereIn('status', ['received', 'finished'])->sum('provider_cost');
-        $costNgn = round($costUsd * $fxRate, 2);
-        $profit = round($revenue - $costNgn, 2);
+        $financials = (clone $baseQuery)->whereIn('status', ['received', 'finished'])->selectRaw("
+            COALESCE(SUM(
+                CASE 
+                    WHEN cost <= 100 THEN (cost * {$fxRate})
+                    ELSE cost
+                END
+            ), 0) as eligible_revenue,
+            COALESCE(SUM(
+                CASE 
+                    WHEN provider_cost IS NULL OR provider_cost <= 0 THEN 0
+                    WHEN cost <= 100 THEN (provider_cost * {$fxRate})
+                    WHEN (provider_cost * {$fxRate}) <= cost THEN (provider_cost * {$fxRate})
+                    WHEN provider_cost <= cost THEN provider_cost
+                    ELSE cost
+                END
+            ), 0) as eligible_cost_ngn
+        ")->first();
+
+        $revenue = round((float) ($financials->eligible_revenue ?? 0.0), 2);
+        $costNgn = min($revenue, round((float) ($financials->eligible_cost_ngn ?? 0.0), 2));
+        $profit = max(0.0, round($revenue - $costNgn, 2));
 
         return array_merge($counts, [
             'revenue'          => $revenue,

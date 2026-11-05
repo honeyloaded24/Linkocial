@@ -33,6 +33,39 @@ class FinancialMetricsServiceTest extends TestCase
 
         // Configure standard test exchange rate: 1 USD = ₦1,500 NGN
         Setting::set('usd_to_ngn_rate', '1500');
+
+        Provider::firstOrCreate(
+            ['id' => 1],
+            [
+                'name'      => 'Momopanel',
+                'api_url'   => 'https://momopanel.com/api/v2',
+                'api_key'   => 'test_api_key',
+                'is_active' => true,
+            ]
+        );
+
+        Service::firstOrCreate(
+            ['id' => 1],
+            [
+                'name'          => 'Instagram Followers',
+                'category'      => 'Instagram',
+                'selling_price' => 5000.00,
+                'is_active'     => true,
+            ]
+        );
+
+        LogProduct::firstOrCreate(
+            ['id' => 1],
+            [
+                'name'           => 'Facebook Aged 2018',
+                'type'           => 'api',
+                'base_api_price' => 300.00,
+                'unit_price'     => 1600.00,
+                'our_price'      => 1600.00,
+                'is_active'      => true,
+                'in_stock'       => 10,
+            ]
+        );
     }
 
     /**
@@ -574,5 +607,84 @@ class FinancialMetricsServiceTest extends TestCase
         $this->assertEquals(1000.00, $summary['revenue']);
         $this->assertEquals(600.00, $summary['provider_cost']);
         $this->assertEquals(400.00, $summary['profit']);
+    }
+
+    /**
+     * Test legacy USD-denominated orders do not cause negative profit margins.
+     * Orders placed before NGN conversion (e.g. $2.50 charge, $1.80 provider cost)
+     * must both be converted to NGN, ensuring positive profit rather than massive minus.
+     */
+    public function test_legacy_usd_orders_do_not_produce_negative_margin(): void
+    {
+        Setting::set('usd_to_ngn_rate', '1500');
+        $user = User::factory()->create();
+
+        // Legacy USD SMM order: charge $2.50 USD, provider cost $1.80 USD
+        // At 1,500 rate: Spent = ₦3,750, Cost = ₦2,700, Profit = +₦1,050
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/legacy',
+            'quantity'      => 1000,
+            'charge'        => 2.50,
+            'provider_cost' => 1.80,
+            'status'        => 'completed',
+            'is_refunded'   => false,
+        ]);
+
+        // Legacy USD Virtual Number order: cost $1.50 USD, provider cost $0.80 USD
+        // At 1,500 rate: Spent = ₦2,250, Cost = ₦1,200, Profit = +₦1,050
+        VirtualNumberOrder::create([
+            'user_id'       => $user->id,
+            'api_order_id'  => 'vn_legacy_01',
+            'phone_number'  => '+12025550999',
+            'country'       => 'USA',
+            'operator'      => 'SMSPool',
+            'product'       => 'OpenAI',
+            'cost'          => 1.50,
+            'provider_cost' => 0.80,
+            'status'        => 'received',
+        ]);
+
+        $metrics = $this->service->getAdminFinancialPerformance();
+
+        // Spent = 3750 + 2250 = 6000
+        $this->assertEquals(6000.00, $metrics['totalSpent']);
+        // Cost = 2700 + 1200 = 3900
+        $this->assertEquals(3900.00, $metrics['totalCost']);
+        // Profit = 6000 - 3900 = +2100 (POSITIVE, never negative!)
+        $this->assertEquals(2100.00, $metrics['totalProfit']);
+        $this->assertGreaterThan(0, $metrics['totalProfit']);
+    }
+
+    /**
+     * Test orders with provider costs already stored in NGN do not get multiplied by 1,500.
+     * Prevents multi-million Naira inflation on provider expenses.
+     */
+    public function test_orders_with_ngn_denominated_provider_cost_do_not_overinflate_costs(): void
+    {
+        Setting::set('usd_to_ngn_rate', '1500');
+        $user = User::factory()->create();
+
+        // Customer charged ₦5,000 NGN. Provider cost already recorded in NGN as ₦3,500.
+        // If falsely multiplied by 1,500, cost would be ₦5,250,000 and profit -₦5,245,000!
+        // With intelligent detection: Cost = ₦3,500, Profit = +₦1,500.
+        Order::create([
+            'user_id'       => $user->id,
+            'service_id'    => 1,
+            'link'          => 'https://instagram.com/ngn_test',
+            'quantity'      => 1000,
+            'charge'        => 5000.00,
+            'provider_cost' => 3500.00,
+            'status'        => 'completed',
+            'is_refunded'   => false,
+        ]);
+
+        $metrics = $this->service->getAdminFinancialPerformance();
+
+        $this->assertEquals(5000.00, $metrics['totalSpent']);
+        $this->assertEquals(3500.00, $metrics['totalCost']);
+        $this->assertEquals(1500.00, $metrics['totalProfit']);
+        $this->assertGreaterThan(0, $metrics['totalProfit']);
     }
 }
