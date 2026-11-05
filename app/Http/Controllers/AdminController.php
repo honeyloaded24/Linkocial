@@ -1480,6 +1480,9 @@ class AdminController extends Controller
             if ($key === 'fadded_api_url' && !empty($value)) {
                 $value = \App\Services\FaddedApi::normalizeApiUrl($value);
             }
+            if ($key === 'fadded_api_key' && !empty($value)) {
+                $value = \App\Services\FaddedApi::normalizeApiKey($value);
+            }
             \App\Models\Setting::set($key, $value);
         }
 

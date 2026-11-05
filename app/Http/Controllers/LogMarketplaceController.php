@@ -337,7 +337,10 @@ class LogMarketplaceController extends Controller
                 Log::error("Logs Marketplace Provider API Exception: " . $apiEx->getMessage());
                 $response = [
                     'success' => false,
-                    'message' => 'Provider communication error: ' . $apiEx->getMessage()
+                    'code' => 'EXCEPTION',
+                    'admin_message' => 'Provider communication exception: ' . $apiEx->getMessage(),
+                    'customer_message' => 'Unable to complete order with provider at this time. Your wallet balance has been refunded.',
+                    'message' => 'Unable to complete order with provider at this time. Your wallet balance has been refunded.'
                 ];
             }
 
@@ -364,13 +367,22 @@ class LogMarketplaceController extends Controller
                     $debitTx->created_at ?? null
                 );
 
+                // Sanitize order delivered_items record to NOT contain API credentials
+                $sanitizedResponse = $response;
+                unset($sanitizedResponse['api_key'], $sanitizedResponse['key']);
+
                 $order->update([
                     'status' => 'failed',
-                    'delivered_items' => json_encode($response)
+                    'delivered_items' => json_encode($sanitizedResponse)
                 ]);
 
-                $message = $response['message'] ?? 'Failed to complete purchase with provider.';
-                return back()->with('error', $message);
+                // Admin diagnostic logging
+                $adminMsg = $response['admin_message'] ?? ($response['message'] ?? 'Provider error');
+                Log::warning("Logs Marketplace Provider Order Failed for order {$externalOrderId}: {$adminMsg}");
+
+                // Customer-safe message: NEVER leak raw provider errors, API keys, or technical details
+                $customerMessage = $response['customer_message'] ?? 'Unable to complete order with provider at this time. Your wallet balance has been refunded. Please try again later or contact support.';
+                return back()->with('error', $customerMessage);
             }
         }
     }

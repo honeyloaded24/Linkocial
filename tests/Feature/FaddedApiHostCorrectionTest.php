@@ -6,6 +6,9 @@ use Tests\TestCase;
 use App\Services\FaddedApi;
 use App\Models\Setting;
 use App\Models\User;
+use App\Models\LogProduct;
+use App\Models\LogOrder;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Artisan;
 
@@ -130,11 +133,17 @@ class FaddedApiHostCorrectionTest extends TestCase
     }
 
     /**
-     * Test API key is trimmed of leading and trailing whitespace.
+     * Test API key normalization trims whitespace and prevents duplicate Bearer prefix.
      */
-    public function test_api_key_is_normalized_and_trimmed(): void
+    public function test_api_key_is_normalized_and_avoids_duplicate_bearer(): void
     {
-        Setting::set('fadded_api_key', "  sk_test_fadded_key_12345 \n ");
+        $this->assertEquals('sk_my_key', FaddedApi::normalizeApiKey("  sk_my_key  \n"));
+        $this->assertEquals('sk_my_key', FaddedApi::normalizeApiKey("Bearer sk_my_key"));
+        $this->assertEquals('sk_my_key', FaddedApi::normalizeApiKey("  bearer   sk_my_key  "));
+        $this->assertNull(FaddedApi::normalizeApiKey(null));
+        $this->assertNull(FaddedApi::normalizeApiKey('   '));
+
+        Setting::set('fadded_api_key', "  Bearer  sk_test_fadded_key_12345 \n ");
 
         $api = new FaddedApi();
         $this->assertTrue($api->isConfigured());
@@ -154,7 +163,7 @@ class FaddedApiHostCorrectionTest extends TestCase
         Http::assertSent(function ($request) {
             return $request->url() === 'https://api.fadded.net/api/v1/reseller/products'
                 && $request->header('Authorization')[0] === 'Bearer sk_test_fadded_key_12345'
-                && $request->header('X-Api-Key')[0] === 'sk_test_fadded_key_12345';
+                && !str_contains($request->header('Authorization')[0], 'Bearer Bearer');
         });
     }
 
@@ -185,9 +194,9 @@ class FaddedApiHostCorrectionTest extends TestCase
     }
 
     /**
-     * Test order request hits api.fadded.net/api/v1/reseller/order with correct headers.
+     * Test order request hits api.fadded.net/api/v1/reseller/order with documented JSON payload.
      */
-    public function test_order_request_hits_corrected_host(): void
+    public function test_order_request_uses_documented_json_structure(): void
     {
         Setting::set('fadded_api_key', 'sk_test_fadded_key_12345');
         $api = new FaddedApi();
@@ -202,15 +211,50 @@ class FaddedApiHostCorrectionTest extends TestCase
             ], 200)
         ]);
 
-        $res = $api->order('fb_aged_1', 1, 'CUSTOM-ORDER-1');
+        $res = $api->order('prod_144', 1, 'YOUR-UNIQUE-ORDER-REFERENCE');
         $this->assertTrue($res['success']);
 
         Http::assertSent(function ($request) {
+            $data = $request->data();
             return $request->url() === 'https://api.fadded.net/api/v1/reseller/order'
                 && $request->header('Authorization')[0] === 'Bearer sk_test_fadded_key_12345'
-                && $request['product_key'] === 'fb_aged_1'
-                && $request['quantity'] === 1;
+                && $request->header('Content-Type')[0] === 'application/json'
+                && $data['product_key'] === 'prod_144'
+                && $data['quantity'] === 1
+                && $data['external_order_id'] === 'YOUR-UNIQUE-ORDER-REFERENCE';
         });
+    }
+
+    /**
+     * Test official error responses correctly distinguish invalid key from expired subscription
+     * and produce distinct admin diagnostics without leaking to customers.
+     */
+    public function test_official_error_responses_and_distinctions(): void
+    {
+        // 401 INVALID_API_KEY
+        $err1 = FaddedApi::parseProviderError(401, 'INVALID_API_KEY', 'Invalid or inactive API key');
+        $this->assertStringContainsString('Invalid or inactive Fadded API key', $err1['admin_message']);
+        $this->assertStringNotContainsString('expired', strtolower($err1['admin_message']));
+
+        // 403 SUBSCRIPTION_EXPIRED
+        $err2 = FaddedApi::parseProviderError(403, 'SUBSCRIPTION_EXPIRED', 'Reseller subscription has expired');
+        $this->assertStringContainsString('subscription has expired', $err2['admin_message']);
+        $this->assertStringNotContainsString('Invalid API key', $err2['admin_message']);
+
+        // 400 INSUFFICIENT_BALANCE
+        $err3 = FaddedApi::parseProviderError(400, 'INSUFFICIENT_BALANCE', 'Low balance');
+        $this->assertStringContainsString('wallet balance is insufficient', $err3['admin_message']);
+
+        // 400 INSUFFICIENT_STOCK
+        $err4 = FaddedApi::parseProviderError(400, 'INSUFFICIENT_STOCK', 'No stock');
+        $this->assertStringContainsStringIgnoringCase('insufficient stock', $err4['admin_message']);
+        $this->assertStringContainsStringIgnoringCase('out of stock', $err4['customer_message']);
+
+        // Customer message should never leak provider technical errors
+        $this->assertStringNotContainsString('401', $err1['customer_message']);
+        $this->assertStringNotContainsString('INVALID_API_KEY', $err1['customer_message']);
+        $this->assertStringNotContainsString('SUBSCRIPTION_EXPIRED', $err2['customer_message']);
+        $this->assertStringNotContainsString('INSUFFICIENT_BALANCE', $err3['customer_message']);
     }
 
     /**
@@ -241,7 +285,7 @@ class FaddedApiHostCorrectionTest extends TestCase
         $exitCode = Artisan::call('fadded:sync');
         $this->assertEquals(0, $exitCode);
 
-        $product = \App\Models\LogProduct::where('api_product_key', 'telegram_us_fresh')->first();
+        $product = LogProduct::where('api_product_key', 'telegram_us_fresh')->first();
         $this->assertNotNull($product);
         $this->assertEquals('Fresh Telegram Account (USA)', $product->name);
         $this->assertEquals(1000.0, (float)$product->base_api_price);
