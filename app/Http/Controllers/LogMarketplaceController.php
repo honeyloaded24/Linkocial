@@ -121,6 +121,17 @@ class LogMarketplaceController extends Controller
             $hotProducts = collect();
         }
 
+        $activeTab = $request->input('tab');
+        if (empty($activeTab)) {
+            if ($request->filled('category') || $request->filled('category_id') || $request->filled('search') || $request->filled('page')) {
+                $activeTab = 'products';
+            } else {
+                $activeTab = 'categories';
+            }
+        } else {
+            $activeTab = ($activeTab === 'products') ? 'products' : 'categories';
+        }
+
         if ($request->ajax() || $request->wantsJson()) {
             $html = view('logs.partials.catalogue_section', compact('products', 'selectedCategory', 'totalActiveCount', 'hotPickIds'))->render();
             return response()->json([
@@ -132,7 +143,7 @@ class LogMarketplaceController extends Controller
             ]);
         }
 
-        return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory', 'totalActiveCount', 'hotPickIds'));
+        return view('logs.index', compact('categories', 'products', 'hotProducts', 'selectedCategory', 'totalActiveCount', 'hotPickIds', 'activeTab'));
     }
 
     public function show($id)

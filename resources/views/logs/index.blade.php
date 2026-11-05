@@ -4,6 +4,106 @@
 
 @push('styles')
 <style>
+    /* Mode Tabs: All Categories & All Products */
+    .marketplace-nav-tabs-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .marketplace-nav-tabs {
+        display: inline-flex;
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
+        padding: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+    .marketplace-nav-tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted, #64748b);
+        border: none;
+        background: transparent;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .marketplace-nav-tab-btn:hover {
+        color: var(--text-main, #0f172a);
+    }
+    .marketplace-nav-tab-btn.active {
+        background: var(--primary-color, #6366f1) !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.28);
+    }
+    .marketplace-nav-tab-btn .tab-badge-counter {
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.07);
+        color: inherit;
+    }
+    .marketplace-nav-tab-btn.active .tab-badge-counter {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+    }
+
+    /* Category Cards Grid */
+    .category-card {
+        background: var(--bg-surface, #ffffff);
+        border: 1.5px solid var(--border-color, #e2e8f0);
+        border-radius: 16px;
+        padding: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    .category-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--primary-color, #6366f1);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12);
+    }
+    .category-card-name {
+        color: var(--text-main, #0f172a) !important;
+        font-size: 0.92rem;
+        line-height: 1.35;
+        word-break: break-word;
+        transition: color 0.15s ease;
+    }
+    .category-card:hover .category-card-name {
+        color: var(--primary-color, #6366f1) !important;
+    }
+    .category-card-count {
+        color: var(--text-muted, #64748b) !important;
+        font-size: 0.78rem;
+        font-weight: 500;
+    }
+
+    @media (max-width: 576px) {
+        .category-card {
+            padding: 13px 11px;
+            border-radius: 14px;
+        }
+        .category-card-name {
+            font-size: 0.85rem;
+        }
+        .category-card-count {
+            font-size: 0.74rem;
+        }
+        .marketplace-nav-tab-btn {
+            padding: 6px 14px;
+            font-size: 0.78rem;
+        }
+    }
+
+    /* Horizontally Sliding Category Pills */
     .cat-tabs-container {
         display: flex;
         align-items: center;
@@ -150,6 +250,34 @@
     }
 
     /* Dark Mode Overrides */
+    [data-theme="dark"] .marketplace-nav-tabs {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    [data-theme="dark"] .marketplace-nav-tab-btn {
+        color: #94a3b8;
+    }
+    [data-theme="dark"] .marketplace-nav-tab-btn:hover {
+        color: #f8fafc;
+    }
+    [data-theme="dark"] .marketplace-nav-tab-btn .tab-badge-counter {
+        background: rgba(255, 255, 255, 0.12);
+        color: #e2e8f0;
+    }
+    [data-theme="dark"] .category-card {
+        background: #1e293b;
+        border-color: #334155;
+    }
+    [data-theme="dark"] .category-card:hover {
+        border-color: rgba(99, 102, 241, 0.6);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    [data-theme="dark"] .category-card-name {
+        color: #f8fafc !important;
+    }
+    [data-theme="dark"] .category-card-count {
+        color: #94a3b8 !important;
+    }
     [data-theme="dark"] .cat-tab-btn {
         background: rgba(255, 255, 255, 0.05);
         border-color: rgba(255, 255, 255, 0.1);
@@ -212,7 +340,7 @@
         </div>
     @endif
 
-    <!-- 1. Marketplace Heading, Introduction and Search Controls -->
+    <!-- 1. Marketplace Heading, Introduction and Purchases Shortcut -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
         <div>
             <h4 class="fw-bold mb-1 d-flex align-items-center gap-2" style="color: var(--text-main, #0f172a);">
@@ -228,36 +356,69 @@
         </div>
     </div>
 
+    <!-- 1b. Mode Navigation Tabs: All Categories & All Products -->
+    <div class="marketplace-nav-tabs-wrapper mb-3">
+        <div class="marketplace-nav-tabs rounded-pill">
+            <button type="button" 
+                    class="marketplace-nav-tab-btn rounded-pill {{ $activeTab === 'categories' ? 'active' : '' }}" 
+                    id="tab-btn-categories" 
+                    data-mode="categories"
+                    title="View all marketplace categories in grid layout">
+                <i class="fa-solid fa-shapes"></i>
+                <span>All Categories</span>
+                <span class="tab-badge-counter ms-1">{{ $categories->count() }}</span>
+            </button>
+            <button type="button" 
+                    class="marketplace-nav-tab-btn rounded-pill {{ $activeTab === 'products' ? 'active' : '' }}" 
+                    id="tab-btn-products" 
+                    data-mode="products"
+                    title="Browse all available marketplace products">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <span>All Products</span>
+                <span class="tab-badge-counter ms-1">{{ $totalActiveCount }}</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Search Input & Quick Select Dropdown -->
     <div class="row mb-4 g-2 align-items-center">
         <!-- Search Input -->
-        <div class="col-12 col-md-7 col-lg-8">
+        <div class="{{ $activeTab === 'categories' ? 'col-12' : 'col-12 col-md-7 col-lg-8' }}" id="search-input-col">
             <form id="marketplace-search-form" action="{{ route('logs.index') }}" method="GET">
+                <input type="hidden" name="tab" id="search-hidden-tab" value="{{ $activeTab }}">
                 <input type="hidden" name="category" id="search-hidden-category" value="{{ $selectedCategory ? $selectedCategory->id : '' }}">
                 <div class="position-relative">
                     <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="top: 50%; left: 14px; transform: translateY(-50%); font-size: 0.85rem;"></i>
-                    <input type="text" name="search" id="marketplace-search-input" class="form-control search-input-box ps-5 py-2.5" placeholder="Search accounts by name, platform, country..." value="{{ request('search') }}">
-                    @if(request('search'))
-                        <a href="{{ route('logs.index', request()->except('search', 'page')) }}" class="position-absolute text-muted text-decoration-none" style="top: 50%; right: 14px; transform: translateY(-50%); font-size: 0.85rem;" title="Clear search">
-                            <i class="fa-solid fa-xmark"></i>
-                        </a>
-                    @endif
+                    <input type="text" 
+                           name="search" 
+                           id="marketplace-search-input" 
+                           class="form-control search-input-box ps-5 py-2.5" 
+                           placeholder="{{ $activeTab === 'categories' ? 'Search categories by name...' : 'Search accounts by name, platform, country...' }}" 
+                           value="{{ request('search') }}"
+                           autocomplete="off">
+                    <button type="button" 
+                            id="marketplace-clear-search-btn" 
+                            class="position-absolute text-muted border-0 bg-transparent p-0 {{ request('search') ? '' : 'd-none' }}" 
+                            style="top: 50%; right: 14px; transform: translateY(-50%); font-size: 0.85rem;" 
+                            title="Clear search">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
             </form>
         </div>
 
-        <!-- Quick Category Select (Dropdown for quick jumping) -->
-        <div class="col-12 col-md-5 col-lg-4">
+        <!-- Quick Category Select (Dropdown for quick jumping in All Products) -->
+        <div class="col-12 col-md-5 col-lg-4 {{ $activeTab === 'categories' ? 'd-none' : '' }}" id="category-dropdown-col">
             <select id="marketplace-category-select" class="form-select cat-select-dropdown w-100 py-2.5">
-                <option value="{{ route('logs.index', request()->except('category', 'category_id', 'page')) }}" data-category-id="" {{ !$selectedCategory ? 'selected' : '' }}>
+                <option value="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['tab' => 'products'])) }}" data-category-id="" {{ !$selectedCategory ? 'selected' : '' }}>
                     All Categories ({{ $totalActiveCount }})
                 </option>
                 @foreach($categories as $category)
                     @php
                         $isSelected = ($selectedCategory && $selectedCategory->id == $category->id);
-                        $count = $category->products_count ?? $category->products()->where('is_active', true)->count();
+                        $count = $category->active_products_count ?? $category->products_count ?? $category->products()->where('is_active', true)->count();
                     @endphp
-                    <option value="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $category->id])) }}" data-category-id="{{ $category->id }}" {{ $isSelected ? 'selected' : '' }}>
+                    <option value="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $category->id, 'tab' => 'products'])) }}" data-category-id="{{ $category->id }}" {{ $isSelected ? 'selected' : '' }}>
                         {{ $category->name }} ({{ $count }})
                     </option>
                 @endforeach
@@ -265,100 +426,142 @@
         </div>
     </div>
 
-    <!-- 2. Horizontally Sliding Category Bar (Placed ABOVE HOT PICKS 🔥) -->
-    <section class="category-navigation-section mb-4">
-        <div class="d-flex align-items-center justify-content-between mb-2">
+    <!-- VIEW A: ALL CATEGORIES VIEW (2-column on mobile, responsive on tablet/desktop) -->
+    <section id="all-categories-view" class="{{ $activeTab === 'categories' ? '' : 'd-none' }} mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-3">
             <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing: 0.5px;">
-                Categories
+                <i class="fa-solid fa-shapes text-primary me-1"></i> Available Categories
             </h6>
-            <span id="active-category-label" class="text-muted small">
-                @if($selectedCategory)
-                    Filtered: <strong class="text-primary">{{ $selectedCategory->name }}</strong>
-                @else
-                    Showing all categories
-                @endif
+            <span id="categories-matching-label" class="text-muted small">
+                Showing all {{ $categories->count() }} categories
             </span>
         </div>
 
-        <!-- Horizontal scrollable category bar -->
-        <div id="marketplace-category-tabs" class="cat-tabs-container">
-            <!-- All Pill -->
-            <a href="{{ route('logs.index', request()->except('category', 'category_id', 'page')) }}" 
-               class="cat-tab-btn {{ !$selectedCategory ? 'active' : '' }}" 
-               data-category-id="" 
-               data-category-name="All">
-                <i class="fa-solid fa-border-all"></i>
-                <span>All</span>
-                <span class="badge-count">{{ $totalActiveCount }}</span>
-            </a>
+        <!-- Categories Responsive Grid (2 columns on mobile) -->
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-6 g-2 g-md-3" id="categories-grid-container">
+            @forelse($categories as $cat)
+                @include('logs.partials.category_card', ['category' => $cat])
+            @empty
+                <div class="col-12">
+                    <div class="text-center py-5 rounded-4" style="background: var(--bg-surface, #ffffff); border: 1.5px dashed var(--border-color, #e2e8f0);">
+                        <i class="fa-solid fa-layer-group fa-2x text-muted opacity-50 mb-2"></i>
+                        <h6 class="fw-semibold mb-1" style="font-size: 0.9rem; color: var(--text-main, #0f172a);">No categories found</h6>
+                        <p class="text-muted small mb-0">No marketplace categories are currently active.</p>
+                    </div>
+                </div>
+            @endforelse
 
-            <!-- Individual Category Tabs -->
-            @foreach($categories as $cat)
-                @php
-                    $isTabActive = ($selectedCategory && $selectedCategory->id == $cat->id);
-                    $catCount = $cat->products_count ?? $cat->products()->where('is_active', true)->count();
-                @endphp
-                <a href="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $cat->id])) }}" 
-                   class="cat-tab-btn {{ $isTabActive ? 'active' : '' }}" 
-                   data-category-id="{{ $cat->id }}" 
-                   data-category-name="{{ $cat->name }}">
-                    <span>{{ $cat->name }}</span>
-                    <span class="badge-count">{{ $catCount }}</span>
-                </a>
-            @endforeach
+            <!-- Empty State for Live Category Search Filter -->
+            <div id="categories-empty-search" class="col-12 d-none">
+                <div class="text-center py-5 rounded-4" style="background: var(--bg-surface, #ffffff); border: 1.5px dashed var(--border-color, #e2e8f0);">
+                    <i class="fa-solid fa-folder-open fa-2x text-muted opacity-50 mb-2"></i>
+                    <h6 class="fw-semibold mb-1" style="color: var(--text-main, #0f172a);">No matching categories</h6>
+                    <p class="text-muted small mb-3">We couldn't find any category matching "<span id="empty-search-term" class="fw-bold text-primary"></span>".</p>
+                    <button type="button" class="btn btn-sm btn-primary-custom rounded-pill px-3 py-1.5 fw-semibold" id="btn-clear-category-search">
+                        <i class="fa-solid fa-xmark me-1"></i> Clear Search
+                    </button>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- 3. HOT PICKS 🔥 Section (Only Admin-Selected Products, Below Category Bar) -->
-    <section class="hot-picks-section mb-5">
-        <div class="d-flex align-items-center justify-content-between mb-3">
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge bg-danger rounded-pill px-2.5 py-1 text-white fw-bold shadow-xs">
-                    <i class="fa-solid fa-fire-flame-curved"></i> FEATURED
+    <!-- VIEW B: ALL PRODUCTS VIEW (Existing Catalogue, Category Bar, HOT PICKS & Pagination) -->
+    <div id="all-products-view" class="{{ $activeTab === 'products' ? '' : 'd-none' }}">
+        <!-- 2. Horizontally Sliding Category Bar (Placed ABOVE HOT PICKS 🔥) -->
+        <section class="category-navigation-section mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing: 0.5px;">
+                    Categories
+                </h6>
+                <span id="active-category-label" class="text-muted small">
+                    @if($selectedCategory)
+                        Filtered: <strong class="text-primary">{{ $selectedCategory->name }}</strong>
+                    @else
+                        Showing all categories
+                    @endif
                 </span>
-                <h5 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 1.05rem; letter-spacing: 0.5px;">
-                    HOT PICKS 🔥
-                </h5>
             </div>
-            @if($hotProducts->isNotEmpty())
-                <span class="text-muted small d-none d-sm-inline">
-                    {{ $hotProducts->count() }} {{ \Illuminate\Support\Str::plural('item', $hotProducts->count()) }} handpicked by team
-                </span>
-            @endif
-        </div>
 
-        @if($hotProducts->isNotEmpty())
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
-                @foreach($hotProducts as $hotProd)
-                    @include('logs.partials.product_card', ['product' => $hotProd, 'isHotCard' => true])
+            <!-- Horizontal scrollable category bar -->
+            <div id="marketplace-category-tabs" class="cat-tabs-container">
+                <!-- All Pill -->
+                <a href="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['tab' => 'products'])) }}" 
+                   class="cat-tab-btn {{ !$selectedCategory ? 'active' : '' }}" 
+                   data-category-id="" 
+                   data-category-name="All">
+                    <i class="fa-solid fa-border-all"></i>
+                    <span>All</span>
+                    <span class="badge-count">{{ $totalActiveCount }}</span>
+                </a>
+
+                <!-- Individual Category Tabs -->
+                @foreach($categories as $cat)
+                    @php
+                        $isTabActive = ($selectedCategory && $selectedCategory->id == $cat->id);
+                        $catCount = $cat->active_products_count ?? $cat->products_count ?? $cat->products()->where('is_active', true)->count();
+                    @endphp
+                    <a href="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $cat->id, 'tab' => 'products'])) }}" 
+                       class="cat-tab-btn {{ $isTabActive ? 'active' : '' }}" 
+                       data-category-id="{{ $cat->id }}" 
+                       data-category-name="{{ $cat->name }}">
+                        <span>{{ $cat->name }}</span>
+                        <span class="badge-count">{{ $catCount }}</span>
+                    </a>
                 @endforeach
             </div>
-        @else
-            <div class="p-4 text-center rounded-4 border border-dashed text-muted bg-light-subtle">
-                <i class="fa-solid fa-fire text-secondary opacity-40 fa-lg mb-1.5 d-block"></i>
-                <span class="small fw-semibold d-block">No products currently featured in HOT PICKS.</span>
-                <span class="small text-muted">Browse our full catalogue by category below.</span>
+        </section>
+
+        <!-- 3. HOT PICKS 🔥 Section (Only Admin-Selected Products, Below Category Bar) -->
+        <section class="hot-picks-section mb-5">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger rounded-pill px-2.5 py-1 text-white fw-bold shadow-xs">
+                        <i class="fa-solid fa-fire-flame-curved"></i> FEATURED
+                    </span>
+                    <h5 class="fw-bold mb-0 text-uppercase tracking-wide" style="font-size: 1.05rem; letter-spacing: 0.5px;">
+                        HOT PICKS 🔥
+                    </h5>
+                </div>
+                @if($hotProducts->isNotEmpty())
+                    <span class="text-muted small d-none d-sm-inline">
+                        {{ $hotProducts->count() }} {{ \Illuminate\Support\Str::plural('item', $hotProducts->count()) }} handpicked by team
+                    </span>
+                @endif
             </div>
-        @endif
-    </section>
 
-    <!-- 4. Regular Product Catalogue and 5. Pagination Controls -->
-    <section class="regular-catalogue-wrapper position-relative mb-4">
-        <div id="marketplace-catalogue-container">
-            @include('logs.partials.catalogue_section', [
-                'products' => $products,
-                'selectedCategory' => $selectedCategory,
-                'totalActiveCount' => $totalActiveCount,
-                'hotPickIds' => $hotPickIds
-            ])
-        </div>
+            @if($hotProducts->isNotEmpty())
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3">
+                    @foreach($hotProducts as $hotProd)
+                        @include('logs.partials.product_card', ['product' => $hotProd, 'isHotCard' => true])
+                    @endforeach
+                </div>
+            @else
+                <div class="p-4 text-center rounded-4 border border-dashed text-muted bg-light-subtle">
+                    <i class="fa-solid fa-fire text-secondary opacity-40 fa-lg mb-1.5 d-block"></i>
+                    <span class="small fw-semibold d-block">No products currently featured in HOT PICKS.</span>
+                    <span class="small text-muted">Browse our full catalogue by category below.</span>
+                </div>
+            @endif
+        </section>
 
-        <!-- Subtle Non-blocking Loading Indicator -->
-        <div id="catalogue-loading-indicator" class="catalogue-loading-indicator d-none">
-            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
-            <span class="small fw-semibold">Loading accounts...</span>
-        </div>
-    </section>
+        <!-- 4. Regular Product Catalogue and 5. Pagination Controls -->
+        <section class="regular-catalogue-wrapper position-relative mb-4">
+            <div id="marketplace-catalogue-container">
+                @include('logs.partials.catalogue_section', [
+                    'products' => $products,
+                    'selectedCategory' => $selectedCategory,
+                    'totalActiveCount' => $totalActiveCount,
+                    'hotPickIds' => $hotPickIds
+                ])
+            </div>
+
+            <!-- Subtle Non-blocking Loading Indicator -->
+            <div id="catalogue-loading-indicator" class="catalogue-loading-indicator d-none">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span class="small fw-semibold">Loading accounts...</span>
+            </div>
+        </section>
+    </div>
 
 </div>
 @endsection
@@ -366,6 +569,23 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const tabBtnCategories = document.getElementById('tab-btn-categories');
+    const tabBtnProducts = document.getElementById('tab-btn-products');
+    const allCategoriesView = document.getElementById('all-categories-view');
+    const allProductsView = document.getElementById('all-products-view');
+    const searchHiddenTab = document.getElementById('search-hidden-tab');
+    const searchInput = document.getElementById('marketplace-search-input');
+    const searchInputCol = document.getElementById('search-input-col');
+    const categoryDropdownCol = document.getElementById('category-dropdown-col');
+    const searchForm = document.getElementById('marketplace-search-form');
+    const clearSearchBtn = document.getElementById('marketplace-clear-search-btn');
+
+    const categoriesGrid = document.getElementById('categories-grid-container');
+    const categoriesEmptySearch = document.getElementById('categories-empty-search');
+    const emptySearchTerm = document.getElementById('empty-search-term');
+    const btnClearCategorySearch = document.getElementById('btn-clear-category-search');
+    const categoriesMatchingLabel = document.getElementById('categories-matching-label');
+
     const tabsContainer = document.getElementById('marketplace-category-tabs');
     const categorySelect = document.getElementById('marketplace-category-select');
     const catalogueContainer = document.getElementById('marketplace-catalogue-container');
@@ -373,12 +593,206 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchHiddenCategory = document.getElementById('search-hidden-category');
     const activeCategoryLabel = document.getElementById('active-category-label');
 
+    let currentMode = '{{ $activeTab }}';
     let currentAbortController = null;
     let requestSeq = 0;
 
     /**
+     * Switch Mode Tab (All Categories vs All Products)
+     */
+    function switchMode(newMode, pushHistory = true) {
+        currentMode = newMode;
+        if (searchHiddenTab) {
+            searchHiddenTab.value = newMode;
+        }
+
+        if (newMode === 'categories') {
+            tabBtnCategories?.classList.add('active');
+            tabBtnProducts?.classList.remove('active');
+            allCategoriesView?.classList.remove('d-none');
+            allProductsView?.classList.add('d-none');
+
+            // Responsive layout: search input expands on categories view
+            if (searchInputCol) {
+                searchInputCol.className = 'col-12';
+            }
+            if (categoryDropdownCol) {
+                categoryDropdownCol.classList.add('d-none');
+            }
+            if (searchInput) {
+                searchInput.setAttribute('placeholder', 'Search categories by name...');
+                // Trigger real-time category filtering if query present
+                filterCategories(searchInput.value.trim());
+            }
+        } else {
+            tabBtnProducts?.classList.add('active');
+            tabBtnCategories?.classList.remove('active');
+            allProductsView?.classList.remove('d-none');
+            allCategoriesView?.classList.add('d-none');
+
+            if (searchInputCol) {
+                searchInputCol.className = 'col-12 col-md-7 col-lg-8';
+            }
+            if (categoryDropdownCol) {
+                categoryDropdownCol.classList.remove('d-none');
+            }
+            if (searchInput) {
+                searchInput.setAttribute('placeholder', 'Search accounts by name, platform, country...');
+            }
+        }
+
+        if (pushHistory) {
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('tab', newMode);
+            window.history.pushState({ mode: newMode, url: currentUrl.toString() }, '', currentUrl.toString());
+        }
+    }
+
+    if (tabBtnCategories) {
+        tabBtnCategories.addEventListener('click', function () {
+            switchMode('categories', true);
+        });
+    }
+
+    if (tabBtnProducts) {
+        tabBtnProducts.addEventListener('click', function () {
+            switchMode('products', true);
+        });
+    }
+
+    /**
+     * Real-time filtering for categories grid
+     */
+    function filterCategories(query) {
+        if (!categoriesGrid) return;
+
+        const cards = categoriesGrid.querySelectorAll('.category-grid-col');
+        const totalCards = cards.length;
+        const normalizedQuery = query.toLowerCase().trim();
+        let visibleCount = 0;
+
+        cards.forEach(function (card) {
+            const catName = card.getAttribute('data-category-name') || '';
+            if (!normalizedQuery || catName.includes(normalizedQuery)) {
+                card.classList.remove('d-none');
+                visibleCount++;
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+
+        // Toggle clear search button
+        if (clearSearchBtn) {
+            if (normalizedQuery) {
+                clearSearchBtn.classList.remove('d-none');
+            } else {
+                clearSearchBtn.classList.add('d-none');
+            }
+        }
+
+        // Handle empty state
+        if (categoriesEmptySearch) {
+            if (visibleCount === 0 && totalCards > 0) {
+                categoriesEmptySearch.classList.remove('d-none');
+                if (emptySearchTerm) {
+                    emptySearchTerm.textContent = query;
+                }
+            } else {
+                categoriesEmptySearch.classList.add('d-none');
+            }
+        }
+
+        // Update count label
+        if (categoriesMatchingLabel) {
+            if (normalizedQuery) {
+                categoriesMatchingLabel.innerHTML = 'Showing <strong>' + visibleCount + '</strong> of ' + totalCards + ' categories';
+            } else {
+                categoriesMatchingLabel.textContent = 'Showing all ' + totalCards + ' categories';
+            }
+        }
+    }
+
+    // Live search input handling
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const val = this.value.trim();
+            if (clearSearchBtn) {
+                if (val) {
+                    clearSearchBtn.classList.remove('d-none');
+                } else {
+                    clearSearchBtn.classList.add('d-none');
+                }
+            }
+
+            if (currentMode === 'categories') {
+                filterCategories(val);
+            }
+        });
+
+        // Prevent full form submit reload on Enter when in categories view
+        if (searchForm) {
+            searchForm.addEventListener('submit', function (e) {
+                if (currentMode === 'categories') {
+                    e.preventDefault();
+                    filterCategories(searchInput.value.trim());
+                }
+            });
+        }
+    }
+
+    function resetCategorySearch() {
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.focus();
+        }
+        if (clearSearchBtn) {
+            clearSearchBtn.classList.add('d-none');
+        }
+        filterCategories('');
+    }
+
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function () {
+            if (currentMode === 'categories') {
+                resetCategorySearch();
+            } else {
+                // In products mode, reset to base URL without search
+                const url = new URL(window.location.href);
+                url.searchParams.delete('search');
+                url.searchParams.delete('page');
+                window.location.href = url.toString();
+            }
+        });
+    }
+
+    if (btnClearCategorySearch) {
+        btnClearCategorySearch.addEventListener('click', resetCategorySearch);
+    }
+
+    /**
+     * Intercept Category Card Clicks in All Categories view:
+     * Seamlessly opens the selected category under All Products tab!
+     */
+    if (categoriesGrid) {
+        categoriesGrid.addEventListener('click', function (e) {
+            const card = e.target.closest('.category-card');
+            if (!card) return;
+
+            e.preventDefault();
+            const targetUrl = card.getAttribute('href');
+            const categoryId = card.getAttribute('data-category-id') || '';
+            const categoryName = card.getAttribute('data-category-name') || '';
+
+            // Switch view to products mode
+            switchMode('products', false);
+
+            // Execute asynchronous category switch
+            switchCategory(targetUrl, categoryId, categoryName, true);
+        });
+    }
+
+    /**
      * Scroll target category button into center of the horizontal scroll container.
-     * Prevents vertical page jumps by only scrolling the container's left coordinate.
      */
     function scrollCategoryIntoCenter(buttonEl, smooth = true) {
         if (!tabsContainer || !buttonEl) return;
@@ -444,7 +858,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // 4. Update browser URL & history without full page reload
         if (pushToHistory) {
-            window.history.pushState({ categoryId: categoryId, categoryName: categoryName, url: targetUrl }, '', targetUrl);
+            window.history.pushState({ mode: 'products', categoryId: categoryId, categoryName: categoryName, url: targetUrl }, '', targetUrl);
         }
 
         // 5. Abort in-flight request if user rapidly clicked categories
@@ -487,7 +901,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         } catch (err) {
             if (err.name === 'AbortError') {
-                return; // User tapped another category before request finished
+                return;
             }
             console.error('Category async load failed, falling back to page navigation:', err);
             window.location.href = targetUrl;
@@ -510,7 +924,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return div.innerHTML;
     }
 
-    // Intercept category tab clicks
+    // Intercept category tab clicks in horizontal scroll bar
     if (tabsContainer) {
         tabsContainer.addEventListener('click', function (e) {
             const btn = e.target.closest('.cat-tab-btn');
@@ -548,7 +962,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             e.preventDefault();
 
-            // Determine category from target URL
             const urlObj = new URL(targetUrl, window.location.origin);
             const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
             const activeTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
@@ -559,15 +972,33 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Handle browser Back & Forward buttons
-    window.addEventListener('popstate', function () {
+    window.addEventListener('popstate', function (e) {
         const url = window.location.href;
         const urlObj = new URL(url);
-        const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
-        const matchingTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
-        const catName = matchingTab ? matchingTab.getAttribute('data-category-name') : 'All';
+        const modeParam = urlObj.searchParams.get('tab');
 
-        switchCategory(url, catId, catName, false);
+        if (modeParam === 'categories') {
+            switchMode('categories', false);
+        } else if (modeParam === 'products') {
+            switchMode('products', false);
+            const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
+            const matchingTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
+            const catName = matchingTab ? matchingTab.getAttribute('data-category-name') : 'All';
+            switchCategory(url, catId, catName, false);
+        } else {
+            // Default check based on parameters
+            if (urlObj.searchParams.has('category') || urlObj.searchParams.has('search')) {
+                switchMode('products', false);
+            } else {
+                switchMode('categories', false);
+            }
+        }
     });
+
+    // Run initial search filter if on categories view with search value
+    if (currentMode === 'categories' && searchInput && searchInput.value.trim()) {
+        filterCategories(searchInput.value.trim());
+    }
 });
 </script>
 @endpush
