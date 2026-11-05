@@ -77,6 +77,13 @@ class MarketplaceAllCategoriesViewTest extends TestCase
         $response->assertSee('tab-btn-categories');
         $response->assertSee('tab-btn-products');
 
+        // Verify accessibility and WAI-ARIA tab semantics
+        $response->assertSee('role="tablist"', false);
+        $response->assertSee('role="tab"', false);
+        $response->assertSee('aria-selected="true"', false);
+        $response->assertSee('aria-controls="all-categories-view"', false);
+        $response->assertSee('role="tabpanel"', false);
+
         // Verify categories are listed in the grid view
         $response->assertSee('all-categories-view');
         $response->assertSee('Instagram');
@@ -398,5 +405,37 @@ class MarketplaceAllCategoriesViewTest extends TestCase
             ->withCount(['products as active_products_count' => fn($q) => $q->where('is_active', true)])
             ->first();
         $this->assertEquals(2, $queryLoadedCat->active_products_count);
+    }
+
+    /**
+     * Test 10: Direct URLs with category, search, or pagination resolve activeTab to products and preserve state.
+     */
+    public function test_direct_category_urls_and_tab_state_resolution(): void
+    {
+        $cat = LogCategory::create(['name' => 'Telegram Direct', 'is_active' => true]);
+        $prod = $this->createProduct([
+            'name' => 'Telegram Direct Product',
+            'log_category_id' => $cat->id,
+            'is_active' => true,
+        ]);
+
+        // Direct request with category parameter alone resolves to products view
+        $response = $this->actingAs($this->customer)->get(route('logs.index', ['category' => $cat->id]));
+        $response->assertStatus(200);
+        $response->assertSee('Telegram Direct Product');
+        $response->assertSee('aria-controls="all-products-view"', false);
+        $response->assertSee('tab-btn-products', false);
+
+        // Direct request with search parameter alone resolves to products view
+        $responseSearch = $this->actingAs($this->customer)->get(route('logs.index', ['search' => 'Direct']));
+        $responseSearch->assertStatus(200);
+        $responseSearch->assertSee('Telegram Direct Product');
+
+        // Request with explicit tab=categories stays in categories view even if category list exists
+        $responseCatTab = $this->actingAs($this->customer)->get(route('logs.index', ['tab' => 'categories']));
+        $responseCatTab->assertStatus(200);
+        $responseCatTab->assertSee('Telegram Direct');
+        $responseCatTab->assertSee('aria-controls="all-categories-view"', false);
+        $responseCatTab->assertSee('tab-btn-categories', false);
     }
 }

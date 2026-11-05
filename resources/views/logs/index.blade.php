@@ -358,8 +358,12 @@
 
     <!-- 1b. Mode Navigation Tabs: All Categories & All Products -->
     <div class="marketplace-nav-tabs-wrapper mb-3">
-        <div class="marketplace-nav-tabs rounded-pill">
+        <div class="marketplace-nav-tabs rounded-pill" role="tablist" aria-label="Marketplace Views">
             <button type="button" 
+                    role="tab"
+                    aria-selected="{{ $activeTab === 'categories' ? 'true' : 'false' }}"
+                    aria-controls="all-categories-view"
+                    tabindex="{{ $activeTab === 'categories' ? '0' : '-1' }}"
                     class="marketplace-nav-tab-btn rounded-pill {{ $activeTab === 'categories' ? 'active' : '' }}" 
                     id="tab-btn-categories" 
                     data-mode="categories"
@@ -369,6 +373,10 @@
                 <span class="tab-badge-counter ms-1">{{ $categories->count() }}</span>
             </button>
             <button type="button" 
+                    role="tab"
+                    aria-selected="{{ $activeTab === 'products' ? 'true' : 'false' }}"
+                    aria-controls="all-products-view"
+                    tabindex="{{ $activeTab === 'products' ? '0' : '-1' }}"
                     class="marketplace-nav-tab-btn rounded-pill {{ $activeTab === 'products' ? 'active' : '' }}" 
                     id="tab-btn-products" 
                     data-mode="products"
@@ -416,7 +424,7 @@
                 @foreach($categories as $category)
                     @php
                         $isSelected = ($selectedCategory && $selectedCategory->id == $category->id);
-                        $count = $category->active_products_count ?? $category->products_count ?? $category->products()->where('is_active', true)->count();
+                        $count = $category->active_products_count;
                     @endphp
                     <option value="{{ route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $category->id, 'tab' => 'products'])) }}" data-category-id="{{ $category->id }}" {{ $isSelected ? 'selected' : '' }}>
                         {{ $category->name }} ({{ $count }})
@@ -427,7 +435,7 @@
     </div>
 
     <!-- VIEW A: ALL CATEGORIES VIEW (2-column on mobile, responsive on tablet/desktop) -->
-    <section id="all-categories-view" class="{{ $activeTab === 'categories' ? '' : 'd-none' }} mb-5">
+    <section id="all-categories-view" role="tabpanel" aria-labelledby="tab-btn-categories" class="{{ $activeTab === 'categories' ? '' : 'd-none' }} mb-5">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h6 class="fw-bold text-uppercase text-muted small mb-0" style="letter-spacing: 0.5px;">
                 <i class="fa-solid fa-shapes text-primary me-1"></i> Available Categories
@@ -466,7 +474,7 @@
     </section>
 
     <!-- VIEW B: ALL PRODUCTS VIEW (Existing Catalogue, Category Bar, HOT PICKS & Pagination) -->
-    <div id="all-products-view" class="{{ $activeTab === 'products' ? '' : 'd-none' }}">
+    <div id="all-products-view" role="tabpanel" aria-labelledby="tab-btn-products" class="{{ $activeTab === 'products' ? '' : 'd-none' }}">
         <!-- 2. Horizontally Sliding Category Bar (Placed ABOVE HOT PICKS 🔥) -->
         <section class="category-navigation-section mb-4">
             <div class="d-flex align-items-center justify-content-between mb-2">
@@ -597,18 +605,52 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentAbortController = null;
     let requestSeq = 0;
 
+    // Independent search state separation: avoids category & product searches mixing
+    let categorySearchTerm = (currentMode === 'categories') ? {!! json_encode((string) request('search', '')) !!} : '';
+    let productSearchTerm = (currentMode === 'products') ? {!! json_encode((string) request('search', '')) !!} : '';
+
     /**
      * Switch Mode Tab (All Categories vs All Products)
      */
     function switchMode(newMode, pushHistory = true) {
+        if (currentMode === newMode) return;
+
+        // 1. Preserve search term of the mode we are leaving
+        if (currentMode === 'categories') {
+            if (searchInput) {
+                categorySearchTerm = searchInput.value.trim();
+            }
+        } else {
+            if (searchInput) {
+                productSearchTerm = searchInput.value.trim();
+            }
+        }
+
         currentMode = newMode;
         if (searchHiddenTab) {
             searchHiddenTab.value = newMode;
         }
 
         if (newMode === 'categories') {
+            // Abort any in-flight product loading requests immediately
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+            if (catalogueContainer) {
+                catalogueContainer.classList.remove('is-loading');
+            }
+            if (loadingIndicator) {
+                loadingIndicator.classList.add('d-none');
+            }
+
+            // Update tab styles and ARIA states
             tabBtnCategories?.classList.add('active');
+            tabBtnCategories?.setAttribute('aria-selected', 'true');
+            tabBtnCategories?.setAttribute('tabindex', '0');
             tabBtnProducts?.classList.remove('active');
+            tabBtnProducts?.setAttribute('aria-selected', 'false');
+            tabBtnProducts?.setAttribute('tabindex', '-1');
+
             allCategoriesView?.classList.remove('d-none');
             allProductsView?.classList.add('d-none');
 
@@ -619,14 +661,29 @@ document.addEventListener('DOMContentLoaded', function () {
             if (categoryDropdownCol) {
                 categoryDropdownCol.classList.add('d-none');
             }
+
+            // Restore category search state
             if (searchInput) {
                 searchInput.setAttribute('placeholder', 'Search categories by name...');
-                // Trigger real-time category filtering if query present
-                filterCategories(searchInput.value.trim());
+                searchInput.value = categorySearchTerm;
+                if (clearSearchBtn) {
+                    if (categorySearchTerm) {
+                        clearSearchBtn.classList.remove('d-none');
+                    } else {
+                        clearSearchBtn.classList.add('d-none');
+                    }
+                }
+                filterCategories(categorySearchTerm);
             }
         } else {
+            // Update tab styles and ARIA states
             tabBtnProducts?.classList.add('active');
+            tabBtnProducts?.setAttribute('aria-selected', 'true');
+            tabBtnProducts?.setAttribute('tabindex', '0');
             tabBtnCategories?.classList.remove('active');
+            tabBtnCategories?.setAttribute('aria-selected', 'false');
+            tabBtnCategories?.setAttribute('tabindex', '-1');
+
             allProductsView?.classList.remove('d-none');
             allCategoriesView?.classList.add('d-none');
 
@@ -636,8 +693,18 @@ document.addEventListener('DOMContentLoaded', function () {
             if (categoryDropdownCol) {
                 categoryDropdownCol.classList.remove('d-none');
             }
+
+            // Restore product search state
             if (searchInput) {
                 searchInput.setAttribute('placeholder', 'Search accounts by name, platform, country...');
+                searchInput.value = productSearchTerm;
+                if (clearSearchBtn) {
+                    if (productSearchTerm) {
+                        clearSearchBtn.classList.remove('d-none');
+                    } else {
+                        clearSearchBtn.classList.add('d-none');
+                    }
+                }
             }
         }
 
@@ -647,6 +714,23 @@ document.addEventListener('DOMContentLoaded', function () {
             window.history.pushState({ mode: newMode, url: currentUrl.toString() }, '', currentUrl.toString());
         }
     }
+
+    // Keyboard Arrow navigation between tabs (WAI-ARIA Tablist Pattern)
+    tabBtnCategories?.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            tabBtnProducts?.focus();
+            switchMode('products', true);
+        }
+    });
+
+    tabBtnProducts?.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            tabBtnCategories?.focus();
+            switchMode('categories', true);
+        }
+    });
 
     if (tabBtnCategories) {
         tabBtnCategories.addEventListener('click', function () {
@@ -668,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const cards = categoriesGrid.querySelectorAll('.category-grid-col');
         const totalCards = cards.length;
-        const normalizedQuery = query.toLowerCase().trim();
+        const normalizedQuery = (query || '').toLowerCase().trim();
         let visibleCount = 0;
 
         cards.forEach(function (card) {
@@ -725,7 +809,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (currentMode === 'categories') {
+                categorySearchTerm = val;
                 filterCategories(val);
+            } else {
+                productSearchTerm = val;
             }
         });
 
@@ -741,6 +828,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function resetCategorySearch() {
+        categorySearchTerm = '';
         if (searchInput) {
             searchInput.value = '';
             searchInput.focus();
@@ -756,6 +844,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (currentMode === 'categories') {
                 resetCategorySearch();
             } else {
+                productSearchTerm = '';
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                clearSearchBtn.classList.add('d-none');
                 // In products mode, reset to base URL without search
                 const url = new URL(window.location.href);
                 url.searchParams.delete('search');
@@ -904,6 +997,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
             console.error('Category async load failed, falling back to page navigation:', err);
+            // Hide loading indicators before navigating away
+            if (catalogueContainer) {
+                catalogueContainer.classList.remove('is-loading');
+            }
+            if (loadingIndicator) {
+                loadingIndicator.classList.add('d-none');
+            }
             window.location.href = targetUrl;
         } finally {
             if (thisSeq === requestSeq) {
@@ -962,6 +1062,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
             e.preventDefault();
 
+            // If clear all was clicked in banner, reset search input as well
+            if (link.classList.contains('reset-filter-btn')) {
+                productSearchTerm = '';
+                if (searchInput) {
+                    searchInput.value = '';
+                }
+                if (clearSearchBtn) {
+                    clearSearchBtn.classList.add('d-none');
+                }
+            }
+
             const urlObj = new URL(targetUrl, window.location.origin);
             const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
             const activeTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
@@ -971,27 +1082,44 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Handle browser Back & Forward buttons
+    // Handle browser Back & Forward buttons (Full state and catalogue restoration)
     window.addEventListener('popstate', function (e) {
         const url = window.location.href;
         const urlObj = new URL(url);
         const modeParam = urlObj.searchParams.get('tab');
+        const hasCategory = urlObj.searchParams.has('category') || urlObj.searchParams.has('category_id');
+        const hasSearch = urlObj.searchParams.has('search');
+        const hasPage = urlObj.searchParams.has('page');
 
-        if (modeParam === 'categories') {
-            switchMode('categories', false);
-        } else if (modeParam === 'products') {
+        const shouldBeProducts = (modeParam === 'products') || (!modeParam && (hasCategory || hasSearch || hasPage));
+
+        if (shouldBeProducts) {
             switchMode('products', false);
             const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
             const matchingTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
-            const catName = matchingTab ? matchingTab.getAttribute('data-category-name') : 'All';
+            const catName = matchingTab ? (matchingTab.getAttribute('data-category-name') || 'All') : 'All';
+            const searchVal = urlObj.searchParams.get('search') || '';
+            productSearchTerm = searchVal;
+            if (searchInput) {
+                searchInput.value = searchVal;
+                if (clearSearchBtn) {
+                    if (searchVal) clearSearchBtn.classList.remove('d-none');
+                    else clearSearchBtn.classList.add('d-none');
+                }
+            }
             switchCategory(url, catId, catName, false);
         } else {
-            // Default check based on parameters
-            if (urlObj.searchParams.has('category') || urlObj.searchParams.has('search')) {
-                switchMode('products', false);
-            } else {
-                switchMode('categories', false);
+            switchMode('categories', false);
+            const searchVal = urlObj.searchParams.get('search') || '';
+            categorySearchTerm = searchVal;
+            if (searchInput) {
+                searchInput.value = searchVal;
+                if (clearSearchBtn) {
+                    if (searchVal) clearSearchBtn.classList.remove('d-none');
+                    else clearSearchBtn.classList.add('d-none');
+                }
             }
+            filterCategories(searchVal);
         }
     });
 
