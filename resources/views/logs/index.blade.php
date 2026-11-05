@@ -711,6 +711,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (pushHistory) {
             const currentUrl = new URL(window.location.href);
             currentUrl.searchParams.set('tab', newMode);
+            if (newMode === 'categories') {
+                if (categorySearchTerm) {
+                    currentUrl.searchParams.set('search', categorySearchTerm);
+                } else {
+                    currentUrl.searchParams.delete('search');
+                }
+                currentUrl.searchParams.delete('category');
+                currentUrl.searchParams.delete('category_id');
+                currentUrl.searchParams.delete('page');
+            } else {
+                if (productSearchTerm) {
+                    currentUrl.searchParams.set('search', productSearchTerm);
+                } else {
+                    currentUrl.searchParams.delete('search');
+                }
+            }
             window.history.pushState({ mode: newMode, url: currentUrl.toString() }, '', currentUrl.toString());
         }
     }
@@ -848,7 +864,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (searchInput) {
                     searchInput.value = '';
                 }
-                clearSearchBtn.classList.add('d-none');
+                if (clearSearchBtn) {
+                    clearSearchBtn.classList.add('d-none');
+                }
                 // In products mode, reset to base URL without search
                 const url = new URL(window.location.href);
                 url.searchParams.delete('search');
@@ -875,6 +893,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const targetUrl = card.getAttribute('href');
             const categoryId = card.getAttribute('data-category-id') || '';
             const categoryName = card.getAttribute('data-category-name') || '';
+
+            // Synchronize product search state with target URL search query (empty for card navigation)
+            const urlObj = new URL(targetUrl, window.location.origin);
+            const searchVal = urlObj.searchParams.get('search') || '';
+            productSearchTerm = searchVal;
 
             // Switch view to products mode
             switchMode('products', false);
@@ -914,6 +937,21 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     async function switchCategory(targetUrl, categoryId, categoryName, pushToHistory = true) {
         const thisSeq = ++requestSeq;
+
+        // Synchronize product search state with target URL search query
+        const urlObj = new URL(targetUrl, window.location.origin);
+        const searchInUrl = urlObj.searchParams.get('search') || '';
+        productSearchTerm = searchInUrl;
+        if (currentMode === 'products' && searchInput) {
+            searchInput.value = searchInUrl;
+            if (clearSearchBtn) {
+                if (searchInUrl) {
+                    clearSearchBtn.classList.remove('d-none');
+                } else {
+                    clearSearchBtn.classList.add('d-none');
+                }
+            }
+        }
 
         // 1. Immediate visual highlighting (optimistic update)
         if (tabsContainer) {
@@ -1094,12 +1132,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const shouldBeProducts = (modeParam === 'products') || (!modeParam && (hasCategory || hasSearch || hasPage));
 
         if (shouldBeProducts) {
+            const searchVal = urlObj.searchParams.get('search') || '';
+            productSearchTerm = searchVal;
             switchMode('products', false);
             const catId = urlObj.searchParams.get('category') || urlObj.searchParams.get('category_id') || '';
             const matchingTab = tabsContainer ? tabsContainer.querySelector(`.cat-tab-btn[data-category-id="${catId}"]`) : null;
             const catName = matchingTab ? (matchingTab.getAttribute('data-category-name') || 'All') : 'All';
-            const searchVal = urlObj.searchParams.get('search') || '';
-            productSearchTerm = searchVal;
             if (searchInput) {
                 searchInput.value = searchVal;
                 if (clearSearchBtn) {
@@ -1109,9 +1147,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             switchCategory(url, catId, catName, false);
         } else {
-            switchMode('categories', false);
             const searchVal = urlObj.searchParams.get('search') || '';
             categorySearchTerm = searchVal;
+            switchMode('categories', false);
             if (searchInput) {
                 searchInput.value = searchVal;
                 if (clearSearchBtn) {

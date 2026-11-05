@@ -1,6 +1,6 @@
 @php
     $catCount = $category->active_products_count;
-    $catUrl = route('logs.index', array_merge(request()->except('category', 'category_id', 'page'), ['category' => $category->id, 'tab' => 'products']));
+    $catUrl = route('logs.index', ['category' => $category->id, 'tab' => 'products']);
 @endphp
 <div class="col category-grid-col" data-category-name="{{ strtolower($category->name) }}" data-category-id="{{ $category->id }}">
     <a href="{{ $catUrl }}" 

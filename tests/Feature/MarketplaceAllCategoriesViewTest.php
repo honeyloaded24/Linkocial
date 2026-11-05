@@ -438,4 +438,48 @@ class MarketplaceAllCategoriesViewTest extends TestCase
         $responseCatTab->assertSee('aria-controls="all-categories-view"', false);
         $responseCatTab->assertSee('tab-btn-categories', false);
     }
+
+    /**
+     * Test 11: Category card navigation URLs strictly omit stale product search parameters.
+     */
+    public function test_category_card_urls_do_not_inherit_stale_search_parameters(): void
+    {
+        $catInstagram = LogCategory::create(['name' => 'Instagram Clean URL', 'is_active' => true]);
+        $catTelegram = LogCategory::create(['name' => 'Telegram Clean URL', 'is_active' => true]);
+
+        $this->createProduct([
+            'name' => 'Instagram Premium Account',
+            'log_category_id' => $catInstagram->id,
+            'is_active' => true,
+        ]);
+        $this->createProduct([
+            'name' => 'Telegram Channel 10k',
+            'log_category_id' => $catTelegram->id,
+            'is_active' => true,
+        ]);
+
+        // Scenario: User was previously searching for "Telegram" and navigated to All Categories view
+        $response = $this->actingAs($this->customer)->get(route('logs.index', [
+            'tab' => 'categories',
+            'search' => 'Telegram',
+        ]));
+
+        $response->assertStatus(200);
+
+        // Verify category card URL for Instagram does NOT inherit ?search=Telegram
+        $expectedCleanInstagramUrl = route('logs.index', [
+            'category' => $catInstagram->id,
+            'tab' => 'products',
+        ]);
+        $response->assertSee('href="' . e($expectedCleanInstagramUrl) . '"', false);
+        $response->assertDontSee($expectedCleanInstagramUrl . '&search=Telegram', false);
+        $response->assertDontSee('category=' . $catInstagram->id . '&tab=products&search=Telegram', false);
+        $response->assertDontSee('search=Telegram&tab=products&category=' . $catInstagram->id, false);
+
+        // Verify visiting the clean category URL loads the category's products without search filtering
+        $categoryProductsResponse = $this->actingAs($this->customer)->get($expectedCleanInstagramUrl);
+        $categoryProductsResponse->assertStatus(200);
+        $categoryProductsResponse->assertSee('Instagram Premium Account');
+    }
 }
+
