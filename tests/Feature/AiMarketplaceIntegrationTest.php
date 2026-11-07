@@ -273,4 +273,32 @@ class AiMarketplaceIntegrationTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    public function test_catalog_sync_parses_reseller_price_kobo_and_repairs_zero_prices(): void
+    {
+        Http::fake([
+            'https://resellers.aiplug.store/api/reseller/v1/catalog' => Http::response([
+                'products' => [
+                    [
+                        'id'                => 'ext:101',
+                        'name'              => 'Antigravity Slot x20 Ultra 1 Month',
+                        'summary'           => 'The order will be completed within 24 hours',
+                        'category'          => 'Software',
+                        'resellerPriceKobo' => 450000,
+                        'autoFulfill'       => true,
+                        'stock'             => null,
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $service = app(AiPlugService::class);
+        $result = $service->syncCatalog();
+
+        $this->assertTrue($result['success']);
+        $product = AiProduct::where('provider_product_id', 'ext:101')->firstOrFail();
+        $this->assertEquals(450000, $product->wholesale_price_kobo);
+        $this->assertEquals(4500.00, (float) $product->wholesale_price);
+        $this->assertEquals(5400.00, (float) $product->effective_selling_price);
+    }
 }

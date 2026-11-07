@@ -17,6 +17,14 @@ class AiPlugService
 
     public function __construct()
     {
+        $this->reloadSettings();
+    }
+
+    /**
+     * Reload API configuration from database settings / config.
+     */
+    public function reloadSettings(): void
+    {
         $dbBaseUrl = null;
         $dbApiKey = null;
         $dbWebhookSecret = null;
@@ -32,6 +40,66 @@ class AiPlugService
         $this->baseUrl = rtrim(($dbBaseUrl ?: config('services.aiplug.base_url', self::DEFAULT_BASE_URL)) ?? self::DEFAULT_BASE_URL, '/');
         $this->apiKey = $dbApiKey ?: config('services.aiplug.api_key');
         $this->webhookSecret = $dbWebhookSecret ?: config('services.aiplug.webhook_secret');
+    }
+
+    /**
+     * Extract product wholesale price in Kobo (₦1 = 100 kobo) from an AIPlug catalog item.
+     * Supports `resellerPriceKobo` (primary AIPlug Reseller API field) as well as fallback keys.
+     */
+    public static function extractPriceKobo(array $p): int
+    {
+        $koboKeys = [
+            'resellerPriceKobo',
+            'reseller_price_kobo',
+            'wholesalePriceKobo',
+            'wholesale_price_kobo',
+            'unitPriceKobo',
+            'unit_price_kobo',
+            'priceKobo',
+            'price_kobo',
+            'costKobo',
+            'cost_kobo',
+            'amountKobo',
+            'amount_kobo',
+            'totalKobo',
+            'total_kobo',
+        ];
+
+        foreach ($koboKeys as $key) {
+            if (isset($p[$key]) && is_numeric($p[$key]) && (float) $p[$key] > 0) {
+                return (int) round((float) $p[$key]);
+            }
+        }
+
+        if (isset($p['pricing']) && is_array($p['pricing'])) {
+            foreach ($koboKeys as $key) {
+                if (isset($p['pricing'][$key]) && is_numeric($p['pricing'][$key]) && (float) $p['pricing'][$key] > 0) {
+                    return (int) round((float) $p['pricing'][$key]);
+                }
+            }
+        }
+
+        $nairaKeys = [
+            'resellerPrice',
+            'reseller_price',
+            'wholesalePrice',
+            'wholesale_price',
+            'unitPrice',
+            'unit_price',
+            'unit_price_ngn',
+            'priceNgn',
+            'price_ngn',
+            'price',
+            'cost',
+        ];
+
+        foreach ($nairaKeys as $key) {
+            if (isset($p[$key]) && is_numeric($p[$key]) && (float) $p[$key] > 0) {
+                return (int) round(((float) $p[$key]) * 100);
+            }
+        }
+
+        return 0;
     }
 
     /**
@@ -95,14 +163,23 @@ class AiPlugService
             Log::warning('AIPlug getBalance failed: ' . $response->body());
             return [
                 'success'     => false,
-                'message'     => $response->json('message') ?? 'Failed to retrieve balance from provider',
+                'message'     => $response->json('message') ?? $response->json('error') ?? 'Failed to retrieve balance from provider',
                 'balanceKobo' => 0,
                 'balanceNgn'  => 0.0,
             ];
         }
 
         $data = $response->json();
-        $balanceKobo = (int) ($data['balanceKobo'] ?? $data['balance'] ?? $data['data']['balanceKobo'] ?? 0);
+        $balanceKobo = (int) (
+            $data['balanceKobo']
+            ?? $data['balance_kobo']
+            ?? $data['wallet']['balanceKobo']
+            ?? $data['wallet']['balance_kobo']
+            ?? $data['data']['balanceKobo']
+            ?? $data['data']['balance_kobo']
+            ?? $data['balance']
+            ?? 0
+        );
         $balanceNgn = round($balanceKobo / 100, 2);
 
         return [
@@ -125,7 +202,7 @@ class AiPlugService
             Log::error('AIPlug getCatalog failed: ' . $response->body());
             return [
                 'success'  => false,
-                'message'  => $response->json('message') ?? 'Failed to fetch catalog',
+                'message'  => $response->json('message') ?? $response->json('error') ?? 'Failed to fetch catalog',
                 'products' => [],
             ];
         }
@@ -153,6 +230,7 @@ class AiPlugService
      */
     public function syncCatalog(): array
     {
+        $this->reloadSettings();
         $catalogResult = $this->getCatalog();
 
         if (!$catalogResult['success']) {
@@ -176,24 +254,38 @@ class AiPlugService
 
             $name = (string) ($p['name'] ?? $p['title'] ?? 'Google AI Service');
             $category = (string) ($p['category'] ?? 'Google AI');
-            $description = (string) ($p['description'] ?? '');
+            $description = (string) ($p['description'] ?? $p['summary'] ?? '');
             $icon = (string) ($p['icon'] ?? $p['image'] ?? 'fa-solid fa-wand-magic-sparkles');
 
-            // Price in Kobo (₦1 = 100 kobo)
-            $priceKobo = (int) ($p['priceKobo'] ?? $p['price_kobo'] ?? $p['costKobo'] ?? (!empty($p['price']) ? round(((float) $p['price']) * 100) : 0));
+            // Price in Kobo (₦1 = 100 kobo) — AIPlug Reseller API uses `resellerPriceKobo`
+            $priceKobo = self::extractPriceKobo($p);
             $wholesaleNgn = round($priceKobo / 100, 2);
 
-            $inStock = (bool) ($p['inStock'] ?? $p['available'] ?? true);
-            $deliveryType = (string) ($p['deliveryType'] ?? $p['delivery_type'] ?? 'automatic');
+            if (isset($p['inStock']) || isset($p['in_stock']) || isset($p['available'])) {
+                $inStock = (bool) ($p['inStock'] ?? $p['in_stock'] ?? $p['available']);
+            } elseif (array_key_exists('stock', $p)) {
+                $inStock = $p['stock'] === null || (int) $p['stock'] > 0;
+            } else {
+                $inStock = true;
+            }
+
+            $stockCount = (array_key_exists('stock', $p) && $p['stock'] !== null) ? (int) $p['stock'] : 999;
+
+            if (!empty($p['deliveryType']) || !empty($p['delivery_type'])) {
+                $deliveryType = (string) ($p['deliveryType'] ?? $p['delivery_type']);
+            } elseif (array_key_exists('autoFulfill', $p)) {
+                $deliveryType = $p['autoFulfill'] ? 'automatic' : 'manual';
+            } else {
+                $deliveryType = 'automatic';
+            }
 
             $existing = AiProduct::where('provider_product_id', $providerId)->first();
 
             if ($existing) {
-                // If admin hasn't set a custom retail price override, update with global markup
-                $existingWholesale = (float) $existing->wholesale_price;
-                $retailPrice = (float) $existing->retail_price;
+                $existingWholesale = (float) $existing->getRawOriginal('wholesale_price');
+                $retailPrice = (float) $existing->getRawOriginal('retail_price');
 
-                if ($retailPrice <= 0 || abs($existingWholesale - $wholesaleNgn) > 0.01) {
+                if ($retailPrice <= 0 || $existingWholesale <= 0 || abs($existingWholesale - $wholesaleNgn) > 0.01) {
                     $retailPrice = round($wholesaleNgn * (1 + ($globalMarkup / 100)), 2);
                 }
 
@@ -206,6 +298,7 @@ class AiPlugService
                     'wholesale_price'      => $wholesaleNgn,
                     'retail_price'         => $retailPrice,
                     'in_stock'             => $inStock,
+                    'stock_count'          => $stockCount,
                     'delivery_type'        => $deliveryType,
                     'metadata'             => $p,
                 ]);
@@ -224,6 +317,7 @@ class AiPlugService
                     'wholesale_price'      => $wholesaleNgn,
                     'retail_price'         => $retailPrice,
                     'in_stock'             => $inStock,
+                    'stock_count'          => $stockCount,
                     'delivery_type'        => $deliveryType,
                     'is_active'            => true,
                     'metadata'             => $p,

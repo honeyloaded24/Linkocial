@@ -30,6 +30,15 @@ class AdminAiMarketplaceController extends Controller
         $category = trim((string) $request->get('category'));
 
         try {
+            AiProduct::repairZeroPricesFromMetadata();
+
+            if ($this->aiPlugService->isConfigured() && (AiProduct::count() === 0 || AiProduct::where('wholesale_price_kobo', '<=', 0)->exists())) {
+                if (!\Illuminate\Support\Facades\Cache::has('aiplug_admin_auto_sync_cooldown')) {
+                    \Illuminate\Support\Facades\Cache::put('aiplug_admin_auto_sync_cooldown', true, 60);
+                    $this->aiPlugService->syncCatalog();
+                }
+            }
+
             $query = AiProduct::query();
 
             if (!empty($category)) {
@@ -295,10 +304,40 @@ class AdminAiMarketplaceController extends Controller
             'aiplug_base_url'       => 'nullable|url',
         ]);
 
+        $newMarkup = (float) $request->ai_marketplace_markup;
+
         Setting::set('aiplug_api_key', trim((string) $request->aiplug_api_key));
         Setting::set('aiplug_webhook_secret', trim((string) $request->aiplug_webhook_secret));
-        Setting::set('ai_marketplace_markup', (string) $request->ai_marketplace_markup);
+        Setting::set('ai_marketplace_markup', (string) $newMarkup);
         Setting::set('aiplug_base_url', trim((string) $request->aiplug_base_url) ?: AiPlugService::DEFAULT_BASE_URL);
+
+        $this->aiPlugService->reloadSettings();
+
+        // Repair any existing 0-kobo products from stored metadata and apply new markup
+        try {
+            AiProduct::repairZeroPricesFromMetadata();
+
+            AiProduct::where('wholesale_price', '>', 0)->each(function (AiProduct $prod) use ($newMarkup) {
+                $wholesale = (float) $prod->wholesale_price;
+                $prod->update([
+                    'retail_price' => round($wholesale * (1 + ($newMarkup / 100)), 2),
+                ]);
+            });
+        } catch (\Throwable $e) {
+            Log::warning('Could not recalculate AI product retail prices: ' . $e->getMessage());
+        }
+
+        // Automatically sync live catalog and prices when API key is configured
+        if ($this->aiPlugService->isConfigured()) {
+            try {
+                $syncResult = $this->aiPlugService->syncCatalog();
+                if ($syncResult['success'] ?? false) {
+                    return back()->with('success', 'AI Marketplace settings saved and catalog prices synced (' . ($syncResult['total'] ?? 0) . ' products).');
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Auto catalog sync on settings save failed: ' . $e->getMessage());
+            }
+        }
 
         return back()->with('success', 'AI Marketplace settings saved successfully.');
     }

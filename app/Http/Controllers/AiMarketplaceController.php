@@ -30,6 +30,15 @@ class AiMarketplaceController extends Controller
         $user = Auth::user();
 
         try {
+            AiProduct::repairZeroPricesFromMetadata();
+
+            if ($this->aiPlugService->isConfigured() && (AiProduct::count() === 0 || AiProduct::where('wholesale_price_kobo', '<=', 0)->exists())) {
+                if (!\Illuminate\Support\Facades\Cache::has('aiplug_auto_sync_cooldown')) {
+                    \Illuminate\Support\Facades\Cache::put('aiplug_auto_sync_cooldown', true, 120);
+                    $this->aiPlugService->syncCatalog();
+                }
+            }
+
             $query = AiProduct::query()->where('is_active', true);
 
             if (!empty($category) && $category !== 'all') {
@@ -68,6 +77,7 @@ class AiMarketplaceController extends Controller
      */
     public function show($id)
     {
+        AiProduct::repairZeroPricesFromMetadata();
         $product = AiProduct::where('is_active', true)->findOrFail($id);
         $user = Auth::user();
 
