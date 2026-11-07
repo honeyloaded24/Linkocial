@@ -28,6 +28,7 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
 Route::post('/webhooks/korapay', [PaymentController::class, 'korapayWebhook']);
 Route::post('/webhooks/billstack', [PaymentController::class, 'billstackWebhook']);
 Route::post('/webhooks/vtu', [\App\Http\Controllers\Api\VtuWebhookController::class, 'handle']);
+Route::post('/webhooks/aiplug', [\App\Http\Controllers\Api\AiPlugWebhookController::class, 'handle']);
 
 // Standard SMM Reseller API (v1) - Rate Limited
 Route::middleware('throttle:api')->group(function () {

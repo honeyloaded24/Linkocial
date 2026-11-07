@@ -56,8 +56,9 @@ class FinancialMetricsService
         $vnSpent = $this->getVirtualNumberSpent($userId);
         $vtuSpent = $this->getVtuSpent($userId);
         $logSpent = $this->getLogSpent($userId);
+        $aiSpent = $this->getAiSpent($userId);
 
-        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent, 2);
+        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
     }
 
     /**
@@ -76,8 +77,9 @@ class FinancialMetricsService
         $vnSpent = $this->getVirtualNumberSpent($userId, $startDate, $endDate);
         $vtuSpent = $this->getVtuSpent($userId, $startDate, $endDate);
         $logSpent = $this->getLogSpent($userId, $startDate, $endDate);
+        $aiSpent = $this->getAiSpent($userId, $startDate, $endDate);
 
-        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent, 2);
+        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
     }
 
     /**
@@ -135,9 +137,13 @@ class FinancialMetricsService
             ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
             ->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
 
+        // 6. AI Marketplace Spent & Provider Cost (in NGN)
+        $aiSpent = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('total_price'), 2);
+        $aiCostNgn = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('provider_cost'), 2);
+
         // Aggregations
-        $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent, 2);
-        $totalCost = round($smmCostNgn + $vnCostNgn + $vtuCostNgn + $logCostNgn, 2);
+        $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
+        $totalCost = round($smmCostNgn + $vnCostNgn + $vtuCostNgn + $logCostNgn + $aiCostNgn, 2);
         $totalProfit = max(0.0, round($totalSpent - $totalCost, 2));
 
         return [
@@ -150,6 +156,8 @@ class FinancialMetricsService
             'vtuCost'        => $vtuCostNgn,
             'logSpent'       => $logSpent,
             'logCost'        => $logCostNgn,
+            'aiSpent'        => $aiSpent,
+            'aiCost'         => $aiCostNgn,
             'totalSpent'     => $totalSpent,
             'totalCost'      => $totalCost,
             'totalProfit'    => $totalProfit,
@@ -518,6 +526,26 @@ class FinancialMetricsService
         }
 
         return round((float) $query->sum('total_cost'), 2);
+    }
+
+    /**
+     * Compute AI Marketplace customer spent in NGN.
+     */
+    protected function getAiSpent(?int $userId = null, ?Carbon $startDate = null, ?Carbon $endDate = null): float
+    {
+        $query = \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing']);
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($startDate !== null && $endDate !== null) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        return round((float) $query->sum('total_price'), 2);
     }
 
     // =========================================================================

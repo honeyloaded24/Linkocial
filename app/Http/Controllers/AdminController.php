@@ -23,21 +23,24 @@ class AdminController extends Controller
         $totalReferrals = User::whereNotNull('referred_by')->count();
         $totalUserBalance = User::sum('balance'); // Unused deposits
 
-        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs)
+        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs + AI Marketplace)
         $totalOrders = Order::count() 
             + \App\Models\VirtualNumberOrder::count()
             + \App\Models\VtuOrder::count()
-            + \App\Models\LogOrder::count();
+            + \App\Models\LogOrder::count()
+            + \App\Models\AiOrder::count();
 
         $pendingOrders = Order::where('status', 'pending')->count() 
             + \App\Models\VirtualNumberOrder::where('status', 'pending')->count()
             + \App\Models\VtuOrder::whereIn('status', ['pending', 'processing'])->count()
-            + \App\Models\LogOrder::where('status', 'pending')->count();
+            + \App\Models\LogOrder::where('status', 'pending')->count()
+            + \App\Models\AiOrder::whereIn('status', ['pending', 'processing', 'awaiting_manual'])->count();
 
         $completedOrders = Order::where('status', 'completed')->count() 
             + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count()
             + \App\Models\VtuOrder::where('status', 'completed')->count()
-            + \App\Models\LogOrder::where('status', 'completed')->count();
+            + \App\Models\LogOrder::where('status', 'completed')->count()
+            + \App\Models\AiOrder::where('status', 'fulfilled')->count();
 
         // Financial Metrics (Authoritative calculation in NGN via FinancialMetricsService)
         $financialService = app(\App\Services\FinancialMetricsService::class);
