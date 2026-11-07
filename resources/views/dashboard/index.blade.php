@@ -204,9 +204,12 @@
                         </p>
                     </div>
                 </div>
-                <div class="d-flex align-items-center gap-2 flex-shrink-0 w-100 w-md-auto justify-content-end">
-                    <a href="{{ route('ai.index') }}" class="btn btn-light rounded-pill px-4 py-2 fw-bold text-dark shadow-sm w-100 w-md-auto text-center" style="font-size: 0.85rem;">
-                        <i class="fa-solid fa-store text-primary me-1"></i> Explore AI Store
+                <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 flex-shrink-0 w-100 w-md-auto justify-content-end">
+                    <a href="{{ route('ai.index') }}" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm text-center" style="background: #ffffff !important; color: #0f172a !important; font-size: 0.85rem;">
+                        <i class="fa-solid fa-store text-primary me-1"></i> <span style="color: #0f172a !important;">Explore AI Store</span>
+                    </a>
+                    <a href="{{ route('ai.history') }}" class="btn rounded-pill px-3 py-2 fw-bold shadow-sm text-center" style="background: #fbbf24 !important; color: #0f172a !important; font-size: 0.85rem;">
+                        <i class="fa-solid fa-receipt me-1" style="color: #0f172a !important;"></i> <span style="color: #0f172a !important;">My AI Orders</span>
                     </a>
                 </div>
             </div>

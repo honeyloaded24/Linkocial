@@ -32,6 +32,7 @@ class AiMarketplaceController extends Controller
         $user = Auth::user();
         $totalCount = 0;
         $inStockCount = 0;
+        $userOrdersCount = 0;
 
         try {
             AiProduct::repairZeroPricesFromMetadata();
@@ -45,6 +46,9 @@ class AiMarketplaceController extends Controller
 
             $totalCount = AiProduct::where('is_active', true)->count();
             $inStockCount = AiProduct::where('is_active', true)->where('in_stock', true)->where('stock_count', '>', 0)->count();
+            if ($user) {
+                $userOrdersCount = AiOrder::where('user_id', $user->id)->count();
+            }
 
             $query = AiProduct::query()->where('is_active', true);
 
@@ -113,6 +117,7 @@ class AiMarketplaceController extends Controller
             'inStockOnly',
             'totalCount',
             'inStockCount',
+            'userOrdersCount',
             'user'
         ));
     }

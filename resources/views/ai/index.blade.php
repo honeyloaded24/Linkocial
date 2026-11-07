@@ -96,12 +96,72 @@
         box-shadow: 0 12px 28px rgba(79, 70, 229, 0.12) !important;
         border-color: rgba(79, 70, 229, 0.35) !important;
     }
+    .ai-orders-hero-btn {
+        background: #fbbf24 !important;
+        color: #0f172a !important;
+        border: 2px solid #fde68a !important;
+        font-weight: 800 !important;
+        box-shadow: 0 4px 14px rgba(251, 191, 36, 0.35);
+    }
+    .ai-orders-hero-btn:hover, .ai-orders-hero-btn:focus {
+        background: #f59e0b !important;
+        color: #0f172a !important;
+        transform: translateY(-1px);
+    }
+    .ai-top-switcher {
+        background: var(--bg-surface, #ffffff);
+        border: 1px solid rgba(79, 70, 229, 0.18);
+        border-radius: 16px;
+        padding: 0.35rem;
+    }
+    .ai-top-tab {
+        border-radius: 12px;
+        padding: 0.6rem 1rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        transition: all 0.18s ease;
+    }
+    .ai-top-tab.active {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+    .ai-top-tab.orders-tab {
+        background: rgba(245, 158, 11, 0.14);
+        color: #d97706 !important;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+    }
+    [data-theme="dark"] .ai-top-tab.orders-tab,
+    [data-bs-theme="dark"] .ai-top-tab.orders-tab {
+        background: rgba(251, 191, 36, 0.2) !important;
+        color: #fde68a !important;
+        border-color: rgba(251, 191, 36, 0.45) !important;
+    }
 </style>
 
 <div class="container-fluid py-2">
 
+    <!-- Prominent Mobile-First Top Bar: Store vs My AI Orders -->
+    <div class="ai-top-switcher d-flex align-items-center gap-2 mb-3 shadow-sm">
+        <a href="{{ route('ai.index') }}" class="ai-top-tab active flex-fill text-center">
+            <i class="fa-solid fa-store"></i>
+            <span>AI Store</span>
+            <span class="badge rounded-pill bg-white text-primary" style="font-size: 0.68rem;">{{ $totalCount ?? $products->total() }}</span>
+        </a>
+        <a href="{{ route('ai.history') }}" class="ai-top-tab orders-tab flex-fill text-center">
+            <i class="fa-solid fa-key"></i>
+            <span>My AI Orders</span>
+            <span class="badge rounded-pill bg-warning text-dark fw-extrabold" style="font-size: 0.7rem; color: #0f172a !important;">{{ $userOrdersCount ?? 0 }}</span>
+        </a>
+    </div>
+
     <!-- Compact Hero & Quick Actions -->
-    <div class="premium-card p-3 p-md-4 mb-4 position-relative overflow-hidden border-0 shadow-sm" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%); border-radius: 20px; color: #fff;">
+    <div class="p-3 p-md-4 mb-4 position-relative overflow-hidden border-0 shadow-sm" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%) !important; border-radius: 20px; color: #fff !important;">
         <div class="row align-items-center g-3">
             <div class="col-lg-8">
                 <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -112,23 +172,25 @@
                         <i class="fa-solid fa-boxes-stacked me-1"></i> {{ $inStockCount ?? $products->total() }} of {{ $totalCount ?? $products->total() }} Services Available
                     </span>
                 </div>
-                <h2 class="fw-extrabold text-white mb-1" style="font-size: 1.75rem; letter-spacing: -0.5px;">
+                <h2 class="fw-extrabold text-white mb-1" style="font-size: 1.65rem; letter-spacing: -0.5px;">
                     <i class="fa-solid fa-wand-magic-sparkles text-warning me-2"></i>AI & Premium Software Marketplace
                 </h2>
-                <p class="mb-3" style="color: rgba(255,255,255,0.8); font-size: 0.92rem; max-width: 680px;">
+                <p class="mb-3" style="color: rgba(255,255,255,0.85); font-size: 0.9rem; max-width: 680px;">
                     Pre-activated ChatGPT Plus, Gemini AI Pro, CapCut Pro, Canva Pro, ElevenLabs, Figma, Coding AI & Developer Subscriptions at wholesale NGN rates.
                 </p>
 
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{{ route('ai.history') }}" class="btn btn-sm btn-light rounded-pill px-3 py-2 fw-bold text-dark shadow-sm">
-                        <i class="fa-solid fa-receipt text-primary me-1"></i> My AI Orders
+                <div class="d-flex flex-column flex-sm-row flex-wrap align-items-stretch align-items-sm-center gap-2">
+                    <a href="{{ route('ai.history') }}" class="btn rounded-pill px-4 py-2 ai-orders-hero-btn d-inline-flex align-items-center justify-content-center gap-2">
+                        <i class="fa-solid fa-receipt" style="color: #0f172a !important;"></i>
+                        <span style="color: #0f172a !important;">My AI Orders ({{ $userOrdersCount ?? 0 }})</span>
                     </a>
-                    <a href="{{ route('wallet.index') }}" class="btn btn-sm rounded-pill px-3 py-2 fw-bold text-white" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);">
-                        <i class="fa-solid fa-wallet text-warning me-1"></i> Balance: {{ money(Auth::user()->balance) }}
-                        <span class="ms-1 badge bg-warning text-dark rounded-pill" style="font-size: 0.65rem;">+ Top Up</span>
+                    <a href="{{ route('wallet.index') }}" class="btn rounded-pill px-3 py-2 fw-bold text-white d-inline-flex align-items-center justify-content-center gap-2" style="background: rgba(255,255,255,0.16); border: 1px solid rgba(255,255,255,0.3); color: #ffffff !important;">
+                        <i class="fa-solid fa-wallet text-warning"></i>
+                        <span>Balance: {{ money(Auth::user()->balance) }}</span>
+                        <span class="badge bg-warning rounded-pill" style="font-size: 0.65rem; color: #0f172a !important;">+ Top Up</span>
                     </a>
                     @if(Auth::user()->isAdmin())
-                        <a href="{{ route('hq.ai.index') }}" class="btn btn-sm rounded-pill px-3 py-2 fw-bold text-white" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                        <a href="{{ route('hq.ai.index') }}" class="btn rounded-pill px-3 py-2 fw-bold text-white d-inline-flex align-items-center justify-content-center gap-1" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #ffffff !important;">
                             <i class="fa-solid fa-sliders me-1"></i> Manage in HQ
                         </a>
                     @endif
