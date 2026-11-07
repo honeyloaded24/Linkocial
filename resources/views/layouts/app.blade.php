@@ -382,11 +382,8 @@
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-pie"></i> Dashboard
                 </a>
-                <a href="{{ route('ai.index') }}" class="nav-link {{ request()->routeIs('ai.index') || request()->routeIs('ai.show') ? 'active' : '' }}">
+                <a href="{{ route('ai.index') }}" class="nav-link {{ request()->routeIs('ai.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> AI Marketplace <span class="badge bg-primary ms-1" style="font-size: 0.6rem;">HOT</span>
-                </a>
-                <a href="{{ route('ai.history') }}" class="nav-link {{ request()->routeIs('ai.history') || request()->routeIs('ai.detail') ? 'active' : '' }}">
-                    <i class="fa-solid fa-key text-warning"></i> My AI Orders
                 </a>
                 <a href="{{ route('orders.create') }}" class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-rocket"></i> BOOST

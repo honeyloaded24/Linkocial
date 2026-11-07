@@ -185,37 +185,6 @@
         </div>
     </div>
 
-    <!-- Prominent AI Marketplace Quick-Access Banner -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="p-3 p-md-4 rounded-4 shadow-sm d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3" style="background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 55%, #6d28d9 100%); color: #fff;">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 54px; height: 54px; background: rgba(255,255,255,0.14);">
-                        <i class="fa-solid fa-wand-magic-sparkles fs-3 text-warning"></i>
-                    </div>
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.65rem;">NEW STORE</span>
-                            <span class="small text-white-50 fw-semibold" style="font-size: 0.75rem;">Instant Portal Delivery</span>
-                        </div>
-                        <h6 class="fw-bold text-white mb-1" style="font-size: 1.05rem;">AI & Premium Software Marketplace</h6>
-                        <p class="mb-0 small" style="color: rgba(255,255,255,0.82); font-size: 0.82rem;">
-                            Get ChatGPT Plus, Gemini AI Pro, CapCut Pro, Canva Pro, ElevenLabs, Figma & 50+ AI subscriptions at wholesale NGN prices.
-                        </p>
-                    </div>
-                </div>
-                <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 flex-shrink-0 w-100 w-md-auto justify-content-end">
-                    <a href="{{ route('ai.index') }}" class="btn rounded-pill px-4 py-2 fw-bold shadow-sm text-center" style="background: #ffffff !important; color: #0f172a !important; font-size: 0.85rem;">
-                        <i class="fa-solid fa-store text-primary me-1"></i> <span style="color: #0f172a !important;">Explore AI Store</span>
-                    </a>
-                    <a href="{{ route('ai.history') }}" class="btn rounded-pill px-3 py-2 fw-bold shadow-sm text-center" style="background: #fbbf24 !important; color: #0f172a !important; font-size: 0.85rem;">
-                        <i class="fa-solid fa-receipt me-1" style="color: #0f172a !important;"></i> <span style="color: #0f172a !important;">My AI Orders</span>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Dashboard Promotional Slider (Standardized ~120px Height) -->
     @if(!empty($sliders) && count($sliders) > 0)
     <div class="row mb-4">
