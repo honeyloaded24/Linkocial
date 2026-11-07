@@ -135,9 +135,15 @@
                             </td>
                             <td>
                                 @if($p->in_stock)
-                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1">In Stock</span>
+                                    @if($p->available_stock !== null)
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1">
+                                            {{ number_format($p->available_stock) }} left
+                                        </span>
+                                    @else
+                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2.5 py-1">In Stock</span>
+                                    @endif
                                 @else
-                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1">Out of Stock</span>
+                                    <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2.5 py-1">0 left (Out of Stock)</span>
                                 @endif
                             </td>
                             <td>

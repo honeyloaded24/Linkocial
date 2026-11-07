@@ -100,6 +100,11 @@ class AiMarketplaceController extends Controller
         }
 
         $quantity = (int) $request->quantity;
+
+        if ($product->available_stock !== null && $quantity > $product->available_stock) {
+            return back()->with('error', "Only {$product->available_stock} unit(s) currently available in stock.");
+        }
+
         $unitPrice = (float) $product->effective_selling_price;
         $totalCost = round($unitPrice * $quantity, 2);
         $user = Auth::user();
@@ -145,6 +150,19 @@ class AiMarketplaceController extends Controller
                     'product_provider_id' => $product->provider_product_id,
                 ],
             ]);
+
+            if ($product->available_stock !== null) {
+                $newStock = max(0, $product->available_stock - $quantity);
+                $meta = is_array($product->metadata) ? $product->metadata : [];
+                if (array_key_exists('stock', $meta) && $meta['stock'] !== null) {
+                    $meta['stock'] = $newStock;
+                }
+                $product->update([
+                    'stock_count' => $newStock,
+                    'in_stock'    => $newStock > 0,
+                    'metadata'    => $meta,
+                ]);
+            }
 
             DB::commit();
         } catch (\Throwable $e) {

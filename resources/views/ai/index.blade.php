@@ -92,12 +92,18 @@
                         </span>
 
                         @if($product->in_stock)
-                            <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-2 py-1 rounded-pill" style="font-size: 0.68rem;">
-                                <i class="fa-solid fa-check me-1"></i> In Stock
-                            </span>
+                            @if($product->available_stock !== null)
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-2 py-1 rounded-pill" style="font-size: 0.68rem;">
+                                    <i class="fa-solid fa-boxes-stacked me-1"></i> {{ number_format($product->available_stock) }} left
+                                </span>
+                            @else
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-2 py-1 rounded-pill" style="font-size: 0.68rem;">
+                                    <i class="fa-solid fa-check me-1"></i> In Stock
+                                </span>
+                            @endif
                         @else
-                            <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold small px-2 py-1 rounded-pill" style="font-size: 0.68rem;">
-                                Sold Out
+                            <span class="badge bg-danger bg-opacity-10 text-danger fw-bold small px-2 py-1 rounded-pill" style="font-size: 0.68rem;">
+                                <i class="fa-solid fa-xmark me-1"></i> 0 left · Sold Out
                             </span>
                         @endif
                     </div>
@@ -122,9 +128,21 @@
                                     {{ money($product->effective_selling_price) }}
                                 </span>
                             </div>
-                            <span class="text-muted small" style="font-size: 0.72rem;">
-                                <i class="fa-solid fa-bolt text-warning"></i> {{ ucfirst($product->delivery_type) }}
-                            </span>
+                            <div class="text-end">
+                                <span class="text-muted small d-block" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-bolt text-warning"></i> {{ ucfirst($product->delivery_type) }}
+                                </span>
+                                <small class="fw-bold {{ $product->in_stock ? 'text-success' : 'text-danger' }}" style="font-size: 0.72rem;">
+                                    <i class="fa-solid fa-layer-group me-1"></i>
+                                    @if(!$product->in_stock)
+                                        0 in stock
+                                    @elseif($product->available_stock !== null)
+                                        {{ number_format($product->available_stock) }} in stock
+                                    @else
+                                        Unlimited in stock
+                                    @endif
+                                </small>
+                            </div>
                         </div>
 
                         <button type="button" 
@@ -135,8 +153,9 @@
                                 data-name="{{ $product->name }}"
                                 data-price="{{ $product->effective_selling_price }}"
                                 data-stock="{{ $product->in_stock ? 1 : 0 }}"
+                                data-available-stock="{{ $product->available_stock !== null ? $product->available_stock : '' }}"
                                 {{ !$product->in_stock ? 'disabled' : '' }}>
-                            <i class="fa-solid fa-cart-shopping me-1"></i> Order Now
+                            <i class="fa-solid fa-cart-shopping me-1"></i> {{ $product->in_stock ? 'Order Now' : 'Out of Stock' }}
                         </button>
                     </div>
 
@@ -179,9 +198,14 @@
             <form id="buyForm" method="POST" action="">
                 @csrf
                 <div class="modal-body py-4">
-                    <div class="p-3 rounded-3 bg-light mb-3">
-                        <div class="fw-bold text-main" id="modalProductName">Google AI Service</div>
-                        <div class="text-muted small">Instant activation via portal delivery</div>
+                    <div class="p-3 rounded-3 bg-light mb-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold text-main" id="modalProductName">Google AI Service</div>
+                            <div class="text-muted small">Instant activation via portal delivery</div>
+                        </div>
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2.5 py-1.5 rounded-pill" id="modalStockBadge">
+                            In Stock
+                        </span>
                     </div>
 
                     <div class="mb-3">
@@ -232,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const buyModal = document.getElementById('buyModal');
     const buyForm = document.getElementById('buyForm');
     const modalProductName = document.getElementById('modalProductName');
+    const modalStockBadge = document.getElementById('modalStockBadge');
     const modalUnitPrice = document.getElementById('modalUnitPrice');
     const modalTotalCost = document.getElementById('modalTotalCost');
     const modalQuantity = document.getElementById('modalQuantity');
@@ -245,11 +270,22 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', function () {
             const id = this.getAttribute('data-id');
             const name = this.getAttribute('data-name');
+            const availableStockRaw = this.getAttribute('data-available-stock');
+            const availableStock = availableStockRaw !== '' && availableStockRaw !== null ? parseInt(availableStockRaw, 10) : null;
             currentPrice = parseFloat(this.getAttribute('data-price')) || 0;
 
             buyForm.action = `/ai-marketplace/product/${id}/buy`;
             modalProductName.textContent = name;
             modalQuantity.value = 1;
+
+            if (modalStockBadge) {
+                modalStockBadge.textContent = availableStock !== null ? `${availableStock.toLocaleString()} left in stock` : 'In Stock';
+            }
+
+            Array.from(modalQuantity.options).forEach(opt => {
+                const val = parseInt(opt.value, 10);
+                opt.disabled = (availableStock !== null && val > availableStock);
+            });
 
             updateTotals();
         });

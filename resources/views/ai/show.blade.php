@@ -37,12 +37,18 @@
                     </span>
 
                     @if($product->in_stock)
-                        <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-3 py-1.5 rounded-pill">
-                            <i class="fa-solid fa-check me-1"></i> In Stock
-                        </span>
+                        @if($product->available_stock !== null)
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-3 py-1.5 rounded-pill">
+                                <i class="fa-solid fa-boxes-stacked me-1"></i> {{ number_format($product->available_stock) }} left in stock
+                            </span>
+                        @else
+                            <span class="badge bg-success bg-opacity-10 text-success fw-bold small px-3 py-1.5 rounded-pill">
+                                <i class="fa-solid fa-check me-1"></i> In Stock
+                            </span>
+                        @endif
                     @else
-                        <span class="badge bg-secondary bg-opacity-10 text-secondary fw-bold small px-3 py-1.5 rounded-pill">
-                            Sold Out
+                        <span class="badge bg-danger bg-opacity-10 text-danger fw-bold small px-3 py-1.5 rounded-pill">
+                            <i class="fa-solid fa-xmark me-1"></i> 0 left · Sold Out
                         </span>
                     @endif
                 </div>
@@ -79,9 +85,15 @@
                     </div>
                     <div class="col-12 col-sm-4">
                         <div class="p-3 rounded-3 bg-light">
-                            <small class="text-muted d-block" style="font-size: 0.72rem;">AVAILABILITY</small>
+                            <small class="text-muted d-block" style="font-size: 0.72rem;">AVAILABLE STOCK</small>
                             <span class="fw-bold {{ $product->in_stock ? 'text-success' : 'text-danger' }}">
-                                {{ $product->in_stock ? 'Ready for Order' : 'Out of Stock' }}
+                                @if(!$product->in_stock)
+                                    0 left (Out of Stock)
+                                @elseif($product->available_stock !== null)
+                                    {{ number_format($product->available_stock) }} left in stock
+                                @else
+                                    Unlimited in stock
+                                @endif
                             </span>
                         </div>
                     </div>
@@ -102,11 +114,13 @@
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted text-uppercase">Quantity</label>
                         <select name="quantity" id="showQuantity" class="form-select">
-                            <option value="1" selected>1 Unit</option>
-                            <option value="2">2 Units</option>
-                            <option value="3">3 Units</option>
-                            <option value="5">5 Units</option>
-                            <option value="10">10 Units</option>
+                            @foreach([1, 2, 3, 5, 10] as $qtyOption)
+                                <option value="{{ $qtyOption }}"
+                                    {{ $qtyOption === 1 ? 'selected' : '' }}
+                                    {{ ($product->available_stock !== null && $qtyOption > $product->available_stock) ? 'disabled' : '' }}>
+                                    {{ $qtyOption }} {{ $qtyOption === 1 ? 'Unit' : 'Units' }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
