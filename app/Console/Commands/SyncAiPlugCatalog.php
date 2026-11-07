@@ -15,6 +15,13 @@ class SyncAiPlugCatalog extends Command
     protected $signature = 'aiplug:sync';
 
     /**
+     * The console command name aliases.
+     *
+     * @var array
+     */
+    protected $aliases = ['sync:aiplug-catalog'];
+
+    /**
      * The console command description.
      *
      * @var string

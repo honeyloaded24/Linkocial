@@ -45,23 +45,30 @@ class AiPlugWebhookController extends Controller
         $eventType = (string) $payload['type'];
 
         // 2. Durable Deduplication: check if event was already recorded
-        $existingEvent = AiWebhookEvent::where('event_id', $eventId)->first();
-        if ($existingEvent) {
-            // As per specification: duplicate events must still receive 200 OK immediately
-            return response('OK (Duplicate event acknowledged)', 200);
-        }
+        $webhookRecord = null;
+        try {
+            $existingEvent = AiWebhookEvent::where('event_id', $eventId)->first();
+            if ($existingEvent) {
+                // As per specification: duplicate events must still receive 200 OK immediately
+                return response('OK (Duplicate event acknowledged)', 200);
+            }
 
-        // Record incoming event
-        $webhookRecord = AiWebhookEvent::create([
-            'event_id'   => $eventId,
-            'event_type' => $eventType,
-            'payload'    => $payload,
-        ]);
+            // Record incoming event
+            $webhookRecord = AiWebhookEvent::create([
+                'event_id'   => $eventId,
+                'event_type' => $eventType,
+                'payload'    => $payload,
+            ]);
+        } catch (\Throwable $dbEx) {
+            Log::warning("AIPlug webhook event log skipped for {$eventId}: " . $dbEx->getMessage());
+        }
 
         // 3. Process the event
         try {
             $this->processEvent($eventType, $payload);
-            $webhookRecord->update(['processed_at' => now()]);
+            if ($webhookRecord) {
+                $webhookRecord->update(['processed_at' => now()]);
+            }
         } catch (\Throwable $e) {
             Log::error("AIPlug webhook processing exception for Event {$eventId}: " . $e->getMessage(), [
                 'exception' => $e,

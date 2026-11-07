@@ -20,6 +20,22 @@ class DashboardController extends Controller
         $totalSpent = $financialService->getUserTotalSpent($user->id);
         $totalDeposits = $financialService->getUserTotalDeposits($user->id);
 
+        $aiActiveOrders = 0;
+        $aiCompletedOrders = 0;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+                $aiActiveOrders = \App\Models\AiOrder::where('user_id', $user->id)
+                    ->whereIn('status', ['pending', 'processing', 'awaiting_manual'])
+                    ->count();
+                $aiCompletedOrders = \App\Models\AiOrder::where('user_id', $user->id)
+                    ->where('status', 'fulfilled')
+                    ->count();
+            }
+        } catch (\Throwable $e) {
+            $aiActiveOrders = 0;
+            $aiCompletedOrders = 0;
+        }
+
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
             ->count() 
@@ -31,7 +47,8 @@ class DashboardController extends Controller
             ->count()
             + \App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'pending')
-            ->count();
+            ->count()
+            + $aiActiveOrders;
 
         $completedOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['completed', 'partial'])
@@ -44,7 +61,8 @@ class DashboardController extends Controller
             ->count()
             + \App\Models\LogOrder::where('user_id', $user->id)
             ->where('status', 'completed')
-            ->count();
+            ->count()
+            + $aiCompletedOrders;
 
         // 2. Fetch recent activities
         $recentActivities = \App\Models\Transaction::where('user_id', $user->id)

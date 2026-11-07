@@ -27,7 +27,14 @@ class PaymentController extends Controller
         $isForeigner = $cfCountry !== 'NG';
 
         $user = $request->user();
-        $virtualAccounts = $user ? $user->virtualAccounts()->get()->keyBy('bank_id') : collect();
+        $virtualAccounts = collect();
+        try {
+            if ($user && \Illuminate\Support\Facades\Schema::hasTable('user_virtual_accounts')) {
+                $virtualAccounts = $user->virtualAccounts()->get()->keyBy('bank_id');
+            }
+        } catch (\Throwable $e) {
+            $virtualAccounts = collect();
+        }
         $account9psb = $virtualAccounts->get('9PSB');
         $accountPalmpay = $virtualAccounts->get('PALMPAY');
         $depositFee = (float) \App\Models\Setting::get('billstack_deposit_fee', 45.0);

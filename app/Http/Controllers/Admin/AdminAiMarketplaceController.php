@@ -29,30 +29,42 @@ class AdminAiMarketplaceController extends Controller
         $search = trim((string) $request->get('search'));
         $category = trim((string) $request->get('category'));
 
-        $query = AiProduct::query();
+        try {
+            $query = AiProduct::query();
 
-        if (!empty($category)) {
-            $query->where('category', $category);
+            if (!empty($category)) {
+                $query->where('category', $category);
+            }
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('provider_product_id', 'like', "%{$search}%")
+                      ->orWhere('category', 'like', "%{$search}%");
+                });
+            }
+
+            $products = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+
+            $categories = AiProduct::select('category')->distinct()->pluck('category');
+
+            $productStats = [
+                'total'    => AiProduct::count(),
+                'active'   => AiProduct::where('is_active', true)->count(),
+                'in_stock' => AiProduct::where('in_stock', true)->count(),
+                'orders'   => AiOrder::count(),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('AdminAiMarketplaceController::index fallback: ' . $e->getMessage());
+            $products = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20);
+            $categories = collect();
+            $productStats = [
+                'total'    => 0,
+                'active'   => 0,
+                'in_stock' => 0,
+                'orders'   => 0,
+            ];
         }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('provider_product_id', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
-            });
-        }
-
-        $products = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
-
-        $categories = AiProduct::select('category')->distinct()->pluck('category');
-
-        $productStats = [
-            'total'    => AiProduct::count(),
-            'active'   => AiProduct::where('is_active', true)->count(),
-            'in_stock' => AiProduct::where('in_stock', true)->count(),
-            'orders'   => AiOrder::count(),
-        ];
 
         return view('hq.ai.index', compact('products', 'categories', 'productStats', 'search', 'category'));
     }
@@ -111,32 +123,43 @@ class AdminAiMarketplaceController extends Controller
         $status = trim((string) $request->get('status'));
         $search = trim((string) $request->get('search'));
 
-        $query = AiOrder::with(['user', 'product'])->latest();
+        try {
+            $query = AiOrder::with(['user', 'product'])->latest();
 
-        if (!empty($status)) {
-            $query->where('status', $status);
+            if (!empty($status)) {
+                $query->where('status', $status);
+            }
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('product_name', 'like', "%{$search}%")
+                      ->orWhere('provider_order_id', 'like', "%{$search}%")
+                      ->orWhere('id', 'like', "%{$search}%")
+                      ->orWhereHas('user', function ($uq) use ($search) {
+                          $uq->where('username', 'like', "%{$search}%")
+                             ->orWhere('email', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            $orders = $query->paginate(20)->withQueryString();
+
+            $orderStats = [
+                'total'       => AiOrder::count(),
+                'fulfilled'   => AiOrder::where('status', 'fulfilled')->count(),
+                'pending'     => AiOrder::whereIn('status', ['pending', 'processing', 'awaiting_manual'])->count(),
+                'total_sales' => (float) AiOrder::where('status', 'fulfilled')->sum('total_price'),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('AdminAiMarketplaceController::orders fallback: ' . $e->getMessage());
+            $orders = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 20);
+            $orderStats = [
+                'total'       => 0,
+                'fulfilled'   => 0,
+                'pending'     => 0,
+                'total_sales' => 0.0,
+            ];
         }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'like', "%{$search}%")
-                  ->orWhere('provider_order_id', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($uq) use ($search) {
-                      $uq->where('username', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        $orders = $query->paginate(20)->withQueryString();
-
-        $orderStats = [
-            'total'       => AiOrder::count(),
-            'fulfilled'   => AiOrder::where('status', 'fulfilled')->count(),
-            'pending'     => AiOrder::whereIn('status', ['pending', 'processing', 'awaiting_manual'])->count(),
-            'total_sales' => (float) AiOrder::where('status', 'fulfilled')->sum('total_price'),
-        ];
 
         return view('hq.ai.orders', compact('orders', 'orderStats', 'status', 'search'));
     }

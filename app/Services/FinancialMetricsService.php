@@ -138,8 +138,17 @@ class FinancialMetricsService
             ->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
 
         // 6. AI Marketplace Spent & Provider Cost (in NGN)
-        $aiSpent = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('total_price'), 2);
-        $aiCostNgn = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('provider_cost'), 2);
+        $aiSpent = 0.0;
+        $aiCostNgn = 0.0;
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+                $aiSpent = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('total_price'), 2);
+                $aiCostNgn = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('provider_cost'), 2);
+            }
+        } catch (\Throwable $e) {
+            $aiSpent = 0.0;
+            $aiCostNgn = 0.0;
+        }
 
         // Aggregations
         $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
@@ -263,6 +272,25 @@ class FinancialMetricsService
                 ->groupBy('date')
                 ->pluck('count', 'date');
 
+            // AI Marketplace daily orders and profit in NGN (fulfilled & processing only)
+            $aiStats = collect();
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+                    $aiStats = \App\Models\AiOrder::where('created_at', '>=', $startDate)
+                        ->whereIn('status', ['fulfilled', 'processing'])
+                        ->selectRaw("
+                            DATE(created_at) as date,
+                            count(*) as count,
+                            sum(GREATEST(0, COALESCE(total_price, 0) - COALESCE(provider_cost, 0))) as profit
+                        ")
+                        ->groupBy('date')
+                        ->get()
+                        ->keyBy('date');
+                }
+            } catch (\Throwable $e) {
+                $aiStats = collect();
+            }
+
             // User registrations
             $userCounts = User::where('created_at', '>=', $startDate)
                 ->selectRaw("DATE(created_at) as date, count(*) as count")
@@ -285,9 +313,11 @@ class FinancialMetricsService
                 $vnProfit = (float) ($vnStats[$dateKey]->profit ?? 0);
                 $vtuCount = (int) ($vtuCounts[$dateKey] ?? 0);
                 $logCount = (int) ($logCounts[$dateKey] ?? 0);
+                $aiCount = (int) ($aiStats[$dateKey]->count ?? 0);
+                $aiProfit = (float) ($aiStats[$dateKey]->profit ?? 0);
 
-                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount;
-                $profitData[] = max(0.0, round($smmProfit + $vnProfit, 2));
+                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount + $aiCount;
+                $profitData[] = max(0.0, round($smmProfit + $vnProfit + $aiProfit, 2));
                 $userData[] = (int) ($userCounts[$dateKey] ?? 0);
             }
 
@@ -533,19 +563,27 @@ class FinancialMetricsService
      */
     protected function getAiSpent(?int $userId = null, ?Carbon $startDate = null, ?Carbon $endDate = null): float
     {
-        $query = \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing']);
+        try {
+            if (!\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+                return 0.0;
+            }
 
-        if ($userId !== null) {
-            $query->where('user_id', $userId);
+            $query = \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing']);
+
+            if ($userId !== null) {
+                $query->where('user_id', $userId);
+            }
+
+            if ($startDate !== null && $endDate !== null) {
+                $query->whereBetween('created_at', [$startDate, $endDate]);
+            } elseif ($startDate !== null) {
+                $query->where('created_at', '>=', $startDate);
+            }
+
+            return round((float) $query->sum('total_price'), 2);
+        } catch (\Throwable $e) {
+            return 0.0;
         }
-
-        if ($startDate !== null && $endDate !== null) {
-            $query->whereBetween('created_at', [$startDate, $endDate]);
-        } elseif ($startDate !== null) {
-            $query->where('created_at', '>=', $startDate);
-        }
-
-        return round((float) $query->sum('total_price'), 2);
     }
 
     // =========================================================================

@@ -123,7 +123,7 @@ class Service extends Model
             $search = ($channel === 'X' || $channel === 'Twitter') ? '(?:X|Twitter)' : preg_quote($channel, '/');
             $pattern = '/\b' . $search . '\b/i';
             
-            if (preg_match($pattern, $this->name) || preg_match($pattern, $this->category)) {
+            if (preg_match($pattern, (string) $this->name) || preg_match($pattern, (string) $this->category)) {
                 return ($channel === 'Twitter') ? 'X' : $channel;
             }
         }

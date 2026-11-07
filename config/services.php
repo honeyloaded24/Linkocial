@@ -65,4 +65,10 @@ return [
         'webhook_secret' => env('PRESTMIT_WEBHOOK_SECRET'),
     ],
 
+    'aiplug' => [
+        'base_url' => env('AIPLUG_BASE_URL', 'https://resellers.aiplug.store/api/reseller/v1'),
+        'api_key' => env('AIPLUG_API_KEY'),
+        'webhook_secret' => env('AIPLUG_WEBHOOK_SECRET'),
+    ],
+
 ];

@@ -17,9 +17,21 @@ class AiPlugService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(Setting::get('aiplug_base_url') ?: config('services.aiplug.base_url', self::DEFAULT_BASE_URL), '/');
-        $this->apiKey = Setting::get('aiplug_api_key') ?: config('services.aiplug.api_key');
-        $this->webhookSecret = Setting::get('aiplug_webhook_secret') ?: config('services.aiplug.webhook_secret');
+        $dbBaseUrl = null;
+        $dbApiKey = null;
+        $dbWebhookSecret = null;
+
+        try {
+            $dbBaseUrl = Setting::get('aiplug_base_url');
+            $dbApiKey = Setting::get('aiplug_api_key');
+            $dbWebhookSecret = Setting::get('aiplug_webhook_secret');
+        } catch (\Throwable $e) {
+            // Safe fallback if settings table is not available yet
+        }
+
+        $this->baseUrl = rtrim(($dbBaseUrl ?: config('services.aiplug.base_url', self::DEFAULT_BASE_URL)) ?? self::DEFAULT_BASE_URL, '/');
+        $this->apiKey = $dbApiKey ?: config('services.aiplug.api_key');
+        $this->webhookSecret = $dbWebhookSecret ?: config('services.aiplug.webhook_secret');
     }
 
     /**
@@ -154,6 +166,9 @@ class AiPlugService
         $globalMarkup = (float) Setting::get('ai_marketplace_markup', '20');
 
         foreach ($products as $p) {
+            if (!is_array($p)) {
+                continue;
+            }
             $providerId = (string) ($p['productId'] ?? $p['id'] ?? '');
             if (empty($providerId)) {
                 continue;
@@ -165,7 +180,7 @@ class AiPlugService
             $icon = (string) ($p['icon'] ?? $p['image'] ?? 'fa-solid fa-wand-magic-sparkles');
 
             // Price in Kobo (₦1 = 100 kobo)
-            $priceKobo = (int) ($p['priceKobo'] ?? $p['price_kobo'] ?? $p['costKobo'] ?? ($p['price'] ? (int)($p['price'] * 100) : 0));
+            $priceKobo = (int) ($p['priceKobo'] ?? $p['price_kobo'] ?? $p['costKobo'] ?? (!empty($p['price']) ? round(((float) $p['price']) * 100) : 0));
             $wholesaleNgn = round($priceKobo / 100, 2);
 
             $inStock = (bool) ($p['inStock'] ?? $p['available'] ?? true);

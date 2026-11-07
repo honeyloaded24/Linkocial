@@ -27,33 +27,38 @@ class AiMarketplaceController extends Controller
     {
         $search = trim((string) $request->get('search'));
         $category = trim((string) $request->get('category'));
-
-        $query = AiProduct::query()->where('is_active', true);
-
-        if (!empty($category) && $category !== 'all') {
-            $query->where('category', $category);
-        }
-
-        if (!empty($search)) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
-            });
-        }
-
-        $products = $query->orderBy('is_hot', 'desc')
-            ->orderBy('name', 'asc')
-            ->paginate(16)
-            ->withQueryString();
-
-        $categories = AiProduct::where('is_active', true)
-            ->select('category', DB::raw('count(*) as count'))
-            ->groupBy('category')
-            ->orderBy('count', 'desc')
-            ->get();
-
         $user = Auth::user();
+
+        try {
+            $query = AiProduct::query()->where('is_active', true);
+
+            if (!empty($category) && $category !== 'all') {
+                $query->where('category', $category);
+            }
+
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('description', 'like', "%{$search}%")
+                      ->orWhere('category', 'like', "%{$search}%");
+                });
+            }
+
+            $products = $query->orderBy('is_hot', 'desc')
+                ->orderBy('name', 'asc')
+                ->paginate(16)
+                ->withQueryString();
+
+            $categories = AiProduct::where('is_active', true)
+                ->select('category', DB::raw('count(*) as count'))
+                ->groupBy('category')
+                ->orderBy('count', 'desc')
+                ->get();
+        } catch (\Throwable $e) {
+            Log::warning('AiMarketplaceController::index fallback: ' . $e->getMessage());
+            $products = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 16);
+            $categories = collect();
+        }
 
         return view('ai.index', compact('products', 'categories', 'search', 'category', 'user'));
     }
@@ -190,10 +195,15 @@ class AiMarketplaceController extends Controller
      */
     public function history()
     {
-        $orders = AiOrder::where('user_id', Auth::id())
-            ->with('product')
-            ->latest()
-            ->paginate(15);
+        try {
+            $orders = AiOrder::where('user_id', Auth::id())
+                ->with('product')
+                ->latest()
+                ->paginate(15);
+        } catch (\Throwable $e) {
+            Log::warning('AiMarketplaceController::history fallback: ' . $e->getMessage());
+            $orders = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+        }
 
         return view('ai.history', compact('orders'));
     }

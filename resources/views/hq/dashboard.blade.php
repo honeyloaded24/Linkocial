@@ -202,6 +202,7 @@
                     <li><a class="dropdown-item small" href="{{ route('hq.virtual-numbers') }}"><i class="fa-solid fa-sim-card text-info me-2"></i>Virtual Numbers Orders</a></li>
                     <li><a class="dropdown-item small" href="{{ route('hq.vtu') }}"><i class="fa-solid fa-bolt text-success me-2"></i>VTU & Utility Orders</a></li>
                     <li><a class="dropdown-item small" href="{{ route('hq.logs.orders') }}"><i class="fa-solid fa-file-invoice text-warning me-2"></i>Logs & Accounts Orders</a></li>
+                    <li><a class="dropdown-item small" href="{{ route('hq.ai.orders') }}"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>AI Marketplace Orders</a></li>
                 </ul>
             </div>
         </div>
@@ -239,6 +240,10 @@
                             @elseif($order->type_key === 'vtu')
                                 <span class="badge rounded-pill px-2 py-1 fw-bold" style="background-color: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25); font-size: 0.7rem;">
                                     <i class="fa-solid fa-bolt me-1"></i>{{ $order->type }}
+                                </span>
+                            @elseif($order->type_key === 'ai')
+                                <span class="badge rounded-pill px-2 py-1 fw-bold" style="background-color: rgba(139, 92, 246, 0.12); color: #7c3aed; border: 1px solid rgba(139, 92, 246, 0.25); font-size: 0.7rem;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i>AI Marketplace
                                 </span>
                             @else
                                 <span class="badge rounded-pill px-2 py-1 fw-bold" style="background-color: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25); font-size: 0.7rem;">
