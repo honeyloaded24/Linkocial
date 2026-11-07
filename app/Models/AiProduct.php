@@ -161,8 +161,53 @@ class AiProduct extends Model
     }
 
     /**
-     * Automatically backfill any AI products in the database that were synced with 0 kobo
-     * or default 999 stock by extracting `resellerPriceKobo` and `stock` from their stored `metadata`.
+     * Extract a clean duration or validity badge (e.g. "1 Month", "12 Months", "1 Year", "Lifetime") from product name.
+     */
+    public function getDurationBadgeAttribute(): ?string
+    {
+        $name = (string) $this->name;
+
+        if (preg_match('/\b(\d+)\s*[-–]?\s*(Month|Months|Year|Years|Day|Days|Y|M)\b/i', $name, $m)) {
+            $num = (int) $m[1];
+            $unit = strtolower($m[2]);
+            if ($unit === 'y' || str_starts_with($unit, 'year')) {
+                return $num . ($num === 1 ? ' Year' : ' Years');
+            }
+            if ($unit === 'm' || str_starts_with($unit, 'month')) {
+                return $num . ($num === 1 ? ' Month' : ' Months');
+            }
+            if (str_starts_with($unit, 'day')) {
+                return $num . ($num === 1 ? ' Day' : ' Days');
+            }
+        }
+
+        if (preg_match('/\b(Lifetime|Permanent)\b/i', $name, $m)) {
+            return ucfirst(strtolower($m[1]));
+        }
+
+        return null;
+    }
+
+    /**
+     * Return the FontAwesome icon class for a category pill.
+     */
+    public static function categoryIcon(string $category): string
+    {
+        return match ($category) {
+            'AI Assistants & API'     => 'fa-solid fa-robot',
+            'Video, Audio & Voice'    => 'fa-solid fa-clapperboard',
+            'Design & Creative'       => 'fa-solid fa-palette',
+            'Coding & Dev Tools'      => 'fa-solid fa-code',
+            'Productivity & Business' => 'fa-solid fa-briefcase',
+            'Social, Mail & VPN'      => 'fa-solid fa-shield-halved',
+            'Education & Language'    => 'fa-solid fa-graduation-cap',
+            default                   => 'fa-solid fa-wand-magic-sparkles',
+        };
+    }
+
+    /**
+     * Automatically backfill any AI products in the database that were synced with 0 kobo,
+     * default 999 stock, or generic category/icon by extracting from their stored `metadata`.
      */
     public static function repairZeroPricesFromMetadata(): int
     {
@@ -173,7 +218,9 @@ class AiProduct extends Model
                 $q->where('wholesale_price_kobo', '<=', 0)
                   ->orWhere('wholesale_price', '<=', 0)
                   ->orWhere('retail_price', '<=', 0)
-                  ->orWhere('stock_count', 999);
+                  ->orWhere('stock_count', 999)
+                  ->orWhere('category', 'Google AI')
+                  ->orWhere('icon', 'fa-solid fa-wand-magic-sparkles');
             })->get();
 
             if ($candidates->isEmpty()) {
@@ -183,42 +230,55 @@ class AiProduct extends Model
             $globalMarkup = (float) Setting::get('ai_marketplace_markup', '20');
 
             foreach ($candidates as $product) {
-                $meta = $product->metadata;
-                if (!is_array($meta) || empty($meta)) {
-                    continue;
-                }
-
+                $meta = is_array($product->metadata) ? $product->metadata : [];
                 $updates = [];
 
-                $priceKobo = \App\Services\AiPlugService::extractPriceKobo($meta);
-                if ($priceKobo > 0 && ((int) $product->getRawOriginal('wholesale_price_kobo') <= 0 || (float) $product->getRawOriginal('wholesale_price') <= 0 || (float) $product->getRawOriginal('retail_price') <= 0)) {
-                    $wholesaleNgn = round($priceKobo / 100, 2);
-                    $rawRetail = (float) $product->getRawOriginal('retail_price');
-                    $retailPrice = $rawRetail > 0 ? $rawRetail : round($wholesaleNgn * (1 + ($globalMarkup / 100)), 2);
+                if (!empty($meta)) {
+                    $priceKobo = \App\Services\AiPlugService::extractPriceKobo($meta);
+                    if ($priceKobo > 0 && ((int) $product->getRawOriginal('wholesale_price_kobo') <= 0 || (float) $product->getRawOriginal('wholesale_price') <= 0 || (float) $product->getRawOriginal('retail_price') <= 0)) {
+                        $wholesaleNgn = round($priceKobo / 100, 2);
+                        $rawRetail = (float) $product->getRawOriginal('retail_price');
+                        $retailPrice = $rawRetail > 0 ? $rawRetail : round($wholesaleNgn * (1 + ($globalMarkup / 100)), 2);
 
-                    $updates['wholesale_price_kobo'] = $priceKobo;
-                    $updates['wholesale_price'] = $wholesaleNgn;
-                    $updates['retail_price'] = $retailPrice;
-                }
-
-                if (array_key_exists('stock', $meta) && $meta['stock'] !== null && is_numeric($meta['stock'])) {
-                    $exactStock = max(0, (int) $meta['stock']);
-                    if ((int) $product->getRawOriginal('stock_count') !== $exactStock) {
-                        $updates['stock_count'] = $exactStock;
+                        $updates['wholesale_price_kobo'] = $priceKobo;
+                        $updates['wholesale_price'] = $wholesaleNgn;
+                        $updates['retail_price'] = $retailPrice;
                     }
-                    if ($exactStock === 0 && (bool) $product->getRawOriginal('in_stock')) {
-                        $updates['in_stock'] = false;
+
+                    if (array_key_exists('stock', $meta) && $meta['stock'] !== null && is_numeric($meta['stock'])) {
+                        $exactStock = max(0, (int) $meta['stock']);
+                        if ((int) $product->getRawOriginal('stock_count') !== $exactStock) {
+                            $updates['stock_count'] = $exactStock;
+                        }
+                        if ($exactStock === 0 && (bool) $product->getRawOriginal('in_stock')) {
+                            $updates['in_stock'] = false;
+                        }
+                    }
+
+                    if (empty($product->description) && !empty($meta['summary'])) {
+                        $updates['description'] = (string) $meta['summary'];
+                    }
+
+                    if (array_key_exists('autoFulfill', $meta)) {
+                        $expectedDelivery = $meta['autoFulfill'] ? 'automatic' : 'manual';
+                        if ($product->delivery_type !== $expectedDelivery) {
+                            $updates['delivery_type'] = $expectedDelivery;
+                        }
                     }
                 }
 
-                if (empty($product->description) && !empty($meta['summary'])) {
-                    $updates['description'] = (string) $meta['summary'];
+                $inferredCat = \App\Services\AiPlugService::inferCategory((string) $product->name, $meta);
+                if (empty($product->category) || $product->category === 'Google AI') {
+                    if ($product->category !== $inferredCat) {
+                        $updates['category'] = $inferredCat;
+                    }
                 }
 
-                if (array_key_exists('autoFulfill', $meta)) {
-                    $expectedDelivery = $meta['autoFulfill'] ? 'automatic' : 'manual';
-                    if ($product->delivery_type !== $expectedDelivery) {
-                        $updates['delivery_type'] = $expectedDelivery;
+                $targetCat = $updates['category'] ?? $product->category;
+                $inferredIcon = \App\Services\AiPlugService::inferIcon((string) $product->name, (string) $targetCat);
+                if (empty($product->icon) || $product->icon === 'fa-solid fa-wand-magic-sparkles') {
+                    if ($product->icon !== $inferredIcon) {
+                        $updates['icon'] = $inferredIcon;
                     }
                 }
 
@@ -234,3 +294,4 @@ class AiProduct extends Model
         return $repaired;
     }
 }
+

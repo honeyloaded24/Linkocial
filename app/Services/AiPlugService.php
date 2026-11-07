@@ -253,9 +253,15 @@ class AiPlugService
             }
 
             $name = (string) ($p['name'] ?? $p['title'] ?? 'Google AI Service');
-            $category = (string) ($p['category'] ?? 'Google AI');
+            $rawCategory = trim((string) ($p['category'] ?? ''));
+            $category = (!empty($rawCategory) && strtolower($rawCategory) !== 'google ai')
+                ? $rawCategory
+                : self::inferCategory($name, $p);
             $description = (string) ($p['description'] ?? $p['summary'] ?? '');
-            $icon = (string) ($p['icon'] ?? $p['image'] ?? 'fa-solid fa-wand-magic-sparkles');
+            $rawIcon = trim((string) ($p['icon'] ?? ''));
+            $icon = (!empty($rawIcon) && $rawIcon !== 'fa-solid fa-wand-magic-sparkles')
+                ? $rawIcon
+                : self::inferIcon($name, $category);
 
             // Price in Kobo (₦1 = 100 kobo) — AIPlug Reseller API uses `resellerPriceKobo`
             $priceKobo = self::extractPriceKobo($p);
@@ -481,5 +487,104 @@ class AiPlugService
         }
 
         return true;
+    }
+
+    /**
+     * Automatically classify an AI product into a user-friendly category based on its name/metadata.
+     */
+    public static function inferCategory(string $name, array $payload = []): string
+    {
+        $haystack = strtolower($name . ' ' . ($payload['summary'] ?? '') . ' ' . ($payload['description'] ?? ''));
+
+        if (preg_match('/\b(capcut|veo3|veo|heygen|elevenlabs|sora|runway|pika|kling|midjourney|video|voice|audio)\b/i', $haystack)) {
+            return 'Video, Audio & Voice';
+        }
+        if (preg_match('/\b(canva|figma|autodesk|meitu|adobe|photoshop|illustrator|design|creative)\b/i', $haystack)) {
+            return 'Design & Creative';
+        }
+        if (preg_match('/\b(bolt\.new|bolt|lovable|replit|warp|railway|resend|cursor|copilot|claude code|windsurf|v0|coding|developer)\b/i', $haystack)) {
+            return 'Coding & Dev Tools';
+        }
+        if (preg_match('/\b(duolingo|hanzii|coursera|udemy|quizlet|chegg|skillshare)\b/i', $haystack)) {
+            return 'Education & Language';
+        }
+        if (preg_match('/\b(telegram|gmail|nordvpn|surfshark|vpn|mail|youtube)\b/i', $haystack)) {
+            return 'Social, Mail & VPN';
+        }
+        if (preg_match('/\b(notion|grammarly|microsoft 365|office 365|zoom|linkedin|windows key|windows 11|windows 10)\b/i', $haystack)) {
+            return 'Productivity & Business';
+        }
+
+        return 'AI Assistants & API';
+    }
+
+    /**
+     * Automatically pick a recognizable FontAwesome icon for an AI product.
+     */
+    public static function inferIcon(string $name, string $category = ''): string
+    {
+        $n = strtolower($name);
+
+        if (str_contains($n, 'chatgpt') || str_contains($n, 'openai')) {
+            return 'fa-solid fa-robot';
+        }
+        if (str_contains($n, 'gemini') || str_contains($n, 'google') || str_contains($n, 'veo')) {
+            return 'fa-brands fa-google';
+        }
+        if (str_contains($n, 'capcut') || str_contains($n, 'heygen')) {
+            return 'fa-solid fa-clapperboard';
+        }
+        if (str_contains($n, 'elevenlabs')) {
+            return 'fa-solid fa-microphone-lines';
+        }
+        if (str_contains($n, 'canva') || str_contains($n, 'meitu')) {
+            return 'fa-solid fa-palette';
+        }
+        if (str_contains($n, 'figma')) {
+            return 'fa-brands fa-figma';
+        }
+        if (str_contains($n, 'autodesk')) {
+            return 'fa-solid fa-compass-drafting';
+        }
+        if (str_contains($n, 'bolt') || str_contains($n, 'lovable') || str_contains($n, 'replit') || str_contains($n, 'warp') || str_contains($n, 'railway') || str_contains($n, 'resend')) {
+            return 'fa-solid fa-terminal';
+        }
+        if (str_contains($n, 'kimi') || str_contains($n, 'qwen') || str_contains($n, 'muse') || str_contains($n, 'antigravity') || str_contains($n, 'gamma')) {
+            return 'fa-solid fa-brain';
+        }
+        if (str_contains($n, 'telegram')) {
+            return 'fa-brands fa-telegram';
+        }
+        if (str_contains($n, 'linkedin')) {
+            return 'fa-brands fa-linkedin';
+        }
+        if (str_contains($n, 'gmail')) {
+            return 'fa-solid fa-envelope-open-text';
+        }
+        if (str_contains($n, 'nordvpn') || str_contains($n, 'surfshark') || str_contains($n, 'vpn')) {
+            return 'fa-solid fa-user-shield';
+        }
+        if (str_contains($n, 'microsoft') || str_contains($n, 'windows')) {
+            return 'fa-brands fa-microsoft';
+        }
+        if (str_contains($n, 'notion') || str_contains($n, 'grammarly')) {
+            return 'fa-solid fa-pen-nib';
+        }
+        if (str_contains($n, 'zoom')) {
+            return 'fa-solid fa-video';
+        }
+        if (str_contains($n, 'duolingo') || str_contains($n, 'hanzii')) {
+            return 'fa-solid fa-language';
+        }
+
+        return match ($category) {
+            'Video, Audio & Voice'    => 'fa-solid fa-film',
+            'Design & Creative'       => 'fa-solid fa-palette',
+            'Coding & Dev Tools'      => 'fa-solid fa-code',
+            'Productivity & Business' => 'fa-solid fa-briefcase',
+            'Social, Mail & VPN'      => 'fa-solid fa-shield-halved',
+            'Education & Language'    => 'fa-solid fa-graduation-cap',
+            default                   => 'fa-solid fa-wand-magic-sparkles',
+        };
     }
 }

@@ -26,8 +26,12 @@ class AiMarketplaceController extends Controller
     public function index(Request $request)
     {
         $search = trim((string) $request->get('search'));
-        $category = trim((string) $request->get('category'));
+        $category = trim((string) $request->get('category', 'all')) ?: 'all';
+        $sort = trim((string) $request->get('sort', 'popular')) ?: 'popular';
+        $inStockOnly = $request->boolean('in_stock_only');
         $user = Auth::user();
+        $totalCount = 0;
+        $inStockCount = 0;
 
         try {
             AiProduct::repairZeroPricesFromMetadata();
@@ -39,10 +43,17 @@ class AiMarketplaceController extends Controller
                 }
             }
 
+            $totalCount = AiProduct::where('is_active', true)->count();
+            $inStockCount = AiProduct::where('is_active', true)->where('in_stock', true)->where('stock_count', '>', 0)->count();
+
             $query = AiProduct::query()->where('is_active', true);
 
             if (!empty($category) && $category !== 'all') {
                 $query->where('category', $category);
+            }
+
+            if ($inStockOnly) {
+                $query->where('in_stock', true)->where('stock_count', '>', 0);
             }
 
             if (!empty($search)) {
@@ -53,10 +64,34 @@ class AiMarketplaceController extends Controller
                 });
             }
 
-            $products = $query->orderBy('is_hot', 'desc')
-                ->orderBy('name', 'asc')
-                ->paginate(16)
-                ->withQueryString();
+            switch ($sort) {
+                case 'price_asc':
+                    $query->orderBy('in_stock', 'desc')
+                          ->orderBy('retail_price', 'asc')
+                          ->orderBy('wholesale_price_kobo', 'asc');
+                    break;
+                case 'price_desc':
+                    $query->orderBy('in_stock', 'desc')
+                          ->orderBy('retail_price', 'desc')
+                          ->orderBy('wholesale_price_kobo', 'desc');
+                    break;
+                case 'stock_desc':
+                    $query->orderBy('in_stock', 'desc')
+                          ->orderBy('stock_count', 'desc')
+                          ->orderBy('name', 'asc');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('name', 'asc');
+                    break;
+                case 'popular':
+                default:
+                    $query->orderBy('in_stock', 'desc')
+                          ->orderBy('is_hot', 'desc')
+                          ->orderBy('name', 'asc');
+                    break;
+            }
+
+            $products = $query->paginate(24)->withQueryString();
 
             $categories = AiProduct::where('is_active', true)
                 ->select('category', DB::raw('count(*) as count'))
@@ -65,11 +100,21 @@ class AiMarketplaceController extends Controller
                 ->get();
         } catch (\Throwable $e) {
             Log::warning('AiMarketplaceController::index fallback: ' . $e->getMessage());
-            $products = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 16);
+            $products = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 24);
             $categories = collect();
         }
 
-        return view('ai.index', compact('products', 'categories', 'search', 'category', 'user'));
+        return view('ai.index', compact(
+            'products',
+            'categories',
+            'search',
+            'category',
+            'sort',
+            'inStockOnly',
+            'totalCount',
+            'inStockCount',
+            'user'
+        ));
     }
 
     /**

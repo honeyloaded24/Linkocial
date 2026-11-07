@@ -89,9 +89,29 @@
     <div class="mb-5">
         <div class="d-flex justify-content-between align-items-baseline mb-3">
             <h5 class="fw-bold mb-0">Digital Services</h5>
-            <span class="text-muted small">5 features</span>
+            <span class="text-muted small">6 features</span>
         </div>
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+            <!-- AI Marketplace -->
+            <div class="col">
+                <a href="{{ route('ai.index') }}" class="text-decoration-none">
+                    <div class="card border-0 shadow-sm h-100 rounded-4 transition-hover">
+                        <div class="card-body p-4 d-flex align-items-start gap-3">
+                            <div class="rounded-3" style="background: rgba(79, 70, 229, 0.12); color: #4f46e5; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fa-solid fa-wand-magic-sparkles fs-5"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <h6 class="fw-bold mb-0">AI Marketplace</h6>
+                                    <span class="badge bg-primary" style="font-size: 0.65rem;">NEW</span>
+                                </div>
+                                <p class="text-muted small mb-0 lh-sm">Buy ChatGPT Plus, Gemini Pro, CapCut Pro, Canva Pro & AI tools.</p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-muted small mt-1"></i>
+                        </div>
+                    </div>
+                </a>
+            </div>
             <!-- SMS Verification -->
             <div class="col">
                 <a href="{{ route('services.virtual-numbers') }}" class="text-decoration-none">

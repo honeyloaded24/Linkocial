@@ -372,6 +372,9 @@
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-pie"></i> Dashboard
                 </a>
+                <a href="{{ route('ai.index') }}" class="nav-link {{ request()->routeIs('ai.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> AI Marketplace <span class="badge bg-primary ms-1" style="font-size: 0.6rem;">HOT</span>
+                </a>
                 <a href="{{ route('orders.create') }}" class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-rocket"></i> BOOST
                 </a>
@@ -389,9 +392,6 @@
                 </a>
                 <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.index') || request()->routeIs('logs.show') ? 'active' : '' }}">
                     <i class="fa-solid fa-box-open"></i> Logs Marketplace <span class="badge bg-success ms-1" style="font-size: 0.6rem;">HOT</span>
-                </a>
-                <a href="{{ route('ai.index') }}" class="nav-link {{ request()->routeIs('ai.*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> AI Marketplace <span class="badge bg-primary ms-1" style="font-size: 0.6rem;">NEW</span>
                 </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates

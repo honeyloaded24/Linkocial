@@ -139,6 +139,17 @@
                         </a>
                     </div>
                     <div class="col">
+                        <a href="{{ route('ai.index') }}" class="text-decoration-none">
+                            <div class="border-0 rounded-4 p-2 p-md-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover position-relative" style="background: var(--bg-surface);">
+                                <span class="badge bg-primary position-absolute" style="top: -4px; right: -4px; font-size: 0.55rem; padding: 2px 5px; z-index: 2;">AI</span>
+                                <div class="rounded-circle d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px; background: rgba(79, 70, 229, 0.12); color: #4f46e5;">
+                                    <i class="fa-solid fa-wand-magic-sparkles fs-5"></i>
+                                </div>
+                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">AI Store</span>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col">
                         <a href="{{ route('logs.index') }}" class="text-decoration-none">
                             <div class="border-0 rounded-4 p-2 p-md-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover position-relative" style="background: var(--bg-surface);">
                                 <span class="badge bg-danger position-absolute" style="top: -4px; right: -4px; font-size: 0.55rem; padding: 2px 4px; z-index: 2;">HOT</span>
@@ -169,6 +180,34 @@
                             </div>
                         </a>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prominent AI Marketplace Quick-Access Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-3 p-md-4 rounded-4 shadow-sm d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3" style="background: linear-gradient(135deg, #1e1b4b 0%, #3730a3 55%, #6d28d9 100%); color: #fff;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rounded-4 d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm" style="width: 54px; height: 54px; background: rgba(255,255,255,0.14);">
+                        <i class="fa-solid fa-wand-magic-sparkles fs-3 text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-warning text-dark fw-bold rounded-pill" style="font-size: 0.65rem;">NEW STORE</span>
+                            <span class="small text-white-50 fw-semibold" style="font-size: 0.75rem;">Instant Portal Delivery</span>
+                        </div>
+                        <h6 class="fw-bold text-white mb-1" style="font-size: 1.05rem;">AI & Premium Software Marketplace</h6>
+                        <p class="mb-0 small" style="color: rgba(255,255,255,0.82); font-size: 0.82rem;">
+                            Get ChatGPT Plus, Gemini AI Pro, CapCut Pro, Canva Pro, ElevenLabs, Figma & 50+ AI subscriptions at wholesale NGN prices.
+                        </p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 w-100 w-md-auto justify-content-end">
+                    <a href="{{ route('ai.index') }}" class="btn btn-light rounded-pill px-4 py-2 fw-bold text-dark shadow-sm w-100 w-md-auto text-center" style="font-size: 0.85rem;">
+                        <i class="fa-solid fa-store text-primary me-1"></i> Explore AI Store
+                    </a>
                 </div>
             </div>
         </div>
