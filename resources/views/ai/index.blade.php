@@ -228,6 +228,38 @@
         </div>
     @endif
 
+    <!-- Notice / Instructions: Custom AI Tool Request on WhatsApp -->
+    <div class="p-3 p-md-3.5 mb-4 rounded-4 shadow-sm d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3"
+         style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.08) 100%); border: 1px solid rgba(16, 185, 129, 0.35);">
+        <div class="d-flex align-items-start align-items-md-center gap-3">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 shadow-sm"
+                 style="width: 46px; height: 46px; background: #25D366; color: #ffffff;">
+                <i class="fa-brands fa-whatsapp fs-4"></i>
+            </div>
+            <div>
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                    <span class="badge rounded-pill px-2.5 py-1 fw-bold" style="background: #25D366; color: #ffffff !important; font-size: 0.65rem;">
+                        <i class="fa-solid fa-bullhorn me-1"></i> NOTICE & INSTRUCTIONS
+                    </span>
+                    <span class="fw-bold text-main" style="font-size: 0.92rem;">Can't find the AI tool you need?</span>
+                </div>
+                <p class="mb-0 text-muted small" style="font-size: 0.83rem; line-height: 1.45;">
+                    You can request <strong>any AI tool, software subscription, or API credit of your choice</strong> directly on WhatsApp if it is not listed or currently out of stock on the marketplace.
+                </p>
+            </div>
+        </div>
+        <div class="flex-shrink-0 w-100 w-md-auto">
+            <a href="https://wa.me/message/SB27246Q6MQWC1"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="btn rounded-pill px-4 py-2 fw-bold shadow-sm d-inline-flex align-items-center justify-content-center gap-2 w-100 w-md-auto"
+               style="background: #25D366 !important; color: #ffffff !important; border: none; font-size: 0.85rem;">
+                <i class="fa-brands fa-whatsapp fs-5" style="color: #ffffff !important;"></i>
+                <span style="color: #ffffff !important;">Request AI Tool on WhatsApp</span>
+            </a>
+        </div>
+    </div>
+
     <!-- Smart Category Tabs / Pills -->
     <div class="mb-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -480,10 +512,15 @@
                     <i class="fa-solid fa-brain fs-1"></i>
                 </div>
                 <h5 class="fw-bold">No AI Services Match Your Filter</h5>
-                <p class="text-muted small mb-3">Try clearing your search or switching back to All Categories.</p>
-                <a href="{{ route('ai.index') }}" class="btn btn-primary rounded-pill btn-sm px-4">
-                    <i class="fa-solid fa-rotate-left me-1"></i> Show All AI Products
-                </a>
+                <p class="text-muted small mb-3">Try clearing your search, or request any AI tool of your choice directly on WhatsApp.</p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <a href="{{ route('ai.index') }}" class="btn btn-primary rounded-pill btn-sm px-4 py-2 fw-bold">
+                        <i class="fa-solid fa-rotate-left me-1"></i> Show All AI Products
+                    </a>
+                    <a href="https://wa.me/message/SB27246Q6MQWC1" target="_blank" rel="noopener noreferrer" class="btn rounded-pill btn-sm px-4 py-2 fw-bold" style="background: #25D366 !important; color: #ffffff !important;">
+                        <i class="fa-brands fa-whatsapp me-1"></i> Request AI Tool on WhatsApp
+                    </a>
+                </div>
             </div>
         @endforelse
     </div>
@@ -494,10 +531,15 @@
             <i class="fa-solid fa-magnifying-glass fs-3"></i>
         </div>
         <h6 class="fw-bold mb-1">No products on this page match "<span id="liveSearchTermDisplay"></span>"</h6>
-        <p class="text-muted small mb-3">Press <strong>Apply</strong> or hit <strong>Enter</strong> to search across all catalog pages.</p>
-        <button type="button" class="btn btn-sm btn-primary rounded-pill px-4" onclick="document.getElementById('aiFilterForm').submit();">
-            <i class="fa-solid fa-magnifying-glass me-1"></i> Search Entire Catalog
-        </button>
+        <p class="text-muted small mb-3">Search the full catalog or request this AI tool directly on WhatsApp.</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary rounded-pill px-4 py-2 fw-bold" onclick="document.getElementById('aiFilterForm').submit();">
+                <i class="fa-solid fa-magnifying-glass me-1"></i> Search Entire Catalog
+            </button>
+            <a href="https://wa.me/message/SB27246Q6MQWC1" target="_blank" rel="noopener noreferrer" class="btn btn-sm rounded-pill px-4 py-2 fw-bold" style="background: #25D366 !important; color: #ffffff !important;">
+                <i class="fa-brands fa-whatsapp me-1"></i> Request on WhatsApp
+            </a>
+        </div>
     </div>
 
     <!-- Pagination -->
