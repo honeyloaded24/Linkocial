@@ -74,63 +74,6 @@ class AppServiceProvider extends ServiceProvider
             // Safe fallback
         }
 
-        // Auto-ensure AI Marketplace tables exist without manual CLI migration
-        try {
-            if (!\Illuminate\Support\Facades\Schema::hasTable('ai_products')) {
-                \Illuminate\Support\Facades\Schema::create('ai_products', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->id();
-                    $table->string('provider_product_id')->unique();
-                    $table->string('name');
-                    $table->string('category')->default('Google AI')->index();
-                    $table->text('description')->nullable();
-                    $table->string('icon')->nullable();
-                    $table->unsignedBigInteger('wholesale_price_kobo')->default(0);
-                    $table->decimal('wholesale_price', 12, 2)->default(0.00);
-                    $table->decimal('retail_price', 12, 2)->default(0.00);
-                    $table->boolean('in_stock')->default(true);
-                    $table->integer('stock_count')->default(999);
-                    $table->string('delivery_type')->default('automatic');
-                    $table->boolean('is_active')->default(true)->index();
-                    $table->boolean('is_hot')->default(false);
-                    $table->json('metadata')->nullable();
-                    $table->timestamps();
-                });
-            }
-
-            if (!\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
-                \Illuminate\Support\Facades\Schema::create('ai_orders', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->id();
-                    $table->unsignedBigInteger('user_id')->index();
-                    $table->unsignedBigInteger('ai_product_id')->nullable()->index();
-                    $table->string('provider_order_id')->nullable()->index();
-                    $table->string('idempotency_key')->unique();
-                    $table->string('product_name');
-                    $table->integer('quantity')->default(1);
-                    $table->decimal('unit_price', 12, 2);
-                    $table->decimal('total_price', 12, 2);
-                    $table->decimal('provider_cost', 12, 2)->default(0.00);
-                    $table->string('status')->default('pending')->index();
-                    $table->string('delivery_mode')->default('portal_only');
-                    $table->longText('delivery_payload')->nullable();
-                    $table->json('metadata')->nullable();
-                    $table->timestamps();
-                });
-            }
-
-            if (!\Illuminate\Support\Facades\Schema::hasTable('ai_webhook_events')) {
-                \Illuminate\Support\Facades\Schema::create('ai_webhook_events', function (\Illuminate\Database\Schema\Blueprint $table) {
-                    $table->id();
-                    $table->string('event_id')->unique();
-                    $table->string('event_type')->index();
-                    $table->json('payload');
-                    $table->timestamp('processed_at')->nullable();
-                    $table->timestamps();
-                });
-            }
-        } catch (\Throwable $e) {
-            // Safe fallback
-        }
-
         // Set 'Remember Me' cookie duration to 5 days (in minutes)
         config(['auth.guards.web.remember' => 7200]);
 

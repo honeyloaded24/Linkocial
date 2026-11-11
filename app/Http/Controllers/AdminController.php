@@ -23,37 +23,21 @@ class AdminController extends Controller
         $totalReferrals = User::whereNotNull('referred_by')->count();
         $totalUserBalance = User::sum('balance'); // Unused deposits
 
-        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs + AI Marketplace)
-        $aiTotalCount = 0;
-        $aiPendingCount = 0;
-        $aiCompletedCount = 0;
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
-                $aiTotalCount = \App\Models\AiOrder::count();
-                $aiPendingCount = \App\Models\AiOrder::whereIn('status', ['pending', 'processing', 'awaiting_manual'])->count();
-                $aiCompletedCount = \App\Models\AiOrder::where('status', 'fulfilled')->count();
-            }
-        } catch (\Throwable $e) {
-            // Safe fallback if ai_orders table is unavailable
-        }
-
+        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs)
         $totalOrders = Order::count() 
             + \App\Models\VirtualNumberOrder::count()
             + \App\Models\VtuOrder::count()
-            + \App\Models\LogOrder::count()
-            + $aiTotalCount;
+            + \App\Models\LogOrder::count();
 
         $pendingOrders = Order::where('status', 'pending')->count() 
             + \App\Models\VirtualNumberOrder::where('status', 'pending')->count()
             + \App\Models\VtuOrder::whereIn('status', ['pending', 'processing'])->count()
-            + \App\Models\LogOrder::where('status', 'pending')->count()
-            + $aiPendingCount;
+            + \App\Models\LogOrder::where('status', 'pending')->count();
 
         $completedOrders = Order::where('status', 'completed')->count() 
             + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count()
             + \App\Models\VtuOrder::where('status', 'completed')->count()
-            + \App\Models\LogOrder::where('status', 'completed')->count()
-            + $aiCompletedCount;
+            + \App\Models\LogOrder::where('status', 'completed')->count();
 
         // Financial Metrics (Authoritative calculation in NGN via FinancialMetricsService)
         $financialService = app(\App\Services\FinancialMetricsService::class);
@@ -141,35 +125,10 @@ class AdminController extends Controller
             ];
         });
 
-        $recentAi = collect();
-        try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
-                $recentAi = \App\Models\AiOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
-                    return (object) [
-                        'id' => $order->id,
-                        'display_id' => '#AI-' . $order->id,
-                        'type' => 'AI Marketplace',
-                        'type_key' => 'ai',
-                        'user' => $order->user,
-                        'service_name' => $order->product_name ?? ($order->product->name ?? 'AI Service'),
-                        'detail' => $order->quantity ? $order->quantity . ' unit' . ($order->quantity > 1 ? 's' : '') : null,
-                        'charge' => (float) $order->total_price,
-                        'charge_ngn' => (float) $order->total_price,
-                        'status' => $order->status,
-                        'created_at' => $order->created_at,
-                        'url' => route('hq.ai.orders'),
-                    ];
-                });
-            }
-        } catch (\Throwable $e) {
-            $recentAi = collect();
-        }
-
         $recentOrders = $recentSmm
             ->concat($recentVn)
             ->concat($recentVtu)
             ->concat($recentLogs)
-            ->concat($recentAi)
             ->sortByDesc('created_at')
             ->values()
             ->take(10);

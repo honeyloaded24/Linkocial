@@ -56,7 +56,8 @@ class FinancialMetricsService
         $vnSpent = $this->getVirtualNumberSpent($userId);
         $vtuSpent = $this->getVtuSpent($userId);
         $logSpent = $this->getLogSpent($userId);
-        $aiSpent = $this->getAiSpent($userId);
+        // AI Marketplace spent removed
+        $aiSpent = 0.0;
 
         return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
     }

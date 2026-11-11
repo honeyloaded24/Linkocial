@@ -174,12 +174,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/logs/purchase', [\App\Http\Controllers\LogMarketplaceController::class, 'purchase'])->name('logs.purchase');
     Route::get('/logs/order/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'showOrder'])->name('logs.order');
 
-    // AI Marketplace (Google AI Services)
-    Route::get('/ai-marketplace', [\App\Http\Controllers\AiMarketplaceController::class, 'index'])->name('ai.index');
-    Route::get('/ai-marketplace/product/{id}', [\App\Http\Controllers\AiMarketplaceController::class, 'show'])->name('ai.show');
-    Route::post('/ai-marketplace/product/{id}/buy', [\App\Http\Controllers\AiMarketplaceController::class, 'buy'])->name('ai.buy');
-    Route::get('/ai-marketplace/history', [\App\Http\Controllers\AiMarketplaceController::class, 'history'])->name('ai.history');
-    Route::get('/ai-marketplace/order/{id}', [\App\Http\Controllers\AiMarketplaceController::class, 'orderDetail'])->name('ai.detail');
 
     Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
     Route::get('/api/virtual-numbers/quote', [\App\Http\Controllers\VirtualNumberController::class, 'getLiveQuote'])->name('virtual-numbers.quote');
@@ -337,25 +331,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/currency/reconcile-user', [AdminController::class, 'hqReconcileUser'])->name('hq.settings.currency.reconcile-user');
         Route::post('/settings/currency/run-recovery', [AdminController::class, 'hqRunWalletRecovery'])->name('hq.settings.currency.run-recovery');
 
-        // AI Marketplace Admin (Google AI Services / AIPlug)
-        Route::get('/ai-marketplace', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'index'])->name('hq.ai.index');
-        Route::post('/ai-marketplace/product/{id}', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'updateProduct'])->name('hq.ai.product.update');
-        Route::match(['get', 'post'], '/ai-marketplace/sync', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'syncCatalog'])->name('hq.ai.sync');
-        Route::get('/ai-marketplace/orders', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'orders'])->name('hq.ai.orders');
-        Route::post('/ai-marketplace/orders/{id}/fulfill', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'fulfillOrder'])->name('hq.ai.orders.fulfill');
-        Route::post('/ai-marketplace/orders/{id}/refund', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'refundOrder'])->name('hq.ai.orders.refund');
-        Route::post('/ai-marketplace/orders/{id}/refresh', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'refreshOrder'])->name('hq.ai.orders.refresh');
-        Route::get('/ai-marketplace/settings', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'settings'])->name('hq.ai.settings');
-        Route::post('/ai-marketplace/settings', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'saveSettings'])->name('hq.ai.settings.save');
-        Route::post('/ai-marketplace/settings/register-webhook', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'registerWebhook'])->name('hq.ai.settings.register-webhook');
     });
 });
 
 // Direct SMM Reseller API route alias (v1 without /api prefix)
 Route::match(['get', 'post', 'options'], '/v1', [\App\Http\Controllers\ResellerApiController::class, 'handle']);
-
-// Public AIPlug Webhook Route (direct root url without /api)
-Route::post('/webhooks/aiplug', [\App\Http\Controllers\Api\AiPlugWebhookController::class, 'handle']);
 
 // Fallback
 Route::fallback(function () {

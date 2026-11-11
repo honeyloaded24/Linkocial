@@ -139,17 +139,6 @@
                         </a>
                     </div>
                     <div class="col">
-                        <a href="{{ route('ai.index') }}" class="text-decoration-none">
-                            <div class="border-0 rounded-4 p-2 p-md-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover position-relative" style="background: var(--bg-surface);">
-                                <span class="badge bg-primary position-absolute" style="top: -4px; right: -4px; font-size: 0.55rem; padding: 2px 5px; z-index: 2;">AI</span>
-                                <div class="rounded-circle d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px; background: rgba(79, 70, 229, 0.12); color: #4f46e5;">
-                                    <i class="fa-solid fa-wand-magic-sparkles fs-5"></i>
-                                </div>
-                                <span class="small fw-bold text-truncate w-100" style="font-size: 0.75rem; color: var(--text-main);">AI Store</span>
-                            </div>
-                        </a>
-                    </div>
-                    <div class="col">
                         <a href="{{ route('logs.index') }}" class="text-decoration-none">
                             <div class="border-0 rounded-4 p-2 p-md-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover position-relative" style="background: var(--bg-surface);">
                                 <span class="badge bg-danger position-absolute" style="top: -4px; right: -4px; font-size: 0.55rem; padding: 2px 4px; z-index: 2;">HOT</span>

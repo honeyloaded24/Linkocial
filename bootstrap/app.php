@@ -31,8 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
             '/v1',
             '/api/webhooks/korapay',
             '/api/webhooks/billstack',
-            '/webhooks/aiplug',
-            '/api/webhooks/aiplug',
         ]);
 
         $middleware->append(\App\Http\Middleware\CheckMaintenanceMode::class);

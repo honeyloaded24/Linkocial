@@ -291,23 +291,6 @@
                             </a>
                         </div>
 
-                        <!-- PRODUCT 5: AI MARKETPLACE -->
-                        <div class="px-3 py-1 mt-2">
-                            <div class="d-flex align-items-center mb-1">
-                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px;">
-                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> AI MARKETPLACE
-                                </span>
-                            </div>
-                            <a href="{{ route('hq.ai.orders') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai.orders*') ? 'active' : '' }}">
-                                <i class="fa-solid fa-receipt text-primary"></i> AI Orders
-                            </a>
-                            <a href="{{ route('hq.ai.index') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai.index*') ? 'active' : '' }}">
-                                <i class="fa-solid fa-robot text-primary"></i> Manage AI Services
-                            </a>
-                            <a href="{{ route('hq.ai.settings') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai.settings*') ? 'active' : '' }}">
-                                <i class="fa-solid fa-sliders text-primary"></i> API & Webhook Settings
-                            </a>
-                        </div>
 
                         <hr class="mx-3 opacity-10 my-3">
 
@@ -381,9 +364,6 @@
                 <h6 class="text-muted small fw-bold text-uppercase mb-3 px-3" style="letter-spacing: 1px;">User Menu</h6>
                 <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                     <i class="fa-solid fa-chart-pie"></i> Dashboard
-                </a>
-                <a href="{{ route('ai.index') }}" class="nav-link {{ request()->routeIs('ai.*') ? 'active' : '' }}">
-                    <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> AI Marketplace <span class="badge bg-primary ms-1" style="font-size: 0.6rem;">HOT</span>
                 </a>
                 <a href="{{ route('orders.create') }}" class="nav-link {{ request()->routeIs('orders.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-rocket"></i> BOOST
