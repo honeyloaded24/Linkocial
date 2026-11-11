@@ -93,7 +93,7 @@
 
 @push('scripts')
 <script>
-    // JSON Payload of all cable plans as fetched from GongozConcept
+    // JSON Payload of all cable plans
     const cablePlansData = {
         "GOTV": [
             {"id":95,"cableplan_id":"95","cable":"GOTV","package":"GOtv Smallie - Monthly","plan_amount":"1900"},

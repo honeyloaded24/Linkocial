@@ -232,7 +232,7 @@ class VirtualNumberController extends Controller
                 // If current dynamic price exceeds quoted price by more than ₦1.00 tolerance, require re-confirmation
                 if ($finalCheckCost > ($expectedPrice + 1.00)) {
                     return response()->json([
-                        'error' => "Provider price for {$serviceName} has updated from " . money($expectedPrice) . " to " . money($finalCheckCost) . ". Please review the updated quotation and confirm your order.",
+                        'error' => "Current price for {$serviceName} has updated from " . money($expectedPrice) . " to " . money($finalCheckCost) . ". Please review the updated quotation and confirm your order.",
                         'price_changed' => true,
                         'old_price' => $expectedPrice,
                         'new_price' => $finalCheckCost,
@@ -338,7 +338,7 @@ class VirtualNumberController extends Controller
                 } catch (\Exception $ex) {
                     DB::rollBack();
                 }
-                return response()->json(['error' => 'Failed to obtain an order ID from SMS provider.'], 500);
+                return response()->json(['error' => 'Service is temporarily busy. Please try again in a few moments.'], 500);
             }
 
             // User is charged the exact contracted retail quote confirmed on screen
@@ -349,22 +349,20 @@ class VirtualNumberController extends Controller
             try {
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-                // Record Financial Transaction for the exact quoted price with complete pricing metadata
+                // Record Financial Transaction in clean customer-facing format
                 if ($finalUserCostUsd > 0) {
-                    $serverLabel = ($server === 'server2') ? 'Server 2 (Grizzly)' : 'Server 1';
-                    $rate = $this->getProviderRate();
-                    $markupNgn = $this->getMarkupFee();
+                    $serverLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
                     Transaction::add(
                         $lockedUser->id, 
                         $finalUserCostUsd, 
                         'debit', 
                         'virtual_number', 
-                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}]) [Rate: \${$actualCostUsd} @ ₦" . number_format($rate, 2) . "/$, Markup: ₦" . number_format($markupNgn, 2) . "]"
+                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}])"
                     );
                 }
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
-                $operatorLabel = ($server === 'server2') ? 'Grizzly SMS' : 'SMSPool';
+                $operatorLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
 
                 $order = VirtualNumberOrder::create([
                     'user_id' => $lockedUser->id,
@@ -408,9 +406,9 @@ class VirtualNumberController extends Controller
             $userFacingError = "This service is currently unavailable or out of stock. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Open a ticket</a> if error persists.";
 
             if (stripos($rawError, 'no numbers') !== false || stripos($rawError, 'out of stock') !== false) {
-                $userFacingError = "No numbers are currently available in stock for this service from the provider. Your wallet was not charged. Please try Server 2 or select another country.";
+                $userFacingError = "No numbers are currently available in stock for this service. Your wallet was not charged. Please try Server 2 or select another country.";
             } elseif (stripos($rawError, 'Insufficient') !== false) {
-                $userFacingError = $rawError;
+                $userFacingError = "Service is temporarily unavailable due to routine replenishment. Please select another route or try again shortly.";
             }
 
             $errorMessage = (Auth::user() && Auth::user()->is_admin)

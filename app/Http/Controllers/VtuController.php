@@ -97,7 +97,7 @@ class VtuController extends Controller
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up", null, $debitTx->created_at ?? null);
 
-                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to purchase airtime.');
+                $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
             }
         } catch (\Throwable $e) {
@@ -108,7 +108,7 @@ class VtuController extends Controller
             ]);
             $user->addBalance($chargedAmountNgn);
             Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Airtime provider is currently unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Airtime network is temporarily unreachable. Your funds have been automatically refunded.');
         }
     }
 
@@ -421,7 +421,7 @@ class VtuController extends Controller
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment", null, $debitTx->created_at ?? null);
 
-                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process electricity payment.');
+                $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
             }
         } catch (\Throwable $e) {
@@ -432,7 +432,7 @@ class VtuController extends Controller
             ]);
             $user->addBalance($chargedAmountNgn);
             Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Electricity provider is currently unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Electricity network is temporarily unreachable. Your funds have been automatically refunded.');
         }
     }
 
@@ -543,7 +543,7 @@ class VtuController extends Controller
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription", null, $debitTx->created_at ?? null);
 
-                $message = $response['error'][0] ?? ($response['message'] ?? 'Failed to process cable subscription.');
+                $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
             }
         } catch (\Throwable $e) {
@@ -554,7 +554,7 @@ class VtuController extends Controller
             ]);
             $user->addBalance($chargedAmountNgn);
             Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Cable provider is currently unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Cable network is temporarily unreachable. Your funds have been automatically refunded.');
         }
     }
 

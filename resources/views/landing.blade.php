@@ -643,7 +643,7 @@
                 <div class="p-4 rounded-4 bg-light h-100 border">
                     <div class="step-number" style="background: #10b981;">2</div>
                     <h4 class="fw-bold mb-2">Fund Your Unified Wallet</h4>
-                    <p class="text-muted mb-0">Top up via dedicated Virtual Account bank transfer (9PSB, PalmPay) or Card / Mobile Money (Korapay). One balance powers all services.</p>
+                    <p class="text-muted mb-0">Top up via dedicated Virtual Account bank transfer (9PSB, PalmPay) or Card / Mobile Money. One balance powers all services.</p>
                 </div>
             </div>
 
@@ -808,7 +808,7 @@
                     <i class="fa-solid fa-chevron-down faq-chevron"></i>
                 </button>
                 <div class="faq-content">
-                    You can deposit funds securely via dedicated virtual bank accounts (9PSB & PalmPay powered by BillStack) with automated instant crediting, or via Cards and Mobile Money (powered by Korapay). Your balance is credited automatically in seconds.
+                    You can deposit funds securely via dedicated virtual bank accounts (9PSB & PalmPay) with automated instant crediting, or via Cards and Mobile Money. Your balance is credited automatically in seconds.
                 </div>
             </div>
         </div>

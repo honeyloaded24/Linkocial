@@ -193,18 +193,25 @@ class BillstackService
                 ];
             }
 
-            $errMsg = $result['message'] ?? $result['error'] ?? 'Provider error generating virtual account.';
-            Log::error("BillStack Virtual Account Error: {$errMsg}", ['response' => $result]);
+            $rawErrMsg = $result['message'] ?? $result['error'] ?? 'Unable to generate virtual account.';
+            Log::error("Virtual Account API Error: {$rawErrMsg}", ['response' => $result]);
+            
+            // Cleanse error message so internal provider names or raw technical details are never exposed
+            $userMessage = $rawErrMsg;
+            if (preg_match('/\b(billstack|wiaxy|provider|api|token|secret|endpoint|sql|db)\b/i', $rawErrMsg)) {
+                $userMessage = 'Unable to generate virtual account at this time. Please check your BVN/details or try again shortly.';
+            }
+
             return [
                 'success' => false,
-                'message' => $errMsg
+                'message' => $userMessage
             ];
 
         } catch (\Exception $e) {
-            Log::error("BillStack Generation Exception for user {$user->id}: " . $e->getMessage());
+            Log::error("Virtual Account Generation Exception for user {$user->id}: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Could not connect to virtual account provider. Please try again later.'
+                'message' => 'Unable to generate virtual account right now. Please try again later.'
             ];
         }
     }

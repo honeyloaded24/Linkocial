@@ -80,7 +80,7 @@
                         <i class="fa-solid fa-circle-notch fa-spin fs-4 text-primary me-3"></i>
                         <div>
                             <div class="fw-bold">Activation in Progress</div>
-                            <small class="text-muted">Your order has been routed to the provider. Credentials will appear here as soon as fulfillment completes.</small>
+                            <small class="text-muted">Your order is being processed by our automated fulfillment engine. Credentials will appear here as soon as activation completes.</small>
                         </div>
                     </div>
                 @endif

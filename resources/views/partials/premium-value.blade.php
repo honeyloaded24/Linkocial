@@ -29,7 +29,7 @@
                                 </div>
                                 <div>
                                     <h6 class="text-white fw-bold mb-1">Bottom-Dollar Rates</h6>
-                                    <small class="text-white opacity-40">Direct provider pricing with zero middleman markups.</small>
+                                    <small class="text-white opacity-40">Direct wholesale pricing with zero middleman markups.</small>
                                 </div>
                             </div>
                         </div>

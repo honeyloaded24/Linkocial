@@ -252,12 +252,12 @@ class AiPlugService
                 continue;
             }
 
-            $name = (string) ($p['name'] ?? $p['title'] ?? 'Google AI Service');
+            $name = self::cleanseExternalBranding((string) ($p['name'] ?? $p['title'] ?? 'Google AI Service'));
             $rawCategory = trim((string) ($p['category'] ?? ''));
             $category = (!empty($rawCategory) && strtolower($rawCategory) !== 'google ai')
                 ? $rawCategory
                 : self::inferCategory($name, $p);
-            $description = (string) ($p['description'] ?? $p['summary'] ?? '');
+            $description = self::cleanseExternalBranding((string) ($p['description'] ?? $p['summary'] ?? ''));
             $rawIcon = trim((string) ($p['icon'] ?? ''));
             $icon = (!empty($rawIcon) && $rawIcon !== 'fa-solid fa-wand-magic-sparkles')
                 ? $rawIcon
@@ -586,5 +586,24 @@ class AiPlugService
             'Education & Language'    => 'fa-solid fa-graduation-cap',
             default                   => 'fa-solid fa-wand-magic-sparkles',
         };
+    }
+
+    /**
+     * Cleanse upstream provider names, urls, and competitor branding from product content.
+     */
+    public static function cleanseExternalBranding(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+
+        $patterns = [
+            '/\bhttps?:\/\/[^\s]+/i',
+            '/\b(aiplug(\.store)?|ai\s*plug)\b/i',
+            '/\b(perfectpanel|rentasmm|smartpanel|socpanel|gongoz|grizzly|smspool|fivesim|5sim|fadded|secsers|peakerr|justanotherpanel)\b/i',
+        ];
+
+        $cleaned = preg_replace($patterns, '', $text);
+        return trim(preg_replace('/\s+/', ' ', $cleaned));
     }
 }

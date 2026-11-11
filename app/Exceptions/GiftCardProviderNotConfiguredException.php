@@ -6,10 +6,10 @@ use RuntimeException;
 
 class GiftCardProviderNotConfiguredException extends RuntimeException
 {
-    public function __construct(string $provider = 'Prestmit', int $code = 0, ?\Throwable $previous = null)
+    public function __construct(string $provider = 'Gift Card', int $code = 0, ?\Throwable $previous = null)
     {
         parent::__construct(
-            "The {$provider} gift card provider is not configured. Real API access is awaiting approval.",
+            "Gift card fulfillment is currently unavailable. Please try again later.",
             $code,
             $previous
         );

@@ -183,9 +183,6 @@
                             </td>
                             <td>
                                 <div class="fw-bold text-main">{{ $order->product_name }}</div>
-                                @if($order->provider_order_id)
-                                    <small class="text-muted d-block" style="font-size: 0.72rem;">Ref: {{ $order->provider_order_id }}</small>
-                                @endif
                             </td>
                             <td>{{ $order->quantity }}</td>
                             <td class="fw-bold text-primary">
