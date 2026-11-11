@@ -13,7 +13,7 @@
                 </div>
                 <h1 class="fw-bold mb-3" style="font-family: var(--heading-font); letter-spacing: -0.5px;">Standard SMM Reseller API</h1>
                 <p class="text-muted fs-6 mb-4" style="max-width: 680px;">
-                    Integrate Linkocial services directly into your own website, application, or SMM panel (PerfectPanel, RentASMM, SmartPanel, SOCPanel, and custom scripts). Our API is fully compliant with the global SMM reseller standard.
+                    Integrate Linkocial services directly into your own website, application, or custom panel. Our API is fully compliant with the global SMM reseller standard.
                 </p>
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-20 px-3 py-2 rounded-pill">
@@ -50,10 +50,10 @@
             <!-- Quick Start / Integration Guide -->
             <div class="premium-card p-4 p-md-4 mb-4 border-0 shadow-sm">
                 <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
-                    <i class="fa-solid fa-puzzle-piece text-primary"></i> Upstream Panel Setup (PerfectPanel, RentASMM, SmartPanel)
+                    <i class="fa-solid fa-puzzle-piece text-primary"></i> Upstream Panel & Integration Setup
                 </h5>
                 <p class="text-muted small mb-3">
-                    If you are connecting Linkocial as an upstream provider inside your panel admin dashboard, configure the provider settings as follows:
+                    If you are connecting Linkocial as an upstream provider inside your panel or application dashboard, configure the provider settings as follows:
                 </p>
                 <div class="table-responsive">
                     <table class="table table-bordered table-sm align-middle mb-0" style="border-color: var(--border-color);">
