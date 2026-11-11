@@ -30,10 +30,10 @@ Route::post('/webhooks/billstack', [PaymentController::class, 'billstackWebhook'
 Route::post('/webhooks/vtu', [\App\Http\Controllers\Api\VtuWebhookController::class, 'handle']);
 Route::post('/webhooks/aiplug', [\App\Http\Controllers\Api\AiPlugWebhookController::class, 'handle']);
 
-// Standard SMM Reseller API (v1) - Rate Limited
+// Standard SMM Reseller API (v1 & root /api) - Rate Limited & Public
 Route::middleware('throttle:api')->group(function () {
-    Route::post('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
-    Route::get('/v1', [App\Http\Controllers\ResellerApiController::class, 'handle']);
+    Route::match(['get', 'post', 'options'], '/v1', [App\Http\Controllers\ResellerApiController::class, 'handle'])->name('api.v1');
+    Route::match(['get', 'post', 'options'], '/', [App\Http\Controllers\ResellerApiController::class, 'handle'])->name('api.root');
 });
 
 // Public Marketing API (v1)

@@ -29,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Support\Facades\Gate::policy(\App\Models\GiftCardOrder::class, \App\Policies\GiftCardOrderPolicy::class);
 
+        // Standard API Rate Limiter
+        \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
+            $identifier = $request->input('key') ?: $request->bearerToken() ?: $request->ip();
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(300)->by($identifier);
+        });
+
         // Dynamic SMTP overrides from Database Settings
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('settings')) {

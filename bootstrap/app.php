@@ -23,9 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
 
-        // Exempt payment webhooks from CSRF protection
+        // Exempt API and payment webhooks from CSRF protection
         $middleware->preventRequestForgery(except: [
-
+            '/api/*',
+            '/api',
+            '/api/v1',
+            '/v1',
             '/api/webhooks/korapay',
             '/api/webhooks/billstack',
             '/webhooks/aiplug',

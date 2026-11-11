@@ -417,6 +417,12 @@
 
 @else
             <h6 class="text-muted small fw-bold text-uppercase mb-3 px-3" style="letter-spacing: 1px;">Getting Started</h6>
+            <a href="{{ route('landing') }}" class="nav-link">
+                <i class="fa-solid fa-house"></i> Home
+            </a>
+            <a href="{{ route('api.docs') }}" class="nav-link {{ request()->routeIs('api.docs') ? 'active' : '' }}">
+                <i class="fa-solid fa-code"></i> API Documentation
+            </a>
             <a href="{{ route('login') }}" class="nav-link">
                 <i class="fa-solid fa-right-to-bracket"></i> Login
             </a>

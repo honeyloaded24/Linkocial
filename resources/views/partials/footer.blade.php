@@ -31,6 +31,7 @@
                 <ul class="list-unstyled footer-links">
                     <li><a href="{{ route('landing') }}">Home</a></li>
                     <li><a href="{{ route('info.about') }}">About</a></li>
+                    <li><a href="{{ route('api.docs') }}">API Documentation</a></li>
                     <li><a href="{{ route('info.faq') }}">FAQ Support</a></li>
                     <li><a href="{{ route('info.blog') }}">Growth Blog</a></li>
                     <li><a href="{{ route('info.contact') }}">Contact</a></li>

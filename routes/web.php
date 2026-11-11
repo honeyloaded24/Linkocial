@@ -79,6 +79,14 @@ Route::get('/blog/{slug}', [\App\Http\Controllers\BlogController::class, 'show']
 Route::get('/terms', function() { return view('legal.terms'); })->name('legal.terms');
 Route::get('/privacy', function() { return view('legal.terms'); })->name('legal.privacy');
 
+// Public API Documentation
+Route::get('/api/docs', function() {
+    return view('api.docs');
+})->name('api.docs');
+Route::get('/docs', function() {
+    return redirect()->route('api.docs');
+});
+
 
 // --- AUTHENTICATION ROUTES ---
 Route::middleware('guest')->group(function () {
@@ -200,10 +208,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
 
-
-    Route::get('/api/docs', function() {
-        return view('api.docs');
-    })->name('api.docs');
 
     Route::get('/profile', [App\Http\Controllers\ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/2fa/toggle', [App\Http\Controllers\ProfileController::class, 'toggle2fa'])->name('profile.2fa.toggle');
@@ -346,6 +350,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/ai-marketplace/settings/register-webhook', [\App\Http\Controllers\Admin\AdminAiMarketplaceController::class, 'registerWebhook'])->name('hq.ai.settings.register-webhook');
     });
 });
+
+// Direct SMM Reseller API route alias (v1 without /api prefix)
+Route::match(['get', 'post', 'options'], '/v1', [\App\Http\Controllers\ResellerApiController::class, 'handle']);
 
 // Public AIPlug Webhook Route (direct root url without /api)
 Route::post('/webhooks/aiplug', [\App\Http\Controllers\Api\AiPlugWebhookController::class, 'handle']);

@@ -164,6 +164,7 @@
 
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.faq') }}">FAQ</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.blog') }}">Blog</a></li>
+                <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('api.docs') }}">API Docs</a></li>
                 <li class="nav-item w-100 text-lg-center"><a class="nav-link py-2" href="{{ route('info.contact') }}">Contact</a></li>
                 @auth
                     <li class="nav-item dropdown ms-lg-2 w-100 mt-2 mt-lg-0">
