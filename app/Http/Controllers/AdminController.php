@@ -153,140 +153,6 @@ class AdminController extends Controller
             'chartData',
             'recentOrders'
         ));
-    {
-        // User Metrics
-        $totalUsers = User::count();
-        $totalReferrals = User::whereNotNull('referred_by')->count();
-        $totalUserBalance = User::sum('balance'); // Unused deposits
-
-        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs)
-        $totalOrders = Order::count() 
-            + \App\Models\VirtualNumberOrder::count()
-            + \App\Models\VtuOrder::count()
-            + \App\Models\LogOrder::count();
-
-        $pendingOrders = Order::where('status', 'pending')->count() 
-            + \App\Models\VirtualNumberOrder::where('status', 'pending')->count()
-            + \App\Models\VtuOrder::whereIn('status', ['pending', 'processing'])->count()
-            + \App\Models\LogOrder::where('status', 'pending')->count();
-
-        $completedOrders = Order::where('status', 'completed')->count() 
-            + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count()
-            + \App\Models\VtuOrder::where('status', 'completed')->count()
-            + \App\Models\LogOrder::where('status', 'completed')->count();
-
-        // Financial Metrics (Authoritative calculation in NGN via FinancialMetricsService)
-        $financialService = app(\App\Services\FinancialMetricsService::class);
-        $financialPerformance = $financialService->getAdminFinancialPerformance();
-        $totalDeposited = $financialPerformance['totalDeposited'];
-        $totalSpent     = $financialPerformance['totalSpent'];
-        $totalCost      = $financialPerformance['totalCost'];
-        $totalProfit    = $financialPerformance['totalProfit'];
-
-        // Affiliate Metrics
-        $totalCommissionEarned = User::sum('total_earned_commission');
-        $totalCommissionWithdrawn = User::sum('total_withdrawn_commission');
-        $pendingCommission = User::sum('commission_balance');
-
-        $pendingServices = Service::where('is_active', false)->count();
-
-        // --- CHART DATA (Last 30 Days - Aggregated & Cached with Accurate FX & Realized Profit) ---
-        $chartData = $financialService->getAdmin30DayChartData();
-
-        // --- RECENT PLATFORM ORDERS (Unified across all products & users) ---
-        $recentSmm = Order::with(['user', 'service'])->latest()->take(10)->get()->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#' . $order->id,
-                'type' => 'Social Boost',
-                'type_key' => 'smm',
-                'user' => $order->user,
-                'service_name' => $order->service->name ?? 'Social Boost Service',
-                'detail' => $order->quantity ? number_format($order->quantity) . ' qty' : null,
-                'charge' => (float) $order->charge,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-                'url' => route('hq.orders.show', $order->id),
-            ];
-        });
-
-        $recentVn = \App\Models\VirtualNumberOrder::with('user')->latest()->take(10)->get()->map(function ($order) {
-            $serviceName = ($order->country ? $order->country . ' - ' : '') . ($order->product ?? 'SMS Verification');
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#VN-' . $order->id,
-                'type' => 'Virtual Number',
-                'type_key' => 'vn',
-                'user' => $order->user,
-                'service_name' => $serviceName,
-                'detail' => $order->phone_number ?: null,
-                'charge' => (float) $order->cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-                'url' => route('hq.virtual-numbers'),
-            ];
-        });
-
-        $recentVtu = \App\Models\VtuOrder::with('user')->latest()->take(10)->get()->map(function ($order) {
-            $serviceType = ucfirst($order->service_type ?? 'Utility');
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#VTU-' . $order->id,
-                'type' => "VTU {$serviceType}",
-                'type_key' => 'vtu',
-                'user' => $order->user,
-                'service_name' => "VTU {$serviceType}",
-                'detail' => $order->phone_or_meter ?: null,
-                'charge' => (float) $order->cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-                'url' => route('hq.vtu'),
-            ];
-        });
-
-        $recentLogs = \App\Models\LogOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#LOG-' . $order->id,
-                'type' => 'Logs & Accounts',
-                'type_key' => 'logs',
-                'user' => $order->user,
-                'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
-                'detail' => $order->quantity ? $order->quantity . ' item' . ($order->quantity > 1 ? 's' : '') : null,
-                'charge' => (float) $order->total_cost,
-                'charge_ngn' => (float) $order->total_cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-                'url' => route('hq.logs.orders'),
-            ];
-        });
-
-        $recentOrders = $recentSmm
-            ->concat($recentVn)
-            ->concat($recentVtu)
-            ->concat($recentLogs)
-            ->sortByDesc('created_at')
-            ->values()
-            ->take(10);
-
-        return view('hq.dashboard', compact(
-            'totalUsers',
-            'totalReferrals',
-            'totalUserBalance',
-            'totalOrders',
-            'pendingOrders',
-            'completedOrders',
-            'totalDeposited',
-            'totalSpent',
-            'totalCost',
-            'totalProfit',
-            'totalCommissionEarned',
-            'totalCommissionWithdrawn',
-            'pendingCommission',
-            'pendingServices',
-            'chartData',
-            'recentOrders'
-        ));
     }
 
     /**
@@ -937,17 +803,22 @@ class AdminController extends Controller
 
         $aiUserOrdersCount = 0;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+            if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                 $aiUserOrdersCount = \App\Models\AiOrder::where('user_id', $id)->count();
             }
         } catch (\Throwable $e) {
             $aiUserOrdersCount = 0;
         }
 
+        $logOrdersCount = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            $logOrdersCount = \App\Models\LogOrder::where('user_id', $id)->count();
+        }
+
         $totalOrders = Order::where('user_id', $id)->count()
             + \App\Models\VirtualNumberOrder::where('user_id', $id)->count()
             + \App\Models\VtuOrder::where('user_id', $id)->count()
-            + \App\Models\LogOrder::where('user_id', $id)->count()
+            + $logOrdersCount
             + $aiUserOrdersCount;
 
         $ledgerCount = \App\Models\Transaction::where('user_id', $id)->count();
@@ -1049,11 +920,16 @@ class AdminController extends Controller
         // 6. Inspect dependencies & financial history to protect financial records
         $hasAiOrders = false;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+            if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                 $hasAiOrders = \App\Models\AiOrder::where('user_id', $user->id)->exists();
             }
         } catch (\Throwable $e) {
             $hasAiOrders = false;
+        }
+
+        $hasLogOrders = false;
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            $hasLogOrders = \App\Models\LogOrder::where('user_id', $user->id)->exists();
         }
 
         $hasFinancialHistory = $user->transactions()->exists()
@@ -1061,7 +937,7 @@ class AdminController extends Controller
             || \App\Models\Payment::where('user_id', $user->id)->exists()
             || \App\Models\VirtualNumberOrder::where('user_id', $user->id)->exists()
             || \App\Models\VtuOrder::where('user_id', $user->id)->exists()
-            || \App\Models\LogOrder::where('user_id', $user->id)->exists()
+            || $hasLogOrders
             || $hasAiOrders
             || \App\Models\WithdrawalRequest::where('user_id', $user->id)->exists();
 
@@ -1218,21 +1094,24 @@ class AdminController extends Controller
             ];
         });
 
-        $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(50)->get()->map(function ($order) {
-            return (object) [
-                'id' => $order->id,
-                'display_id' => '#LOG-' . $order->id,
-                'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
-                'quantity' => $order->quantity ? (string) $order->quantity : '1',
-                'charge' => (float) $order->total_cost,
-                'status' => $order->status,
-                'created_at' => $order->created_at,
-            ];
-        });
+        $recentLogs = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            $recentLogs = \App\Models\LogOrder::where('user_id', $id)->with('product')->latest()->take(50)->get()->map(function ($order) {
+                return (object) [
+                    'id' => $order->id,
+                    'display_id' => '#LOG-' . $order->id,
+                    'service_name' => $order->product_name ?? ($order->product->name ?? 'Account Log'),
+                    'quantity' => $order->quantity ? (string) $order->quantity : '1',
+                    'charge' => (float) $order->total_cost,
+                    'status' => $order->status,
+                    'created_at' => $order->created_at,
+                ];
+            });
+        }
 
         $recentAi = collect();
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+            if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                 $recentAi = \App\Models\AiOrder::where('user_id', $id)->with('product')->latest()->take(50)->get()->map(function ($order) {
                     return (object) [
                         'id' => $order->id,

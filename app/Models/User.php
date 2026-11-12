@@ -124,14 +124,6 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Get the AI Marketplace orders for the user.
-     */
-    public function aiOrders()
-    {
-        return $this->hasMany(AiOrder::class);
-    }
-
-    /**
      * Get the support tickets for the user.
      */
     public function tickets()

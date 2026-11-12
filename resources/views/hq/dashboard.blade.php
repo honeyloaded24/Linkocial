@@ -202,7 +202,6 @@
                     <li><a class="dropdown-item small" href="{{ route('hq.virtual-numbers') }}"><i class="fa-solid fa-sim-card text-info me-2"></i>Virtual Numbers Orders</a></li>
                     <li><a class="dropdown-item small" href="{{ route('hq.vtu') }}"><i class="fa-solid fa-bolt text-success me-2"></i>VTU & Utility Orders</a></li>
                     <li><a class="dropdown-item small" href="{{ route('hq.logs.orders') }}"><i class="fa-solid fa-file-invoice text-warning me-2"></i>Logs & Accounts Orders</a></li>
-                    <li><a class="dropdown-item small" href="{{ route('hq.ai.orders') }}"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>AI Marketplace Orders</a></li>
                 </ul>
             </div>
         </div>

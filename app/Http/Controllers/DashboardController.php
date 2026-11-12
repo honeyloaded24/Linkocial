@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $aiActiveOrders = 0;
         $aiCompletedOrders = 0;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+            if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                 $aiActiveOrders = \App\Models\AiOrder::where('user_id', $user->id)
                     ->whereIn('status', ['pending', 'processing', 'awaiting_manual'])
                     ->count();
@@ -36,6 +36,17 @@ class DashboardController extends Controller
             $aiCompletedOrders = 0;
         }
 
+        $pendingLogOrders = 0;
+        $completedLogOrders = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            $pendingLogOrders = \App\Models\LogOrder::where('user_id', $user->id)
+                ->where('status', 'pending')
+                ->count();
+            $completedLogOrders = \App\Models\LogOrder::where('user_id', $user->id)
+                ->where('status', 'completed')
+                ->count();
+        }
+
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
             ->count() 
@@ -45,9 +56,7 @@ class DashboardController extends Controller
             + \App\Models\VtuOrder::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing'])
             ->count()
-            + \App\Models\LogOrder::where('user_id', $user->id)
-            ->where('status', 'pending')
-            ->count()
+            + $pendingLogOrders
             + $aiActiveOrders;
 
         $completedOrders = Order::where('user_id', $user->id)
@@ -59,9 +68,7 @@ class DashboardController extends Controller
             + \App\Models\VtuOrder::where('user_id', $user->id)
             ->where('status', 'completed')
             ->count()
-            + \App\Models\LogOrder::where('user_id', $user->id)
-            ->where('status', 'completed')
-            ->count()
+            + $completedLogOrders
             + $aiCompletedOrders;
 
         // 2. Fetch recent activities

@@ -134,18 +134,21 @@ class FinancialMetricsService
 
         // 5. Logs Marketplace Spent & Provider Cost
         $logSpent = 0.0;
+        $logCostNgn = 0.0;
         if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
             $logSpent = round((float) \App\Models\LogOrder::where('status', 'completed')->sum('total_cost'), 2);
+            if (\Illuminate\Support\Facades\Schema::hasTable('log_products')) {
+                $logCostNgn = round((float) (\App\Models\LogOrder::where('log_orders.status', 'completed')
+                    ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
+                    ->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
+            }
         }
-        $logCostNgn = round((float) (LogOrder::where('log_orders.status', 'completed')
-            ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
-            ->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
 
         // 6. AI Marketplace Spent & Provider Cost (in NGN)
         $aiSpent = 0.0;
         $aiCostNgn = 0.0;
         try {
-            if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+            if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                 $aiSpent = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('total_price'), 2);
                 $aiCostNgn = round((float) \App\Models\AiOrder::whereIn('status', ['fulfilled', 'processing'])->sum('provider_cost'), 2);
             }
@@ -270,16 +273,19 @@ class FinancialMetricsService
                 ->pluck('count', 'date');
 
             // Log orders counts (completed only)
-            $logCounts = LogOrder::where('created_at', '>=', $startDate)
-                ->where('status', 'completed')
-                ->selectRaw("DATE(created_at) as date, count(*) as count")
-                ->groupBy('date')
-                ->pluck('count', 'date');
+            $logCounts = collect();
+            if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+                $logCounts = LogOrder::where('created_at', '>=', $startDate)
+                    ->where('status', 'completed')
+                    ->selectRaw("DATE(created_at) as date, count(*) as count")
+                    ->groupBy('date')
+                    ->pluck('count', 'date');
+            }
 
             // AI Marketplace daily orders and profit in NGN (fulfilled & processing only)
             $aiStats = collect();
             try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
+                if (class_exists(\App\Models\AiOrder::class) && \Illuminate\Support\Facades\Schema::hasTable('ai_orders')) {
                     $aiStats = \App\Models\AiOrder::where('created_at', '>=', $startDate)
                         ->whereIn('status', ['fulfilled', 'processing'])
                         ->selectRaw("
@@ -547,6 +553,10 @@ class FinancialMetricsService
      */
     protected function getLogSpent(?int $userId = null, ?Carbon $startDate = null, ?Carbon $endDate = null): float
     {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            return 0.0;
+        }
+
         $query = LogOrder::where('status', 'completed');
 
         if ($userId !== null) {
@@ -766,6 +776,19 @@ class FinancialMetricsService
      */
     public function getLogSummary(?Carbon $startDate = null, ?Carbon $endDate = null): array
     {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            return [
+                'total'            => 0,
+                'completed'        => 0,
+                'pending'          => 0,
+                'failed'           => 0,
+                'revenue'          => 0.0,
+                'provider_cost'    => 0.0,
+                'profit'           => 0.0,
+                'cost_is_recorded' => true,
+            ];
+        }
+
         $baseQuery = LogOrder::query();
         if ($startDate !== null && $endDate !== null) {
             $baseQuery->whereBetween('created_at', [$startDate, $endDate]);

@@ -28,6 +28,8 @@ class FrontendNavigationMenuTest extends TestCase
             ['email' => 'nav_menu_test@linkocial.test'],
             [
                 'id' => 9888,
+                'first_name' => 'Nav',
+                'last_name' => 'Tester',
                 'name' => 'Nav Menu Tester',
                 'username' => 'navmenu_tester',
                 'password' => bcrypt('secret123'),
@@ -36,6 +38,8 @@ class FrontendNavigationMenuTest extends TestCase
                 'email_verified_at' => now(),
             ]
         );
+
+        $this->user->markEmailAsVerified();
     }
 
     /**

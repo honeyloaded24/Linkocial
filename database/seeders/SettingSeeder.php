@@ -19,6 +19,7 @@ class SettingSeeder extends Seeder
             'maintenance_mode' => '0',
             'min_withdrawal' => '1000',
             'referral_commission' => '5', // 5%
+            'usd_to_ngn_rate' => '1500', // default exchange rate
         ];
 
         foreach ($settings as $key => $value) {
