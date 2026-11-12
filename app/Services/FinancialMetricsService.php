@@ -133,7 +133,10 @@ class FinancialMetricsService
         $vtuCostNgn = 0.0; // Direct provider cost is unrecorded in existing schema
 
         // 5. Logs Marketplace Spent & Provider Cost
-        $logSpent = round((float) LogOrder::where('status', 'completed')->sum('total_cost'), 2);
+        $logSpent = 0.0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('log_orders')) {
+            $logSpent = round((float) \App\Models\LogOrder::where('status', 'completed')->sum('total_cost'), 2);
+        }
         $logCostNgn = round((float) (LogOrder::where('log_orders.status', 'completed')
             ->join('log_products', 'log_orders.log_product_id', '=', 'log_products.id')
             ->sum(DB::raw('log_orders.quantity * coalesce(log_products.base_api_price, 0)')) ?? 0.0), 2);
