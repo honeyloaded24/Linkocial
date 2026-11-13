@@ -174,6 +174,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/logs/purchase', [\App\Http\Controllers\LogMarketplaceController::class, 'purchase'])->name('logs.purchase');
     Route::get('/logs/order/{id}', [\App\Http\Controllers\LogMarketplaceController::class, 'showOrder'])->name('logs.order');
 
+    // AI TOOLS — Customer Routes
+    Route::prefix('ai-tools')->name('ai-tools.')->group(function () {
+        Route::get('/',             [\App\Http\Controllers\AiToolsController::class, 'index'])->name('index');
+        Route::get('/product/{id}', [\App\Http\Controllers\AiToolsController::class, 'show'])->name('show');
+        Route::post('/purchase',    [\App\Http\Controllers\AiToolsController::class, 'purchase'])->name('purchase');
+        Route::get('/history',      [\App\Http\Controllers\AiToolsController::class, 'history'])->name('history');
+        Route::get('/order/{id}',   [\App\Http\Controllers\AiToolsController::class, 'orderDetail'])->name('order.detail');
+    });
+
 
     Route::get('/api/virtual-numbers/products', [\App\Http\Controllers\VirtualNumberController::class, 'getProducts']);
     Route::get('/api/virtual-numbers/quote', [\App\Http\Controllers\VirtualNumberController::class, 'getLiveQuote'])->name('virtual-numbers.quote');
@@ -330,6 +339,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/settings/currency', [AdminController::class, 'hqUpdateCurrencySettings'])->name('hq.settings.currency.update');
         Route::post('/settings/currency/reconcile-user', [AdminController::class, 'hqReconcileUser'])->name('hq.settings.currency.reconcile-user');
         Route::post('/settings/currency/run-recovery', [AdminController::class, 'hqRunWalletRecovery'])->name('hq.settings.currency.run-recovery');
+
+        // AI TOOLS — Admin HQ Routes
+        Route::prefix('ai-tools')->name('hq.ai-tools.')->group(function () {
+            Route::get('/',              [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'dashboard'])->name('dashboard');
+            Route::get('/products',      [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'products'])->name('products');
+            Route::patch('/products/{id}', [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'updateProduct'])->name('products.update');
+            Route::get('/orders',        [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'orders'])->name('orders');
+            Route::get('/orders/{id}',   [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'orderDetail'])->name('orders.show');
+            Route::get('/settings',      [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'settings'])->name('settings');
+            Route::post('/settings',     [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'updateSettings'])->name('settings.update');
+            Route::post('/test-connection', [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'testConnection'])->name('test-connection');
+            Route::get('/balance',       [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'checkBalance'])->name('balance');
+            Route::post('/sync',         [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'syncProducts'])->name('sync');
+        });
 
     });
 });

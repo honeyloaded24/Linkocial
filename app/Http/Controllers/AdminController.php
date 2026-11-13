@@ -23,21 +23,27 @@ class AdminController extends Controller
         $totalReferrals = User::whereNotNull('referred_by')->count();
         $totalUserBalance = User::sum('balance'); // Unused deposits
 
-        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs)
+        // Order Metrics (Aggregated SMM + Virtual Numbers + VTU + Logs + AI Tools)
+        $aiToolOrdersCount = \Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders') ? \App\Models\AiToolOrder::count() : 0;
         $totalOrders = Order::count() 
             + \App\Models\VirtualNumberOrder::count()
             + \App\Models\VtuOrder::count()
-            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::count() : 0 );
+            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::count() : 0 )
+            + $aiToolOrdersCount;
 
+        $aiToolPendingCount = \Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders') ? \App\Models\AiToolOrder::whereIn('status', ['pending', 'processing'])->count() : 0;
         $pendingOrders = Order::where('status', 'pending')->count() 
             + \App\Models\VirtualNumberOrder::where('status', 'pending')->count()
             + \App\Models\VtuOrder::whereIn('status', ['pending', 'processing'])->count()
-            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::where('status', 'pending')->count() : 0 );
+            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::where('status', 'pending')->count() : 0 )
+            + $aiToolPendingCount;
 
+        $aiToolCompletedCount = \Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders') ? \App\Models\AiToolOrder::where('status', 'completed')->count() : 0;
         $completedOrders = Order::where('status', 'completed')->count() 
             + \App\Models\VirtualNumberOrder::whereIn('status', ['received', 'finished'])->count()
             + \App\Models\VtuOrder::where('status', 'completed')->count()
-            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::where('status', 'completed')->count() : 0 );
+            + ( \Illuminate\Support\Facades\Schema::hasTable('log_orders') ? \App\Models\LogOrder::where('status', 'completed')->count() : 0 )
+            + $aiToolCompletedCount;
 
         // Financial Metrics (Authoritative calculation in NGN via FinancialMetricsService)
         $financialService = app(\App\Services\FinancialMetricsService::class);
@@ -127,10 +133,30 @@ class AdminController extends Controller
             });
         }
 
+        $recentAiTools = collect();
+        if (\Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders')) {
+            $recentAiTools = \App\Models\AiToolOrder::with(['user', 'product'])->latest()->take(10)->get()->map(function ($order) {
+                return (object) [
+                    'id' => $order->id,
+                    'display_id' => $order->order_number,
+                    'type' => 'AI TOOLS',
+                    'type_key' => 'ai_tools',
+                    'user' => $order->user,
+                    'service_name' => $order->product->name ?? 'AI Tool',
+                    'detail' => $order->quantity ? $order->quantity . ' unit' . ($order->quantity > 1 ? 's' : '') : null,
+                    'charge' => (float) $order->total_paid_ngn,
+                    'status' => $order->status,
+                    'created_at' => $order->created_at,
+                    'url' => route('hq.ai-tools.orders.show', $order->id),
+                ];
+            });
+        }
+
         $recentOrders = $recentSmm
             ->concat($recentVn)
             ->concat($recentVtu)
             ->concat($recentLogs)
+            ->concat($recentAiTools)
             ->sortByDesc('created_at')
             ->values()
             ->take(10);

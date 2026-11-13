@@ -169,6 +169,17 @@
                             </div>
                         </a>
                     </div>
+                    <div class="col">
+                        <a href="{{ route('ai-tools.index') }}" class="text-decoration-none">
+                            <div class="border-0 rounded-4 p-2 p-md-3 text-center h-100 d-flex flex-column align-items-center justify-content-center transition-hover position-relative" style="background: var(--bg-surface);">
+                                <span class="badge position-absolute" style="top: -4px; right: -4px; font-size: 0.55rem; padding: 2px 4px; z-index: 2; background:#6366f1;">NEW</span>
+                                <div class="rounded-circle d-flex align-items-center justify-content-center mb-2" style="width: 46px; height: 46px; background: rgba(99,102,241,0.1);">
+                                    <i class="fa-solid fa-wand-magic-sparkles fs-5" style="color:#6366f1;"></i>
+                                </div>
+                                <span class="small fw-bold text-center w-100 d-block" style="font-size: 0.7rem; line-height: 1.2; color: var(--text-main);">AI TOOLS</span>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

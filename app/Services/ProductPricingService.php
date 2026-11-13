@@ -29,6 +29,7 @@ class ProductPricingService
     public const PRODUCT_VIRTUAL_NUMBERS = 'virtual_numbers';
     public const PRODUCT_BOOST = 'boost';
     public const PRODUCT_GIFT_CARDS = 'gift_cards';
+    public const PRODUCT_AI_TOOLS  = 'ai_tools';
 
     /**
      * Get default baseline configuration for a product.
@@ -88,6 +89,21 @@ class ProductPricingService
                     'min_selling_price'  => null,
                     'min_profit'         => null,
                     'rounding_rule'      => '2_decimal',
+                ];
+
+            case self::PRODUCT_AI_TOOLS:
+                $aiToolsMarkup = (float) Setting::get('markup_ai_tools', 20.0);
+                $usdtRate      = (float) Setting::get('usdt_to_ngn_rate',
+                                     Setting::get('usd_to_ngn_rate', 1500.0));
+                return [
+                    'currency'          => 'USDT',
+                    'fix_rate'          => $usdtRate > 0 ? $usdtRate : 1500.0,
+                    'pricing_mode'      => 'percentage',
+                    'percentage_markup' => $aiToolsMarkup,
+                    'fixed_markup'      => 0.0,
+                    'min_selling_price' => null,
+                    'min_profit'        => null,
+                    'rounding_rule'     => 'whole_naira',
                 ];
 
             case self::PRODUCT_BOOST:
@@ -182,7 +198,7 @@ class ProductPricingService
     public function updatePricingSettings(string $productKey, array $data, ?User $admin = null): ProductPricingSetting
     {
         $currency = strtoupper($data['currency'] ?? 'USD');
-        if (!in_array($currency, ['USD', 'NGN'])) {
+        if (!in_array($currency, ['USD', 'NGN', 'USDT'])) {
             throw new InvalidArgumentException("Invalid currency '{$currency}'. Supported: USD, NGN.");
         }
 
@@ -312,7 +328,7 @@ class ProductPricingService
         }
 
         $curr = strtoupper($currency);
-        if ($curr === 'USD') {
+        if ($curr === 'USD' || $curr === 'USDT') {
             if ($fixRate <= 0.0) {
                 try {
                     $fixRate = (float) $this->currencyService->getUsdToNgnRate();

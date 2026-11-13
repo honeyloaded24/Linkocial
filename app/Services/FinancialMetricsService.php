@@ -56,10 +56,11 @@ class FinancialMetricsService
         $vnSpent = $this->getVirtualNumberSpent($userId);
         $vtuSpent = $this->getVtuSpent($userId);
         $logSpent = $this->getLogSpent($userId);
+        $aiToolsSpent = $this->getAiToolsSpent($userId);
         // AI Marketplace spent removed
         $aiSpent = 0.0;
 
-        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
+        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiToolsSpent + $aiSpent, 2);
     }
 
     /**
@@ -78,9 +79,10 @@ class FinancialMetricsService
         $vnSpent = $this->getVirtualNumberSpent($userId, $startDate, $endDate);
         $vtuSpent = $this->getVtuSpent($userId, $startDate, $endDate);
         $logSpent = $this->getLogSpent($userId, $startDate, $endDate);
+        $aiToolsSpent = $this->getAiToolsSpent($userId, $startDate, $endDate);
         $aiSpent = $this->getAiSpent($userId, $startDate, $endDate);
 
-        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
+        return round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiToolsSpent + $aiSpent, 2);
     }
 
     /**
@@ -144,6 +146,14 @@ class FinancialMetricsService
             }
         }
 
+        // 5b. AI TOOLS Spent & Provider Cost
+        $aiToolsSpent = 0.0;
+        $aiToolsCostNgn = 0.0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders')) {
+            $aiToolsSpent = round((float) \App\Models\AiToolOrder::where('status', 'completed')->sum('total_paid_ngn'), 2);
+            $aiToolsCostNgn = round((float) \App\Models\AiToolOrder::where('status', 'completed')->sum('provider_cost_ngn'), 2);
+        }
+
         // 6. AI Marketplace Spent & Provider Cost (in NGN)
         $aiSpent = 0.0;
         $aiCostNgn = 0.0;
@@ -158,8 +168,8 @@ class FinancialMetricsService
         }
 
         // Aggregations
-        $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiSpent, 2);
-        $totalCost = round($smmCostNgn + $vnCostNgn + $vtuCostNgn + $logCostNgn + $aiCostNgn, 2);
+        $totalSpent = round($smmSpent + $vnSpent + $vtuSpent + $logSpent + $aiToolsSpent + $aiSpent, 2);
+        $totalCost = round($smmCostNgn + $vnCostNgn + $vtuCostNgn + $logCostNgn + $aiToolsCostNgn + $aiCostNgn, 2);
         $totalProfit = max(0.0, round($totalSpent - $totalCost, 2));
 
         return [
@@ -172,6 +182,8 @@ class FinancialMetricsService
             'vtuCost'        => $vtuCostNgn,
             'logSpent'       => $logSpent,
             'logCost'        => $logCostNgn,
+            'aiToolsSpent'   => $aiToolsSpent,
+            'aiToolsCost'    => $aiToolsCostNgn,
             'aiSpent'        => $aiSpent,
             'aiCost'         => $aiCostNgn,
             'totalSpent'     => $totalSpent,
@@ -282,6 +294,21 @@ class FinancialMetricsService
                     ->pluck('count', 'date');
             }
 
+            // AI Tools daily orders and profit in NGN (completed only)
+            $aiToolsStats = collect();
+            if (\Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders')) {
+                $aiToolsStats = \App\Models\AiToolOrder::where('created_at', '>=', $startDate)
+                    ->where('status', 'completed')
+                    ->selectRaw("
+                        DATE(created_at) as date,
+                        count(*) as count,
+                        sum(profit_ngn) as profit
+                    ")
+                    ->groupBy('date')
+                    ->get()
+                    ->keyBy('date');
+            }
+
             // AI Marketplace daily orders and profit in NGN (fulfilled & processing only)
             $aiStats = collect();
             try {
@@ -323,11 +350,13 @@ class FinancialMetricsService
                 $vnProfit = (float) ($vnStats[$dateKey]->profit ?? 0);
                 $vtuCount = (int) ($vtuCounts[$dateKey] ?? 0);
                 $logCount = (int) ($logCounts[$dateKey] ?? 0);
+                $aiToolsCount = (int) ($aiToolsStats[$dateKey]->count ?? 0);
+                $aiToolsProfit = (float) ($aiToolsStats[$dateKey]->profit ?? 0);
                 $aiCount = (int) ($aiStats[$dateKey]->count ?? 0);
                 $aiProfit = (float) ($aiStats[$dateKey]->profit ?? 0);
 
-                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount + $aiCount;
-                $profitData[] = max(0.0, round($smmProfit + $vnProfit + $aiProfit, 2));
+                $orderData[] = $smmCount + $vnCount + $vtuCount + $logCount + $aiToolsCount + $aiCount;
+                $profitData[] = max(0.0, round($smmProfit + $vnProfit + $aiToolsProfit + $aiProfit, 2));
                 $userData[] = (int) ($userCounts[$dateKey] ?? 0);
             }
 
@@ -570,6 +599,30 @@ class FinancialMetricsService
         }
 
         return round((float) $query->sum('total_cost'), 2);
+    }
+
+    /**
+     * Compute AI TOOLS customer spent in NGN.
+     */
+    protected function getAiToolsSpent(?int $userId = null, ?Carbon $startDate = null, ?Carbon $endDate = null): float
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders')) {
+            return 0.0;
+        }
+
+        $query = \App\Models\AiToolOrder::where('status', 'completed');
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        if ($startDate !== null && $endDate !== null) {
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+        } elseif ($startDate !== null) {
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        return round((float) $query->sum('total_paid_ngn'), 2);
     }
 
     /**

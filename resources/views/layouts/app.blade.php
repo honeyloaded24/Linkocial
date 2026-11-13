@@ -294,6 +294,29 @@
 
                         <hr class="mx-3 opacity-10 my-3">
 
+                        <!-- PRODUCT 5: AI TOOLS -->
+                        <div class="px-3 py-1 mt-2">
+                            <div class="d-flex align-items-center mb-1">
+                                <span class="badge bg-opacity-10 border border-opacity-25 px-2 py-1 fw-bold text-uppercase" style="font-size: 0.65rem; letter-spacing: 0.8px; background:#6366f1 !important; color:#6366f1; border-color:#6366f1 !important;">
+                                    <i class="fa-solid fa-wand-magic-sparkles me-1"></i> AI TOOLS
+                                </span>
+                            </div>
+                            <a href="{{ route('hq.ai-tools.dashboard') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai-tools.dashboard') ? 'active' : '' }}">
+                                <i class="fa-solid fa-gauge" style="color:#6366f1;"></i> Dashboard
+                            </a>
+                            <a href="{{ route('hq.ai-tools.products') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai-tools.products*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-box" style="color:#6366f1;"></i> Manage Products
+                            </a>
+                            <a href="{{ route('hq.ai-tools.orders') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai-tools.orders*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-receipt" style="color:#6366f1;"></i> Orders
+                            </a>
+                            <a href="{{ route('hq.ai-tools.settings') }}" class="nav-link mb-1 ps-2 {{ request()->routeIs('hq.ai-tools.settings*') ? 'active' : '' }}">
+                                <i class="fa-solid fa-gear" style="color:#6366f1;"></i> Provider Settings
+                            </a>
+                        </div>
+
+                        <hr class="mx-3 opacity-10 my-3">
+
                         <!-- Collapsible General Management -->
                         <div class="px-3 py-1">
                             <a class="nav-link p-0 mb-3 d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#mgmtCollapse" role="button" style="color: var(--text-muted);">
@@ -382,6 +405,9 @@
                 </a>
                 <a href="{{ route('logs.index') }}" class="nav-link {{ request()->routeIs('logs.index') || request()->routeIs('logs.show') ? 'active' : '' }}">
                     <i class="fa-solid fa-box-open"></i> Logs Marketplace <span class="badge bg-success ms-1" style="font-size: 0.6rem;">HOT</span>
+                </a>
+                <a href="{{ route('ai-tools.index') }}" class="nav-link {{ request()->routeIs('ai-tools.*') ? 'active' : '' }}">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI TOOLS <span class="badge bg-purple ms-1" style="font-size: 0.6rem; background:#6366f1 !important;">NEW</span>
                 </a>
                 <a href="{{ route('affiliate.index') }}" class="nav-link {{ request()->routeIs('affiliate.*') ? 'active' : '' }}">
                     <i class="fa-solid fa-handshake"></i> Affiliates

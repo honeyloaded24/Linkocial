@@ -47,6 +47,17 @@ class DashboardController extends Controller
                 ->count();
         }
 
+        $pendingAiToolOrders = 0;
+        $completedAiToolOrders = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('ai_tool_orders')) {
+            $pendingAiToolOrders = \App\Models\AiToolOrder::where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'processing'])
+                ->count();
+            $completedAiToolOrders = \App\Models\AiToolOrder::where('user_id', $user->id)
+                ->where('status', 'completed')
+                ->count();
+        }
+
         $activeOrders = Order::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'processing', 'in_progress'])
             ->count() 
@@ -57,6 +68,7 @@ class DashboardController extends Controller
             ->whereIn('status', ['pending', 'processing'])
             ->count()
             + $pendingLogOrders
+            + $pendingAiToolOrders
             + $aiActiveOrders;
 
         $completedOrders = Order::where('user_id', $user->id)
@@ -69,6 +81,7 @@ class DashboardController extends Controller
             ->where('status', 'completed')
             ->count()
             + $completedLogOrders
+            + $completedAiToolOrders
             + $aiCompletedOrders;
 
         // 2. Fetch recent activities
