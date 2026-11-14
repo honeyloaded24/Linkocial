@@ -137,21 +137,21 @@
                                 <p class="text-muted small mb-1 fw-semibold">Item {{ $item->item_index + 1 }}</p>
                             @endif
                             <div class="cred-box">
-                                {{ $item->code ?? 'No code available' }}
-                                <button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyText(this, '{{ addslashes($item->code ?? '') }}')">
+                                <pre class="mb-0 font-monospace text-wrap" style="white-space:pre-wrap;">{{ $item->code ?? 'No code available' }}</pre>
+                                <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $item->code }}" onclick="copyCred(this)">
                                     <i class="fa fa-copy"></i>
                                 </button>
                             </div>
                             @if($item->details)
                             @php
-                                $details = json_decode($item->details, true);
+                                $details = is_string($item->details) ? json_decode($item->details, true) : $item->details;
                             @endphp
-                            @if($details && is_array($details) && count($details) > 1)
-                            <div class="mt-2">
+                            @if(is_array($details))
+                            <div class="mt-2 p-2 rounded small bg-light border">
                                 @foreach($details as $key => $val)
-                                    @if($key !== 'code' && !is_array($val))
-                                    <div class="d-flex gap-2 small mb-1">
-                                        <span class="text-muted" style="min-width:80px;">{{ ucfirst($key) }}:</span>
+                                    @if(!in_array($key, ['code']) && is_scalar($val))
+                                    <div class="d-flex gap-2 mb-1">
+                                        <span class="text-muted fw-semibold" style="min-width:100px;">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
                                         <span class="fw-semibold font-monospace">{{ $val }}</span>
                                     </div>
                                     @endif
@@ -187,6 +187,22 @@
 
 @push('scripts')
 <script>
+function copyCred(btn) {
+    var text = btn.dataset.clipboardText;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa fa-check"></i>';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-primary');
+        setTimeout(function() {
+            btn.innerHTML = orig;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    });
+}
+
 function copyText(btn, text) {
     if (!text) return;
     navigator.clipboard.writeText(text).then(function() {

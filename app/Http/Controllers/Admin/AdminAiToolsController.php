@@ -170,6 +170,49 @@ class AdminAiToolsController extends Controller
         return view('hq.ai-tools.order-detail', compact('order'));
     }
 
+    public function manualFulfill(Request $request, int $id)
+    {
+        $this->ensureTablesExist();
+
+        $request->validate([
+            'credentials'  => 'required|string',
+            'instructions' => 'nullable|string|max:2000',
+        ]);
+
+        $order = AiToolOrder::findOrFail($id);
+        $order->fulfillWithCredentials($request->credentials, $request->instructions);
+
+        return back()->with('success', "Order #{$order->order_number} has been manually fulfilled and credentials delivered.");
+    }
+
+    public function manualRefund(Request $request, int $id)
+    {
+        $this->ensureTablesExist();
+
+        $order = AiToolOrder::findOrFail($id);
+        $reason = $request->input('reason', 'Refunded by administrator');
+
+        if ($order->refundCustomer($reason)) {
+            return back()->with('success', "Order #{$order->order_number} has been refunded to the customer's wallet.");
+        }
+
+        return back()->with('error', 'Order could not be refunded (may already be refunded).');
+    }
+
+    public function syncOrder(int $id)
+    {
+        $this->ensureTablesExist();
+
+        $order = AiToolOrder::findOrFail($id);
+        $result = $order->livePollStatus(app(AlaricApiService::class));
+
+        if ($result['success'] ?? false) {
+            return back()->with('success', 'Provider status check: ' . ($result['message'] ?? 'Status updated.'));
+        }
+
+        return back()->with('error', 'Could not sync provider status: ' . ($result['message'] ?? 'Provider error.'));
+    }
+
     // ─── Provider settings ─────────────────────────────────────────────────────
 
     public function settings()

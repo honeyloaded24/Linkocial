@@ -21,6 +21,9 @@ return new class extends Migration
             if (!Schema::hasColumn('ai_tool_orders', 'max_total_usdt')) {
                 $table->decimal('max_total_usdt', 12, 4)->nullable()->after('profit_ngn');
             }
+            if (!Schema::hasColumn('ai_tool_orders', 'failure_reason')) {
+                $table->text('failure_reason')->nullable()->after('error_message');
+            }
         });
     }
 

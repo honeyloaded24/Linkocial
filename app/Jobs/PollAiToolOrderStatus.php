@@ -91,27 +91,11 @@ class PollAiToolOrderStatus implements ShouldQueue
 
     private function handleCompleted(AiToolOrder $order, array $data): void
     {
-        DB::transaction(function () use ($order, $data) {
-            $items = $data['items'] ?? [];
-
-            foreach ($items as $index => $item) {
-                AiToolOrderItem::create([
-                    'ai_tool_order_id' => $order->id,
-                    'item_index'       => $index,
-                    'code'             => $item['code'] ?? null,
-                    'details'          => is_array($item) ? json_encode($item) : ($item['details'] ?? null),
-                ]);
-            }
-
-            $order->update([
-                'status'       => AiToolOrder::STATUS_COMPLETED,
-                'completed_at' => now(),
-            ]);
-        });
+        $order->parseAndDeliverFromProviderResponse($data);
 
         Log::info('PollAiToolOrderStatus: order completed', [
             'order_id'    => $order->id,
-            'items_count' => count($data['items'] ?? []),
+            'items_count' => $order->items()->count(),
         ]);
     }
 

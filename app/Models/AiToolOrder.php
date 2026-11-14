@@ -132,6 +132,217 @@ class AiToolOrder extends Model
     }
 
     /**
+     * Deliver and fulfill the order with given credentials.
+     *
+     * @param string|array $credentials Can be multi-line string, single key, or array of item strings/objects
+     * @param string|null  $instructions Optional notes/instructions
+     */
+    public function fulfillWithCredentials(string|array $credentials, ?string $instructions = null): bool
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($credentials, $instructions) {
+            $itemsToSave = [];
+
+            if (is_string($credentials)) {
+                $trimmed = trim($credentials);
+                $decoded = json_decode($trimmed, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $itemsToSave = array_is_list($decoded) ? $decoded : [$decoded];
+                } else {
+                    $lines = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $trimmed)));
+                    $itemsToSave = !empty($lines) ? array_values($lines) : [$trimmed];
+                }
+            } elseif (is_array($credentials)) {
+                $itemsToSave = array_is_list($credentials) ? $credentials : [$credentials];
+            }
+
+            // Remove any existing items if re-fulfilling
+            $this->items()->delete();
+
+            foreach ($itemsToSave as $index => $item) {
+                $code = null;
+                $details = null;
+
+                if (is_string($item)) {
+                    $code = trim($item);
+                    if ($instructions) {
+                        $details = ['instructions' => $instructions];
+                    }
+                } elseif (is_array($item)) {
+                    $code = $item['code']
+                        ?? $item['key']
+                        ?? $item['license']
+                        ?? $item['license_key']
+                        ?? $item['account']
+                        ?? $item['login']
+                        ?? $item['credential']
+                        ?? $item['value']
+                        ?? (isset($item['email'], $item['password']) ? "{$item['email']} | {$item['password']}" : null)
+                        ?? (isset($item['username'], $item['password']) ? "{$item['username']} | {$item['password']}" : null);
+
+                    if (!$code) {
+                        $code = is_scalar($item) ? (string) $item : json_encode($item);
+                    }
+
+                    $details = $item;
+                    if ($instructions) {
+                        $details['instructions'] = $instructions;
+                    }
+                }
+
+                if (empty($code)) {
+                    $code = 'Credentials provided (see details)';
+                }
+
+                AiToolOrderItem::create([
+                    'ai_tool_order_id' => $this->id,
+                    'item_index'       => (int) $index,
+                    'code'             => (string) $code,
+                    'details'          => $details ? (is_array($details) ? json_encode($details) : (string) $details) : null,
+                ]);
+            }
+
+            $this->update([
+                'status'         => self::STATUS_COMPLETED,
+                'completed_at'   => now(),
+                'failure_reason' => null,
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Robust extraction of delivered credentials from provider response.
+     */
+    public function parseAndDeliverFromProviderResponse(array $response): bool
+    {
+        $data = $response['data'] ?? $response['order'] ?? $response;
+
+        $items = [];
+        if (!empty($data['items']) && is_array($data['items'])) {
+            $items = $data['items'];
+        } elseif (!empty($data['credentials']) && is_array($data['credentials'])) {
+            $items = $data['credentials'];
+        } elseif (!empty($data['accounts']) && is_array($data['accounts'])) {
+            $items = $data['accounts'];
+        } elseif (!empty($data['code'])) {
+            $items = [$data['code']];
+        } elseif (!empty($data['license_key'])) {
+            $items = [$data['license_key']];
+        } elseif (!empty($data['delivery'])) {
+            $items = is_array($data['delivery']) ? $data['delivery'] : [$data['delivery']];
+        } elseif (!empty($data['delivery_payload'])) {
+            $items = [$data['delivery_payload']];
+        }
+
+        if (!empty($items)) {
+            $this->fulfillWithCredentials($items);
+            return true;
+        }
+
+        $status = strtoupper((string) ($data['status'] ?? $response['status'] ?? ''));
+        if ($status === 'COMPLETED') {
+            $this->update([
+                'status'       => self::STATUS_COMPLETED,
+                'completed_at' => now(),
+            ]);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Refund the customer for this order.
+     */
+    public function refundCustomer(?string $reason = null): bool
+    {
+        if ($this->status === self::STATUS_REFUNDED) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($reason) {
+            $user = $this->user;
+            if ($user && (float) $this->total_paid_ngn > 0) {
+                $user->addBalance((float) $this->total_paid_ngn);
+
+                Transaction::add(
+                    $user->id,
+                    (float) $this->total_paid_ngn,
+                    'credit',
+                    'ai_tools_refund',
+                    "Refund — AI TOOLS order #{$this->order_number}" . ($reason ? " ({$reason})" : '')
+                );
+            }
+
+            $this->update([
+                'status'         => self::STATUS_REFUNDED,
+                'refunded_at'    => now(),
+                'failure_reason' => $reason ?? 'Refunded by administrator',
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Live poll the provider for order status & delivered credentials.
+     */
+    public function livePollStatus(\App\Services\AlaricApiService $alaricService): array
+    {
+        if (empty($this->provider_order_id) || $this->isTerminal()) {
+            return ['success' => false, 'message' => 'Order is terminal or missing provider order ID'];
+        }
+
+        try {
+            $result = $alaricService->getOrder($this->provider_order_id);
+            if (!($result['success'] ?? false)) {
+                return $result;
+            }
+
+            $data = $result['data'] ?? [];
+            $providerStatus = strtoupper((string) ($data['status'] ?? ''));
+
+            $this->update([
+                'provider_status'   => $providerStatus,
+                'provider_response' => $data,
+                'last_polled_at'    => now(),
+            ]);
+
+            if ($providerStatus === 'COMPLETED' || !empty($data['items']) || !empty($data['credentials']) || !empty($data['code'])) {
+                $this->parseAndDeliverFromProviderResponse($data);
+                return ['success' => true, 'status' => 'completed', 'message' => 'Order completed and credentials delivered.'];
+            }
+
+            if ($providerStatus === 'REFUNDED') {
+                $this->refundCustomer('Provider cancelled/refunded the order.');
+                return ['success' => true, 'status' => 'refunded', 'message' => 'Provider refunded this order.'];
+            }
+
+            if ($providerStatus === 'FAILED') {
+                $this->update([
+                    'status'         => self::STATUS_FAILED,
+                    'failure_reason' => $data['failure_reason'] ?? $data['message'] ?? 'Provider failed to fulfill order.',
+                ]);
+                return ['success' => true, 'status' => 'failed', 'message' => 'Provider order failed.'];
+            }
+
+            if ($providerStatus === 'UNDER_REVIEW') {
+                $this->update([
+                    'status'         => self::STATUS_UNDER_REVIEW,
+                    'failure_reason' => 'Provider placed order under review.',
+                ]);
+                return ['success' => true, 'status' => 'under_review', 'message' => 'Order is under review.'];
+            }
+
+            return ['success' => true, 'status' => 'processing', 'message' => 'Order is still processing with provider.'];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('AiToolOrder::livePollStatus failed: ' . $e->getMessage(), ['order_id' => $this->id]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Bootstrap CSS badge colour for status display.
      */
     public function getStatusBadgeAttribute(): string

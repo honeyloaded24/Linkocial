@@ -214,19 +214,8 @@ class AiToolsController extends Controller
                     'provider_response' => $providerData,
                 ]);
 
-                if ($providerStatus === 'COMPLETED') {
-                    foreach (($providerData['items'] ?? []) as $index => $item) {
-                        AiToolOrderItem::create([
-                            'ai_tool_order_id' => $order->id,
-                            'item_index'       => $index,
-                            'code'             => $item['code'] ?? null,
-                            'details'          => is_array($item) ? json_encode($item) : null,
-                        ]);
-                    }
-                    $order->update([
-                        'status'       => AiToolOrder::STATUS_COMPLETED,
-                        'completed_at' => now(),
-                    ]);
+                if ($providerStatus === 'COMPLETED' || !empty($providerData['items']) || !empty($providerData['credentials']) || !empty($providerData['code'])) {
+                    $order->parseAndDeliverFromProviderResponse($providerData);
                 } else {
                     $order->update(['status' => AiToolOrder::STATUS_PROCESSING]);
                     PollAiToolOrderStatus::dispatch($order)->delay(now()->addSeconds(10));
@@ -277,6 +266,12 @@ class AiToolsController extends Controller
         $order = AiToolOrder::with(['product', 'items'])
             ->forUser(auth()->id())
             ->findOrFail($id);
+
+        // Auto-check provider status live if order is still processing
+        if (!$order->isTerminal() && !empty($order->provider_order_id)) {
+            $order->livePollStatus(app(AlaricApiService::class));
+            $order->load('items');
+        }
 
         return view('ai-tools.order-detail', compact('order'));
     }

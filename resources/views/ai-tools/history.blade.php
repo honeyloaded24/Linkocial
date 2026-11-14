@@ -5,10 +5,27 @@
 @section('content')
 <div class="container-fluid px-3 px-md-4 py-3">
 
+    @php
+        $myAiOrdersCount = $orders->total() ?? $orders->count();
+    @endphp
+
+    {{-- Top navigation tabs --}}
+    <div class="d-flex align-items-center gap-2 mb-3 p-1 bg-body-tertiary rounded-pill border d-inline-flex">
+        <a href="{{ route('ai-tools.index') }}" class="btn btn-ghost text-muted rounded-pill px-4 btn-sm fw-bold">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Marketplace
+        </a>
+        <a href="{{ route('ai-tools.history') }}" class="btn btn-primary rounded-pill px-4 btn-sm fw-bold shadow-sm position-relative">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i>Order History
+            @if($myAiOrdersCount > 0)
+                <span class="badge rounded-pill bg-light text-dark ms-1" style="font-size:0.7rem;">{{ $myAiOrdersCount }}</span>
+            @endif
+        </a>
+    </div>
+
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>AI TOOLS Order History</h4>
-            <p class="text-muted small mb-0">All your AI tool purchases</p>
+            <p class="text-muted small mb-0">View your purchased tools, licenses, and delivered credentials</p>
         </div>
         <a href="{{ route('ai-tools.index') }}" class="btn btn-primary btn-sm">
             <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Browse Tools

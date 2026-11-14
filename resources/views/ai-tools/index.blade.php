@@ -45,14 +45,42 @@
 @section('content')
 <div class="container-fluid px-3 px-md-4 py-3">
 
+    @php
+        $myAiOrdersCount = auth()->check() ? \App\Models\AiToolOrder::where('user_id', auth()->id())->count() : 0;
+    @endphp
+
+    {{-- Top navigation tabs --}}
+    <div class="d-flex align-items-center gap-2 mb-3 p-1 bg-body-tertiary rounded-pill border d-inline-flex">
+        <a href="{{ route('ai-tools.index') }}" class="btn btn-primary rounded-pill px-4 btn-sm fw-bold shadow-sm">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Marketplace
+        </a>
+        <a href="{{ route('ai-tools.history') }}" class="btn btn-ghost text-muted rounded-pill px-4 btn-sm fw-bold position-relative">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i>Order History
+            @if($myAiOrdersCount > 0)
+                <span class="badge rounded-pill bg-primary text-white ms-1" style="font-size:0.7rem;">{{ $myAiOrdersCount }}</span>
+            @endif
+        </a>
+    </div>
+
     {{-- Hero --}}
     <div class="ai-tools-hero">
-        <div class="d-flex align-items-center gap-3 mb-2">
-            <i class="fa-solid fa-wand-magic-sparkles fa-2x"></i>
-            <div>
-                <h2 class="mb-0 fw-bold">AI TOOLS</h2>
-                <p class="mb-0 opacity-75 small">Premium AI-powered tools & software — delivered instantly</p>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="fa-solid fa-wand-magic-sparkles fa-2x"></i>
+                <div>
+                    <h2 class="mb-0 fw-bold">AI TOOLS</h2>
+                    <p class="mb-0 opacity-75 small">Premium AI-powered tools & software — delivered instantly</p>
+                </div>
             </div>
+            @if(auth()->check())
+            <a href="{{ route('ai-tools.history') }}" class="btn btn-light rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm text-dark">
+                <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                <span>My AI Orders</span>
+                @if($myAiOrdersCount > 0)
+                    <span class="badge bg-primary text-white rounded-pill">{{ $myAiOrdersCount }}</span>
+                @endif
+            </a>
+            @endif
         </div>
     </div>
 

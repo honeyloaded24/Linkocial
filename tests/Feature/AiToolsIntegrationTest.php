@@ -278,4 +278,79 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertEquals(1550.00, (float) Setting::get('usdt_to_ngn_rate'));
         $this->assertEquals(25.00, (float) Setting::get('markup_ai_tools'));
     }
+
+    public function test_admin_can_manually_fulfill_ai_tool_order()
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_admin' => true]);
+        $user = User::factory()->create(['balance' => 5000]);
+
+        $order = AiToolOrder::create([
+            'user_id'             => $user->id,
+            'provider_product_id' => 'tool-manual-fulfill',
+            'product_name'        => 'ChatGPT Plus Account',
+            'idempotency_key'     => 'idemp-manual-1',
+            'status'              => AiToolOrder::STATUS_PROCESSING,
+            'quantity'            => 2,
+            'unit_price_usdt'     => 10.00,
+            'total_price_usdt'    => 20.00,
+            'exchange_rate'       => 1500.00,
+            'unit_price_ngn'      => 18000.00,
+            'total_paid_ngn'      => 36000.00,
+            'provider_cost_ngn'   => 30000.00,
+            'profit_ngn'          => 6000.00,
+        ]);
+
+        $credentials = "user1@openai.com:Secret123\nuser2@openai.com:Secret456";
+
+        $response = $this->actingAs($admin)->post("/hq/ai-tools/orders/{$order->id}/fulfill", [
+            'credentials'  => $credentials,
+            'instructions' => 'Log in directly at chat.openai.com',
+        ]);
+
+        $response->assertRedirect();
+        $order->refresh();
+
+        $this->assertEquals(AiToolOrder::STATUS_COMPLETED, $order->status);
+        $this->assertNotNull($order->completed_at);
+        $this->assertEquals(2, $order->items()->count());
+
+        $firstItem = $order->items()->where('item_index', 0)->first();
+        $this->assertEquals('user1@openai.com:Secret123', $firstItem->code);
+
+        $secondItem = $order->items()->where('item_index', 1)->first();
+        $this->assertEquals('user2@openai.com:Secret456', $secondItem->code);
+    }
+
+    public function test_admin_can_refund_ai_tool_order()
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_admin' => true]);
+        $user = User::factory()->create(['balance' => 1000]);
+
+        $order = AiToolOrder::create([
+            'user_id'             => $user->id,
+            'provider_product_id' => 'tool-manual-refund',
+            'product_name'        => 'Claude Pro 1 Month',
+            'idempotency_key'     => 'idemp-manual-2',
+            'status'              => AiToolOrder::STATUS_PROCESSING,
+            'quantity'            => 1,
+            'unit_price_usdt'     => 15.00,
+            'total_price_usdt'    => 15.00,
+            'exchange_rate'       => 1500.00,
+            'unit_price_ngn'      => 25000.00,
+            'total_paid_ngn'      => 25000.00,
+            'provider_cost_ngn'   => 22500.00,
+            'profit_ngn'          => 2500.00,
+        ]);
+
+        $response = $this->actingAs($admin)->post("/hq/ai-tools/orders/{$order->id}/refund", [
+            'reason' => 'Out of stock at supplier',
+        ]);
+
+        $response->assertRedirect();
+        $order->refresh();
+
+        $this->assertEquals(AiToolOrder::STATUS_REFUNDED, $order->status);
+        $this->assertNotNull($order->refunded_at);
+        $this->assertEquals(26000.00, (float) $user->fresh()->balance);
+    }
 }

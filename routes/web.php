@@ -347,6 +347,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::patch('/products/{id}', [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'updateProduct'])->name('products.update');
             Route::get('/orders',        [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'orders'])->name('orders');
             Route::get('/orders/{id}',   [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'orderDetail'])->name('orders.show');
+            Route::post('/orders/{id}/fulfill', [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'manualFulfill'])->name('orders.fulfill');
+            Route::post('/orders/{id}/refund',  [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'manualRefund'])->name('orders.refund');
+            Route::post('/orders/{id}/sync',    [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'syncOrder'])->name('orders.sync');
             Route::get('/settings',      [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'settings'])->name('settings');
             Route::post('/settings',     [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'updateSettings'])->name('settings.update');
             Route::post('/test-connection', [\App\Http\Controllers\Admin\AdminAiToolsController::class, 'testConnection'])->name('test-connection');
