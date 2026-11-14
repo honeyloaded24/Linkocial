@@ -21,9 +21,9 @@ class SyncAiToolProducts extends Command
     {
         $cacheKey = 'alaric_products_last_sync';
 
-        // Throttle: skip if synced within the last 5 minutes (unless --force)
+        // Throttle: skip if synced within the last 10 seconds (unless --force)
         if (!$this->option('force') && Cache::has($cacheKey)) {
-            $this->info('Skipping — last sync was less than 5 minutes ago. Use --force to override.');
+            $this->info('Skipping — last sync was less than 10 seconds ago. Use --force to override.');
             return 0;
         }
 
@@ -70,7 +70,7 @@ class SyncAiToolProducts extends Command
 
         if (empty($products)) {
             $this->warn('No products returned from provider.');
-            Cache::put($cacheKey, now(), 300);
+            Cache::put($cacheKey, now(), 10);
             return 0;
         }
 
@@ -184,8 +184,8 @@ class SyncAiToolProducts extends Command
             }
         }
 
-        // Cache sync timestamp
-        Cache::put($cacheKey, now(), 300);
+        // Cache sync timestamp (10 seconds)
+        Cache::put($cacheKey, now(), 10);
 
         $this->info("Sync complete — created: {$created}, updated: {$updated}, errors: {$errors}.");
         Log::info('SyncAiToolProducts: Completed', compact('created', 'updated', 'errors'));

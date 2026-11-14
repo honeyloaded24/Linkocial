@@ -10,9 +10,19 @@
             <h4 class="fw-bold mb-0"><i class="fa-solid fa-box me-2 text-primary"></i>AI TOOLS — Products</h4>
             <p class="text-muted small mb-0">Activate/deactivate products, set custom pricing and categories</p>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="syncProducts()">
-            <i class="fa fa-sync me-1"></i>Sync from Provider
-        </button>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="form-check form-switch d-inline-flex align-items-center mb-0 bg-body-tertiary px-3 py-1 rounded-pill border">
+                <input class="form-check-input me-2 mt-0" type="checkbox" role="switch" id="autoSyncSwitch" checked onchange="toggleAutoSync(this.checked)">
+                <label class="form-check-label small fw-semibold d-flex align-items-center" for="autoSyncSwitch" id="autoSyncLabel">
+                    <span class="badge rounded-pill bg-success me-1 p-1" style="font-size:0.45rem;">●</span>
+                    Auto-Sync (10s)
+                    <span class="spinner-border spinner-border-sm text-primary ms-1 d-none" id="autoSyncSpinner" style="width:0.75rem;height:0.75rem;"></span>
+                </label>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="syncProducts()">
+                <i class="fa fa-sync me-1"></i>Sync Now
+            </button>
+        </div>
     </div>
 
     @if(session('success'))
@@ -211,11 +221,70 @@ function syncProducts() {
     }).then(r => r.json()).then(d => {
         document.getElementById('syncToastBody').textContent = d.message || (d.success ? 'Sync complete.' : 'Sync failed.');
         new bootstrap.Toast(document.getElementById('syncToast')).show();
-        if (d.success) setTimeout(() => location.reload(), 2000);
+        if (d.success) setTimeout(() => location.reload(), 1500);
     }).catch(() => alert('Sync failed.'));
 }
 
+var autoSyncInterval = null;
+var isAutoSyncing = false;
+
+function startAutoSync() {
+    if (autoSyncInterval) clearInterval(autoSyncInterval);
+    autoSyncInterval = setInterval(function() {
+        if (isAutoSyncing) return;
+        isAutoSyncing = true;
+        var spinner = document.getElementById('autoSyncSpinner');
+        if (spinner) spinner.classList.remove('d-none');
+
+        fetch('{{ route("hq.ai-tools.sync") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                'Accept': 'application/json'
+            }
+        }).then(r => r.json()).then(d => {
+            isAutoSyncing = false;
+            if (spinner) spinner.classList.add('d-none');
+            var label = document.getElementById('autoSyncLabel');
+            if (label && d.success) {
+                var now = new Date();
+                var timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                label.title = 'Last auto-synced at ' + timeStr;
+            }
+        }).catch(() => {
+            isAutoSyncing = false;
+            if (spinner) spinner.classList.add('d-none');
+        });
+    }, 10000); // 10 seconds
+}
+
+function stopAutoSync() {
+    if (autoSyncInterval) {
+        clearInterval(autoSyncInterval);
+        autoSyncInterval = null;
+    }
+}
+
+function toggleAutoSync(enabled) {
+    if (enabled) {
+        startAutoSync();
+        localStorage.setItem('ai_tools_auto_sync', '1');
+    } else {
+        stopAutoSync();
+        localStorage.setItem('ai_tools_auto_sync', '0');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    var saved = localStorage.getItem('ai_tools_auto_sync');
+    var switchEl = document.getElementById('autoSyncSwitch');
+    if (saved === '0') {
+        if (switchEl) switchEl.checked = false;
+    } else {
+        if (switchEl) switchEl.checked = true;
+        startAutoSync();
+    }
+
     document.querySelectorAll('.btn-edit-product').forEach(function(btn) {
         btn.addEventListener('click', function() {
             openEdit(
