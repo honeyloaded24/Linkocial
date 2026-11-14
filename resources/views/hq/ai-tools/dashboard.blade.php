@@ -123,7 +123,7 @@
                         <tr>
                             <td class="px-3 font-monospace">{{ $order->order_number }}</td>
                             <td>{{ $order->user->first_name ?? '' }} {{ $order->user->last_name ?? '' }}</td>
-                            <td>{{ Str::limit($order->product->name ?? 'N/A', 25) }}</td>
+                            <td>{{ \Illuminate\Support\Str::limit($order->product->name ?? 'N/A', 25) }}</td>
                             <td class="fw-bold">₦{{ number_format($order->total_paid_ngn, 2) }}</td>
                             <td><span class="badge bg-{{ $order->status_badge }} bg-opacity-15 text-{{ $order->status_badge }}">{{ $order->status_label }}</span></td>
                             <td class="text-muted">{{ $order->created_at->format('d M, H:i') }}</td>

@@ -31,6 +31,14 @@ class AiToolsController extends Controller
     public function index(Request $request)
     {
         if (!Schema::hasTable('ai_tool_products')) {
+            try {
+                \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                Log::warning('AiToolsController: auto-migrate failed: ' . $e->getMessage());
+            }
+        }
+
+        if (!Schema::hasTable('ai_tool_products')) {
             return view('ai-tools.index', [
                 'products'   => collect(),
                 'categories' => collect(),

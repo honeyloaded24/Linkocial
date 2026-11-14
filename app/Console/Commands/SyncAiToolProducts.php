@@ -2,9 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\AiToolCategory;
 use App\Models\AiToolProduct;
 use App\Services\AlaricApiService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -25,6 +27,16 @@ class SyncAiToolProducts extends Command
             return 0;
         }
 
+        // Auto-run migrations if tables do not exist
+        if (!Schema::hasTable('ai_tool_products') || !Schema::hasTable('ai_tool_categories')) {
+            $this->info('AI Tool tables not found. Running migrations...');
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                Log::error('SyncAiToolProducts: auto-migrate failed', ['error' => $e->getMessage()]);
+            }
+        }
+
         if (!Schema::hasTable('ai_tool_products')) {
             $this->error('ai_tool_products table does not exist. Run migrations first.');
             return 1;
@@ -42,7 +54,19 @@ class SyncAiToolProducts extends Command
             return 1;
         }
 
-        $products = $result['data'] ?? [];
+        // Robust payload extraction: supports {data: [...]}, {products: [...]}, {data: {products: [...]}}, or raw list
+        $raw = $result['data'] ?? [];
+        if (isset($raw['products']) && is_array($raw['products'])) {
+            $products = $raw['products'];
+        } elseif (isset($raw['data']) && is_array($raw['data'])) {
+            $products = $raw['data'];
+        } elseif (is_array($raw) && array_is_list($raw)) {
+            $products = $raw;
+        } elseif (isset($raw['items']) && is_array($raw['items'])) {
+            $products = $raw['items'];
+        } else {
+            $products = is_array($raw) ? $raw : [];
+        }
 
         if (empty($products)) {
             $this->warn('No products returned from provider.');
@@ -59,10 +83,21 @@ class SyncAiToolProducts extends Command
 
         foreach ($products as $p) {
             try {
-                $providerProductId = (string) ($p['id'] ?? '');
+                if (!is_array($p)) {
+                    continue;
+                }
+
+                $providerProductId = (string) ($p['id'] ?? $p['product_id'] ?? $p['_id'] ?? '');
                 if (empty($providerProductId)) {
                     continue;
                 }
+
+                $name = (string) ($p['name'] ?? $p['title'] ?? $p['product_name'] ?? 'Unnamed Product');
+                $price = (float) ($p['price'] ?? $p['rate'] ?? $p['price_usdt'] ?? $p['cost'] ?? 0);
+                $currency = (string) ($p['currency'] ?? 'USDT');
+                $inStock = isset($p['in_stock']) ? (bool) $p['in_stock'] : (isset($p['stock']) ? ((int) $p['stock'] > 0) : true);
+                $stock = isset($p['stock']) ? (int) $p['stock'] : 0;
+                $maxQuantity = isset($p['max_quantity']) ? (int) $p['max_quantity'] : (isset($p['max']) ? (int) $p['max'] : 20);
 
                 $priceTiers = (!empty($p['price_tiers']) && is_array($p['price_tiers']))
                     ? $p['price_tiers']
@@ -72,29 +107,58 @@ class SyncAiToolProducts extends Command
                     ? $p['fulfillment']
                     : 'on_demand';
 
+                // Handle categories if present
+                $categoryName = null;
+                if (!empty($p['category']) && is_string($p['category'])) {
+                    $categoryName = trim($p['category']);
+                } elseif (!empty($p['category']['name']) && is_string($p['category']['name'])) {
+                    $categoryName = trim($p['category']['name']);
+                } elseif (!empty($p['category_name']) && is_string($p['category_name'])) {
+                    $categoryName = trim($p['category_name']);
+                }
+
+                $categoryId = null;
+                if ($categoryName && Schema::hasTable('ai_tool_categories')) {
+                    $cat = AiToolCategory::firstOrCreate(
+                        ['name' => $categoryName],
+                        ['slug' => Str::slug($categoryName) . '-' . Str::random(4), 'is_active' => true]
+                    );
+                    $categoryId = $cat->id;
+                }
+
+                $description = (string) ($p['description'] ?? $p['desc'] ?? '');
+
                 $data = [
-                    'name'           => (string) ($p['name'] ?? 'Unnamed Product'),
-                    'price_usdt'     => (float)  ($p['price'] ?? 0),
-                    'currency'       => (string) ($p['currency'] ?? 'USDT'),
-                    'in_stock'       => (bool)   ($p['in_stock'] ?? false),
-                    'stock'          => isset($p['stock']) ? (int) $p['stock'] : 0,
-                    'max_quantity'   => isset($p['max_quantity']) ? (int) $p['max_quantity'] : 1,
+                    'name'           => $name,
+                    'price_usdt'     => $price,
+                    'currency'       => $currency,
+                    'in_stock'       => $inStock,
+                    'stock'          => $stock,
+                    'max_quantity'   => $maxQuantity,
                     'fulfillment'    => $fulfillment,
                     'price_tiers'    => $priceTiers,
                     'last_synced_at' => now(),
                 ];
 
+                if (!empty($description)) {
+                    $data['description'] = $description;
+                }
+
                 $existing = AiToolProduct::where('provider_product_id', $providerProductId)->first();
 
                 if ($existing) {
+                    if ($categoryId && !$existing->category_id) {
+                        $data['category_id'] = $categoryId;
+                    }
                     $existing->update($data);
                     $updated++;
                 } else {
-                    // New products remain INACTIVE until admin approves
+                    // New products are ACTIVE by default so they appear on the site immediately
                     $data['provider_product_id'] = $providerProductId;
-                    $data['is_active']           = false;
+                    $data['category_id']         = $categoryId;
+                    $data['is_active']           = true;
                     $data['is_featured']         = false;
-                    $data['slug']                = Str::slug($data['name']) . '-' . Str::random(5);
+                    $data['slug']                = Str::slug($name) . '-' . Str::random(5);
                     AiToolProduct::create($data);
                     $created++;
                 }

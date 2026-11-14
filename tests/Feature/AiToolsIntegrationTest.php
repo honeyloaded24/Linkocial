@@ -83,7 +83,7 @@ class AiToolsIntegrationTest extends TestCase
             'provider_product_id' => 'test-tool-1',
             'name' => 'ChatGPT Plus Shared',
             'in_stock' => 1,
-            'is_active' => 0, // Should be inactive until admin approves
+            'is_active' => 1, // Active so products show on the site immediately upon sync
         ]);
 
         $this->assertDatabaseHas('ai_tool_products', [

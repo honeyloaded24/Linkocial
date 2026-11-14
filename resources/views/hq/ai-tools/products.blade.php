@@ -56,10 +56,10 @@
                     <tbody>
                         @forelse($products as $product)
                         <tr id="row-{{ $product->id }}">
-                            <td class="px-3 fw-semibold">{{ Str::limit($product->name, 35) }}</td>
+                            <td class="px-3 fw-semibold">{{ \Illuminate\Support\Str::limit($product->name, 35) }}</td>
                             <td class="font-monospace text-muted">{{ $product->provider_product_id }}</td>
                             <td>{{ $product->category->name ?? '—' }}</td>
-                            <td>${{ number_format($product->price_usdt, 4) }} USDT</td>
+                            <td>${{ number_format((float) $product->price_usdt, 4) }} USDT</td>
                             <td>
                                 @if($product->fulfillment === 'on_demand')
                                     <span class="badge bg-info bg-opacity-15 text-info">On-demand</span>
@@ -83,10 +83,15 @@
                                         onchange="toggleProduct({{ $product->id }}, 'is_featured', this.checked)">
                                 </div>
                             </td>
-                            <td class="text-muted">{{ $product->last_synced_at ? $product->last_synced_at->diffForHumans() : 'Never' }}</td>
+                            <td class="text-muted">{{ $product->last_synced_at ? \Carbon\Carbon::parse($product->last_synced_at)->diffForHumans() : 'Never' }}</td>
                             <td>
-                                <button class="btn btn-xs btn-outline-secondary" style="font-size:0.72rem;padding:2px 8px;"
-                                    onclick="openEdit({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->category_id ?? 'null' }}, {{ $product->custom_markup_percentage ?? 0 }}, {{ $product->custom_markup_fixed ?? 0 }}, {{ $product->sort_order ?? 0 }})">
+                                <button class="btn btn-xs btn-outline-secondary btn-edit-product" style="font-size:0.72rem;padding:2px 8px;"
+                                    data-id="{{ $product->id }}"
+                                    data-name="{{ $product->name }}"
+                                    data-category-id="{{ $product->category_id ?? '' }}"
+                                    data-markup-pct="{{ $product->custom_markup_percentage ?? 0 }}"
+                                    data-markup-fixed="{{ $product->custom_markup_fixed ?? 0 }}"
+                                    data-sort-order="{{ $product->sort_order ?? 0 }}">
                                     Edit
                                 </button>
                             </td>
@@ -199,7 +204,7 @@ function toggleProduct(id, field, value) {
 }
 
 function syncProducts() {
-    if (!confirm('Sync products from provider? New products will be imported as inactive.')) return;
+    if (!confirm('Sync products from provider?')) return;
     fetch('{{ route("hq.ai-tools.sync") }}', {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, 'Accept': 'application/json' }
@@ -209,6 +214,21 @@ function syncProducts() {
         if (d.success) setTimeout(() => location.reload(), 2000);
     }).catch(() => alert('Sync failed.'));
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-edit-product').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            openEdit(
+                this.dataset.id,
+                this.dataset.name,
+                this.dataset.categoryId,
+                parseFloat(this.dataset.markupPct) || 0,
+                parseFloat(this.dataset.markupFixed) || 0,
+                parseInt(this.dataset.sortOrder) || 0
+            );
+        });
+    });
+});
 </script>
 @endpush
 

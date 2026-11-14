@@ -9,6 +9,7 @@ use App\Models\AiToolProduct;
 use App\Models\Setting;
 use App\Services\AlaricApiService;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -19,10 +20,26 @@ class AdminAiToolsController extends Controller
     {
     }
 
+    /**
+     * Ensure database tables exist, running migrations automatically if needed.
+     */
+    private function ensureTablesExist(): void
+    {
+        if (!Schema::hasTable('ai_tool_products') || !Schema::hasTable('ai_tool_orders') || !Schema::hasTable('ai_tool_categories')) {
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+            } catch (\Throwable $e) {
+                Log::warning('AdminAiToolsController: auto-migrate failed: ' . $e->getMessage());
+            }
+        }
+    }
+
     // ─── Dashboard ─────────────────────────────────────────────────────────────
 
     public function dashboard()
     {
+        $this->ensureTablesExist();
+
         $aiStats = [
             'total_products'    => Schema::hasTable('ai_tool_products') ? AiToolProduct::count() : 0,
             'active_products'   => Schema::hasTable('ai_tool_products') ? AiToolProduct::active()->count() : 0,
@@ -52,6 +69,14 @@ class AdminAiToolsController extends Controller
 
     public function products(Request $request)
     {
+        $this->ensureTablesExist();
+
+        if (!Schema::hasTable('ai_tool_products')) {
+            $products = new LengthAwarePaginator([], 0, 50);
+            $categories = collect();
+            return view('hq.ai-tools.products', compact('products', 'categories'));
+        }
+
         $query = AiToolProduct::with('category');
 
         if ($search = $request->get('search')) {
@@ -72,6 +97,8 @@ class AdminAiToolsController extends Controller
 
     public function updateProduct(Request $request, int $id)
     {
+        $this->ensureTablesExist();
+
         $product = AiToolProduct::findOrFail($id);
 
         $validated = $request->validate([
@@ -101,6 +128,13 @@ class AdminAiToolsController extends Controller
 
     public function orders(Request $request)
     {
+        $this->ensureTablesExist();
+
+        if (!Schema::hasTable('ai_tool_orders')) {
+            $orders = new LengthAwarePaginator([], 0, 50);
+            return view('hq.ai-tools.orders', compact('orders'));
+        }
+
         $query = AiToolOrder::with(['user', 'product']);
 
         if ($status = $request->get('status')) {
@@ -130,6 +164,8 @@ class AdminAiToolsController extends Controller
 
     public function orderDetail(int $id)
     {
+        $this->ensureTablesExist();
+
         $order = AiToolOrder::with(['user', 'product', 'items'])->findOrFail($id);
         return view('hq.ai-tools.order-detail', compact('order'));
     }
@@ -138,6 +174,8 @@ class AdminAiToolsController extends Controller
 
     public function settings()
     {
+        $this->ensureTablesExist();
+
         $apiKey        = (string) Setting::get('alaric_api_key', '');
         $maskedKey     = $apiKey
             ? substr($apiKey, 0, 6) . str_repeat('*', max(0, strlen($apiKey) - 10)) . substr($apiKey, -4)
@@ -199,12 +237,22 @@ class AdminAiToolsController extends Controller
     public function syncProducts()
     {
         try {
-            Artisan::call('ai-tools:sync-products', ['--force' => true]);
-            $output = trim(Artisan::output());
+            $this->ensureTablesExist();
+
+            $exitCode = Artisan::call('ai-tools:sync-products', ['--force' => true]);
+            $output   = trim(Artisan::output());
+
+            if ($exitCode !== 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sync issue: ' . ($output ?: 'Command failed'),
+                    'output'  => $output,
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product synchronization completed.',
+                'message' => 'Product synchronization completed. ' . $output,
                 'output'  => $output,
             ]);
         } catch (\Throwable $e) {

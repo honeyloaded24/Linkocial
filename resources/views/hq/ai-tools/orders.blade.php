@@ -52,7 +52,7 @@
                                 <div>{{ $order->user->first_name ?? '' }} {{ $order->user->last_name ?? '' }}</div>
                                 <small class="text-muted">{{ $order->user->email ?? '' }}</small>
                             </td>
-                            <td>{{ Str::limit($order->product->name ?? 'N/A', 25) }}</td>
+                            <td>{{ \Illuminate\Support\Str::limit($order->product->name ?? 'N/A', 25) }}</td>
                             <td>{{ $order->quantity }}</td>
                             <td class="fw-bold">₦{{ number_format($order->total_paid_ngn, 2) }}</td>
                             <td class="text-muted">₦{{ number_format($order->provider_cost_ngn, 2) }}</td>
