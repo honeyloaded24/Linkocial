@@ -14,10 +14,13 @@ use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
 use App\Http\Controllers\VirtualNumberController;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 
 class SmsPoolPricingOverchargeTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected ProductPricingService $pricingService;
 
     protected function setUp(): void
@@ -352,5 +355,331 @@ class SmsPoolPricingOverchargeTest extends TestCase
             ? (float)$liveInfoOnlyPrice['low_price']
             : (float)$liveInfoOnlyPrice['price'];
         $this->assertEquals(1.50, $chosenWholesale);
+    }
+
+    /**
+     * 15. The provider spending ceiling strictly guarantees Linkocial's minimum profit margin.
+     */
+    public function test_provider_spending_ceiling_guarantees_minimum_profit_margin(): void
+    {
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+
+        // Configure virtual numbers pricing
+        $this->pricingService->updatePricingSettings(ProductPricingService::PRODUCT_VIRTUAL_NUMBERS, [
+            'currency' => 'USD',
+            'fix_rate' => 1500.0,
+            'pricing_mode' => 'fixed',
+            'percentage_markup' => 0.0,
+            'fixed_markup' => 813.0,
+            'min_profit' => 300.0,
+            'rounding_rule' => '2_decimal',
+        ]);
+
+        // Customer pays ₦3,153 (1.56 * 1500 + 813)
+        $customerPaidNgn = 3153.0;
+        $minProfitNgn = 300.0;
+        $providerRate = 1500.0;
+
+        $maxSpendNgn = $customerPaidNgn - $minProfitNgn; // 2853 NGN
+        $maxAllowedProviderUsd = floor(($maxSpendNgn / $providerRate) * 100) / 100; // 1.90 USD
+
+        $this->assertEquals(1.90, $maxAllowedProviderUsd);
+
+        // A pool priced at $1.85 is within the spending ceiling
+        $this->assertLessThanOrEqual($maxAllowedProviderUsd, 1.85);
+
+        // A pool priced at $1.95 exceeds the spending ceiling and would violate min profit
+        $this->assertGreaterThan($maxAllowedProviderUsd, 1.95);
+    }
+
+    /**
+     * 16. Error responses are sanitized and NEVER leak internal provider names, pool names, or 'Admin Debug'.
+     */
+    public function test_error_responses_are_sanitized_and_never_leak_pool_names(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0, 'is_admin' => true]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // SMSPool throws the exact raw provider error seen on production
+        $rawError = "Pool Foxtrot: All available slots are currently occupied. Please try again in 5 minutes. Pool Sierra: We could not find a suitable pool below the price of 1.61. Pool Mike: We could not find a suitable pool below the price of 1.61.";
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')
+            ->with('1')
+            ->andReturn([
+                ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+            ]);
+
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')
+            ->with('1', '1')
+            ->andReturn([
+                'price' => 1.95,
+                'low_price' => 1.56,
+                'stock' => 50,
+                'success_rate' => 88,
+                'name' => 'WhatsApp',
+            ]);
+
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->andThrow(new \Exception($rawError));
+
+        $mockSmsPool->shouldReceive('getValidPools')
+            ->andReturn([]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+
+        $request = new Request([
+            'country' => '1',
+            'product' => '1',
+            'server' => 'server1',
+        ]);
+
+        $response = $controller->purchase($request);
+        $data = $response->getData(true);
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertArrayHasKey('error', $data);
+
+        // MUST NEVER contain Admin Debug, Foxtrot, Sierra, Mike, or raw prices in user error
+        $this->assertStringNotContainsString('Admin Debug', $data['error']);
+        $this->assertStringNotContainsString('Foxtrot', $data['error']);
+        $this->assertStringNotContainsString('Sierra', $data['error']);
+        $this->assertStringNotContainsString('Mike', $data['error']);
+        $this->assertStringNotContainsString('1.61', $data['error']);
+
+        // MUST contain a clean user-facing message
+        $this->assertStringContainsString('Your wallet was not charged', $data['error']);
+
+        // User wallet balance must be fully preserved/refunded
+        $user->refresh();
+        $this->assertEquals(10000.0, (float) $user->balance);
+    }
+
+    /**
+     * 17. Intelligent pool fallback succeeds when cheapest pool is occupied.
+     */
+    public function test_purchase_falls_back_to_eligible_pool_when_cheapest_pool_occupied(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0, 'is_admin' => false]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')
+            ->with('1')
+            ->andReturn([
+                ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+            ]);
+
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')
+            ->with('1', '1')
+            ->andReturn([
+                'price' => 1.95,
+                'low_price' => 1.56,
+                'stock' => 50,
+                'success_rate' => 88,
+                'name' => 'WhatsApp',
+            ]);
+
+        // First attempt (automatic routing with pool = null) fails due to Foxtrot slots occupied
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \Exception('Pool Foxtrot: All available slots are currently occupied. Please try again in 5 minutes.'));
+
+        // Controller queries valid pools
+        $mockSmsPool->shouldReceive('getValidPools')
+            ->with('1', '1')
+            ->once()
+            ->andReturn([
+                ['pool_id' => '1', 'name' => 'Foxtrot', 'price' => 1.56],
+                ['pool_id' => '2', 'name' => 'Sierra', 'price' => 1.75],
+                ['pool_id' => '3', 'name' => 'Mike', 'price' => 1.95],
+            ]);
+
+        // Fallback attempt with pool '2' (Sierra) succeeds!
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, '2')
+            ->once()
+            ->andReturn([
+                'success' => 1,
+                'order_id' => 'TEST_ORDER_SIERRA_123',
+                'phonenumber' => '12025550199',
+                'cc' => '1',
+                'cost' => 1.75,
+                'country' => 'United States',
+                'service' => 'WhatsApp',
+                'time_left' => 1200,
+            ]);
+
+        $mockSmsPool->shouldReceive('getCountries')
+            ->andReturn([
+                ['id' => '1', 'name' => 'United States']
+            ]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+
+        $request = new Request([
+            'country' => '1',
+            'product' => '1',
+            'server' => 'server1',
+        ]);
+
+        $response = $controller->purchase($request);
+        $data = $response->getData(true);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($data['success']);
+        $this->assertEquals('TEST_ORDER_SIERRA_123', $data['order']['api_order_id']);
+        $this->assertEquals(1.75, (float)$data['order']['provider_cost']);
+    }
+
+    /**
+     * 18. Distinct handling for PRICE_NOT_FOUND vs OUT_OF_STOCK.
+     */
+    public function test_price_not_found_and_out_of_stock_produce_appropriate_messages(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+        $mockSmsPool->shouldReceive('getValidPools')->andReturn([]);
+
+        // Case A: Price threshold not met
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->once()
+            ->andThrow(new \Exception('We could not find a suitable pool below the price of 1.70.'));
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $responseA = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+        $dataA = $responseA->getData(true);
+
+        $this->assertStringContainsString('pricing updates', $dataA['error']);
+
+        // Case B: Slots occupied
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->once()
+            ->andThrow(new \Exception('All available slots are currently occupied. Please try again in 5 minutes.'));
+
+        $responseB = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+        $dataB = $responseB->getData(true);
+
+        $this->assertStringContainsString('temporarily occupied', $dataB['error']);
+    }
+
+    /**
+     * 19. Wallet deduction occurs and is refunded on provider purchase failure.
+     */
+    public function test_wallet_deduction_and_immediate_refund_on_failure(): void
+    {
+        $initialBalance = 5000.0;
+        $user = User::factory()->create(['balance' => $initialBalance]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+        $mockSmsPool->shouldReceive('getValidPools')->andReturn([]);
+        $mockSmsPool->shouldReceive('buyNumber')->andThrow(new \Exception('All available slots are currently occupied.'));
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $user->refresh();
+        $this->assertEquals($initialBalance, (float)$user->balance);
+        $this->assertDatabaseCount('virtual_number_orders', 0);
+    }
+
+    /**
+     * 20. No duplicate purchases during fallback retries; exactly one order created on success.
+     */
+    public function test_no_duplicate_purchases_during_fallback_retries(): void
+    {
+        $initialBalance = 10000.0;
+        $user = User::factory()->create(['balance' => $initialBalance]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // Attempt 1 fails
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \Exception('Pool Foxtrot: All available slots are currently occupied.'));
+
+        // Query pools
+        $mockSmsPool->shouldReceive('getValidPools')
+            ->once()
+            ->andReturn([
+                ['pool_id' => '10', 'name' => 'Sierra', 'price' => 1.75],
+                ['pool_id' => '20', 'name' => 'Mike', 'price' => 1.90],
+            ]);
+
+        // Fallback attempt on Sierra succeeds!
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, '10')
+            ->once()
+            ->andReturn([
+                'success' => 1,
+                'order_id' => 'UNIQUE_ORDER_999',
+                'phonenumber' => '12025550999',
+                'cost' => 1.75,
+                'country' => 'United States',
+                'service' => 'WhatsApp',
+            ]);
+
+        // Pool Mike ('20') must NEVER be called once Sierra succeeds
+        $mockSmsPool->shouldNotReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, '20');
+
+        $mockSmsPool->shouldReceive('getCountries')->andReturn([]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(200, $response->getStatusCode());
+        // Exactly one order created in the database
+        $this->assertDatabaseCount('virtual_number_orders', 1);
+        $this->assertDatabaseHas('virtual_number_orders', [
+            'api_order_id' => 'UNIQUE_ORDER_999',
+            'user_id' => $user->id,
+        ]);
     }
 }

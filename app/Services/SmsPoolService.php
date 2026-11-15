@@ -127,10 +127,35 @@ class SmsPoolService
     }
 
     /**
+     * Retrieve valid available pools with pricing for a given country and service.
+     * Endpoint: POST /pool/retrieve_valid
+     */
+    public function getValidPools(string|int $country, string|int $service): array
+    {
+        try {
+            $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/pool/retrieve_valid", [
+                'key' => $this->apiKey,
+                'country' => $country,
+                'service' => $service,
+                'web' => 1,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return is_array($data) ? $data : [];
+            }
+        } catch (\Throwable $e) {
+            Log::warning("SMSPool getValidPools failed for country {$country}, service {$service}: " . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */
-    public function buyNumber(string|int $country, string|int $service, ?float $maxPrice = null, int $pricingOption = 0): array
+    public function buyNumber(string|int $country, string|int $service, ?float $maxPrice = null, int $pricingOption = 0, ?string $pool = null): array
     {
         $params = [
             'country' => $country,
@@ -141,6 +166,10 @@ class SmsPoolService
 
         if ($maxPrice !== null) {
             $params['max_price'] = $maxPrice;
+        }
+
+        if ($pool !== null && $pool !== '') {
+            $params['pool'] = $pool;
         }
 
         $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", $params);

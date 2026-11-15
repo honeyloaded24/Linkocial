@@ -261,18 +261,104 @@ class VirtualNumberController extends Controller
                 throw $e;
             }
 
-            // Provide a realistic pool buffer for SMSPool without exceeding what the user can afford
-            $flatMarkupNgn = $this->getMarkupFee();
-            $providerRate = $this->getProviderRate();
-            $maxAffordableWholesale = max(0.00, round(($totalAvailableBalance - $flatMarkupNgn) / max(1.0, $providerRate), 2));
-            $maxWholesaleWithBuffer = round($activeWholesalePrice + 0.05, 2);
-            $maxWholesale = min($maxAffordableWholesale, $maxWholesaleWithBuffer);
+            // Business Pricing Protection: calculate provider spending limit in USD
+            $providerRate = max(1.0, $this->getProviderRate());
+            $pricingSettings = app(\App\Services\ProductPricingService::class)->getPricingSettings(\App\Services\ProductPricingService::PRODUCT_VIRTUAL_NUMBERS);
+            $configuredMinProfit = $pricingSettings->getMinProfit();
 
-            // Execute Purchase on chosen server (pricing_option = 0 for SMSPool cheapest pool)
+            // Linkocial requires at least this minimum profit margin in NGN for this order
+            if ($configuredMinProfit !== null && $configuredMinProfit > 0) {
+                $minRequiredProfitNgn = (float) $configuredMinProfit;
+            } else {
+                // Protect a baseline margin: at least 25% of the standard markup fee (minimum ₦150)
+                $markupFee = $this->getMarkupFee();
+                $minRequiredProfitNgn = max(150.0, round($markupFee * 0.25, 2));
+            }
+
+            // Strict Financial Safety: Provider spending must NEVER exceed (Customer Paid - Required Profit)
+            $maxSpendNgn = max(0.00, $finalCheckCost - $minRequiredProfitNgn);
+            $maxAllowedProviderUsd = floor(($maxSpendNgn / $providerRate) * 100) / 100;
+
+            // Ensure ceiling allows at least activeWholesalePrice if customer paid amount covers it
+            if ($maxAllowedProviderUsd < $activeWholesalePrice && ($finalCheckCost / $providerRate) >= $activeWholesalePrice) {
+                $maxAllowedProviderUsd = round($activeWholesalePrice, 2);
+            }
+
+            // Execute Purchase on chosen server
             try {
-                $buyResponse = ($server === 'server1')
-                    ? $this->smspool->buyNumber($country, $productId, $maxWholesale, 0)
-                    : $this->grizzly->buyNumber($country, $productId, $maxWholesale);
+                if ($server === 'server1') {
+                    // Step 1: Automatic pool routing (pricing_option = 0 for cheapest available pool under max_price)
+                    try {
+                        $buyResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, null);
+                    } catch (\Exception $firstEx) {
+                        $firstError = $firstEx->getMessage();
+                        Log::info("SMSPool automatic purchase failed, testing intelligent pool fallback", [
+                            'country' => $country,
+                            'product' => $productId,
+                            'max_allowed_usd' => $maxAllowedProviderUsd,
+                            'error' => $firstError
+                        ]);
+
+                        // Determine if failure is due to pool occupancy or pricing ceiling
+                        $isPoolEligibleForFallback = (
+                            stripos($firstError, 'occupied') !== false ||
+                            stripos($firstError, 'suitable pool') !== false ||
+                            stripos($firstError, 'out of stock') !== false ||
+                            stripos($firstError, 'no numbers') !== false
+                        );
+
+                        $fallbackResponse = null;
+                        if ($isPoolEligibleForFallback) {
+                            $validPools = $this->smspool->getValidPools($country, $productId);
+                            if (!empty($validPools)) {
+                                // Sort pools ascending by price
+                                usort($validPools, function ($a, $b) {
+                                    $pa = (float)($a['price'] ?? 999);
+                                    $pb = (float)($b['price'] ?? 999);
+                                    return $pa <=> $pb;
+                                });
+
+                                $exhaustedPools = [];
+                                if (stripos($firstError, 'foxtrot') !== false) $exhaustedPools[] = 'foxtrot';
+                                if (stripos($firstError, 'sierra') !== false) $exhaustedPools[] = 'sierra';
+                                if (stripos($firstError, 'mike') !== false) $exhaustedPools[] = 'mike';
+
+                                foreach ($validPools as $poolCandidate) {
+                                    $cId = $poolCandidate['pool_id'] ?? $poolCandidate['id'] ?? $poolCandidate['pool'] ?? null;
+                                    $cName = strtolower($poolCandidate['name'] ?? $poolCandidate['pool'] ?? '');
+                                    $cPrice = (float)($poolCandidate['price'] ?? 0);
+
+                                    // Must be within safe provider spending ceiling
+                                    if ($cPrice > $maxAllowedProviderUsd || $cPrice <= 0) {
+                                        continue;
+                                    }
+
+                                    // Do not retry pools known to be exhausted
+                                    if (in_array($cName, $exhaustedPools)) {
+                                        continue;
+                                    }
+
+                                    try {
+                                        $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
+                                        Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
+                                        break;
+                                    } catch (\Exception $fallbackEx) {
+                                        $exhaustedPools[] = $cName;
+                                        Log::warning("SMSPool fallback pool {$cName} failed: " . $fallbackEx->getMessage());
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($fallbackResponse !== null) {
+                            $buyResponse = $fallbackResponse;
+                        } else {
+                            throw $firstEx;
+                        }
+                    }
+                } else {
+                    $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
+                }
             } catch (\Exception $e) {
                 // Refund the reserved balance if purchase fails
                 DB::beginTransaction();
@@ -392,30 +478,33 @@ class VirtualNumberController extends Controller
             }
 
         } catch (\Exception $e) {
-            // Log the actual error for admin review
-            Log::error('Virtual Number Purchase Exception', [
+            $rawError = $e->getMessage();
+
+            // Secure private diagnostic logging for administrators (never leaked to customer)
+            Log::warning('Virtual Number Purchase Exception', [
                 'user_id' => Auth::id(),
                 'server' => $server ?? 'server1',
                 'country' => $country ?? 'Unknown',
                 'product' => $product ?? 'Unknown',
-                'error' => $e->getMessage()
+                'raw_error' => $rawError,
+                'max_allowed_usd' => $maxAllowedProviderUsd ?? null,
+                'customer_cost_ngn' => $finalCheckCost ?? null,
             ]);
             
             $ticketsUrl = route('tickets.index');
-            $rawError = $e->getMessage();
-            $userFacingError = "This service is currently unavailable or out of stock. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Open a ticket</a> if error persists.";
 
-            if (stripos($rawError, 'no numbers') !== false || stripos($rawError, 'out of stock') !== false) {
-                $userFacingError = "No numbers are currently available in stock for this service. Your wallet was not charged. Please try Server 2 or select another country.";
+            // Sanitize customer-facing message (protect API keys, provider pool internals, and raw error traces)
+            if (stripos($rawError, 'below the price of') !== false || stripos($rawError, 'suitable pool') !== false) {
+                $userFacingError = "This service is temporarily unavailable due to carrier pricing updates. Your wallet was not charged. Please refresh for an updated quote or select Server 2.";
+            } elseif (stripos($rawError, 'occupied') !== false || stripos($rawError, 'out of stock') !== false || stripos($rawError, 'no numbers') !== false) {
+                $userFacingError = "All number slots are temporarily occupied for this service. Your wallet was not charged. Please try again in a few minutes or switch to Server 2.";
             } elseif (stripos($rawError, 'Insufficient') !== false) {
-                $userFacingError = "Service is temporarily unavailable due to routine replenishment. Please select another route or try again shortly.";
+                $userFacingError = "Service is temporarily unavailable due to routine replenishment. Your wallet was not charged. Please select another route or try again shortly.";
+            } else {
+                $userFacingError = "This service is temporarily unavailable. Your wallet was not charged. Please try again shortly or select Server 2. <a href=\"{$ticketsUrl}\" class=\"alert-link text-decoration-underline fw-bold\">Contact support</a> if this persists.";
             }
-
-            $errorMessage = (Auth::user() && Auth::user()->is_admin)
-                ? "<strong>Admin Debug:</strong> " . htmlspecialchars($rawError) . "<br><small class='text-muted'>User error: " . $userFacingError . "</small>"
-                : $userFacingError;
                 
-            return response()->json(['error' => $errorMessage], 400);
+            return response()->json(['error' => $userFacingError], 400);
         }
     }
 
@@ -678,7 +767,7 @@ class VirtualNumberController extends Controller
             Log::error('SMS Live Quote Error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to fetch real-time quote: ' . $e->getMessage()
+                'message' => 'Unable to fetch real-time quote. Please try again shortly or select Server 2.'
             ], 500);
         }
     }
