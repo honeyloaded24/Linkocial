@@ -682,4 +682,242 @@ class SmsPoolPricingOverchargeTest extends TestCase
             'user_id' => $user->id,
         ]);
     }
+
+    /**
+     * 21. A network timeout does NOT blindly retry fallback pools (preventing accidental duplicate orders).
+     */
+    public function test_network_timeout_does_not_retry_fallback_pools(): void
+    {
+        $initialBalance = 10000.0;
+        $user = User::factory()->create(['balance' => $initialBalance]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // First attempt times out
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \App\Exceptions\ProviderTimeoutException('Connection timed out'));
+
+        // Reconciliation query returns empty (no order created on provider)
+        $mockSmsPool->shouldReceive('getActiveOrders')
+            ->once()
+            ->andReturn([]);
+
+        // FALLBACK POOLS MUST NEVER BE QUERIED OR ATTEMPTED ON TIMEOUT
+        $mockSmsPool->shouldNotReceive('getValidPools');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $user->refresh();
+        $this->assertEquals($initialBalance, (float)$user->balance);
+        $this->assertDatabaseCount('virtual_number_orders', 0);
+    }
+
+    /**
+     * 22. When a network timeout occurs but SMSPool actually fulfilled the order, Linkocial reconciles it.
+     */
+    public function test_network_timeout_reconciles_active_orders_without_duplicate_purchase(): void
+    {
+        $initialBalance = 10000.0;
+        $user = User::factory()->create(['balance' => $initialBalance]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // Purchase request timed out communicating with provider
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \App\Exceptions\ProviderTimeoutException('cURL error 28: Operation timed out'));
+
+        // Reconciliation inspects active orders and finds the order that was actually provisioned
+        $mockSmsPool->shouldReceive('getActiveOrders')
+            ->once()
+            ->andReturn([
+                [
+                    'order_id' => 'RECONCILED_TIMEOUT_123',
+                    'country_id' => '1',
+                    'service_id' => '1',
+                    'phonenumber' => '12025550777',
+                    'cc' => '1',
+                    'cost' => 1.56,
+                    'time_left' => 1200,
+                ]
+            ]);
+
+        $mockSmsPool->shouldReceive('getCountries')->andReturn([
+            ['id' => '1', 'name' => 'United States']
+        ]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $data = $response->getData(true);
+        $this->assertTrue($data['success']);
+        $this->assertEquals('RECONCILED_TIMEOUT_123', $data['order']['api_order_id']);
+
+        // Exactly 1 order in DB, user debited correctly
+        $this->assertDatabaseCount('virtual_number_orders', 1);
+        $user->refresh();
+        $this->assertLessThan($initialBalance, (float)$user->balance);
+    }
+
+    /**
+     * 23. Fallback attempts are strictly capped at maximum 2 attempts.
+     */
+    public function test_fallback_attempts_are_strictly_capped(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // Initial attempt fails
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \Exception('All available slots are currently occupied.'));
+
+        // Provider returns 5 available pools
+        $mockSmsPool->shouldReceive('getValidPools')
+            ->once()
+            ->andReturn([
+                ['pool_id' => '101', 'name' => 'PoolA', 'price' => 1.60],
+                ['pool_id' => '102', 'name' => 'PoolB', 'price' => 1.65],
+                ['pool_id' => '103', 'name' => 'PoolC', 'price' => 1.70],
+                ['pool_id' => '104', 'name' => 'PoolD', 'price' => 1.75],
+                ['pool_id' => '105', 'name' => 'PoolE', 'price' => 1.80],
+            ]);
+
+        // Max 2 fallback attempts: PoolA and PoolB are tried, then stops!
+        $mockSmsPool->shouldReceive('buyNumber')->with('1', '1', Mockery::any(), 0, '101')
+            ->once()->andThrow(new \Exception('PoolA slots occupied'));
+        $mockSmsPool->shouldReceive('buyNumber')->with('1', '1', Mockery::any(), 0, '102')
+            ->once()->andThrow(new \Exception('PoolB slots occupied'));
+
+        // PoolC, PoolD, PoolE MUST NOT BE CALLED
+        $mockSmsPool->shouldNotReceive('buyNumber')->with('1', '1', Mockery::any(), 0, '103');
+        $mockSmsPool->shouldNotReceive('buyNumber')->with('1', '1', Mockery::any(), 0, '104');
+        $mockSmsPool->shouldNotReceive('buyNumber')->with('1', '1', Mockery::any(), 0, '105');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(400, $response->getStatusCode());
+    }
+
+    /**
+     * 24. Zero-margin or negative-margin purchases are rejected before debiting provider.
+     */
+    public function test_zero_margin_purchase_rejected_before_provider_call(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Retail price equals exactly ₦100, but minimum margin is ₦300 -> maxSpendNgn is negative!
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 0.05]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 0.05,
+            'low_price' => 0.05,
+            'stock' => 10,
+            'name' => 'WhatsApp',
+        ]);
+
+        // Set pricing so customer cost is 125 NGN, but minimum protected margin is 150 NGN
+        $this->pricingService->updatePricingSettings(ProductPricingService::PRODUCT_VIRTUAL_NUMBERS, [
+            'currency' => 'USD',
+            'fix_rate' => 1500.0,
+            'pricing_mode' => 'fixed',
+            'fixed_markup' => 50.0,
+            'min_profit' => null,
+            'rounding_rule' => '2_decimal',
+        ]);
+
+        // Provider must NOT be called
+        $mockSmsPool->shouldNotReceive('buyNumber');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $data = $response->getData(true);
+        $this->assertStringContainsString('profit margin', $data['error']);
+        $user->refresh();
+        $this->assertEquals(10000.0, (float)$user->balance);
+    }
+
+    /**
+     * 25. Concurrent purchase requests for the same user are rejected with 429 lock protection.
+     */
+    public function test_concurrent_purchase_lock_prevents_double_submission(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Pre-acquire the lock to simulate an active in-flight request
+        $lock = \Illuminate\Support\Facades\Cache::lock("vn_purchase_user_{$user->id}", 10);
+        $this->assertTrue($lock->get());
+
+        // Provider must NOT be called
+        $mockSmsPool->shouldNotReceive('buyNumber');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(429, $response->getStatusCode());
+        $data = $response->getData(true);
+        $this->assertStringContainsString('in progress', $data['error']);
+
+        // User balance untouched
+        $user->refresh();
+        $this->assertEquals(10000.0, (float)$user->balance);
+
+        $lock->release();
+    }
 }

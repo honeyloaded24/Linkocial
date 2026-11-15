@@ -168,6 +168,14 @@ class VirtualNumberController extends Controller
         $server = $request->input('server', 'server1');
         $user = Auth::user();
 
+        // Idempotency & Concurrency Protection: Prevent concurrent double-clicks from debiting twice
+        $purchaseLock = Cache::lock("vn_purchase_user_{$user->id}", 10);
+        if (!$purchaseLock->get()) {
+            return response()->json([
+                'error' => 'A purchase request is currently in progress. Please wait a few moments before trying again.'
+            ], 429);
+        }
+
         try {
             // Retrieve pricing for this country to estimate cost (check cache first)
             $pricesData = $this->getCachedPricesForCountry($country, $server);
@@ -277,11 +285,22 @@ class VirtualNumberController extends Controller
 
             // Strict Financial Safety: Provider spending must NEVER exceed (Customer Paid - Required Profit)
             $maxSpendNgn = max(0.00, $finalCheckCost - $minRequiredProfitNgn);
+            // Decimal Rounding Safety: floor to 2 decimal places to guarantee ceiling is never exceeded
             $maxAllowedProviderUsd = floor(($maxSpendNgn / $providerRate) * 100) / 100;
 
-            // Ensure ceiling allows at least activeWholesalePrice if customer paid amount covers it
-            if ($maxAllowedProviderUsd < $activeWholesalePrice && ($finalCheckCost / $providerRate) >= $activeWholesalePrice) {
-                $maxAllowedProviderUsd = round($activeWholesalePrice, 2);
+            if ($maxAllowedProviderUsd <= 0.0) {
+                // Refund and reject immediately if provider spending ceiling cannot maintain profit
+                DB::beginTransaction();
+                try {
+                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                    $refundUser->addBalance($finalCheckCost);
+                    DB::commit();
+                } catch (\Exception $ex) {
+                    DB::rollBack();
+                }
+                return response()->json([
+                    'error' => 'This service cannot be fulfilled within configured safe profit margins. Your wallet was not charged.'
+                ], 400);
             }
 
             // Execute Purchase on chosen server
@@ -290,6 +309,56 @@ class VirtualNumberController extends Controller
                     // Step 1: Automatic pool routing (pricing_option = 0 for cheapest available pool under max_price)
                     try {
                         $buyResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, null);
+                    } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
+                        // CRITICAL DUPLICATE PURCHASE PROTECTION:
+                        // Network timeout occurred. Do NOT attempt fallback pools.
+                        // Reconcile with SMSPool active orders before assuming failure.
+                        Log::warning("SMSPool purchase timed out. Commencing reconciliation to prevent duplicate purchase.", [
+                            'country' => $country,
+                            'product' => $productId,
+                            'user_id' => $user->id,
+                        ]);
+
+                        $reconciledOrder = null;
+                        try {
+                            $activeOrders = $this->smspool->getActiveOrders();
+                            if (is_array($activeOrders) && !empty($activeOrders)) {
+                                foreach ($activeOrders as $ao) {
+                                    $aoOrderId = (string)($ao['order_id'] ?? $ao['orderid'] ?? '');
+                                    $aoCountry = (string)($ao['country_id'] ?? $ao['country'] ?? '');
+                                    $aoService = (string)($ao['service_id'] ?? $ao['service'] ?? '');
+
+                                    if (!empty($aoOrderId) && !\App\Models\VirtualNumberOrder::where('api_order_id', $aoOrderId)->exists()) {
+                                        $countryMatch = ($aoCountry === (string)$country || empty($aoCountry));
+                                        $serviceMatch = ($aoService === (string)$productId || empty($aoService));
+
+                                        if ($countryMatch && $serviceMatch) {
+                                            $reconciledOrder = [
+                                                'success' => 1,
+                                                'order_id' => $aoOrderId,
+                                                'phonenumber' => $ao['phonenumber'] ?? $ao['number'] ?? '',
+                                                'cc' => $ao['cc'] ?? '',
+                                                'cost' => (float)($ao['cost'] ?? $maxAllowedProviderUsd),
+                                                'country' => $ao['country_name'] ?? $ao['country'] ?? $country,
+                                                'service' => $ao['service_name'] ?? $ao['service'] ?? $serviceName,
+                                                'time_left' => (int)($ao['time_left'] ?? $ao['expires_in'] ?? 1200),
+                                            ];
+                                            Log::info("Successfully reconciled timed-out SMSPool order: {$aoOrderId}");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (\Throwable $reconErr) {
+                            Log::error("SMSPool timeout reconciliation failed: " . $reconErr->getMessage());
+                        }
+
+                        if ($reconciledOrder !== null) {
+                            $buyResponse = $reconciledOrder;
+                        } else {
+                            // Order not found on SMSPool: safe to throw and refund without double-buying
+                            throw $timeoutEx;
+                        }
                     } catch (\Exception $firstEx) {
                         $firstError = $firstEx->getMessage();
                         Log::info("SMSPool automatic purchase failed, testing intelligent pool fallback", [
@@ -323,7 +392,14 @@ class VirtualNumberController extends Controller
                                 if (stripos($firstError, 'sierra') !== false) $exhaustedPools[] = 'sierra';
                                 if (stripos($firstError, 'mike') !== false) $exhaustedPools[] = 'mike';
 
+                                $maxFallbackAttempts = 2; // Strict bound: at most 2 fallback attempts
+                                $attemptsMade = 0;
+
                                 foreach ($validPools as $poolCandidate) {
+                                    if ($attemptsMade >= $maxFallbackAttempts) {
+                                        break;
+                                    }
+
                                     $cId = $poolCandidate['pool_id'] ?? $poolCandidate['id'] ?? $poolCandidate['pool'] ?? null;
                                     $cName = strtolower($poolCandidate['name'] ?? $poolCandidate['pool'] ?? '');
                                     $cPrice = (float)($poolCandidate['price'] ?? 0);
@@ -338,6 +414,7 @@ class VirtualNumberController extends Controller
                                         continue;
                                     }
 
+                                    $attemptsMade++;
                                     try {
                                         $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
@@ -505,6 +582,14 @@ class VirtualNumberController extends Controller
             }
                 
             return response()->json(['error' => $userFacingError], 400);
+        } finally {
+            if (isset($purchaseLock) && $purchaseLock) {
+                try {
+                    $purchaseLock->release();
+                } catch (\Throwable $lockEx) {
+                    // Ignore lock release failures on shutdown
+                }
+            }
         }
     }
 

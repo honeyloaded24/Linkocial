@@ -152,6 +152,28 @@ class SmsPoolService
     }
 
     /**
+     * Retrieve all active SMS orders from SMSPool for status checks and timeout reconciliation.
+     * Endpoint: POST /request/active
+     */
+    public function getActiveOrders(): array
+    {
+        try {
+            $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/request/active", [
+                'key' => $this->apiKey,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return is_array($data) ? $data : [];
+            }
+        } catch (\Throwable $e) {
+            Log::warning("SMSPool getActiveOrders failed: " . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */
@@ -172,7 +194,16 @@ class SmsPoolService
             $params['pool'] = $pool;
         }
 
-        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", $params);
+        try {
+            $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/purchase/sms", $params);
+        } catch (\Illuminate\Http\Client\ConnectionException $connEx) {
+            Log::error('SMSPool buyNumber connection timeout / failure', [
+                'country' => $country,
+                'service' => $service,
+                'error' => $connEx->getMessage()
+            ]);
+            throw new \App\Exceptions\ProviderTimeoutException("Connection timed out communicating with SMS provider: " . $connEx->getMessage(), 0, $connEx);
+        }
 
         if ($response->failed()) {
             Log::error('SMSPool buyNumber failed', ['country' => $country, 'service' => $service, 'response' => $response->body()]);
