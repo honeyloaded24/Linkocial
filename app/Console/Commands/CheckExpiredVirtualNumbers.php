@@ -16,6 +16,35 @@ class CheckExpiredVirtualNumbers extends Command
 
     public function handle(SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly)
     {
+        // Crash Recovery: Check for orders stuck in 'processing' state for > 5 minutes (indicating a process crash before provider response)
+        $staleProcessing = VirtualNumberOrder::where('status', 'processing')
+            ->where('created_at', '<', now()->subMinutes(5))
+            ->get();
+
+        foreach ($staleProcessing as $stale) {
+            DB::transaction(function () use ($stale) {
+                $locked = VirtualNumberOrder::where('id', $stale->id)->lockForUpdate()->first();
+                if ($locked && $locked->status === 'processing') {
+                    $locked->update([
+                        'status' => 'failed',
+                        'sms_text' => 'Crash recovery: order timed out in processing state.',
+                    ]);
+                    $user = \App\Models\User::where('id', $locked->user_id)->lockForUpdate()->first();
+                    if ($user) {
+                        $user->addBalance($locked->cost);
+                        Transaction::add(
+                            $user->id,
+                            $locked->cost,
+                            'credit',
+                            'refund',
+                            "Automatic Refund: Unresolved virtual number checkout attempt"
+                        );
+                    }
+                    $this->info("Crash recovery: Processed stale processing order {$locked->id} and refunded user.");
+                }
+            });
+        }
+
         // Find orders that are pending and past their expiration time
         // We add a 2-minute buffer to ensure provider has already processed the expiry
         $orders = VirtualNumberOrder::where('status', 'pending')

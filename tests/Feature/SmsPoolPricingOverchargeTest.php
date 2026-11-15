@@ -612,8 +612,11 @@ class SmsPoolPricingOverchargeTest extends TestCase
 
         $this->assertEquals(400, $response->getStatusCode());
         $user->refresh();
+        // Balance must be fully refunded (crash-recovery row created then marked 'failed')
         $this->assertEquals($initialBalance, (float)$user->balance);
-        $this->assertDatabaseCount('virtual_number_orders', 0);
+        // A single audit-trail record (status='failed') is expected by design
+        $this->assertDatabaseCount('virtual_number_orders', 1);
+        $this->assertDatabaseHas('virtual_number_orders', ['user_id' => $user->id, 'status' => 'failed']);
     }
 
     /**
@@ -724,8 +727,11 @@ class SmsPoolPricingOverchargeTest extends TestCase
 
         $this->assertEquals(400, $response->getStatusCode());
         $user->refresh();
+        // Balance must be fully refunded (crash-recovery row created then marked 'failed')
         $this->assertEquals($initialBalance, (float)$user->balance);
-        $this->assertDatabaseCount('virtual_number_orders', 0);
+        // A single audit-trail record (status='failed') is expected by design for crash recovery
+        $this->assertDatabaseCount('virtual_number_orders', 1);
+        $this->assertDatabaseHas('virtual_number_orders', ['user_id' => $user->id, 'status' => 'failed']);
     }
 
     /**
@@ -778,14 +784,19 @@ class SmsPoolPricingOverchargeTest extends TestCase
         $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
         $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
 
-        $this->assertEquals(200, $response->getStatusCode());
+        // Ambiguous timeout: SMSPool found >=1 unrecorded matching order but has no ownership proof.
+        // The safe policy is to preserve the attempt as 'unresolved' and return HTTP 504
+        // so that an admin (or background job) can safely reconcile without risking cross-user assignment.
+        $this->assertEquals(504, $response->getStatusCode());
         $data = $response->getData(true);
-        $this->assertTrue($data['success']);
-        $this->assertEquals('RECONCILED_TIMEOUT_123', $data['order']['api_order_id']);
+        $this->assertArrayHasKey('order_id', $data);
+        $this->assertEquals('unresolved', $data['status']);
 
-        // Exactly 1 order in DB, user debited correctly
+        // Exactly 1 order in DB with status='unresolved'; user is NOT refunded (order may exist on provider)
         $this->assertDatabaseCount('virtual_number_orders', 1);
+        $this->assertDatabaseHas('virtual_number_orders', ['user_id' => $user->id, 'status' => 'unresolved']);
         $user->refresh();
+        // Balance is held (not refunded) while order is unresolved to prevent free-number exploitation
         $this->assertLessThan($initialBalance, (float)$user->balance);
     }
 

@@ -169,12 +169,15 @@ class VirtualNumberController extends Controller
         $user = Auth::user();
 
         // Idempotency & Concurrency Protection: Prevent concurrent double-clicks from debiting twice
-        $purchaseLock = Cache::lock("vn_purchase_user_{$user->id}", 10);
+        // 60-second lock window comfortably covers the maximum HTTP provider timeout (15s) while releasing immediately in finally
+        $purchaseLock = Cache::lock("vn_purchase_user_{$user->id}", 60);
         if (!$purchaseLock->get()) {
             return response()->json([
                 'error' => 'A purchase request is currently in progress. Please wait a few moments before trying again.'
             ], 429);
         }
+
+        $attemptRecord = null;
 
         try {
             // Retrieve pricing for this country to estimate cost (check cache first)
@@ -250,6 +253,8 @@ class VirtualNumberController extends Controller
             }
 
             $totalAvailableBalance = 0.0;
+            $clientRef = 'ATT_' . $user->id . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
+
             DB::beginTransaction();
             try {
                 // Lock the user record to prevent concurrent check-out race conditions
@@ -263,6 +268,22 @@ class VirtualNumberController extends Controller
                         'error' => "Insufficient wallet balance. This number costs " . money($finalCheckCost) . " (your balance is " . money($totalAvailableBalance) . "). Please fund your wallet with at least " . money($shortfall) . " to proceed."
                     ], 402);
                 }
+
+                // Persist the purchase attempt BEFORE contacting external provider (Crash Recovery Protection)
+                $attemptRecord = \App\Models\VirtualNumberOrder::create([
+                    'user_id' => $lockedUser->id,
+                    'api_order_id' => $clientRef,
+                    'phone_number' => 'PENDING',
+                    'country' => (string) $country,
+                    'operator' => ($server === 'server2') ? 'Server 2' : 'Server 1',
+                    'server' => $server,
+                    'product' => (string) ($serviceName ?? $product),
+                    'cost' => $finalCheckCost,
+                    'provider_cost' => 0.0,
+                    'status' => 'processing',
+                    'expires_at' => now()->addMinutes(20),
+                ]);
+
                 DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -292,8 +313,12 @@ class VirtualNumberController extends Controller
                 // Refund and reject immediately if provider spending ceiling cannot maintain profit
                 DB::beginTransaction();
                 try {
-                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                    $refundUser->addBalance($finalCheckCost);
+                    $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                    if ($lockedOrder && $lockedOrder->status === 'processing') {
+                        $lockedOrder->update(['status' => 'failed', 'sms_text' => 'Rejected: Provider spending ceiling would violate minimum profit margins.']);
+                        $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                        $refundUser->addBalance($finalCheckCost);
+                    }
                     DB::commit();
                 } catch (\Exception $ex) {
                     DB::rollBack();
@@ -310,16 +335,15 @@ class VirtualNumberController extends Controller
                     try {
                         $buyResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, null);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
-                        // CRITICAL DUPLICATE PURCHASE PROTECTION:
+                        // CRITICAL DUPLICATE PURCHASE & CROSS-ASSIGNMENT PROTECTION:
                         // Network timeout occurred. Do NOT attempt fallback pools.
-                        // Reconcile with SMSPool active orders before assuming failure.
-                        Log::warning("SMSPool purchase timed out. Commencing reconciliation to prevent duplicate purchase.", [
+                        Log::warning("SMSPool purchase timed out. Inspecting provider active orders to check status.", [
                             'country' => $country,
                             'product' => $productId,
                             'user_id' => $user->id,
                         ]);
 
-                        $reconciledOrder = null;
+                        $unrecordedMatchingOrders = [];
                         try {
                             $activeOrders = $this->smspool->getActiveOrders();
                             if (is_array($activeOrders) && !empty($activeOrders)) {
@@ -333,32 +357,51 @@ class VirtualNumberController extends Controller
                                         $serviceMatch = ($aoService === (string)$productId || empty($aoService));
 
                                         if ($countryMatch && $serviceMatch) {
-                                            $reconciledOrder = [
-                                                'success' => 1,
-                                                'order_id' => $aoOrderId,
-                                                'phonenumber' => $ao['phonenumber'] ?? $ao['number'] ?? '',
-                                                'cc' => $ao['cc'] ?? '',
-                                                'cost' => (float)($ao['cost'] ?? $maxAllowedProviderUsd),
-                                                'country' => $ao['country_name'] ?? $ao['country'] ?? $country,
-                                                'service' => $ao['service_name'] ?? $ao['service'] ?? $serviceName,
-                                                'time_left' => (int)($ao['time_left'] ?? $ao['expires_in'] ?? 1200),
-                                            ];
-                                            Log::info("Successfully reconciled timed-out SMSPool order: {$aoOrderId}");
-                                            break;
+                                            $unrecordedMatchingOrders[] = $ao;
                                         }
                                     }
                                 }
                             }
                         } catch (\Throwable $reconErr) {
-                            Log::error("SMSPool timeout reconciliation failed: " . $reconErr->getMessage());
+                            Log::error("SMSPool timeout reconciliation query failed: " . $reconErr->getMessage());
                         }
 
-                        if ($reconciledOrder !== null) {
-                            $buyResponse = $reconciledOrder;
-                        } else {
-                            // Order not found on SMSPool: safe to throw and refund without double-buying
+                        // Case A: 0 unrecorded orders matching on provider.
+                        // We are 100% certain provider never created any order. Safe to fail & refund!
+                        if (count($unrecordedMatchingOrders) === 0) {
                             throw $timeoutEx;
                         }
+
+                        // Case B: >= 1 unrecorded matching orders on SMSPool.
+                        // SMSPool does NOT expose client correlation tokens or user IDs in active orders.
+                        // Auto-adopting would risk cross-user assignment if another customer purchased simultaneously.
+                        // Strictly preserve attempt in 'unresolved' state for safe audit.
+                        if ($attemptRecord) {
+                            DB::beginTransaction();
+                            try {
+                                $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                    $lockedOrder->update([
+                                        'status' => 'unresolved',
+                                        'sms_text' => 'Provider timeout with ' . count($unrecordedMatchingOrders) . ' ambiguous active order(s) on provider. Preserved for safe audit.',
+                                    ]);
+                                }
+                                DB::commit();
+                            } catch (\Throwable $unresolvedErr) {
+                                DB::rollBack();
+                            }
+                        }
+
+                        Log::alert("SMSPool ambiguous timeout: attempt {$attemptRecord->id} placed in UNRESOLVED state to prevent cross-assignment.", [
+                            'user_id' => $user->id,
+                            'unrecorded_count' => count($unrecordedMatchingOrders),
+                        ]);
+
+                        return response()->json([
+                            'error' => 'Your request timed out while communicating with the carrier network. To protect your purchase, the order has been preserved in verification state. Please check your order history in 2 minutes or contact support.',
+                            'order_id' => $attemptRecord->id ?? null,
+                            'status' => 'unresolved',
+                        ], 504);
                     } catch (\Exception $firstEx) {
                         $firstError = $firstEx->getMessage();
                         Log::info("SMSPool automatic purchase failed, testing intelligent pool fallback", [
@@ -437,19 +480,29 @@ class VirtualNumberController extends Controller
                     $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
                 }
             } catch (\Exception $e) {
-                // Refund the reserved balance if purchase fails
-                DB::beginTransaction();
-                try {
-                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                    $refundUser->addBalance($finalCheckCost);
-                    DB::commit();
-                } catch (\Exception $ex) {
-                    DB::rollBack();
-                    Log::error('Failed to refund reserved balance after failed purchase', [
-                        'user_id' => $user->id,
-                        'amount' => $finalCheckCost,
-                        'error' => $ex->getMessage()
-                    ]);
+                // Refund the reserved balance safely and idempotently if purchase fails
+                if (isset($attemptRecord) && $attemptRecord) {
+                    DB::beginTransaction();
+                    try {
+                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if ($lockedOrder && $lockedOrder->status === 'processing') {
+                            $lockedOrder->update([
+                                'status' => 'failed',
+                                'sms_text' => 'Provider error: ' . substr($e->getMessage(), 0, 200),
+                            ]);
+
+                            $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                            $refundUser->addBalance($finalCheckCost);
+                        }
+                        DB::commit();
+                    } catch (\Exception $ex) {
+                        DB::rollBack();
+                        Log::error('Failed to refund reserved balance after failed purchase', [
+                            'user_id' => $user->id,
+                            'amount' => $finalCheckCost,
+                            'error' => $ex->getMessage()
+                        ]);
+                    }
                 }
 
                 // If error indicates out of stock, invalidate the cached quote so new status is retrieved
@@ -493,13 +546,19 @@ class VirtualNumberController extends Controller
             }
 
             if (!$apiOrderId) {
-                DB::beginTransaction();
-                try {
-                    $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                    $refundUser->addBalance($finalCheckCost);
-                    DB::commit();
-                } catch (\Exception $ex) {
-                    DB::rollBack();
+                if (isset($attemptRecord) && $attemptRecord) {
+                    DB::beginTransaction();
+                    try {
+                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if ($lockedOrder && $lockedOrder->status === 'processing') {
+                            $lockedOrder->update(['status' => 'failed', 'sms_text' => 'Missing provider order ID']);
+                            $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                            $refundUser->addBalance($finalCheckCost);
+                        }
+                        DB::commit();
+                    } catch (\Exception $ex) {
+                        DB::rollBack();
+                    }
                 }
                 return response()->json(['error' => 'Service is temporarily busy. Please try again in a few moments.'], 500);
             }
@@ -527,8 +586,8 @@ class VirtualNumberController extends Controller
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
                 $operatorLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
 
-                $order = VirtualNumberOrder::create([
-                    'user_id' => $lockedUser->id,
+                $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                $lockedOrder->update([
                     'api_order_id' => $apiOrderId,
                     'phone_number' => $phoneNumber,
                     'country' => $countryName,
@@ -547,7 +606,7 @@ class VirtualNumberController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'order' => $order
+                    'order' => $lockedOrder
                 ]);
             } catch (\Exception $e) {
                 DB::rollBack();
