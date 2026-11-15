@@ -725,13 +725,15 @@ class SmsPoolPricingOverchargeTest extends TestCase
         $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
         $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
 
-        $this->assertEquals(400, $response->getStatusCode());
+        // Even when active orders is empty at timeout time, the Activating delay on SMSPool
+        // means an order could still have been created. Therefore, Linkocial returns HTTP 504 and status='unresolved'.
+        $this->assertEquals(504, $response->getStatusCode());
         $user->refresh();
-        // Balance must be fully refunded (crash-recovery row created then marked 'failed')
-        $this->assertEquals($initialBalance, (float)$user->balance);
-        // A single audit-trail record (status='failed') is expected by design for crash recovery
+        // Balance is retained (NOT refunded immediately) to prevent financial loss from Activating delay
+        $this->assertLessThan($initialBalance, (float)$user->balance);
+        // An audit-trail record with status='unresolved' is preserved
         $this->assertDatabaseCount('virtual_number_orders', 1);
-        $this->assertDatabaseHas('virtual_number_orders', ['user_id' => $user->id, 'status' => 'failed']);
+        $this->assertDatabaseHas('virtual_number_orders', ['user_id' => $user->id, 'status' => 'unresolved']);
     }
 
     /**
@@ -930,5 +932,148 @@ class SmsPoolPricingOverchargeTest extends TestCase
         $this->assertEquals(10000.0, (float)$user->balance);
 
         $lock->release();
+    }
+
+    /**
+     * 26. Duplicate purchase attempt blocked if user has a recent unresolved order on the same server.
+     */
+    public function test_duplicate_purchase_blocked_when_user_has_unresolved_order(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        // Create an existing unresolved order created 2 minutes ago
+        VirtualNumberOrder::create([
+            'user_id' => $user->id,
+            'api_order_id' => 'ATT_UNRESOLVED_TEST_1',
+            'phone_number' => 'PENDING',
+            'country' => '1',
+            'operator' => 'Server 1',
+            'server' => 'server1',
+            'product' => 'WhatsApp',
+            'cost' => 2000.0,
+            'provider_cost' => 0.0,
+            'status' => 'unresolved',
+            'expires_at' => now()->addMinutes(20),
+            'created_at' => now()->subMinutes(2),
+        ]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.95,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // smsPool->buyNumber must NEVER be called
+        $mockSmsPool->shouldNotReceive('buyNumber');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(409, $response->getStatusCode());
+        $data = $response->getData(true);
+        $this->assertEquals('duplicate_blocked', $data['status']);
+        $this->assertStringContainsString('currently being verified', $data['error']);
+
+        // User balance must remain intact (no additional debit)
+        $user->refresh();
+        $this->assertEquals(10000.0, (float)$user->balance);
+    }
+
+    /**
+     * 27. Cron delayed reconciliation refunds unresolved order after 20 minutes if no provider order exists.
+     */
+    public function test_cron_refunds_unresolved_order_after_20_minutes_if_no_provider_order_found(): void
+    {
+        $user = User::factory()->create(['balance' => 5000.0]);
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $user->id,
+            'api_order_id' => 'ATT_UNRESOLVED_CRON_TEST',
+            'phone_number' => 'PENDING',
+            'country' => '1',
+            'operator' => 'Server 1',
+            'server' => 'server1',
+            'product' => 'WhatsApp',
+            'cost' => 2500.0,
+            'provider_cost' => 0.0,
+            'status' => 'unresolved',
+            'expires_at' => now()->subMinutes(5),
+        ]);
+        // Set created_at via DB to bypass any Eloquent timestamp resetting
+        \Illuminate\Support\Facades\DB::table('virtual_number_orders')
+            ->where('id', $order->id)
+            ->update(['created_at' => now()->subMinutes(25)]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Provider returns no matching active orders
+        $mockSmsPool->shouldReceive('getActiveOrders')->andReturn([]);
+
+        $this->app->instance(SmsPoolService::class, $mockSmsPool);
+        $this->app->instance(GrizzlySmsService::class, $mockGrizzly);
+
+        $this->artisan('vn:check-expired')
+            ->assertExitCode(0);
+
+        $order->refresh();
+        $this->assertEquals('failed', $order->status);
+        $this->assertStringContainsString('no provider order found', $order->sms_text);
+
+        $user->refresh();
+        $this->assertEquals(7500.0, (float)$user->balance); // 5000 + 2500 refunded
+    }
+
+    /**
+     * 28. Cron leaves unresolved order unresolved if still within caution window (< 20 mins).
+     */
+    public function test_cron_retains_unresolved_order_within_caution_window(): void
+    {
+        $user = User::factory()->create(['balance' => 5000.0]);
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $user->id,
+            'api_order_id' => 'ATT_UNRESOLVED_CANDIDATE_TEST',
+            'phone_number' => 'PENDING',
+            'country' => '1',
+            'operator' => 'Server 1',
+            'server' => 'server1',
+            'product' => 'WhatsApp',
+            'cost' => 2500.0,
+            'provider_cost' => 0.0,
+            'status' => 'unresolved',
+            'expires_at' => now()->addMinutes(10),
+        ]);
+        // 5 minutes old (not yet 20 minutes)
+        \Illuminate\Support\Facades\DB::table('virtual_number_orders')
+            ->where('id', $order->id)
+            ->update(['created_at' => now()->subMinutes(5)]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        $mockSmsPool->shouldReceive('getActiveOrders')->andReturn([]);
+
+        $this->app->instance(SmsPoolService::class, $mockSmsPool);
+        $this->app->instance(GrizzlySmsService::class, $mockGrizzly);
+
+        $this->artisan('vn:check-expired')
+            ->assertExitCode(0);
+
+        $order->refresh();
+        // Must remain unresolved because 20 minutes haven't passed
+        $this->assertEquals('unresolved', $order->status);
+
+        // No balance refunded
+        $user->refresh();
+        $this->assertEquals(5000.0, (float)$user->balance);
     }
 }

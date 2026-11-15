@@ -255,6 +255,22 @@ class VirtualNumberController extends Controller
             $totalAvailableBalance = 0.0;
             $clientRef = 'ATT_' . $user->id . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
 
+            // Duplicate-Purchase Guard: reject new orders while a previous one is 'unresolved'.
+            // 'unresolved' means a provider timeout occurred and the outcome is not yet confirmed.
+            // Allowing a new purchase could result in two provider charges for the same user.
+            $existingUnresolved = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+                ->where('status', 'unresolved')
+                ->where('server', $server)
+                ->where('created_at', '>=', now()->subMinutes(10))
+                ->exists();
+
+            if ($existingUnresolved) {
+                return response()->json([
+                    'error' => 'You have a purchase that is currently being verified with the carrier. Please check your order history in a few minutes. If the order does not appear, contact support before trying again.',
+                    'status' => 'duplicate_blocked',
+                ], 409);
+            }
+
             DB::beginTransaction();
             try {
                 // Lock the user record to prevent concurrent check-out race conditions
@@ -335,18 +351,28 @@ class VirtualNumberController extends Controller
                     try {
                         $buyResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, null);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
-                        // CRITICAL DUPLICATE PURCHASE & CROSS-ASSIGNMENT PROTECTION:
-                        // Network timeout occurred. Do NOT attempt fallback pools.
-                        Log::warning("SMSPool purchase timed out. Inspecting provider active orders to check status.", [
-                            'country' => $country,
-                            'product' => $productId,
-                            'user_id' => $user->id,
+                        // CRITICAL FINANCIAL SAFETY – TIMEOUT HANDLING:
+                        // A network timeout means we do NOT know whether SMSPool created a number or not.
+                        //
+                        // IMPORTANT: SMSPool documents an "Activating" phase (~1 minute) during which
+                        // a successfully created order may NOT yet appear in /request/active.
+                        // This means an EMPTY active-orders response is NOT proof that no order was created.
+                        //
+                        // Safe policy: ALWAYS preserve as 'unresolved' on timeout, regardless of
+                        // what /request/active returns. The cron job (vn:check-expired) will re-query
+                        // after a safe delay (≥2 minutes) to determine the actual outcome.
+                        // We log the active-order count for admin context only.
+                        Log::warning("SMSPool purchase timed out. Preserving as UNRESOLVED regardless of active-order visibility.", [
+                            'country'   => $country,
+                            'product'   => $productId,
+                            'user_id'   => $user->id,
+                            'attempt'   => $attemptRecord->id ?? null,
                         ]);
 
-                        $unrecordedMatchingOrders = [];
+                        $activeOrderCount = 0;
                         try {
                             $activeOrders = $this->smspool->getActiveOrders();
-                            if (is_array($activeOrders) && !empty($activeOrders)) {
+                            if (is_array($activeOrders)) {
                                 foreach ($activeOrders as $ao) {
                                     $aoOrderId = (string)($ao['order_id'] ?? $ao['orderid'] ?? '');
                                     $aoCountry = (string)($ao['country_id'] ?? $ao['country'] ?? '');
@@ -355,9 +381,8 @@ class VirtualNumberController extends Controller
                                     if (!empty($aoOrderId) && !\App\Models\VirtualNumberOrder::where('api_order_id', $aoOrderId)->exists()) {
                                         $countryMatch = ($aoCountry === (string)$country || empty($aoCountry));
                                         $serviceMatch = ($aoService === (string)$productId || empty($aoService));
-
                                         if ($countryMatch && $serviceMatch) {
-                                            $unrecordedMatchingOrders[] = $ao;
+                                            $activeOrderCount++;
                                         }
                                     }
                                 }
@@ -366,24 +391,17 @@ class VirtualNumberController extends Controller
                             Log::error("SMSPool timeout reconciliation query failed: " . $reconErr->getMessage());
                         }
 
-                        // Case A: 0 unrecorded orders matching on provider.
-                        // We are 100% certain provider never created any order. Safe to fail & refund!
-                        if (count($unrecordedMatchingOrders) === 0) {
-                            throw $timeoutEx;
-                        }
-
-                        // Case B: >= 1 unrecorded matching orders on SMSPool.
-                        // SMSPool does NOT expose client correlation tokens or user IDs in active orders.
-                        // Auto-adopting would risk cross-user assignment if another customer purchased simultaneously.
-                        // Strictly preserve attempt in 'unresolved' state for safe audit.
+                        // Preserve as 'unresolved' in ALL cases: empty list may just be Activating delay.
+                        // The cron will confirm outcome after the activation window has passed.
                         if ($attemptRecord) {
                             DB::beginTransaction();
                             try {
                                 $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                                 if ($lockedOrder && $lockedOrder->status === 'processing') {
                                     $lockedOrder->update([
-                                        'status' => 'unresolved',
-                                        'sms_text' => 'Provider timeout with ' . count($unrecordedMatchingOrders) . ' ambiguous active order(s) on provider. Preserved for safe audit.',
+                                        'status'   => 'unresolved',
+                                        'sms_text' => 'Provider timeout. Active orders visible at reconciliation time: ' . $activeOrderCount
+                                            . '. Preserved for safe cron audit (SMSPool Activating delay may hide newly created orders).',
                                     ]);
                                 }
                                 DB::commit();
@@ -392,15 +410,15 @@ class VirtualNumberController extends Controller
                             }
                         }
 
-                        Log::alert("SMSPool ambiguous timeout: attempt {$attemptRecord->id} placed in UNRESOLVED state to prevent cross-assignment.", [
-                            'user_id' => $user->id,
-                            'unrecorded_count' => count($unrecordedMatchingOrders),
+                        Log::alert("SMSPool timeout: attempt {$attemptRecord->id} placed in UNRESOLVED state. Active-order count at reconcile: {$activeOrderCount}.", [
+                            'user_id'             => $user->id,
+                            'active_order_count'  => $activeOrderCount,
                         ]);
 
                         return response()->json([
-                            'error' => 'Your request timed out while communicating with the carrier network. To protect your purchase, the order has been preserved in verification state. Please check your order history in 2 minutes or contact support.',
+                            'error'    => 'Your request timed out while communicating with the carrier network. To protect your purchase, the order has been preserved in verification state. Please check your order history in 2–3 minutes or contact support.',
                             'order_id' => $attemptRecord->id ?? null,
-                            'status' => 'unresolved',
+                            'status'   => 'unresolved',
                         ], 504);
                     } catch (\Exception $firstEx) {
                         $firstError = $firstEx->getMessage();

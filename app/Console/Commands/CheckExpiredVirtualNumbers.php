@@ -45,6 +45,67 @@ class CheckExpiredVirtualNumbers extends Command
             });
         }
 
+        // Reconcile 'unresolved' orders: orders where a provider timeout occurred
+        // We only attempt to auto-refund unresolved orders after 20 minutes (well beyond the SMSPool 1-minute activation window)
+        // and only when SMSPool's active orders confirms no order exists
+        $unresolvedOrders = VirtualNumberOrder::where('status', 'unresolved')
+            ->where('created_at', '<', now()->subMinutes(20))
+            ->get();
+
+        if ($unresolvedOrders->isNotEmpty()) {
+            $smspoolActive = [];
+            try {
+                $smspoolActive = $smspool->getActiveOrders();
+            } catch (\Throwable $e) {
+                Log::warning("Could not fetch active orders for unresolved reconciliation: " . $e->getMessage());
+            }
+
+            foreach ($unresolvedOrders as $unresolved) {
+                DB::transaction(function () use ($unresolved, $smspoolActive) {
+                    $locked = VirtualNumberOrder::where('id', $unresolved->id)->lockForUpdate()->first();
+                    if (!$locked || $locked->status !== 'unresolved') {
+                        return;
+                    }
+
+                    // Check if any active order on SMSPool matches
+                    $hasMatchingActive = false;
+                    if (is_array($smspoolActive)) {
+                        foreach ($smspoolActive as $ao) {
+                            $aoCountry = (string)($ao['country_id'] ?? $ao['country'] ?? '');
+                            $aoService = (string)($ao['service_id'] ?? $ao['service'] ?? '');
+                            if (($aoCountry === (string)$locked->country || empty($aoCountry)) &&
+                                ($aoService === (string)$locked->product || empty($aoService))) {
+                                $hasMatchingActive = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!$hasMatchingActive) {
+                        // Safe to refund: > 20 minutes elapsed, no matching order on SMSPool
+                        $locked->update([
+                            'status' => 'failed',
+                            'sms_text' => 'Reconciled: no provider order found after 20 minutes. Refunded.',
+                        ]);
+                        $user = \App\Models\User::where('id', $locked->user_id)->lockForUpdate()->first();
+                        if ($user) {
+                            $user->addBalance($locked->cost);
+                            Transaction::add(
+                                $user->id,
+                                $locked->cost,
+                                'credit',
+                                'refund',
+                                "Automatic Refund: Virtual number order unconfirmed on provider"
+                            );
+                        }
+                        $this->info("Unresolved order {$locked->id} refunded safely after 20m verification.");
+                    } else {
+                        Log::warning("Unresolved order {$locked->id} matches active provider orders. Preserving for manual admin review.");
+                    }
+                });
+            }
+        }
+
         // Find orders that are pending and past their expiration time
         // We add a 2-minute buffer to ensure provider has already processed the expiry
         $orders = VirtualNumberOrder::where('status', 'pending')
