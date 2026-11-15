@@ -174,6 +174,28 @@ class SmsPoolService
     }
 
     /**
+     * Retrieve SMS order history from SMSPool for auditing and timeout reconciliation.
+     * Endpoint: POST /request/history
+     */
+    public function getOrderHistory(): array
+    {
+        try {
+            $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/request/history", [
+                'key' => $this->apiKey,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return is_array($data) ? $data : [];
+            }
+        } catch (\Throwable $e) {
+            Log::warning("SMSPool getOrderHistory failed: " . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
      * Buy a virtual phone number.
      * Endpoint: POST /purchase/sms
      */

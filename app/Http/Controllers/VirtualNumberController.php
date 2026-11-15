@@ -255,13 +255,14 @@ class VirtualNumberController extends Controller
             $totalAvailableBalance = 0.0;
             $clientRef = 'ATT_' . $user->id . '_' . time() . '_' . \Illuminate\Support\Str::random(8);
 
-            // Duplicate-Purchase Guard: reject new orders while a previous one is 'unresolved'.
-            // 'unresolved' means a provider timeout occurred and the outcome is not yet confirmed.
-            // Allowing a new purchase could result in two provider charges for the same user.
+            // Duplicate-Purchase Guard: reject new orders while any previous one remains 'unresolved' on this server.
+            // 'unresolved' means a provider timeout occurred and the outcome has not been definitively established.
+            // Unlike temporary locks, this restriction does NOT expire on a timer — it persists until
+            // the order is definitively resolved (reconciled by cron or reviewed by admin).
+            // This prevents duplicate provider charges and ensures provider-specific isolation.
             $existingUnresolved = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
                 ->where('status', 'unresolved')
                 ->where('server', $server)
-                ->where('created_at', '>=', now()->subMinutes(10))
                 ->exists();
 
             if ($existingUnresolved) {
