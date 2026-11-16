@@ -353,4 +353,81 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertNotNull($order->refunded_at);
         $this->assertEquals(26000.00, (float) $user->fresh()->balance);
     }
+
+    public function test_get_on_fulfill_refund_sync_redirects_cleanly_without_500()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user  = User::factory()->create(['balance' => 1000]);
+
+        $order = AiToolOrder::create([
+            'user_id'             => $user->id,
+            'provider_product_id' => 'tool-test-redirects',
+            'product_name'        => 'ChatGPT Plus',
+            'idempotency_key'     => 'idemp-redirect-1',
+            'status'              => AiToolOrder::STATUS_PROCESSING,
+            'quantity'            => 1,
+            'unit_price_usdt'     => 20.00,
+            'total_price_usdt'    => 20.00,
+            'exchange_rate'       => 1500.00,
+            'unit_price_ngn'      => 33000.00,
+            'total_paid_ngn'      => 33000.00,
+            'provider_cost_ngn'   => 30000.00,
+            'profit_ngn'          => 3000.00,
+        ]);
+
+        // GET /fulfill redirects to order details without 500
+        $responseFulfill = $this->actingAs($admin)->get("/hq/ai-tools/orders/{$order->id}/fulfill");
+        $responseFulfill->assertRedirect(route('hq.ai-tools.orders.show', $order->id));
+
+        // GET /refund redirects to order details without 500
+        $responseRefund = $this->actingAs($admin)->get("/hq/ai-tools/orders/{$order->id}/refund");
+        $responseRefund->assertRedirect(route('hq.ai-tools.orders.show', $order->id));
+
+        // GET /sync redirects to order details without 500
+        $responseSync = $this->actingAs($admin)->get("/hq/ai-tools/orders/{$order->id}/sync");
+        $responseSync->assertRedirect(route('hq.ai-tools.orders.show', $order->id));
+    }
+
+    public function test_ai_tool_order_item_handles_invalid_mac_or_raw_strings_gracefully()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+
+        $order = AiToolOrder::create([
+            'user_id'             => $user->id,
+            'provider_product_id' => 'tool-corrupt-mac',
+            'product_name'        => 'Claude Pro',
+            'idempotency_key'     => 'idemp-corrupt-1',
+            'status'              => AiToolOrder::STATUS_COMPLETED,
+            'quantity'            => 1,
+            'unit_price_usdt'     => 15.00,
+            'total_price_usdt'    => 15.00,
+            'exchange_rate'       => 1500.00,
+            'unit_price_ngn'      => 25000.00,
+            'total_paid_ngn'      => 25000.00,
+            'provider_cost_ngn'   => 22500.00,
+            'profit_ngn'          => 2500.00,
+        ]);
+
+        // Directly insert raw / invalid MAC ciphertext into the database table
+        \Illuminate\Support\Facades\DB::table('ai_tool_order_items')->insert([
+            'ai_tool_order_id' => $order->id,
+            'item_index'       => 0,
+            'code'             => 'invalid-base64-mac-payload-string',
+            'details'          => 'invalid-json-or-mac',
+            'created_at'       => now(),
+            'updated_at'       => now(),
+        ]);
+
+        $item = \App\Models\AiToolOrderItem::where('ai_tool_order_id', $order->id)->first();
+        $this->assertNotNull($item);
+
+        // Accessing code & details must not throw DecryptException or 500
+        $this->assertEquals('invalid-base64-mac-payload-string', $item->code);
+        $this->assertEquals('invalid-json-or-mac', $item->details);
+
+        // Rendering order detail view with this item must not throw DecryptException
+        $admin = User::factory()->create(['role' => 'admin']);
+        $response = $this->actingAs($admin)->get("/hq/ai-tools/orders/{$order->id}");
+        $response->assertOk();
+    }
 }

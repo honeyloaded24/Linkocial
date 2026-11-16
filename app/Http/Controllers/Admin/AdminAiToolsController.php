@@ -25,7 +25,12 @@ class AdminAiToolsController extends Controller
      */
     private function ensureTablesExist(): void
     {
-        if (!Schema::hasTable('ai_tool_products') || !Schema::hasTable('ai_tool_orders') || !Schema::hasTable('ai_tool_categories')) {
+        if (
+            !Schema::hasTable('ai_tool_products') ||
+            !Schema::hasTable('ai_tool_orders') ||
+            !Schema::hasTable('ai_tool_categories') ||
+            !Schema::hasTable('ai_tool_order_items')
+        ) {
             try {
                 Artisan::call('migrate', ['--force' => true]);
             } catch (\Throwable $e) {
@@ -174,6 +179,10 @@ class AdminAiToolsController extends Controller
     {
         $this->ensureTablesExist();
 
+        if ($request->isMethod('GET')) {
+            return redirect()->route('hq.ai-tools.orders.show', $id);
+        }
+
         $request->validate([
             'credentials'  => 'required|string',
             'instructions' => 'nullable|string|max:2000',
@@ -189,6 +198,10 @@ class AdminAiToolsController extends Controller
     {
         $this->ensureTablesExist();
 
+        if ($request->isMethod('GET')) {
+            return redirect()->route('hq.ai-tools.orders.show', $id);
+        }
+
         $order = AiToolOrder::findOrFail($id);
         $reason = $request->input('reason', 'Refunded by administrator');
 
@@ -199,9 +212,13 @@ class AdminAiToolsController extends Controller
         return back()->with('error', 'Order could not be refunded (may already be refunded).');
     }
 
-    public function syncOrder(int $id)
+    public function syncOrder(Request $request, int $id)
     {
         $this->ensureTablesExist();
+
+        if ($request->isMethod('GET')) {
+            return redirect()->route('hq.ai-tools.orders.show', $id);
+        }
 
         $order = AiToolOrder::findOrFail($id);
         $result = $order->livePollStatus(app(AlaricApiService::class));

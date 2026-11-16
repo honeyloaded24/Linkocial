@@ -92,8 +92,8 @@ return new class extends Migration
                 $table->id();
                 $table->foreignId('ai_tool_order_id')->constrained('ai_tool_orders')->cascadeOnDelete();
                 $table->integer('item_index')->default(1);
-                $table->text('code'); // Encrypted at rest via model cast
-                $table->json('details')->nullable(); // Encrypted at rest via model cast
+                $table->longText('code'); // Encrypted at rest via model cast
+                $table->longText('details')->nullable(); // Encrypted at rest via model cast
                 $table->timestamps();
 
                 $table->index('ai_tool_order_id');
