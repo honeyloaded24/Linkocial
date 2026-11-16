@@ -600,6 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (option && option.formatted_price) {
                             if (quoteContent) quoteContent.classList.remove('d-none');
                             costDisplay.textContent = option.formatted_price;
+                            currentQuotedPrice = option.price || null;
                             buyBtn.disabled = false;
                             buyBtn.innerHTML = 'Purchase Number <i class="fa-solid fa-arrow-right ms-2"></i>';
                         }

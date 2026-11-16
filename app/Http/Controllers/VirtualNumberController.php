@@ -133,8 +133,13 @@ class VirtualNumberController extends Controller
             // Map to final array with dynamic markup fee applied
             $finalServices = [];
             foreach ($grouped as $service) {
-                // Use minimum pool price (matches SMSPool low_price entry quote)
-                $chosenWholesale = min($service['prices']);
+                // Check if a live active pool price was recently cached for this service
+                $cachedLiveWholesale = ($server === 'server1') ? Cache::get("smspool_live_active_price_{$country}_{$service['id']}") : null;
+                if ($cachedLiveWholesale !== null && (float)$cachedLiveWholesale > 0) {
+                    $chosenWholesale = (float)$cachedLiveWholesale;
+                } else {
+                    $chosenWholesale = min($service['prices']);
+                }
 
                 $retailPrice = $this->calculateRetailPrice($chosenWholesale);
                 $finalServices[] = [
@@ -212,6 +217,26 @@ class VirtualNumberController extends Controller
 
             // For Server 1 (SMSPool): verify real-time stock and active in-stock pool price
             if ($server === 'server1') {
+                // 1. Check if an active live pool quote was recently established (e.g. Sierra at $1.96)
+                $cachedLiveWholesale = Cache::get("smspool_live_active_price_{$country}_{$productId}");
+                if ($cachedLiveWholesale !== null && (float)$cachedLiveWholesale > 0) {
+                    $activeWholesalePrice = (float)$cachedLiveWholesale;
+                }
+
+                // 2. If customer confirmed an expected_price that reflects a higher live quote,
+                // deduce the corresponding wholesale rate to guarantee cost protection
+                if ($request->filled('expected_price')) {
+                    $expPrice = (float) $request->input('expected_price');
+                    $providerRate = max(1.0, $this->getProviderRate());
+                    $markupFee = $this->getMarkupFee();
+                    if ($expPrice > $markupFee) {
+                        $deducedWholesale = round(($expPrice - $markupFee) / $providerRate, 2);
+                        if ($deducedWholesale > $activeWholesalePrice) {
+                            $activeWholesalePrice = $deducedWholesale;
+                        }
+                    }
+                }
+
                 $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
 
                 if ($liveInfo !== null) {
@@ -222,13 +247,14 @@ class VirtualNumberController extends Controller
                         ], 400);
                     }
 
-                    // Prioritize cheapest active in-stock pool price (low_price) matching pricing_option = 0 purchase routing
-                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['low_price'];
-                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['price'];
+                    if ($cachedLiveWholesale === null && !$request->filled('expected_price')) {
+                        if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                            $activeWholesalePrice = (float)$liveInfo['low_price'];
+                        } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                            $activeWholesalePrice = (float)$liveInfo['price'];
+                        }
                     }
-                } elseif (count($allPoolPrices) > 0) {
+                } elseif ($cachedLiveWholesale === null && !$request->filled('expected_price') && count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
                 }
             }
@@ -322,9 +348,11 @@ class VirtualNumberController extends Controller
             if ($configuredMinProfit !== null && $configuredMinProfit > 0) {
                 $minRequiredProfitNgn = (float) $configuredMinProfit;
             } else {
-                // Protect a baseline margin: at least 25% of the standard markup fee (minimum ₦150)
+                // Protect a baseline margin: at least 70% of the standard markup fee (minimum ₦150).
+                // This ensures fallback can absorb minor supplier variance (e.g. up to $0.20) but NEVER allows
+                // an expensive pool (like Sierra at $1.96) to erode Linkocial's markup profit on an order paid at base rates ($1.56).
                 $markupFee = $this->getMarkupFee();
-                $minRequiredProfitNgn = max(150.0, round($markupFee * 0.25, 2));
+                $minRequiredProfitNgn = max(150.0, round($markupFee * 0.70, 2));
             }
 
             // Strict Financial Safety: Provider spending must NEVER exceed (Customer Paid - Required Profit)
@@ -470,7 +498,7 @@ class VirtualNumberController extends Controller
 
                                     $cId = $poolCandidate['pool_id'] ?? $poolCandidate['id'] ?? $poolCandidate['pool'] ?? null;
                                     $cName = strtolower($poolCandidate['name'] ?? $poolCandidate['pool'] ?? '');
-                                    $cPrice = (float)($poolCandidate['price'] ?? 0);
+                                    $cPrice = (float)($poolCandidate['price'] ?? $poolCandidate['cost'] ?? $poolCandidate['rate'] ?? 0);
 
                                     // Must be within safe provider spending ceiling
                                     if ($cPrice > $maxAllowedProviderUsd || $cPrice <= 0) {
@@ -880,13 +908,20 @@ class VirtualNumberController extends Controller
                 if (!empty($livePools)) {
                     $validPoolPrices = [];
                     foreach ($livePools as $p) {
-                        $pPrice = (float)($p['price'] ?? 0);
+                        if (!is_array($p)) {
+                            continue;
+                        }
+                        $pPrice = (float)($p['price'] ?? $p['cost'] ?? $p['rate'] ?? 0);
+                        if (isset($p['stock']) && (int)$p['stock'] <= 0) {
+                            continue;
+                        }
                         if ($pPrice > 0) {
                             $validPoolPrices[] = $pPrice;
                         }
                     }
                     if (!empty($validPoolPrices)) {
                         $activeWholesalePrice = min($validPoolPrices);
+                        Cache::put("smspool_live_active_price_{$country}_{$productId}", $activeWholesalePrice, now()->addMinutes(5));
                     }
                 }
 
@@ -914,6 +949,7 @@ class VirtualNumberController extends Controller
                         } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
                             $activeWholesalePrice = (float)$liveInfo['price'];
                         }
+                        Cache::put("smspool_live_active_price_{$country}_{$productId}", $activeWholesalePrice, now()->addMinutes(5));
                     }
                 } elseif (empty($livePools) && count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);

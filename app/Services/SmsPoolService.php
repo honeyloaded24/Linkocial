@@ -133,7 +133,11 @@ class SmsPoolService
     public function getValidPools(string|int $country, string|int $service): array
     {
         try {
-            $response = Http::asForm()->timeout(10)->post("{$this->baseUrl}/pool/retrieve_valid", [
+            $req = Http::asForm()->timeout(10);
+            if (!empty($this->apiKey)) {
+                $req = $req->withToken($this->apiKey);
+            }
+            $response = $req->post("{$this->baseUrl}/pool/retrieve_valid", [
                 'key' => $this->apiKey,
                 'country' => $country,
                 'service' => $service,
@@ -142,7 +146,14 @@ class SmsPoolService
 
             if ($response->successful()) {
                 $data = $response->json();
-                return is_array($data) ? $data : [];
+                if (is_array($data)) {
+                    if (isset($data['pools']) && is_array($data['pools'])) {
+                        $data = $data['pools'];
+                    } elseif (isset($data['data']) && is_array($data['data'])) {
+                        $data = $data['data'];
+                    }
+                    return array_values($data);
+                }
             }
         } catch (\Throwable $e) {
             Log::warning("SMSPool getValidPools failed for country {$country}, service {$service}: " . $e->getMessage());

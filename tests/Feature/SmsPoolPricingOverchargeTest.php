@@ -1438,4 +1438,68 @@ class SmsPoolPricingOverchargeTest extends TestCase
         $this->assertEquals($quotedPrice, (float)$order->cost);
         $this->assertEquals(1.96, (float)$order->provider_cost);
     }
+
+    /**
+     * 35. When an order is paid at base rate $1.56 (₦3,153), fallback will NOT purchase Sierra at $1.96
+     * which would erode Linkocial's ₦1,000 profit margin down to ~₦448; instead, Sierra is rejected and refunded.
+     */
+    public function test_fallback_does_not_purchase_sierra_when_customer_only_paid_base_foxtrot_price(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $this->pricingService->updatePricingSettings(ProductPricingService::PRODUCT_VIRTUAL_NUMBERS, [
+            'currency' => 'USD',
+            'fix_rate' => 1380.0,
+            'pricing_mode' => 'fixed',
+            'fixed_markup' => 1000.0,
+            'min_profit' => null, // default min_profit
+            'rounding_rule' => '2_decimal',
+        ]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Historical / cached pricing returns old pool at $1.56
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.56,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // Attempt 1 on Foxtrot at $1.56 fails with pool occupied
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, null)
+            ->once()
+            ->andThrow(new \Exception('Pool Foxtrot: All available slots are currently occupied.'));
+
+        // SMSPool valid pools report Sierra at $1.96
+        $mockSmsPool->shouldReceive('getValidPools')
+            ->once()
+            ->andReturn([
+                ['pool_id' => '2', 'name' => 'Sierra', 'price' => 1.96]
+            ]);
+
+        // Sierra ($1.96) MUST NOT BE PURCHASED because spending $1.96 (₦2,704.80) on a ₦3,153 order
+        // would erode Linkocial's markup profit from ₦1,000 down to ₦448!
+        $mockSmsPool->shouldNotReceive('buyNumber')
+            ->with('1', '1', Mockery::any(), 0, '2');
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request([
+            'country' => '1',
+            'product' => '1',
+            'server' => 'server1',
+            'expected_price' => 3152.80, // Customer paid base price
+        ]));
+
+        $this->assertEquals(400, $response->getStatusCode());
+        $user->refresh();
+        // Fully refunded: balance remains 10000.0
+        $this->assertEquals(10000.0, (float)$user->balance);
+    }
 }
