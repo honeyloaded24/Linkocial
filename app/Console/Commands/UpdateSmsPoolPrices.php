@@ -41,8 +41,8 @@ class UpdateSmsPoolPrices extends Command
             $count = 0;
             foreach ($grouped as $countryId => $countryPrices) {
                 $cacheKey = "smspool_prices_{$countryId}";
-                // Cache each country's pricing list for 10 minutes
-                Cache::put($cacheKey, $countryPrices, now()->addMinutes(10));
+                // Cache each country's pricing list for 2 minutes
+                Cache::put($cacheKey, $countryPrices, now()->addMinutes(2));
                 $count++;
             }
 

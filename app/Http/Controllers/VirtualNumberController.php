@@ -250,6 +250,12 @@ class VirtualNumberController extends Controller
                         'formatted_new_price' => money($finalCheckCost),
                     ], 409);
                 }
+
+                // If customer confirmed and expected a higher valid live quote (from getLiveQuote pool check),
+                // honor the customer's confirmed quote so provider spending limit and wallet debit match the active pool.
+                if ($expectedPrice > $finalCheckCost && $expectedPrice <= ($finalCheckCost * 1.5)) {
+                    $finalCheckCost = $expectedPrice;
+                }
             }
 
             $totalAvailableBalance = 0.0;
@@ -870,14 +876,28 @@ class VirtualNumberController extends Controller
 
             // For Server 1 (SMSPool): query real-time live price & stock availability directly on customer pick
             if ($server === 'server1') {
+                $livePools = $this->smspool->getValidPools($country, $productId);
+                if (!empty($livePools)) {
+                    $validPoolPrices = [];
+                    foreach ($livePools as $p) {
+                        $pPrice = (float)($p['price'] ?? 0);
+                        if ($pPrice > 0) {
+                            $validPoolPrices[] = $pPrice;
+                        }
+                    }
+                    if (!empty($validPoolPrices)) {
+                        $activeWholesalePrice = min($validPoolPrices);
+                    }
+                }
+
                 $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
 
                 if ($liveInfo !== null) {
                     $stockCount = $liveInfo['stock'] ?? 0;
                     $successRate = $liveInfo['success_rate'] ?? null;
 
-                    // If provider explicitly reports 0 stock, notify customer immediately
-                    if ($stockCount <= 0) {
+                    // If provider explicitly reports 0 stock and no valid pools exist, notify customer immediately
+                    if ($stockCount <= 0 && empty($livePools)) {
                         return response()->json([
                             'success' => false,
                             'out_of_stock' => true,
@@ -887,13 +907,15 @@ class VirtualNumberController extends Controller
                         ]);
                     }
 
-                    // Prioritize cheapest active in-stock pool price (low_price) matching pricing_option = 0 purchase routing
-                    if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['low_price'];
-                    } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
-                        $activeWholesalePrice = (float)$liveInfo['price'];
+                    // Fall back to liveInfo low_price/price if getValidPools returned no pricing
+                    if (empty($livePools)) {
+                        if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
+                            $activeWholesalePrice = (float)$liveInfo['low_price'];
+                        } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
+                            $activeWholesalePrice = (float)$liveInfo['price'];
+                        }
                     }
-                } elseif (count($allPoolPrices) > 0) {
+                } elseif (empty($livePools) && count($allPoolPrices) > 0) {
                     $activeWholesalePrice = min($allPoolPrices);
                 }
             }

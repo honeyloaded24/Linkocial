@@ -1309,4 +1309,133 @@ class SmsPoolPricingOverchargeTest extends TestCase
         $user->refresh();
         $this->assertEquals(5000.0, (float)$user->balance);
     }
+
+    /**
+     * 33. getLiveQuote fetches real-time pool price from getValidPools when pool changes on SMSPool.
+     * Prevents using stale prices (e.g. Foxtrot $1.56) when Sierra ($1.96) is the active pool.
+     */
+    public function test_get_live_quote_fetches_realtime_price_from_valid_pools_when_pool_changes(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $this->pricingService->updatePricingSettings(ProductPricingService::PRODUCT_VIRTUAL_NUMBERS, [
+            'currency' => 'USD',
+            'fix_rate' => 1380.0,
+            'pricing_mode' => 'fixed',
+            'fixed_markup' => 1000.0,
+            'min_profit' => 1000.0,
+            'rounding_rule' => '2_decimal',
+        ]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Historical / cached pricing returns old pool at $1.56
+        $mockSmsPool->shouldReceive('getPricesForCountry')->with('1')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+
+        // getServiceLiveInfo still returns low_price = 1.56
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->with('1', '1')->andReturn([
+            'price' => 1.96,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+
+        // BUT SMSPool live valid pools report that Sierra at $1.96 is the available active pool!
+        $mockSmsPool->shouldReceive('getValidPools')->with('1', '1')->once()->andReturn([
+            ['pool_id' => '2', 'name' => 'Sierra', 'price' => 1.96]
+        ]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->getLiveQuote(new Request(['country' => '1', 'product' => '1', 'server' => 'server1']));
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $data = $response->getData(true);
+
+        $this->assertTrue($data['success']);
+        // Wholesale price must be $1.96 (Sierra), NOT $1.56 (Foxtrot)
+        $this->assertEquals(1.96, $data['wholesale_price']);
+
+        // Retail price: (1.96 * 1380) + 1000 = 2704.80 + 1000 = 3704.80 NGN
+        $expectedRetail = round(1.96 * 1380.0 + 1000.0, 2);
+        $this->assertEquals($expectedRetail, $data['quote_price']);
+        $this->assertEquals(1000.0, $data['markup_fee']);
+    }
+
+    /**
+     * 34. purchase respects customer confirmed expected_price from live quote, maintains full markup profit.
+     */
+    public function test_purchase_uses_customer_expected_quote_price_and_maintains_profit(): void
+    {
+        $user = User::factory()->create(['balance' => 10000.0]);
+        $this->actingAs($user);
+
+        $this->pricingService->updatePricingSettings(ProductPricingService::PRODUCT_VIRTUAL_NUMBERS, [
+            'currency' => 'USD',
+            'fix_rate' => 1380.0,
+            'pricing_mode' => 'fixed',
+            'fixed_markup' => 1000.0,
+            'min_profit' => 1000.0,
+            'rounding_rule' => '2_decimal',
+        ]);
+
+        $mockSmsPool = Mockery::mock(SmsPoolService::class);
+        $mockGrizzly = Mockery::mock(GrizzlySmsService::class);
+
+        // Cached pricing has $1.56
+        $mockSmsPool->shouldReceive('getPricesForCountry')->andReturn([
+            ['service' => '1', 'service_name' => 'WhatsApp', 'price' => 1.56]
+        ]);
+        $mockSmsPool->shouldReceive('getServiceLiveInfo')->andReturn([
+            'price' => 1.96,
+            'low_price' => 1.56,
+            'stock' => 50,
+            'name' => 'WhatsApp',
+        ]);
+        $mockSmsPool->shouldReceive('getCountries')->andReturn([
+            ['id' => '1', 'name' => 'United States']
+        ]);
+
+        // Customer quotes Sierra at $1.96 -> pays 3704.80 NGN
+        $quotedPrice = round(1.96 * 1380.0 + 1000.0, 2); // 3704.80 NGN
+
+        // Provider spending ceiling: (3704.80 - 1000) / 1380 = 2704.80 / 1380 = $1.96
+        $mockSmsPool->shouldReceive('buyNumber')
+            ->with('1', '1', Mockery::on(function ($maxPrice) {
+                // Must be at least $1.96 to buy Sierra, but NOT exceed customer paid - profit
+                return $maxPrice >= 1.95 && $maxPrice <= 1.97;
+            }), 0, null)
+            ->once()
+            ->andReturn([
+                'success' => 1,
+                'order_id' => 'SIERRA_LIVE_ORDER_777',
+                'phonenumber' => '12025550777',
+                'cc' => '1',
+                'cost' => 1.96,
+                'country' => 'United States',
+                'service' => 'WhatsApp',
+                'time_left' => 1200,
+            ]);
+
+        $controller = new VirtualNumberController($mockSmsPool, $mockGrizzly);
+        $response = $controller->purchase(new Request([
+            'country' => '1',
+            'product' => '1',
+            'server' => 'server1',
+            'expected_price' => $quotedPrice,
+        ]));
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $user->refresh();
+        // Exact quoted price debited: 10000 - 3704.80 = 6295.20
+        $this->assertEquals(round(10000.0 - $quotedPrice, 2), (float)$user->balance);
+
+        $order = VirtualNumberOrder::where('api_order_id', 'SIERRA_LIVE_ORDER_777')->first();
+        $this->assertNotNull($order);
+        $this->assertEquals($quotedPrice, (float)$order->cost);
+        $this->assertEquals(1.96, (float)$order->provider_cost);
+    }
 }
