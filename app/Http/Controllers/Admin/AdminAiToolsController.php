@@ -188,10 +188,18 @@ class AdminAiToolsController extends Controller
             'instructions' => 'nullable|string|max:2000',
         ]);
 
-        $order = AiToolOrder::findOrFail($id);
-        $order->fulfillWithCredentials($request->credentials, $request->instructions);
-
-        return back()->with('success', "Order #{$order->order_number} has been manually fulfilled and credentials delivered.");
+        try {
+            $order = AiToolOrder::findOrFail($id);
+            $order->fulfillWithCredentials($request->credentials, $request->instructions);
+            return back()->with('success', "Order #{$order->order_number} has been manually fulfilled and credentials delivered.");
+        } catch (\Throwable $e) {
+            Log::error('AdminAiToolsController@manualFulfill failed', [
+                'order_id' => $id,
+                'error'    => $e->getMessage(),
+                'trace'    => $e->getTraceAsString(),
+            ]);
+            return back()->with('error', 'Failed to fulfill order: ' . $e->getMessage())->withInput();
+        }
     }
 
     public function manualRefund(Request $request, int $id)

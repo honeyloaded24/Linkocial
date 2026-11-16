@@ -275,4 +275,36 @@ class AiToolsController extends Controller
 
         return view('ai-tools.order-detail', compact('order'));
     }
+
+    /**
+     * AJAX endpoint: poll provider for latest order status and return JSON.
+     * Called every few seconds by the order-detail view while status is non-terminal.
+     */
+    public function orderStatus(int $id)
+    {
+        $order = AiToolOrder::with(['product', 'items'])
+            ->forUser(auth()->id())
+            ->findOrFail($id);
+
+        // Live-poll the provider if the order is still active
+        if (!$order->isTerminal() && !empty($order->provider_order_id)) {
+            $order->livePollStatus($this->alaricService);
+            $order->load('items');
+        }
+
+        $terminalStatuses = ['completed', 'failed', 'refunded', 'under_review'];
+
+        return response()->json([
+            'status'       => $order->status,
+            'status_label' => $order->status_label,
+            'is_terminal'  => in_array($order->status, $terminalStatuses),
+            'items_count'  => $order->items->count(),
+            'items'        => $order->items->map(fn($item) => [
+                'code'    => $item->code,
+                'details' => $item->details,
+                'index'   => $item->item_index,
+            ]),
+            'completed_at' => $order->completed_at?->format('d M Y, H:i'),
+        ]);
+    }
 }

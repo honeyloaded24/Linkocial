@@ -180,7 +180,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/product/{id}', [\App\Http\Controllers\AiToolsController::class, 'show'])->name('show');
         Route::post('/purchase',    [\App\Http\Controllers\AiToolsController::class, 'purchase'])->name('purchase');
         Route::get('/history',      [\App\Http\Controllers\AiToolsController::class, 'history'])->name('history');
-        Route::get('/order/{id}',   [\App\Http\Controllers\AiToolsController::class, 'orderDetail'])->name('order.detail');
+        Route::get('/order/{id}',        [\App\Http\Controllers\AiToolsController::class, 'orderDetail'])->name('order.detail');
+        Route::get('/order/{id}/status', [\App\Http\Controllers\AiToolsController::class, 'orderStatus'])->name('order.status');
     });
 
 
