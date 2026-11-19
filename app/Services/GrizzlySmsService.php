@@ -717,14 +717,19 @@ class GrizzlySmsService
                 'status' => 8, // 8 = cancel
             ]);
 
+            if (!$response->successful()) {
+                throw new \\RuntimeException("Grizzly cancellation HTTP failure: {$response->status()}");
+            }
+
             $body = trim($response->body());
             Log::info("Grizzly cancelOrder result: {$body}");
 
-            if (str_contains($body, 'EARLY_CANCEL_DENIED')) {
+            if ($body === 'EARLY_CANCEL_DENIED') {
                 throw new \Exception('Provider requires a 2-minute waiting period before cancellation can be accepted.');
             }
 
-            if (str_contains($body, 'ACCESS_CANCEL') || str_contains($body, 'ACCESS') || $body === 'NO_ACTIVATION') {
+            // Only the explicit cancellation acknowledgement is proof of cancellation.
+            if ($body === 'ACCESS_CANCEL') {
                 return ['success' => true, 'response' => $body];
             }
 
@@ -777,8 +782,12 @@ class GrizzlySmsService
                 'status' => 3, // 3 = request another SMS
             ]);
 
+            if (!$response->successful()) {
+                throw new \\RuntimeException("Grizzly resend HTTP failure: {$response->status()}");
+            }
+
             $body = trim($response->body());
-            if ($body === 'ACCESS_RETRY_GET' || str_contains($body, 'ACCESS')) {
+            if ($body === 'ACCESS_RETRY_GET') {
                 return ['success' => 1, 'message' => 'Waiting for next SMS code.'];
             }
 
