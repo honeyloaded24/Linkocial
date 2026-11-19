@@ -325,9 +325,10 @@ class SmsPoolService
 
         $data = $response->json();
 
-        if (isset($data['success']) && (int)$data['success'] === 0) {
-            $msg = $data['message'] ?? 'Failed to resend SMS on SMSPool';
-            throw new \Exception(html_entity_decode(strip_tags($msg), ENT_QUOTES, 'UTF-8'));
+        // SMSPool may return HTTP 200 for rejected operations. Require explicit success.
+        if (!is_array($data) || !array_key_exists('success', $data) || (int) $data['success'] !== 1) {
+            $msg = is_array($data) ? ($data['message'] ?? 'SMSPool did not confirm the resend request.') : 'SMSPool returned an invalid resend response.';
+            throw new \\RuntimeException(html_entity_decode(strip_tags((string) $msg), ENT_QUOTES, 'UTF-8'));
         }
 
         return $data;
