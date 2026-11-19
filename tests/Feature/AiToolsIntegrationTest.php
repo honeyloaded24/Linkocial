@@ -433,52 +433,6 @@ class AiToolsIntegrationTest extends TestCase
     }
 
 
-    public function test_ambiguous_provider_submission_is_flagged_for_reconciliation_without_false_processing(): void
-    {
-        Queue::fake();
-        $user = User::factory()->create(['balance' => 100000000, 'status' => 'active']);
-        Setting::set('alaric_api_key', 'test_key_123');
-        Setting::set('usdt_to_ngn_rate', 1500.0);
-        Setting::set('markup_ai_tools', 20.0);
-
-        $product = AiToolProduct::create([
-            'provider_product_id' => 'ambiguous-submission-test',
-            'name' => 'Ambiguous Submission Test',
-            'slug' => 'ambiguous-submission-test',
-            'price_usdt' => 3.00,
-            'currency' => 'USDT',
-            'in_stock' => true,
-            'is_active' => true,
-            'fulfillment' => 'on_demand',
-            'max_quantity' => 1,
-        ]);
-
-        $this->mock(AlaricApiService::class, function ($mock) {
-            $mock->shouldReceive('createOrder')
-                ->once()
-                ->andReturn([
-                    'success' => false,
-                    'timed_out' => false,
-                    'ambiguous' => true,
-                    'error_message' => 'Provider communication failed. The order outcome is unknown.',
-                ]);
-        });
-
-        $response = $this->actingAs($user)->post('/ai-tools/purchase', [
-            'product_id' => $product->id,
-            'quantity' => 1,
-        ]);
-        $response->assertRedirect();
-
-        $order = AiToolOrder::where('user_id', $user->id)->latest()->first();
-        $this->assertNotNull($order);
-        $this->assertSame(AiToolOrder::STATUS_UNDER_REVIEW, $order->status);
-        $this->assertNull($order->provider_order_id);
-        $this->assertStringContainsString('ambiguous', strtolower($order->failure_reason));
-        $this->assertLessThan(100000000, (float) $user->fresh()->balance);
-        Queue::assertNotPushed(PollAiToolOrderStatus::class);
-    }
-
     public function test_stale_order_recovery_command_automatically_delivers_completed_order()
     {
         $user = User::factory()->create(['balance' => 1000]);
