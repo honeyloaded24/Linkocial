@@ -487,3 +487,23 @@ input:checked+.slider:before {
 [data-bs-theme="dark"] .channel-filter:not(.active-channel) i {
     color: inherit;
 }
+
+
+/* Dark mode: Bootstrap modal surfaces and code/credential previews */
+[data-theme="dark"] .modal-content, [data-bs-theme="dark"] .modal-content {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .modal-header, [data-bs-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer, [data-bs-theme="dark"] .modal-footer {
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .modal .bg-white, [data-bs-theme="dark"] .modal .bg-white,
+[data-theme="dark"] pre.bg-white, [data-bs-theme="dark"] pre.bg-white {
+    background-color: rgba(255,255,255,0.05) !important;
+    color: var(--text-main) !important;
+}
+[data-theme="dark"] .btn-close, [data-bs-theme="dark"] .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
