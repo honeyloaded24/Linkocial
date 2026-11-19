@@ -275,9 +275,11 @@ class RecoverLegacyBalancesCommand extends Command
                 }
                 $lockedUser->save();
 
-                // Record the wallet adjustment only when the converted balance differs.
+                // Generate an audit reference for the recovery even when no balance adjustment is needed.
+                $ref = 'REC_' . strtoupper(Str::random(10));
+
+                // Record a wallet ledger adjustment only when the converted balance differs.
                 if (round((float) $diff, 4) !== 0.0) {
-                    $ref = 'REC_' . strtoupper(Str::random(10));
                     Transaction::create([
                     'user_id' => $lockedUser->id,
                     'amount' => abs($diff),
