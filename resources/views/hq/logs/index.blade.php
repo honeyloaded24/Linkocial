@@ -22,6 +22,12 @@
         color: var(--text-main, #f8fafc) !important;
         border-color: var(--border-color, #334155) !important;
     }
+    [data-theme="dark"] .hq-log-catalogue .nav-link.bg-light,
+    [data-bs-theme="dark"] .hq-log-catalogue .nav-link.bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border: 1px solid var(--border-color, #334155) !important;
+    }
 </style>
 <div class="container-fluid hq-log-catalogue">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
