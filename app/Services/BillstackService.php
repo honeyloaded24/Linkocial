@@ -120,7 +120,8 @@ class BillstackService
         try {
             Log::info("BillStack Virtual Account Request for User {$user->id} ({$bank}):", [
                 'reference' => $reference,
-                'bank' => $bank
+                'bank' => $bank,
+                'email' => $user->email
             ]);
 
             $endpoint = rtrim($this->baseUrl, '/') . '/thirdparty/generateVirtualAccount/';
@@ -130,10 +131,9 @@ class BillstackService
 
             $result = $response->json();
 
-            Log::info("BillStack Virtual Account API response for User {$user->id}:", [
+            Log::info("BillStack Response for User {$user->id}:", [
                 'status' => $response->status(),
-                'success' => $response->successful(),
-                'provider_success' => ($result['status'] ?? false) === true || ($result['success'] ?? false) === true,
+                'body' => $result
             ]);
 
             $isSuccess = $response->successful() && (
@@ -160,7 +160,7 @@ class BillstackService
                 $apiRef = $data['reference'] ?? $reference;
 
                 if (empty($accountNumber)) {
-                    Log::error("BillStack Account generation did not return account_number.", ['user_id' => $user->id]);
+                    Log::error("BillStack Account generation did not return account_number: " . json_encode($result));
                     return [
                         'success' => false,
                         'message' => $result['message'] ?? 'Failed to retrieve account number from provider.'
@@ -194,7 +194,7 @@ class BillstackService
             }
 
             $rawErrMsg = $result['message'] ?? $result['error'] ?? 'Unable to generate virtual account.';
-            Log::error("Virtual Account API Error: {$rawErrMsg}", ['user_id' => $user->id, 'http_status' => $response->status()]);
+            Log::error("Virtual Account API Error: {$rawErrMsg}", ['response' => $result]);
             
             // Cleanse error message so internal provider names or raw technical details are never exposed
             $userMessage = $rawErrMsg;
