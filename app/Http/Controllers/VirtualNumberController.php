@@ -614,45 +614,57 @@ class VirtualNumberController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                // Refund the reserved balance safely and idempotently if purchase fails
+                $providerError = strtolower($e->getMessage());
+                $noPurchaseDueToQuote = str_contains($providerError, 'below the price of')
+                    || str_contains($providerError, 'suitable pool');
+
                 if (isset($attemptRecord) && $attemptRecord) {
                     DB::beginTransaction();
                     try {
                         $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') {
-                            $lockedOrder->update([
-                                'status' => 'failed',
-                                'sms_text' => 'Provider error: ' . substr($e->getMessage(), 0, 200),
-                            ]);
-
                             $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                            $refundUser->addBalance($finalCheckCost);
 
-                        if ($finalCheckCost > 0) {
-                            \App\Models\Transaction::add(
-                                $refundUser->id,
-                                $finalCheckCost,
-                                'credit',
-                                'refund',
-                                "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})",
-                                'REF-VN-' . $lockedOrder->id,
-                                $lockedOrder->created_at
-                            );
-                        }
+                            if ($noPurchaseDueToQuote) {
+                                // Provider rejected the quote before creating an activation.
+                                // Restore the reserved wallet balance and remove the attempt
+                                // and debit ledger row: this was not a purchase or a refund.
+                                $refundUser->addBalance($finalCheckCost);
+                                \App\Models\Transaction::where('reference', 'VN-DEBIT-' . $lockedOrder->id)->delete();
+                                $lockedOrder->delete();
+                            } else {
+                                $lockedOrder->update([
+                                    'status' => 'failed',
+                                    'sms_text' => 'Provider error: ' . substr($e->getMessage(), 0, 200),
+                                ]);
+                                $refundUser->addBalance($finalCheckCost);
+
+                                if ($finalCheckCost > 0) {
+                                    \App\Models\Transaction::add(
+                                        $refundUser->id,
+                                        $finalCheckCost,
+                                        'credit',
+                                        'refund',
+                                        "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})",
+                                        'REF-VN-' . $lockedOrder->id,
+                                        $lockedOrder->created_at
+                                    );
+                                }
+                            }
                         }
                         DB::commit();
                     } catch (\Exception $ex) {
                         DB::rollBack();
-                        Log::error('Failed to refund reserved balance after failed purchase', [
+                        Log::error('Failed to restore wallet after virtual number purchase failure', [
                             'user_id' => $user->id,
                             'amount' => $finalCheckCost,
-                            'error' => $ex->getMessage()
+                            'no_purchase_due_to_quote' => $noPurchaseDueToQuote,
+                            'error' => $ex->getMessage(),
                         ]);
                     }
                 }
 
-                // If error indicates out of stock, invalidate the cached quote so new status is retrieved
-                if (str_contains(strtolower($e->getMessage()), 'out_of_stock') || str_contains(strtolower($e->getMessage()), 'no numbers')) {
+                if (str_contains($providerError, 'out_of_stock') || str_contains($providerError, 'no numbers')) {
                     Cache::forget("smspool_live_quote_{$country}_{$productId}");
                 }
 
