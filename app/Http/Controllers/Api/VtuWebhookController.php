@@ -69,6 +69,13 @@ class VtuWebhookController extends Controller
                     Log::warning("VTU Webhook: Refusing failure/refund event for completed order {$order->id}.");
                     return response()->json(['message' => 'Completed order protected from refund'], 200);
                 }
+                // Only refund when the owning wallet exists; state and ledger must commit together.
+                $user = User::where('id', $order->user_id)->lockForUpdate()->first();
+                if (!$user) {
+                    Log::error("VTU Webhook: Refund blocked; user missing for order {$order->id}.");
+                    return response()->json(['message' => 'User not found; refund not applied'], 500);
+                }
+
                 // Mark order as refunded
                 $order->status = 'refunded';
                 $existingResponse = json_decode($order->api_response, true) ?? [];
@@ -76,16 +83,18 @@ class VtuWebhookController extends Controller
                 $order->api_response = json_encode($existingResponse);
                 $order->save();
 
-                // Refund the user atomically
-                $user = User::where('id', $order->user_id)->lockForUpdate()->first();
-                if ($user) {
-                    $user->addBalance($order->cost);
-                    
-                    // The cost was charged in NGN
-                    $refundAmount = $order->cost;
-                    $service = ucfirst($order->service_type);
-                    Transaction::add($user->id, $refundAmount, 'credit', 'vtu_refund', "Refund for failed {$service} purchase (Ref: {$apiReference})");
-                }
+                // Refund the user atomically with a stable order-based ledger reference.
+                $user->addBalance($order->cost);
+                $refundAmount = $order->cost;
+                $service = ucfirst($order->service_type);
+                Transaction::add(
+                    $user->id,
+                    $refundAmount,
+                    'credit',
+                    'vtu_refund',
+                    "Refund for failed {$service} purchase (Ref: {$apiReference})",
+                    'VTU-WEBHOOK-REFUND-' . $order->id
+                );
 
                 Log::info("VTU Webhook: Successfully refunded order {$order->id}");
             } elseif (in_array($statusStr, ['successful', 'success', 'completed'])) {
