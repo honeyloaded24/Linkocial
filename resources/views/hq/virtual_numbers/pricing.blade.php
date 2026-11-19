@@ -98,7 +98,7 @@
         <div class="col-md-3">
             <div class="premium-card p-3 shadow-sm h-100 border-start border-4 border-secondary">
                 <span class="small text-muted text-uppercase fw-bold d-block mb-1">Active Providers</span>
-                <div class="fs-5 fw-bold text-dark d-flex gap-1 align-items-center">
+                <div class="fs-5 fw-bold text-main d-flex gap-1 align-items-center">
                     <span class="badge {{ $hasServer1 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 1</span>
                     <span class="badge {{ $hasServer2 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 2</span>
                 </div>
@@ -269,11 +269,11 @@
                     </div>
 
                     <!-- Protection Notice -->
-                    <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-4 p-3 mb-4 small text-dark">
+                    <div class="alert alert-info bg-info bg-opacity-10 border-0 rounded-4 p-3 mb-4 small text-main">
                         <div class="d-flex gap-2">
                             <i class="fa-solid fa-shield-halved text-info fs-5 mt-1"></i>
                             <div>
-                                <strong class="d-block text-dark mb-1">Financial Integrity Guarantee:</strong>
+                                <strong class="d-block text-main mb-1">Financial Integrity Guarantee:</strong>
                                 Virtual numbers will <strong>never be sold at a loss</strong> below the converted provider wholesale cost. Number purchasing, OTP retrieval, wallet deductions, order records, cancellations, and automatic refunds remain fully preserved.
                             </div>
                         </div>
