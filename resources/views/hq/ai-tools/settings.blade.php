@@ -8,7 +8,7 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h4 class="fw-bold mb-0"><i class="fa fa-gear me-2 text-primary"></i>AI TOOLS — Provider Settings</h4>
-            <p class="text-muted small mb-0">Configure Alaric API key, exchange rate and pricing markup</p>
+            <p class="text-muted small mb-0">Configure API keys, exchange rate and pricing markup</p>
         </div>
         <a href="{{ route('hq.ai-tools.dashboard') }}" class="btn btn-outline-secondary btn-sm">
             <i class="fa fa-arrow-left me-1"></i>Dashboard
@@ -69,6 +69,18 @@
                         placeholder="{{ $apiConfigured ? 'Enter new key to replace current key' : 'Enter your Alaric Store API key' }}"
                         autocomplete="new-password">
                     <div class="form-text">The API key is stored securely and never exposed to customers.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">PixelSub API Key</label>
+                    @if($maskedPixelSubKey)
+                        <div class="alert alert-secondary small mb-2">
+                            Current key: <code>{{ $maskedPixelSubKey }}</code> — leave blank to keep the current key.
+                        </div>
+                    @endif
+                    <input type="password" name="pixelsub_api_key" class="form-control"
+                        placeholder="{{ $pixelSubConfigured ? 'Enter new key to replace current key' : 'Enter PixelSub API key' }}"
+                        autocomplete="new-password">
+                    <div class="form-text">Stored securely and used server-side only. PixelSub product prices are in USD.</div>
                 </div>
             </div>
         </div>
