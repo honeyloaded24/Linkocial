@@ -320,6 +320,7 @@ class AiToolsController extends Controller
             'status_label' => $order->status_label,
             'is_terminal'  => in_array($order->status, $terminalStatuses),
             'items_count'  => $order->items->count(),
+            'quantity'     => (int) $order->quantity,
             'items'        => $order->items->map(fn($item) => [
                 'code'    => $item->code,
                 'details' => $item->details,
