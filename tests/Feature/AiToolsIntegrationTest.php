@@ -436,6 +436,9 @@ class AiToolsIntegrationTest extends TestCase
             'profit_ngn' => 2500.00,
         ]);
 
+        // Isolate this deterministic order ID from stale rows in the shared test database.
+        Transaction::where('reference', 'REF-AITOOLS-' . $order->id)->delete();
+
         // Simulate the automatic refund already recorded by a hard provider rejection.
         Transaction::add(
             $user->id,
