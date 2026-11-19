@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg fixed-top border-bottom" id="mainNav" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px);">
+<nav class="navbar navbar-expand-lg fixed-top border-bottom" id="mainNav" class="theme-navbar">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('landing') }}">
             @if($siteLogoLight || $siteLogoDark)
@@ -22,7 +22,7 @@
                     <a class="nav-link dropdown-toggle d-flex justify-content-between align-items-center" href="#" data-bs-toggle="dropdown">
                         Services
                     </a>
-                    <ul class="dropdown-menu border-0 shadow-sm bg-light w-100 mb-3">
+                    <ul class="dropdown-menu border-0 shadow-sm w-100 mb-3">
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-2" href="{{ route('vtu.airtime') }}">
                                 <i class="fa-solid fa-mobile-screen" style="color: #10b981; width: 20px;"></i>
@@ -214,8 +214,8 @@
     .logo-dark { display: none !important; }
     .logo-light { display: block !important; }
 
-    [data-theme="dark"] .logo-dark { display: block !important; }
-    [data-theme="dark"] .logo-light { display: none !important; }
+    [data-theme="dark"] .logo-dark, [data-bs-theme="dark"] .logo-dark { display: block !important; }
+    [data-theme="dark"] .logo-light, [data-bs-theme="dark"] .logo-light { display: none !important; }
 
     /* Desktop Mega Menu */
     @media (min-width: 992px) {
