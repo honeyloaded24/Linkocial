@@ -58,7 +58,7 @@
     <!-- Scheduled Tasks Section -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="premium-card p-4 border-0 shadow-sm" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-left: 4px solid var(--primary-color) !important;">
+            <div class="premium-card p-4 border-0 shadow-sm" style="background: var(--bg-surface); border-left: 4px solid var(--primary-color) !important;">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h5 class="fw-bold mb-1 text-primary-custom"><i class="fa-solid fa-calendar-check me-2"></i>Automation Schedule (Cron)</h5>
