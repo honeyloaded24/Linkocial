@@ -47,11 +47,23 @@ class VtuWebhookController extends Controller
             $order = VtuOrder::where('api_reference', $apiReference)->lockForUpdate()->first();
 
             if (!$order) {
-                // Also try matching by parsing the JSON api_response if api_reference wasn't saved properly
-                $order = VtuOrder::where('api_response', 'like', '%"id":' . $apiReference . '%')
-                                 ->orWhere('api_response', 'like', '%"id":"' . $apiReference . '"%')
-                                 ->lockForUpdate()
-                                 ->first();
+                // Provider webhook can arrive before api_reference is persisted.
+                // Search candidate responses, then compare decoded IDs strictly to
+                // avoid substring matches (e.g. reference 123 matching 1234).
+                $candidates = VtuOrder::where('api_response', 'like', '%"id"%')
+                    ->whereIn('status', ['processing', 'completed'])
+                    ->orderByDesc('id')
+                    ->limit(100)
+                    ->get();
+
+                foreach ($candidates as $candidate) {
+                    $decoded = json_decode($candidate->api_response, true);
+                    if (is_array($decoded) && isset($decoded['id'])
+                        && (string) $decoded['id'] === (string) $apiReference) {
+                        $order = VtuOrder::whereKey($candidate->id)->lockForUpdate()->first();
+                        break;
+                    }
+                }
             }
 
             if (!$order) {
