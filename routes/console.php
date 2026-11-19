@@ -35,6 +35,10 @@ Schedule::command('fadded:sync')->everyThirtyMinutes()->withoutOverlapping();
 // Schedule AI Tools product synchronization every 10 seconds
 Schedule::command('ai-tools:sync-products --force')->everyTenSeconds()->withoutOverlapping();
 
+// Poll stale AI Tools orders directly from the scheduler as a fallback to queued jobs.
+// This keeps automatic fulfillment progressing even when delayed queue jobs are missed.
+Schedule::command('ai-tools:poll-stale-orders')->everyMinute()->withoutOverlapping();
+
 // Schedule background queue worker to process delayed jobs (like delayed welcome emails)
 Schedule::command('queue:work --stop-when-empty --tries=3')->everyMinute()->withoutOverlapping();
 
