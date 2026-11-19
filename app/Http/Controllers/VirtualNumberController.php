@@ -540,7 +540,33 @@ class VirtualNumberController extends Controller
                                         $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
                                         break;
-                                    } catch (\Exception $fallbackEx) {
+                                    } catch (\\Exception $fallbackEx) {
+                                        // A fallback timeout is ambiguous: SMSPool may have created
+                                        // the activation even though this request received no response.
+                                        // Do not continue to another pool or refund the customer.
+                                        if ($fallbackEx instanceof \\App\\Exceptions\\ProviderTimeoutException
+                                            || $fallbackEx instanceof \\Illuminate\\Http\\Client\\ConnectionException) {
+                                            DB::transaction(function () use ($attemptRecord, $fallbackEx) {
+                                                $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                                if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                                    $lockedOrder->update([
+                                                        'status' => 'unresolved',
+                                                        'sms_text' => 'SMSPool fallback purchase timed out. Activation outcome unknown; retained for reconciliation. No automatic refund.',
+                                                    ]);
+                                                }
+                                            });
+                                            Log::alert('SMSPool fallback purchase timed out; preserving virtual-number debit for reconciliation.', [
+                                                'attempt_id' => $attemptRecord->id,
+                                                'pool' => $cName,
+                                                'error' => $fallbackEx->getMessage(),
+                                            ]);
+                                            return response()->json([
+                                                'error' => 'The carrier request timed out while attempting an available number. Your purchase is being verified to prevent duplicate charges. Please check order history shortly.',
+                                                'order_id' => $attemptRecord->id,
+                                                'status' => 'unresolved',
+                                            ], 504);
+                                        }
+
                                         $exhaustedPools[] = $cName;
                                         Log::warning("SMSPool fallback pool {$cName} failed: " . $fallbackEx->getMessage());
                                     }
