@@ -78,9 +78,11 @@ class AdminVirtualNumberController extends Controller
                 ->firstOrFail();
 
             $refundReference = 'REF-VN-ADMIN-' . $order->id;
-            if ($order->status === 'canceled' || Transaction::where('reference', $refundReference)->exists()) {
+            $automaticRefundReference = 'REF-VN-' . $order->id;
+            if (in_array($order->status, ['canceled', 'failed'], true)
+                || Transaction::whereIn('reference', [$refundReference, $automaticRefundReference])->exists()) {
                 DB::rollBack();
-                return back()->with('error', 'That order has already been refunded.');
+                return back()->with('error', 'That order is already terminal or has already been refunded.');
             }
 
             // Attempt to tell provider to cancel it so we get our API money back too, if it's pending.
