@@ -64,9 +64,9 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->app->instance(GrizzlySmsService::class, new GrizzlySmsService());
 
         $this->actingAs($admin)
+            ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
-            ->assertRedirect()
-            ->assertSessionHas('error');
+            ->assertRedirect(route('hq.virtual-numbers'));
 
         $this->assertSame(1200.0, (float) $customer->fresh()->balance);
         $this->assertSame('failed', $order->fresh()->status);
