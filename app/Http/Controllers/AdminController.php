@@ -1416,16 +1416,24 @@ class AdminController extends Controller
      */
     public function hqDeclineWithdrawal(Request $request, $id)
     {
-        $withdrawal = \App\Models\WithdrawalRequest::findOrFail($id);
+        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id, $request) {
+            $withdrawal = \\App\\Models\\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if ($withdrawal->status !== 'pending') {
+            if ($withdrawal->status !== 'pending') {
+                return false;
+            }
+
+            $withdrawal->update([
+                'status' => 'declined',
+                'admin_note' => $request->admin_note ?? 'Declined by administrator.'
+            ]);
+
+            return true;
+        });
+
+        if (!$result) {
             return back()->with('error', 'This request is already processed.');
         }
-
-        $withdrawal->update([
-            'status' => 'declined',
-            'admin_note' => $request->admin_note ?? 'Declined by administrator.'
-        ]);
 
         return back()->with('success', 'Withdrawal request declined.');
     }
