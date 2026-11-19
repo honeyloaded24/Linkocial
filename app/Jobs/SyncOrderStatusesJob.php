@@ -11,6 +11,9 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Models\Transaction;
 
 class SyncOrderStatusesJob implements ShouldQueue
 {
@@ -44,11 +47,29 @@ class SyncOrderStatusesJob implements ShouldQueue
                 if ($statusData && isset($statusData['status'])) {
                     $newStatus = $this->mapProviderStatus($statusData['status']);
                     
-                    $order->update([
-                        'status' => $newStatus,
-                        'start_count' => $statusData['start_count'] ?? $order->start_count,
-                        'remains' => $statusData['remains'] ?? $order->remains,
-                    ]);
+                    DB::transaction(function () use ($order, $newStatus, $statusData) {
+                        $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->first();
+                        if (!$lockedOrder) return;
+
+                        $lockedOrder->update([
+                            'status' => $newStatus,
+                            'start_count' => $statusData['start_count'] ?? $lockedOrder->start_count,
+                            'remains' => $statusData['remains'] ?? $lockedOrder->remains,
+                        ]);
+
+                        // Provider-confirmed terminal failures/cancellations must refund once.
+                        if (in_array($newStatus, ['failed', 'canceled'], true) && !$lockedOrder->is_refunded) {
+                            $lockedUser = User::whereKey($lockedOrder->user_id)->lockForUpdate()->first();
+                            if ($lockedUser && (float) $lockedOrder->charge > 0) {
+                                $reference = 'REF-SMM-' . $lockedOrder->id;
+                                if (!Transaction::where('reference', $reference)->exists()) {
+                                    $lockedUser->addBalance((float) $lockedOrder->charge);
+                                    Transaction::add($lockedUser->id, (float) $lockedOrder->charge, 'credit', 'refund', "Provider-confirmed refund for failed order #{$lockedOrder->id}", $reference, $lockedOrder->created_at);
+                                }
+                                $lockedOrder->update(['is_refunded' => true]);
+                            }
+                        }
+                    });
 
                     Log::info("Order #{$order->id} synced. Status: {$newStatus}");
                 }
