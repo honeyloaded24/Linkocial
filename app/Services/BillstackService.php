@@ -120,8 +120,7 @@ class BillstackService
         try {
             Log::info("BillStack Virtual Account Request for User {$user->id} ({$bank}):", [
                 'reference' => $reference,
-                'bank' => $bank,
-                'email' => $user->email
+                'bank' => $bank
             ]);
 
             $endpoint = rtrim($this->baseUrl, '/') . '/thirdparty/generateVirtualAccount/';
