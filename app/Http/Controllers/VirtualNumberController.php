@@ -333,6 +333,20 @@ class VirtualNumberController extends Controller
                     'expires_at' => now()->addMinutes(20),
                 ]);
 
+                // Record the wallet debit with the persisted purchase attempt before contacting the provider.
+                // This ensures failed and unresolved purchases have a debit entry to reconcile against.
+                if ($finalCheckCost > 0) {
+                    Transaction::add(
+                        $lockedUser->id,
+                        $finalCheckCost,
+                        'debit',
+                        'virtual_number',
+                        "Virtual Number Purchase ({$serviceName} - {$country})",
+                        'VN-DEBIT-' . $attemptRecord->id,
+                        $attemptRecord->created_at
+                    );
+                }
+
                 DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
@@ -697,18 +711,6 @@ class VirtualNumberController extends Controller
             DB::beginTransaction();
             try {
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-
-                // Record Financial Transaction in clean customer-facing format
-                if ($finalUserCostUsd > 0) {
-                    $serverLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
-                    Transaction::add(
-                        $lockedUser->id, 
-                        $finalUserCostUsd, 
-                        'debit', 
-                        'virtual_number', 
-                        "Virtual Number Purchase ({$serviceName} - {$countryName} [{$serverLabel}])"
-                    );
-                }
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
                 $operatorLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
