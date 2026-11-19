@@ -35,6 +35,13 @@
     .status-pill.failed    { background:#fee2e2; color:#991b1b; }
     .status-pill.refunded  { background:#dbeafe; color:#1e40af; }
     .status-pill.under_review { background:#f3f4f6; color:#374151; }
+
+    [data-theme="dark"] .status-pill.completed, [data-bs-theme="dark"] .status-pill.completed { background:rgba(16,185,129,.18); color:#6ee7b7; }
+    [data-theme="dark"] .status-pill.processing, [data-bs-theme="dark"] .status-pill.processing,
+    [data-theme="dark"] .status-pill.pending, [data-bs-theme="dark"] .status-pill.pending { background:rgba(245,158,11,.18); color:#fcd34d; }
+    [data-theme="dark"] .status-pill.failed, [data-bs-theme="dark"] .status-pill.failed { background:rgba(239,68,68,.18); color:#fca5a5; }
+    [data-theme="dark"] .status-pill.refunded, [data-bs-theme="dark"] .status-pill.refunded { background:rgba(59,130,246,.18); color:#93c5fd; }
+    [data-theme="dark"] .status-pill.under_review, [data-bs-theme="dark"] .status-pill.under_review { background:rgba(148,163,184,.18); color:#cbd5e1; }
 </style>
 @endpush
 
