@@ -88,6 +88,11 @@ class Transaction extends Model
         // post-mutation balance and derive the prior balance from the ledger amount.
         $after = round((float) $user->balance, 4);
 
+        $reference = $ref ?? strtoupper(Str::uuid()->toString());
+        if ($ref !== null && self::where('reference', $ref)->exists()) {
+            throw new \\RuntimeException('Transaction reference already exists: ' . $ref);
+        }
+
         $data = [
             'user_id' => $userId,
             'amount' => $amount,
@@ -96,7 +101,7 @@ class Transaction extends Model
             'balance_before' => round($after - ($type === 'credit' ? $amount : -$amount), 4),
             'balance_after' => $after,
             'description' => $description,
-            'reference' => $ref ?? strtoupper(Str::random(10)),
+            'reference' => $reference,
         ];
 
         if ($createdAt) {
