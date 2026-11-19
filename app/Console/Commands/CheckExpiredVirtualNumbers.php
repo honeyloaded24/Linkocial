@@ -245,13 +245,8 @@ class CheckExpiredVirtualNumbers extends Command
                             'sms_text' => 'Cancellation not confirmed by provider. Refund withheld pending reconciliation.',
                         ]);
                     }
-            } catch (\Throwable $cancelEx) {
-                        Log::warning("Could not cancel order {$order->api_order_id} on provider: " . $cancelEx->getMessage());
-                    }
-                    $this->refundOrder($order);
-                    $this->info("Order {$order->id} was locally expired and refunded.");
                 }
-            } catch (\Exception $e) {
+            } catch (\\Throwable $e) {
                 Log::error('Background VN check failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             }
         }
