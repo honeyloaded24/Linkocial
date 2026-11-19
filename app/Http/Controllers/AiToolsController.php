@@ -193,14 +193,17 @@ class AiToolsController extends Controller
                         $totalNgn,
                         'credit',
                         'ai_tools_refund',
-                        "Refund — failed AI TOOLS order #{$order->order_number}"
+                        "Refund — failed AI TOOLS order #{$order->order_number}",
+                        'REF-AITOOLS-' . $order->id
                     );
                     $order->update([
                         'status'            => AiToolOrder::STATUS_FAILED,
                         'failure_reason'    => $providerResponse['error_message'] ?? 'Provider rejected order.',
                         'provider_response' => $providerResponse,
                     ]);
-                    throw new \RuntimeException($providerResponse['error_message'] ?? 'Provider error. Please try again.');
+                    // Do not throw inside the DB transaction: it would roll back
+                    // the refund and failed-order status along with the purchase.
+                    return $order;
                 }
 
                 // ── Handle provider response ──────────────────────────────────
@@ -223,6 +226,10 @@ class AiToolsController extends Controller
 
                 return $order;
             });
+
+            if ($order->status === AiToolOrder::STATUS_FAILED) {
+                return back()->with('error', $order->failure_reason ?: 'The provider rejected your order. Your wallet has been refunded.');
+            }
 
             return redirect()
                 ->route('ai-tools.order.detail', $order->id)
