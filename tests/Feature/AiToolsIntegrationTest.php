@@ -331,7 +331,7 @@ class AiToolsIntegrationTest extends TestCase
             'provider_product_id' => 'tool-manual-refund',
             'product_name'        => 'Claude Pro 1 Month',
             'idempotency_key'     => 'idemp-manual-2',
-            'status'              => AiToolOrder::STATUS_PROCESSING,
+            'status'              => AiToolOrder::STATUS_UNDER_REVIEW,
             'quantity'            => 1,
             'unit_price_usdt'     => 15.00,
             'total_price_usdt'    => 15.00,
