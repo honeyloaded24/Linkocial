@@ -93,7 +93,7 @@
                                     </span>
                                     <span class="text-muted small" style="font-size: 0.6rem;">{{ $msg->created_at->format('H:i, M d') }}</span>
                                 </div>
-                                <div class="p-3 rounded-4 shadow-sm @if($msg->is_admin) bg-primary text-white @else bg-white border @endif" style="font-size: 0.85rem; line-height: 1.6;">
+                                <div class="p-3 rounded-4 shadow-sm @if($msg->is_admin) bg-primary text-white @else border @endif" style="background: var(--bg-surface);" style="font-size: 0.85rem; line-height: 1.6;">
                                     {!! nl2br(preg_replace('/#([0-9]+)/', '<a href="' . route('hq.orders', ['search' => '$1']) . '" class="fw-bold ' . ($msg->is_admin ? 'text-white' : 'text-primary') . '">#$1</a>', e($msg->message))) !!}
                                 </div>
                             </div>
