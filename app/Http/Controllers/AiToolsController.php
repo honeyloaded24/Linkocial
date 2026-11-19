@@ -9,6 +9,7 @@ use App\Models\AiToolOrderItem;
 use App\Models\AiToolProduct;
 use App\Models\Transaction;
 use App\Services\AlaricApiService;
+use App\Services\PixelSubApiService;
 use App\Services\ProductPricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -119,6 +120,8 @@ class AiToolsController extends Controller
         $providerCostNgn = round($totalUsdt * $exchangeRate, 2);
         $profitNgn       = round($totalNgn - $providerCostNgn, 2);
         $maxTotalUsdt    = round($totalUsdt * 1.05, 8); // 5% tolerance buffer
+        $provider = $product->provider ?: 'alaric';
+        $providerProductId = $provider === 'pixelsub' ? preg_replace('/^pixelsub:/', '', $product->provider_product_id) : $product->provider_product_id;
 
         // ── Balance check ─────────────────────────────────────────────────────
         if ((float) $user->balance < $totalNgn) {
@@ -131,7 +134,7 @@ class AiToolsController extends Controller
                 $unitPriceNgn, $totalNgn,
                 $costUsdt, $totalUsdt,
                 $exchangeRate, $providerCostNgn, $profitNgn,
-                $maxTotalUsdt
+                $maxTotalUsdt, $provider, $providerProductId
             ) {
                 // Generate idempotency key BEFORE any API call; store it with the order
                 $idempotencyKey = (string) Str::uuid();
@@ -141,6 +144,7 @@ class AiToolsController extends Controller
                     'user_id'             => $user->id,
                     'ai_tool_product_id'  => $product->id,
                     'provider_product_id' => $product->provider_product_id,
+                    'provider' => $provider,
                     'product_name'        => $product->name,
                     'idempotency_key'     => $idempotencyKey,
                     'status'              => AiToolOrder::STATUS_PENDING,
@@ -172,12 +176,9 @@ class AiToolsController extends Controller
                 );
 
                 // ── Submit provider order ─────────────────────────────────────
-                $providerResponse = $this->alaricService->createOrder(
-                    $product->provider_product_id,
-                    $qty,
-                    $maxTotalUsdt,
-                    $idempotencyKey
-                );
+                $providerResponse = $provider === 'pixelsub'
+                    ? app(PixelSubApiService::class)->createOrder($providerProductId, $qty, $idempotencyKey)
+                    : $this->alaricService->createOrder($providerProductId, $qty, $maxTotalUsdt, $idempotencyKey);
 
                 if (!($providerResponse['success'] ?? false)) {
                     if (($providerResponse['timed_out'] ?? false) || ($providerResponse['ambiguous'] ?? false)) {
@@ -219,7 +220,8 @@ class AiToolsController extends Controller
                 $providerStatus  = strtoupper((string) ($providerData['status'] ?? 'PROCESSING'));
 
                 $order->update([
-                    'provider_order_id' => $providerOrderId,
+                    'provider_order_id' => $providerOrderId ?: $idempotencyKey,
+                    'provider' => $provider,
                     'provider_status'   => $providerStatus,
                     'provider_response' => $providerData,
                 ]);
@@ -283,7 +285,7 @@ class AiToolsController extends Controller
 
         // Auto-check provider status live if order is still processing
         if (!$order->isTerminal() && !empty($order->provider_order_id)) {
-            $order->livePollStatus(app(AlaricApiService::class));
+            $order->livePollStatus($order->provider === 'pixelsub' ? app(PixelSubApiService::class) : app(AlaricApiService::class));
             $order->load('items');
         }
 
@@ -302,7 +304,7 @@ class AiToolsController extends Controller
 
         // Live-poll the provider if the order is still active
         if (!$order->isTerminal() && !empty($order->provider_order_id)) {
-            $order->livePollStatus($this->alaricService);
+            $order->livePollStatus($order->provider === 'pixelsub' ? app(PixelSubApiService::class) : $this->alaricService);
             $order->load('items');
         }
 
