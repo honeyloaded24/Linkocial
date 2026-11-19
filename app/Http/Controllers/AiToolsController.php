@@ -180,7 +180,7 @@ class AiToolsController extends Controller
                 );
 
                 if (!($providerResponse['success'] ?? false)) {
-                    if ($providerResponse['timed_out'] ?? false) {
+                    if (($providerResponse['timed_out'] ?? false) || ($providerResponse['ambiguous'] ?? false)) {
                         // Timeout — do NOT refund; keep order as processing
                         $order->update([
                             'status'            => AiToolOrder::STATUS_PROCESSING,
