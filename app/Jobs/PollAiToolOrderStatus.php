@@ -133,10 +133,9 @@ class PollAiToolOrderStatus implements ShouldQueue
             if ($amount > 0) {
                 $user->addBalance($amount);
                 $debit = Transaction::where('user_id', $user->id)
+                    ->where('reference', 'DEBIT-AITOOLS-' . $lockedOrder->id)
                     ->where('transaction_type', 'ai_tools')
-                    ->where('description', 'like', 'AI TOOLS purchase:%')
-                    ->where('created_at', '<=', $lockedOrder->created_at)
-                    ->orderByDesc('created_at')
+                    ->where('type', 'debit')
                     ->first();
 
                 Transaction::add(
