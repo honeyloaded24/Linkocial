@@ -186,7 +186,7 @@
             <div class="premium-card p-4 shadow-sm">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold mb-0"><i class="fa-solid fa-rotate-left text-warning me-2"></i> Wallet Recovery Audit</h5>
-                    <span class="badge bg-warning bg-opacity-10 text-dark px-3 py-1 rounded-pill small fw-bold">Audit Status</span>
+                    <span class="badge bg-warning bg-opacity-10 text-main px-3 py-1 rounded-pill small fw-bold">Audit Status</span>
                 </div>
                 
                 <div class="row g-2 mb-3">
