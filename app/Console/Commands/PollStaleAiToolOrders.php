@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Models\\AiToolOrder;
-use App\\Services\\AlaricApiService;
-use Illuminate\\Console\\Command;
-use Illuminate\\Support\\Facades\\Log;
+use App\Models\AiToolOrder;
+use App\Services\AlaricApiService;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
 
 class PollStaleAiToolOrders extends Command
 {
@@ -34,7 +34,7 @@ class PollStaleAiToolOrders extends Command
                 if (!$order->fresh()->last_polled_at || $order->fresh()->last_polled_at->lt(now()->subMinute())) {
                     $order->update(['last_polled_at' => now()]);
                 }
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 Log::warning('PollStaleAiToolOrders: poll failed', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
