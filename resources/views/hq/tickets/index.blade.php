@@ -20,7 +20,7 @@
             <a href="{{ route('hq.tickets', ['status' => ($status === 'all' ? '' : $status)]) }}" class="text-decoration-none h-100 d-block">
                 <div class="premium-card p-3 text-center transition-all h-100 @if($currentStatus == $status || (!$currentStatus && $status == 'all')) border border-primary bg-primary bg-opacity-10 @endif">
                     <h6 class="text-muted small fw-bold text-uppercase mb-1">{{ $label }} Tickets</h6>
-                    <h3 class="fw-bold mb-0 text-dark">{{ number_format($counts[$status]) }}</h3>
+                    <h3 class="fw-bold mb-0 text-main">{{ number_format($counts[$status]) }}</h3>
                 </div>
             </a>
         </div>
