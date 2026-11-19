@@ -3,7 +3,25 @@
 @section('header_title', 'HQ: Site Settings')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-settings .bg-white,
+    [data-bs-theme="dark"] .hq-settings .bg-white {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-settings .accordion-button.bg-light,
+    [data-bs-theme="dark"] .hq-settings .accordion-button.bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-settings .btn.bg-white,
+    [data-bs-theme="dark"] .hq-settings .btn.bg-white {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+    }
+</style>
+<div class="container-fluid hq-settings">
     <!-- Top Stats/Info Row -->
     <div class="row g-4 mb-4">
         <div class="col-xl-12">
