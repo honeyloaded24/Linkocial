@@ -9,10 +9,13 @@
     .ts-wrapper.form-select-lg .ts-control { min-height: 3.5rem; display: flex; align-items: center; }
     .ts-dropdown { border-radius: 0.5rem; border: 0; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); z-index: 2000 !important; }
     .ts-dropdown .ts-dropdown-content { max-height: 250px; }
-    [data-theme="dark"] .ts-control { background: #1e293b !important; color: #f8fafc; border: 1px solid #334155 !important; }
-    [data-theme="dark"] .ts-control input { color: #f8fafc; }
-    [data-theme="dark"] .ts-dropdown { background: #1e293b; color: #f8fafc; border: 1px solid #334155; }
-    [data-theme="dark"] .ts-dropdown .active { background: #334155; color: #fff; }
+    [data-theme="dark"] .ts-control, [data-bs-theme="dark"] .ts-control { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border: 1px solid var(--border-color, #334155) !important; }
+    [data-theme="dark"] .ts-control input, [data-bs-theme="dark"] .ts-control input { color: var(--text-main, #f8fafc) !important; }
+    [data-theme="dark"] .ts-control input::placeholder, [data-bs-theme="dark"] .ts-control input::placeholder { color: var(--text-muted, #94a3b8) !important; }
+    [data-theme="dark"] .ts-dropdown, [data-bs-theme="dark"] .ts-dropdown { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border: 1px solid var(--border-color, #334155) !important; }
+    [data-theme="dark"] .ts-dropdown .option, [data-bs-theme="dark"] .ts-dropdown .option { color: var(--text-main, #f8fafc) !important; }
+    [data-theme="dark"] .ts-dropdown .active, [data-bs-theme="dark"] .ts-dropdown .active { background: #334155 !important; color: #fff !important; }
+    [data-theme="dark"] .ts-dropdown .option:hover, [data-bs-theme="dark"] .ts-dropdown .option:hover { background: #334155 !important; color: #fff !important; }
 
     /* ZuvaPay Server Selection Styles */
     .server-toggle-btn {
