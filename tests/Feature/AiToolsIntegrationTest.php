@@ -682,4 +682,94 @@ class AiToolsIntegrationTest extends TestCase
         });
     }
 
+    public function test_single_quantity_provider_credential_fragments_are_delivered_in_one_field()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'alaric-single-fragment-test',
+            'product_name' => 'Amazon Prime Video - 1 Month',
+            'idempotency_key' => 'idemp-single-fragment-test',
+            'status' => AiToolOrder::STATUS_PROCESSING,
+            'quantity' => 1,
+            'unit_price_usdt' => 1,
+            'total_price_usdt' => 1,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 1500,
+            'total_paid_ngn' => 1500,
+            'provider_cost_ngn' => 1000,
+            'profit_ngn' => 500,
+        ]);
+
+        $order->parseAndDeliverFromProviderResponse([
+            'status' => 'COMPLETED',
+            'items' => ['Email: test@example.com', 'Password: secret123'],
+        ]);
+
+        $this->assertSame(AiToolOrder::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(1, $order->items()->count());
+        $this->assertSame(
+            'Email: test@example.com | Password: secret123',
+            $order->items()->first()->code
+        );
+    }
+
+    public function test_single_quantity_alaric_code_and_details_are_combined_into_one_credential()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'alaric-code-details-test',
+            'product_name' => 'Credential Details Test',
+            'idempotency_key' => 'idemp-code-details-test',
+            'status' => AiToolOrder::STATUS_PROCESSING,
+            'quantity' => 1,
+            'unit_price_usdt' => 1,
+            'total_price_usdt' => 1,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 1500,
+            'total_paid_ngn' => 1500,
+            'provider_cost_ngn' => 1000,
+            'profit_ngn' => 500,
+        ]);
+
+        $order->fulfillWithCredentials([[
+            'code' => 'Account',
+            'details' => 'Email: test@example.com | Password: secret123',
+        ]]);
+
+        $this->assertSame(1, $order->items()->count());
+        $this->assertSame(
+            'Account | Email: test@example.com | Password: secret123',
+            $order->items()->first()->code
+        );
+        $this->assertNull($order->items()->first()->details);
+    }
+
+    public function test_order_summary_uses_saved_product_name_if_catalogue_product_is_missing()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'ai_tool_product_id' => null,
+            'provider_product_id' => 'deleted-product-test',
+            'product_name' => 'Amazon Prime Video - 1 Month',
+            'idempotency_key' => 'idemp-deleted-product-test',
+            'status' => AiToolOrder::STATUS_COMPLETED,
+            'quantity' => 1,
+            'unit_price_usdt' => 1,
+            'total_price_usdt' => 1,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 1500,
+            'total_paid_ngn' => 1000,
+            'provider_cost_ngn' => 750,
+            'profit_ngn' => 250,
+            'completed_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('ai-tools.order.detail', $order->id));
+        $response->assertOk();
+        $response->assertSee('Amazon Prime Video - 1 Month');
+    }
+
 }
