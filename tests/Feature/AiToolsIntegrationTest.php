@@ -538,5 +538,3 @@ class AiToolsIntegrationTest extends TestCase
     }
 
 }
-
-}
