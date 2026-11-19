@@ -57,7 +57,7 @@
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Product</span>
-                            <span class="fw-semibold text-end" style="max-width:60%;">{{ $order->product->name ?? 'N/A' }}</span>
+                            <span class="fw-semibold text-end" style="max-width:60%;">{{ $order->product->name ?? $order->product_name ?? 'Product details unavailable' }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="text-muted">Quantity</span>
