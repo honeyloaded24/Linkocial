@@ -3,7 +3,13 @@
 @section('header_title', 'HQ: Currency & Exchange Rate Settings')
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-currency-settings .bg-light, [data-bs-theme="dark"] .hq-currency-settings .bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-currency-settings .bg-white, [data-bs-theme="dark"] .hq-currency-settings .bg-white { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-currency-settings .btn-light, [data-bs-theme="dark"] .hq-currency-settings .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-currency-settings .input-group-text, [data-bs-theme="dark"] .hq-currency-settings .input-group-text { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-currency-settings .table thead.bg-light, [data-bs-theme="dark"] .hq-currency-settings .table thead.bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; }
+</style><div class="container-fluid hq-currency-settings">
     <!-- Breadcrumb & Back navigation -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div class="d-flex align-items-center gap-3">
