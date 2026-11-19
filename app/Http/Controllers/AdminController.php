@@ -543,6 +543,16 @@ class AdminController extends Controller
                 if ($request->type === 'add') {
                     $user->addBalance($request->amount);
 
+                    // Admin wallet funding intentionally contributes to the user's total deposits.
+                    \\App\\Models\\Payment::create([
+                        'user_id' => $user->id,
+                        'amount' => $request->amount,
+                        'currency' => $user->currency_code ?? 'NGN',
+                        'amount_usd' => $request->amount,
+                        'reference' => $ref,
+                        'status' => 'success',
+                    ]);
+
                 } elseif (!$user->deductBalance($request->amount)) {
                     throw new \RuntimeException('INSUFFICIENT_BALANCE');
                 }
