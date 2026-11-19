@@ -30,48 +30,55 @@ class ProcessSmmOrder implements ShouldQueue
      */
     public function handle(ProviderRouter $router): void
     {
-        // Prevent queue retries from re-submitting already processing, unresolved,
-        // completed, or refunded orders to an external provider.
-        $currentOrder = Order::find($this->order->id);
-        if (!$currentOrder || $currentOrder->status !== 'pending' || $currentOrder->is_refunded) {
+        // Serialize submissions for each order so concurrent queue retries cannot
+        // send duplicate provider requests while the order is still pending.
+        $lock = Cache::lock("smm_order_submission_{$this->order->id}", 120);
+        if (!$lock->get()) {
             return;
         }
 
-        $success = $router->routeOrder($currentOrder, $this->service);
+        try {
+            $currentOrder = Order::find($this->order->id);
+            if (!$currentOrder || $currentOrder->status !== 'pending' || $currentOrder->is_refunded) {
+                return;
+            }
 
-        // Refund the user if all failovers failed AND not already refunded
-        if (!$success) {
-            \Illuminate\Support\Facades\DB::transaction(function () {
-                $lockedOrder = Order::where('id', $this->order->id)
-                    ->lockForUpdate()
-                    ->first();
+            $success = $router->routeOrder($currentOrder, $this->service);
 
-                if (!$lockedOrder || $lockedOrder->is_refunded) {
-                    return;
-                }
+            // Refund only confirmed failures. Ambiguous provider timeouts are
+            // marked unresolved by ProviderRouter and return success-like handling.
+            if (!$success) {
+                \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($currentOrder) {
+                    $lockedOrder = Order::where('id', $currentOrder->id)
+                        ->lockForUpdate()
+                        ->first();
 
-                $lockedUser = User::where('id', $lockedOrder->user_id)
-                    ->lockForUpdate()
-                    ->first();
+                    if (!$lockedOrder || $lockedOrder->is_refunded || $lockedOrder->status !== 'failed') {
+                        return;
+                    }
 
-                if ($lockedUser) {
-                    $refundCharge = (float) $lockedOrder->charge;
-                    $lockedUser->addBalance($refundCharge);
+                    $lockedUser = User::where('id', $lockedOrder->user_id)
+                        ->lockForUpdate()
+                        ->first();
 
-                    \App\Models\Transaction::add(
-                        $lockedUser->id,
-                        $refundCharge,
-                        'credit',
-                        'refund',
-                        "Auto-refund for failed order #{$lockedOrder->id}"
-                    );
+                    if ($lockedUser) {
+                        $refundCharge = (float) $lockedOrder->charge;
+                        $lockedUser->addBalance($refundCharge);
 
-                    $lockedOrder->update([
-                        'status' => 'failed',
-                        'is_refunded' => true
-                    ]);
-                }
-            });
+                        \\App\\Models\\Transaction::add(
+                            $lockedUser->id,
+                            $refundCharge,
+                            'credit',
+                            'refund',
+                            "Auto-refund for failed order #{$lockedOrder->id}"
+                        );
+
+                        $lockedOrder->update(['is_refunded' => true]);
+                    }
+                });
+            }
+        } finally {
+            $lock->release();
         }
     }
 }
