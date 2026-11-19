@@ -49,4 +49,4 @@ jobs:
           touch database/database.sqlite
 
       - name: Run Financial Integrity Regression Tests
-        run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest'
+        run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest|AiToolsIntegrationTest|AffiliateLedgerReconciliationTest'
