@@ -268,11 +268,11 @@
                     </div>
 
                     <!-- Protection Notice -->
-                    <div class="alert alert-info bg-warning bg-opacity-10 border-0 rounded-4 p-3 mb-4 small text-dark">
+                    <div class="alert alert-info bg-warning bg-opacity-10 border-0 rounded-4 p-3 mb-4 small text-main">
                         <div class="d-flex gap-2">
                             <i class="fa-solid fa-shield-halved text-warning fs-5 mt-1"></i>
                             <div>
-                                <strong class="d-block text-dark mb-1">Local Product Protection Guarantee:</strong>
+                                <strong class="d-block text-main mb-1">Local Product Protection Guarantee:</strong>
                                 These rules only apply to wholesale pricing on <strong>external API products</strong>. <strong>Local products</strong> remain strictly protected and keep their manually configured retail prices without unwanted modification or bulk alteration.
                             </div>
                         </div>
@@ -280,7 +280,7 @@
 
                     <!-- Save Action -->
                     <div class="d-flex gap-3">
-                        <button type="submit" class="btn btn-warning px-4 py-3 fw-bold rounded-pill shadow-sm flex-grow-1 text-dark">
+                        <button type="submit" class="btn btn-warning px-4 py-3 fw-bold rounded-pill shadow-sm flex-grow-1">
                             <i class="fa-solid fa-floppy-disk me-2"></i> Save Logs Marketplace Configuration
                         </button>
                     </div>
