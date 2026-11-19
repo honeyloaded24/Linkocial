@@ -115,7 +115,7 @@
                         <i class="fa-solid {{ $cfg['icon'] }} small"></i>
                     </div>
                     <h6 class="fw-bold mb-1" style="font-size: 0.8rem;">{{ $cfg['label'] }}</h6>
-                    <h5 class="fw-bold mb-0 text-dark">{{ number_format($counts[$key] ?? 0) }}</h5>
+                    <h5 class="fw-bold mb-0 text-main">{{ number_format($counts[$key] ?? 0) }}</h5>
                 </div>
             </a>
         </div>
