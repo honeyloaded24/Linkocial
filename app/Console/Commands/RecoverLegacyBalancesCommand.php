@@ -275,9 +275,10 @@ class RecoverLegacyBalancesCommand extends Command
                 }
                 $lockedUser->save();
 
-                // Record in Financial Ledger
-                $ref = 'REC_' . strtoupper(Str::random(10));
-                Transaction::create([
+                // Record the wallet adjustment only when the converted balance differs.
+                if (round((float) $diff, 4) !== 0.0) {
+                    $ref = 'REC_' . strtoupper(Str::random(10));
+                    Transaction::create([
                     'user_id' => $lockedUser->id,
                     'amount' => abs($diff),
                     'type' => $diff >= 0 ? 'credit' : 'debit',
@@ -286,7 +287,8 @@ class RecoverLegacyBalancesCommand extends Command
                     'balance_after' => $newNgn,
                     'description' => "Legacy balance recovery: converted \${$oldUsd} USD to ₦" . number_format($newNgn, 2) . " NGN (Rate: 1 USD = ₦{$rate})",
                     'reference' => $ref,
-                ]);
+                    ]);
+                }
 
                 ActivityLog::log("Recovered legacy wallet balance to NGN", $lockedUser, [
                     'old_balance_usd' => $oldUsd,
