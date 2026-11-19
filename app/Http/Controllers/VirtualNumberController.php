@@ -384,7 +384,7 @@ class VirtualNumberController extends Controller
                         $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
                         $refundUser->addBalance($finalCheckCost);
                             if ($finalCheckCost > 0) {
-                                Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})");
+                                Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})", 'REF-VN-' . $lockedOrder->id, $lockedOrder->created_at);
                             }
 
                     }
