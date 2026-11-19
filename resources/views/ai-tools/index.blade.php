@@ -60,6 +60,16 @@
     [data-bs-theme="dark"] .product-card {
         color: var(--text-main, #f8fafc);
     }
+    [data-theme="dark"] .ai-tools-hero .btn-light,
+    [data-bs-theme="dark"] .ai-tools-hero .btn-light {
+        background: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border: 1px solid var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .ai-tools-hero .btn-light .text-primary,
+    [data-bs-theme="dark"] .ai-tools-hero .btn-light .text-primary {
+        color: #a5b4fc !important;
+    }
 </style>
 @endpush
 
