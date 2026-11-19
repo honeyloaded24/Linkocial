@@ -66,7 +66,8 @@ class GongozconceptApi
             Log::error('Gongozconcept API error: ' . $e->getMessage());
             return [
                 'status' => false,
-                'message' => 'Failed to connect to the VTU provider: ' . $e->getMessage(),
+                'ambiguous' => true,
+                'message' => 'Provider request outcome could not be confirmed. Please check order status before retrying.',
             ];
         }
     }
