@@ -49,7 +49,7 @@ class PaymentController extends Controller
     public function initializeKorapay(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:100', 
+            'amount' => 'required|numeric|min:100',
         ]);
 
         $user = $request->user();
@@ -60,11 +60,26 @@ class PaymentController extends Controller
             return response()->json(['error' => 'The minimum deposit is ₦100.00.'], 422);
         }
 
+        $reference = 'DEP_KORA_' . time() . '_' . $user->id . '_' . bin2hex(random_bytes(6));
+
+        // Create the pending record before calling Korapay. This prevents an immediate
+        // webhook from arriving before Linkocial has a reference/user mapping.
+        \\App\\Models\\Payment::create([
+            'user_id' => $user->id,
+            'amount' => $chargeAmount,
+            'currency' => $chargeCurrency,
+            'amount_usd' => 0,
+            'reference' => $reference,
+            'status' => 'pending',
+            'method' => 'Korapay'
+        ]);
+
         try {
-            $reference = 'DEP_KORA_' . time() . '_' . $user->id;
-            
-            $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+            $koraSecret = \\App\\Models\\Setting::get('korapay_mode', 'test') === 'live'
+                ? \\App\\Models\\Setting::get('korapay_live_secret_key')
+                : \\App\\Models\\Setting::get('korapay_test_secret_key');
             $koraSecret = trim($koraSecret ?? '');
+
             $response = Http::withToken($koraSecret)
                 ->post('https://api.korapay.com/merchant/api/v1/charges/initialize', [
                     'amount' => $chargeAmount,
@@ -81,30 +96,29 @@ class PaymentController extends Controller
 
             $result = $response->json();
 
-            if ($response->successful() && isset($result['status']) && $result['status'] === true) {
-                // Create a pending payment record so webhook/callbacks always match the user
-                \App\Models\Payment::create([
-                    'user_id' => $user->id,
-                    'amount' => $chargeAmount,
-                    'currency' => $chargeCurrency,
-                    'amount_usd' => 0,
-                    'reference' => $reference,
-                    'status' => 'pending',
-                    'method' => 'Korapay'
-                ]);
-
+            if ($response->successful() && isset($result['status']) && $result['status'] === true
+                && !empty($result['data']['checkout_url'])) {
                 return response()->json([
                     'checkout_url' => $result['data']['checkout_url'],
                     'reference' => $reference
                 ]);
             }
 
-            Log::error('Korapay Initialization Failed: ' . $response->body());
-            return response()->json(['error' => 'Failed to initialize Korapay.'], 500);
+            Log::error('Korapay Initialization Failed: ' . $response->body(), ['reference' => $reference]);
+            // Keep pending: do not assume provider did not create a charge.
+            return response()->json([
+                'error' => 'Failed to initialize Korapay. If this persists, contact support.',
+                'reference' => $reference
+            ], 500);
 
-        } catch (\Exception $e) {
-            Log::error('Korapay Exception: ' . $e->getMessage());
-            return response()->json(['error' => 'An error occurred with Korapay.'], 500);
+        } catch (\\Throwable $e) {
+            // Network/timeout outcomes are ambiguous. Keep the reference pending so
+            // provider verification or webhook reconciliation can safely recover it.
+            Log::error('Korapay Initialization Exception: ' . $e->getMessage(), ['reference' => $reference]);
+            return response()->json([
+                'error' => 'Korapay initialization could not be confirmed. Please do not retry immediately.',
+                'reference' => $reference
+            ], 500);
         }
     }
 
