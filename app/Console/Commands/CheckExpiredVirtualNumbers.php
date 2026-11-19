@@ -283,14 +283,14 @@ class CheckExpiredVirtualNumbers extends Command
                         $provider->cancelOrder($order->api_order_id);
                         $this->refundOrder($order);
                         $this->info("Order {$order->id} cancellation confirmed and locally refunded.");
-                    } catch (\\Throwable $cancelEx) {
+                    } catch (\Throwable $cancelEx) {
                         Log::warning("Cancellation was not confirmed for order {$order->api_order_id}; refund withheld: " . $cancelEx->getMessage());
                         $order->update([
                             'sms_text' => 'Cancellation not confirmed by provider. Refund withheld pending reconciliation.',
                         ]);
                     }
                 }
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 Log::error('Background VN check failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             } finally {
                 $actionLock->release();
