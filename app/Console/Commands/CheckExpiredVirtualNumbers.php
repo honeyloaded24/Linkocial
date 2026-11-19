@@ -109,10 +109,26 @@ class CheckExpiredVirtualNumbers extends Command
                     $matchesLocal = function ($item) use ($locked) {
                         $c = (string)($item['country_id'] ?? $item['country'] ?? $item['short_name'] ?? '');
                         $s = (string)($item['service_id'] ?? $item['service'] ?? '');
-                        $countryMatch = empty($c) || $c === (string)$locked->country;
-                        $serviceMatch = empty($s) || $s === (string)$locked->product || strcasecmp($s, (string)$locked->product) === 0;
+                        // Missing identifiers are not evidence of a match or absence.
+                        if ($c === '' || $s === '') {
+                            return false;
+                        }
+                        $countryMatch = $c === (string)$locked->country;
+                        $serviceMatch = $s === (string)$locked->product || strcasecmp($s, (string)$locked->product) === 0;
                         return $countryMatch && $serviceMatch;
                     };
+
+                    // Provider records without sufficient identifiers make absence ambiguous.
+                    $hasAmbiguousActive = collect($smspoolActive)->contains(function ($item) {
+                        return !is_array($item)
+                            || empty($item['country_id'] ?? $item['country'] ?? $item['short_name'] ?? '')
+                            || empty($item['service_id'] ?? $item['service'] ?? '');
+                    });
+                    $hasAmbiguousHistory = collect($smspoolHistory)->contains(function ($item) {
+                        return !is_array($item)
+                            || empty($item['country_id'] ?? $item['country'] ?? $item['short_name'] ?? '')
+                            || empty($item['service_id'] ?? $item['service'] ?? '');
+                    });
 
                     // Check active orders for matching order
                     $matchingActive = null;
@@ -191,6 +207,12 @@ class CheckExpiredVirtualNumbers extends Command
                             Log::warning("Unresolved order {$locked->id} has ambiguous history order {$histId} (status {$histStatus}). Preserving.");
                             return;
                         }
+                    }
+
+                    // Incomplete provider records mean absence cannot be established safely.
+                    if ($hasAmbiguousActive || $hasAmbiguousHistory) {
+                        Log::warning("Unresolved order {$locked->id} retained because provider reconciliation data contains records without reliable country/service identifiers.");
+                        return;
                     }
 
                     // Scenario C: Genuinely absent on both active and history endpoints after > 20 minutes
