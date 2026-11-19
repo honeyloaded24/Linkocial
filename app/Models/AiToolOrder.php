@@ -308,7 +308,7 @@ class AiToolOrder extends Model
      */
     public function livePollStatus(\App\Services\AlaricApiService|\App\Services\PixelSubApiService $providerService): array
     {
-        if (empty($this->provider_order_id) || $this->isTerminal()) {
+        if (empty($this->provider_order_id) || in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_REFUNDED, self::STATUS_FAILED], true)) {
             return ['success' => false, 'message' => 'Order is terminal or missing provider order ID'];
         }
 
