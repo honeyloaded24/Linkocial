@@ -68,6 +68,8 @@
             overflow-x: hidden;
         }
 
+        .theme-navbar { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+
         .premium-card {
             background: #ffffff;
             border: 1px solid var(--border);
@@ -136,8 +138,8 @@
         .logo-dark { display: none !important; }
         .logo-light { display: block !important; }
 
-        [data-theme="dark"] .logo-dark { display: block !important; }
-        [data-theme="dark"] .logo-light { display: none !important; }
+        [data-theme="dark"] .logo-dark, [data-bs-theme="dark"] .logo-dark { display: block !important; }
+        [data-theme="dark"] .logo-light, [data-bs-theme="dark"] .logo-light { display: none !important; }
 
         /* Blog Typography */
         .blog-content h2, .blog-content h3 {
