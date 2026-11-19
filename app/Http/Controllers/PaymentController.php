@@ -183,93 +183,78 @@ class PaymentController extends Controller
     {
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
-        
-        Log::info('Korapay Webhook Received:', [
-            'has_signature' => !empty($signature),
-            'payload_length' => strlen($payload)
-        ]);
 
-        $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live' ? \App\Models\Setting::get('korapay_live_secret_key') : \App\Models\Setting::get('korapay_test_secret_key');
+        $koraSecret = \\App\\Models\\Setting::get('korapay_mode', 'test') === 'live'
+            ? \\App\\Models\\Setting::get('korapay_live_secret_key')
+            : \\App\\Models\\Setting::get('korapay_test_secret_key');
         $koraSecret = trim($koraSecret ?? '');
-        
+
         if (empty($koraSecret)) {
             Log::error('Korapay Webhook: Secret key is not configured.');
             return response()->json(['status' => 'webhook secret unconfigured'], 403);
         }
 
         $expectedSignature = hash_hmac('sha256', $payload, $koraSecret);
-        
-        if (empty($signature) || !hash_equals((string) $expectedSignature, (string) $signature)) {
-            Log::warning('Invalid Korapay Webhook Signature detected.', [
-                'received' => $signature,
-                'expected' => $expectedSignature
-            ]);
+        if (empty($signature) || !hash_equals($expectedSignature, (string) $signature)) {
+            Log::warning('Invalid Korapay Webhook Signature detected.');
             return response()->json(['status' => 'invalid signature'], 400);
         }
 
         $event = json_decode($payload, true);
-
-        if (($event['event'] ?? '') === 'charge.success' && ($event['data']['status'] ?? '') === 'success') {
-            $data = $event['data'];
-            $reference = $data['reference'];
-            $amount = (float) $data['amount'];
-            $currency = strtoupper($data['currency'] ?? 'NGN');
-            $customerEmail = $data['customer']['email'] ?? null;
-
-            // Enforce NGN
-            if ($currency !== 'NGN') {
-                Log::warning("Korapay Webhook: Non-NGN transaction currency {$currency} rejected for reference {$reference}.");
-                return response()->json(['status' => 'unsupported currency'], 400);
-            }
-
-            if (\App\Models\Payment::where('reference', $reference)->where('status', 'success')->exists()) {
-                return response()->json(['status' => 'already processed']);
-            }
-
-            DB::beginTransaction();
-            try {
-            // Require exact reference matching; never credit by email or parsed user ID.
-            $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
-            if (!$payment) {
-                Log::error("Korapay Webhook: No pending payment record for {$reference}");
-                return response()->json(['status' => 'payment not found'], 404);
-            }
-
-            if ($payment->status === 'success') {
-                return response()->json(['status' => 'already processed']);
-            }
-
-            if ($payment->status !== 'pending'
-                || round((float) $payment->amount, 2) !== round($amount, 2)
-                || strtoupper((string) $payment->currency) !== 'NGN') {
-                Log::error("Korapay Webhook: Payment state/amount/currency mismatch for {$reference}", [
-                    'payment_status' => $payment->status,
-                    'expected_amount' => $payment->amount,
-                    'received_amount' => $amount,
-                    'expected_currency' => $payment->currency,
-                    'received_currency' => $currency,
-                ]);
-                return response()->json(['status' => 'payment mismatch'], 400);
-            }
-
-            $user = User::find($payment->user_id);
-            if (!$user) {
-                Log::error("Korapay Webhook: Payment owner missing for {$reference}");
-                return response()->json(['status' => 'user not found'], 404);
-            }
-
-            DB::beginTransaction();
-            try {
-                $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("Failed to process Korapay webhook for {$reference}: " . $e->getMessage());
-                return response()->json(['status' => 'database error'], 500);
-            }
+        if (!is_array($event)) {
+            return response()->json(['status' => 'invalid payload'], 400);
         }
 
-        return response()->json(['status' => 'success']);
+        if (($event['event'] ?? '') !== 'charge.success' || ($event['data']['status'] ?? '') !== 'success') {
+            return response()->json(['status' => 'event ignored']);
+        }
+
+        $data = $event['data'];
+        $reference = trim((string) ($data['reference'] ?? ''));
+        $amount = round((float) ($data['amount'] ?? 0), 2);
+        $currency = strtoupper((string) ($data['currency'] ?? ''));
+
+        if ($reference === '' || $amount <= 0 || $currency !== 'NGN') {
+            Log::warning('Korapay Webhook: Invalid reference, amount, or currency.', ['reference' => $reference, 'amount' => $amount, 'currency' => $currency]);
+            return response()->json(['status' => 'invalid payment data'], 400);
+        }
+
+        $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
+        if (!$payment) {
+            Log::error("Korapay Webhook: No initialized payment found for {$reference}");
+            return response()->json(['status' => 'payment not found'], 404);
+        }
+
+        if ($payment->status === 'success') {
+            return response()->json(['status' => 'already processed']);
+        }
+
+        if ($payment->status !== 'pending'
+            || round((float) $payment->amount, 2) !== $amount
+            || strtoupper((string) $payment->currency) !== $currency) {
+            Log::error("Korapay Webhook: Payment state/amount/currency mismatch for {$reference}", [
+                'payment_status' => $payment->status,
+                'expected_amount' => $payment->amount,
+                'received_amount' => $amount,
+                'expected_currency' => $payment->currency,
+                'received_currency' => $currency,
+            ]);
+            return response()->json(['status' => 'payment mismatch'], 400);
+        }
+
+        $user = User::find($payment->user_id);
+        if (!$user) {
+            Log::error("Korapay Webhook: Payment owner missing for {$reference}");
+            return response()->json(['status' => 'user not found'], 404);
+        }
+
+        try {
+            $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
+            return response()->json(['status' => 'success']);
+        } catch (\\Throwable $e) {
+            Log::error("Failed to process Korapay webhook for {$reference}: " . $e->getMessage());
+            return response()->json(['status' => 'processing failed'], 500);
+        }
     }
 
     /**
