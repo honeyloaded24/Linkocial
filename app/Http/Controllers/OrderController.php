@@ -224,7 +224,7 @@ class OrderController extends Controller
                     'link' => $link,
                     'quantity' => $quantity,
                     'charge' => $charge,
-                    'status' => 'processing',
+                    'status' => 'pending',
                 ]);
 
                 DB::commit();
