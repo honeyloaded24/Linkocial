@@ -3,7 +3,15 @@
 @section('header_title', 'AI TOOLS — My Orders')
 
 @section('content')
-<div class="container-fluid px-3 px-md-4 py-3">
+<div class="container-fluid px-3 px-md-4 py-3 ai-tools-history">
+<style>
+    [data-theme="dark"] .ai-tools-history .badge.bg-light,
+    [data-bs-theme="dark"] .ai-tools-history .badge.bg-light {
+        background: rgba(255,255,255,0.08) !important;
+        color: var(--text-main, #f8fafc) !important;
+    }
+</style>
+
 
     @php
         $myAiOrdersCount = $orders->total() ?? $orders->count();
