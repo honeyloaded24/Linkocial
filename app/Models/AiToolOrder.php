@@ -194,13 +194,34 @@ class AiToolOrder extends Model
                         ?? (isset($item['email'], $item['password']) ? "{$item['email']} | {$item['password']}" : null)
                         ?? (isset($item['username'], $item['password']) ? "{$item['username']} | {$item['password']}" : null);
 
+                    $providerDetails = $item['details'] ?? null;
+                    // Providers sometimes split one credential into a code field and
+                    // a details field. Deliver both in the same copyable credential.
+                    if (is_string($providerDetails) && trim($providerDetails) !== '') {
+                        $code = trim((string) $code);
+                        $providerDetails = trim($providerDetails);
+                        $code = $code !== '' ? $code . ' | ' . $providerDetails : $providerDetails;
+                    } elseif (is_array($providerDetails)) {
+                        $detailParts = [];
+                        foreach ($providerDetails as $key => $value) {
+                            if (is_scalar($value) && trim((string) $value) !== '') {
+                                $detailParts[] = is_string($key) ? ucfirst(str_replace('_', ' ', $key)) . ': ' . trim((string) $value) : trim((string) $value);
+                            }
+                        }
+                        if ($detailParts) {
+                            $code = trim((string) $code);
+                            $code = $code !== '' ? $code . ' | ' . implode(' | ', $detailParts) : implode(' | ', $detailParts);
+                        }
+                    }
+
                     if (!$code) {
                         $code = is_scalar($item) ? (string) $item : json_encode($item);
                     }
 
-                    $details = $item;
+                    // Do not render credential fragments a second time in a separate box.
+                    $details = null;
                     if ($instructions) {
-                        $details['instructions'] = $instructions;
+                        $details = ['instructions' => $instructions];
                     }
                 }
 
@@ -264,6 +285,23 @@ class AiToolOrder extends Model
         }
 
         if (!empty($items)) {
+            // If a provider returns several fragments for a single purchased unit,
+            // combine them into one credential field. Multiple purchased units remain
+            // separate items (quantity > 1).
+            if ((int) $this->quantity === 1 && is_array($items) && array_is_list($items) && count($items) > 1) {
+                $items = [implode(' | ', array_map(function ($fragment) {
+                    if (is_array($fragment)) {
+                        $parts = [];
+                        foreach ($fragment as $value) {
+                            if (is_scalar($value) && trim((string) $value) !== '') {
+                                $parts[] = trim((string) $value);
+                            }
+                        }
+                        return implode(' | ', $parts);
+                    }
+                    return is_scalar($fragment) ? trim((string) $fragment) : json_encode($fragment);
+                }, $items))];
+            }
             $this->fulfillWithCredentials($items);
             return true;
         }
