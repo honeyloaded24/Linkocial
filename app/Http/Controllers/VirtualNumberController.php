@@ -369,6 +369,12 @@ class VirtualNumberController extends Controller
                         $lockedOrder->update(['status' => 'failed', 'sms_text' => 'Rejected: Provider spending ceiling would violate minimum profit margins.']);
                         $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
                         $refundUser->addBalance($finalCheckCost);
+                            if ($finalCheckCost > 0) {
+                                Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})");
+                            }
+                        if ($finalCheckCost > 0) {
+                            Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', 'Refund for Virtual Number Purchase (Rejected: minimum profit protection)');
+                        }
                     }
                     DB::commit();
                 } catch (\Exception $ex) {
