@@ -793,16 +793,21 @@ class AdminController extends Controller
                     $order->is_refunded = false;
                 }
 
-                $order->status = 'processing';
+                // ProcessSmmOrder only accepts pending orders. Keep the order
+                // pending so the dispatched job can actually submit it.
+                $order->status = 'pending';
                 $order->error_log = null;
                 $order->save();
 
-                \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
                 return $order;
             });
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+
+        // Dispatch after the transaction commits so the job sees the final
+        // re-debit and pending state.
+        \App\Jobs\ProcessSmmOrder::dispatch($result, $result->service);
 
         \App\Models\ActivityLog::log("Resubmitted order to provider", $result);
         return back()->with('success', "Order #{$id} has been re-queued for processing.");
