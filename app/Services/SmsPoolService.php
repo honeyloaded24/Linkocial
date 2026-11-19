@@ -280,17 +280,31 @@ class SmsPoolService
      */
     public function cancelOrder(string $orderId): array
     {
-        $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/sms/cancel", [
-            'orderid' => $orderId,
-            'key' => $this->apiKey,
-        ]);
+        try {
+            $response = Http::asForm()->timeout(15)->post("{$this->baseUrl}/sms/cancel", [
+                'orderid' => $orderId,
+                'key' => $this->apiKey,
+            ]);
+        } catch (\\Throwable $e) {
+            Log::warning('SMSPool cancellation outcome is unknown', [
+                'orderid' => $orderId,
+                'error' => $e->getMessage(),
+            ]);
+            throw new \\RuntimeException('SMSPool cancellation could not be confirmed. Do not refund until provider status is verified.', 0, $e);
+        }
 
         if ($response->failed()) {
             Log::error('SMSPool cancelOrder failed', ['orderid' => $orderId, 'response' => $response->body()]);
             $this->handleFailedResponse($response, 'Failed to cancel order on SMSPool');
         }
 
-        return $response->json();
+        $data = $response->json();
+        if (!is_array($data) || !array_key_exists('success', $data) || (int) $data['success'] !== 1) {
+            Log::warning('SMSPool cancellation was not confirmed', ['orderid' => $orderId, 'response' => $data]);
+            throw new \\RuntimeException($data['message'] ?? 'SMSPool did not confirm cancellation. Do not refund until provider status is verified.');
+        }
+
+        return $data;
     }
 
     /**
