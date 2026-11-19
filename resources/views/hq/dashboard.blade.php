@@ -252,7 +252,7 @@
                         </td>
                         <td class="text-nowrap">
                             @if($order->user)
-                                <a href="{{ route('hq.users.show', $order->user->id) }}" class="text-decoration-none text-dark">
+                                <a href="{{ route('hq.users.show', $order->user->id) }}" class="text-decoration-none text-main">
                                     <div class="fw-bold" style="font-size: 0.82rem;">
                                         {{ trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')) ?: $order->user->username }}
                                     </div>
@@ -272,7 +272,7 @@
                                 </small>
                             @endif
                         </td>
-                        <td class="fw-bold text-dark text-nowrap">
+                        <td class="fw-bold text-main text-nowrap">
                             <span style="font-size: 0.85rem;">{{ money($order->charge) }}</span>
                         </td>
                         <td class="text-nowrap">
@@ -295,7 +295,7 @@
                                     <i class="fa-solid fa-spinner fa-spin me-1"></i>IN PROGRESS
                                 </span>
                             @elseif($isPending)
-                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1 fw-bold shadow-sm" style="font-size: 0.65rem;">
+                                <span class="badge bg-warning text-main rounded-pill px-2 py-1 fw-bold shadow-sm" style="font-size: 0.65rem;">
                                     <i class="fa-solid fa-clock me-1"></i>PENDING
                                 </span>
                             @elseif($isRefunded)
