@@ -140,7 +140,7 @@ class AiToolOrder extends Model
      */
     public function fulfillWithCredentials(string|array $credentials, ?string $instructions = null): bool
     {
-        return \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($credentials, $instructions) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($credentials, $instructions) {
             // Serialize fulfillment against refunds. A refund may win while a provider
             // poll is in flight; never deliver credentials after the wallet is refunded.
             $lockedOrder = self::query()->lockForUpdate()->findOrFail($this->id);
