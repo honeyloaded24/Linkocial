@@ -69,6 +69,10 @@ class AdminVtuController extends Controller
                 return back()->with('error', 'This order has already been refunded.');
             }
 
+            if ($order->status !== 'failed') {
+                return back()->with('error', 'Only provider-confirmed failed orders can be manually refunded. Processing or completed orders must be reconciled first.');
+            }
+
             $user = User::lockForUpdate()->findOrFail($order->user_id);
 
             // Add funds back to user atomically
