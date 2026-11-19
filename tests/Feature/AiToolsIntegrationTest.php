@@ -482,7 +482,9 @@ class AiToolsIntegrationTest extends TestCase
             return str_contains($event->command, 'ai-tools:poll-stale-orders')
                 && $event->expression === '* * * * *';
         }));
-        public function test_pixelsub_purchase_uses_unified_wallet_and_delivers_credentials()
+    }
+
+    public function test_pixelsub_purchase_uses_unified_wallet_and_delivers_credentials()
     {
         Queue::fake();
 
