@@ -598,6 +598,36 @@ class VirtualNumberController extends Controller
 
             // Extract order details
             $apiOrderId = $buyResponse['order_id'] ?? null;
+            if ($apiOrderId && empty($buyResponse['phonenumber'])) {
+                // Activation ID confirms provider-side purchase, but without a phone
+                // number the activation cannot safely be presented as usable.
+                try {
+                    DB::transaction(function () use ($attemptRecord, $apiOrderId, $buyResponse, $server, $country, $productId) {
+                        $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if ($lockedOrder && $lockedOrder->status === 'processing') {
+                            $lockedOrder->update([
+                                'api_order_id' => (string) $apiOrderId,
+                                'server' => $server,
+                                'country' => (string) $country,
+                                'product' => (string) $productId,
+                                'status' => 'unresolved',
+                                'sms_text' => 'Provider confirmed activation ID but omitted phone number. Response preserved for manual reconciliation: ' . substr(json_encode($buyResponse) ?: 'unavailable', 0, 500),
+                            ]);
+                        }
+                    });
+                } catch (\\Throwable $recoveryEx) {
+                    Log::critical('Could not preserve provider activation with missing phone number', [
+                        'attempt_id' => $attemptRecord->id,
+                        'provider_order_id' => $apiOrderId,
+                        'error' => $recoveryEx->getMessage(),
+                    ]);
+                }
+                return response()->json([
+                    'error' => 'The provider confirmed the activation but returned incomplete details. Your payment has been retained while this order is verified.',
+                    'order_id' => $attemptRecord->id ?? null,
+                    'status' => 'unresolved',
+                ], 500);
+            }
             $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
                 ? $buyResponse['phonenumber'] 
                 : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
