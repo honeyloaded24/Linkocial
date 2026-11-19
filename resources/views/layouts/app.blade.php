@@ -745,12 +745,21 @@
         const toggleSwitch = document.querySelector('#checkbox');
         const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
+        const mobileThemeToggle = document.querySelector('#mobileThemeToggle');
+
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme);
             document.documentElement.setAttribute('data-bs-theme', theme);
             if (toggleSwitch) {
                 toggleSwitch.checked = theme === 'light';
                 toggleSwitch.setAttribute('aria-label', 'Switch to ' + (theme === 'light' ? 'dark' : 'light') + ' mode');
+            }
+            if (mobileThemeToggle) {
+                mobileThemeToggle.innerHTML = theme === 'dark'
+                    ? '<i class="fa-solid fa-sun fs-5"></i>'
+                    : '<i class="fa-solid fa-moon fs-5"></i>';
+                mobileThemeToggle.setAttribute('aria-label', 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode');
+                mobileThemeToggle.setAttribute('title', 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode');
             }
         }
 
@@ -767,6 +776,15 @@
 
         if (toggleSwitch) {
             toggleSwitch.addEventListener('change', switchTheme, false);
+        }
+
+        if (mobileThemeToggle) {
+            mobileThemeToggle.addEventListener('click', function() {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || initialTheme;
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(nextTheme);
+                localStorage.setItem('theme', nextTheme);
+            });
         }
 
         // Follow OS preference only until the user explicitly selects a theme.
