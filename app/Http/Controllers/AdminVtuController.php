@@ -85,7 +85,8 @@ class AdminVtuController extends Controller
                 'credit',
                 'vtu_refund',
                 'Refund for VTU order #' . $order->id,
-                'REF-VTU-' . $order->id . '-' . time()
+                'REF-VTU-' . $order->id . '-' . time(),
+                $order->created_at
             );
 
             $order->status = 'refunded';
