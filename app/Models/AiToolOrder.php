@@ -28,6 +28,7 @@ class AiToolOrder extends Model
         'order_number',
         'idempotency_key',
         'provider_order_id',
+        'provider',
         'provider_product_id',
         'product_name',
         'status',
@@ -293,14 +294,14 @@ class AiToolOrder extends Model
     /**
      * Live poll the provider for order status & delivered credentials.
      */
-    public function livePollStatus(\App\Services\AlaricApiService $alaricService): array
+    public function livePollStatus(\App\Services\AlaricApiService|\App\Services\PixelSubApiService $providerService): array
     {
         if (empty($this->provider_order_id) || $this->isTerminal()) {
             return ['success' => false, 'message' => 'Order is terminal or missing provider order ID'];
         }
 
         try {
-            $result = $alaricService->getOrder($this->provider_order_id);
+            $result = $providerService->getOrder($this->provider_order_id);
             if (!($result['success'] ?? false)) {
                 return $result;
             }
