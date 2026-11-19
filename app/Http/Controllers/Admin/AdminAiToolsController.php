@@ -211,6 +211,9 @@ class AdminAiToolsController extends Controller
         }
 
         $order = AiToolOrder::findOrFail($id);
+        if (!in_array($order->status, [AiToolOrder::STATUS_FAILED, AiToolOrder::STATUS_UNDER_REVIEW], true)) {
+            return back()->with('error', 'Only failed or under-review orders can be manually refunded. Completed and processing orders cannot be refunded manually.');
+        }
         $reason = $request->input('reason', 'Refunded by administrator');
 
         if ($order->refundCustomer($reason)) {
