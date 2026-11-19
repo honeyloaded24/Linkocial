@@ -305,12 +305,12 @@ class PaymentController extends Controller
         DB::transaction(function () use ($user, $ngnAmount, $originalAmount, $currencyCode, $rateUsed, $reference, $method, $fee) {
             // Lock an existing pending payment row. Every payment credit must have
             // a pre-created unique reference so concurrent webhook deliveries serialize.
-            $lockedPayment = \\App\\Models\\Payment::where('reference', $reference)
+            $lockedPayment = \App\\Models\\Payment::where('reference', $reference)
                 ->lockForUpdate()
                 ->first();
 
             if (!$lockedPayment) {
-                throw new \\RuntimeException("Payment record missing for reference {$reference}");
+                throw new \RuntimeException("Payment record missing for reference {$reference}");
             }
 
             if ($lockedPayment->status === 'success') {
@@ -318,7 +318,7 @@ class PaymentController extends Controller
             }
 
             if ($lockedPayment->status !== 'pending' || (int) $lockedPayment->user_id !== (int) $user->id) {
-                throw new \\RuntimeException("Payment state or owner mismatch for reference {$reference}");
+                throw new \RuntimeException("Payment state or owner mismatch for reference {$reference}");
             }
 
             // Mark the locked pending payment successful within the same transaction
@@ -594,7 +594,7 @@ class PaymentController extends Controller
         try {
             // Create a unique pending payment before crediting so the processor can
             // lock this row and serialize duplicate webhook deliveries.
-            \\App\\Models\\Payment::firstOrCreate(
+            \App\\Models\\Payment::firstOrCreate(
                 ['reference' => $ref],
                 [
                     'user_id' => $user->id,
