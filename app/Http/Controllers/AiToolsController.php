@@ -155,8 +155,11 @@ class AiToolsController extends Controller
                     'max_total_usdt'      => $maxTotalUsdt,
                 ]);
 
-                // Deduct wallet atomically (uses DB decrement under the hood)
-                $user->deductBalance($totalNgn);
+                // Deduct wallet atomically and fail closed if a concurrent purchase
+                // consumed the balance after the earlier display/check.
+                if (!$user->deductBalance($totalNgn)) {
+                    throw new \RuntimeException('Insufficient wallet balance. Please fund your account and try again.');
+                }
 
                 // Record debit in transaction ledger
                 $debitTx = Transaction::add(
