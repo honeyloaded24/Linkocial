@@ -80,18 +80,13 @@ class VtuController extends Controller
             $response = $this->vtuApi->buyAirtime($request->network, $baseAmountNgn, $request->phone);
 
             if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
-                $order->update([
-                    'status' => 'completed',
-                    'api_reference' => $response['id'] ?? null,
-                    'api_response' => json_encode($response),
-                ]);
+                if (!$this->markVtuOrderCompleted($order, $response)) {
+                    return back()->with('error', 'The provider confirmed success, but the order was already reconciled. Please check order history.');
+                }
                 return back()->with('success', 'Airtime purchased successfully!');
             } else {
                 if (!empty($response['ambiguous'])) {
-                    $order->update([
-                        'status' => 'processing',
-                        'api_response' => json_encode($response),
-                    ]);
+                    $this->markVtuOrderProcessing($order, $response);
                     return back()->with('error', 'Your airtime purchase is still being verified. Your wallet has not been refunded to prevent a duplicate purchase. Please check your order history before retrying.');
                 }
 
@@ -103,10 +98,7 @@ class VtuController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('VTU Airtime API Exception: ' . $e->getMessage());
-            $order->update([
-                'status' => 'processing',
-                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
-            ]);
+            $this->markVtuOrderProcessing($order, ['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']);
             return back()->with('error', 'Your airtime purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
@@ -166,18 +158,13 @@ class VtuController extends Controller
             $response = $this->vtuApi->buyData($request->network, $request->plan, $request->phone);
 
             if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
-                $order->update([
-                    'status' => 'completed',
-                    'api_reference' => $response['id'] ?? null,
-                    'api_response' => json_encode($response),
-                ]);
+                if (!$this->markVtuOrderCompleted($order, $response)) {
+                    return back()->with('error', 'The provider confirmed success, but the order was already reconciled. Please check order history.');
+                }
                 return back()->with('success', 'Data purchased successfully!');
             } else {
                 if (!empty($response['ambiguous'])) {
-                    $order->update([
-                        'status' => 'processing',
-                        'api_response' => json_encode($response),
-                    ]);
+                    $this->markVtuOrderProcessing($order, $response);
                     return back()->with('error', 'Your data purchase is still being verified. Your wallet has not been refunded to prevent a duplicate purchase. Please check your order history before retrying.');
                 }
 
@@ -189,10 +176,7 @@ class VtuController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('VTU Data API Exception: ' . $e->getMessage());
-            $order->update([
-                'status' => 'processing',
-                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
-            ]);
+            $this->markVtuOrderProcessing($order, ['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']);
             return back()->with('error', 'Your data purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
@@ -406,16 +390,14 @@ class VtuController extends Controller
             if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
                 $token = $response['token'] ?? 'Check history or SMS';
                 
-                $order->update([
-                    'status' => 'completed',
-                    'api_reference' => $response['id'] ?? null,
-                    'api_response' => json_encode($response),
-                ]);
+                if (!$this->markVtuOrderCompleted($order, $response)) {
+                    return back()->with('error', 'The provider confirmed success, but the order was already reconciled. Please check order history.');
+                }
                 
                 return back()->with('success', "Electricity payment successful! Token: $token");
             } else {
                 if (!empty($response['ambiguous'])) {
-                    $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
+                    $this->markVtuOrderProcessing($order, $response);
                     return back()->with('error', 'Your electricity payment is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
                 }
                 $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Electricity payment");
@@ -425,10 +407,7 @@ class VtuController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('VTU Electricity API Exception: ' . $e->getMessage());
-            $order->update([
-                'status' => 'processing',
-                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
-            ]);
+            $this->markVtuOrderProcessing($order, ['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']);
             return back()->with('error', 'Your electricity payment is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
@@ -524,16 +503,14 @@ class VtuController extends Controller
             $response = $this->vtuApi->buyCable($request->cablename, $request->cableplan, $request->smart_card_number);
 
             if (isset($response['id']) || (isset($response['status']) && $response['status'] == 'successful')) {
-                $order->update([
-                    'status' => 'completed',
-                    'api_reference' => $response['id'] ?? null,
-                    'api_response' => json_encode($response),
-                ]);
+                if (!$this->markVtuOrderCompleted($order, $response)) {
+                    return back()->with('error', 'The provider confirmed success, but the order was already reconciled. Please check order history.');
+                }
                 
                 return back()->with('success', "Cable subscription successful!");
             } else {
                 if (!empty($response['ambiguous'])) {
-                    $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
+                    $this->markVtuOrderProcessing($order, $response);
                     return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
                 }
                 $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Cable subscription");
@@ -543,15 +520,53 @@ class VtuController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('VTU Cable API Exception: ' . $e->getMessage());
-            $order->update([
-                'status' => 'processing',
-                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
-            ]);
+            $this->markVtuOrderProcessing($order, ['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']);
             return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
 
     /** Refund only once, with the order state, wallet balance, and ledger entry committed atomically. */
+    /**
+     * Persist provider success without allowing a delayed API response to
+     * overwrite a webhook-confirmed refund or other terminal state.
+     */
+    protected function markVtuOrderCompleted(VtuOrder $order, array $response): bool
+    {
+        return DB::transaction(function () use ($order, $response) {
+            $lockedOrder = VtuOrder::lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->status !== 'processing') {
+                return false;
+            }
+
+            $lockedOrder->update([
+                'status' => 'completed',
+                'api_reference' => $response['id'] ?? null,
+                'api_response' => json_encode($response),
+            ]);
+
+            return true;
+        });
+    }
+
+    /**
+     * Persist an ambiguous provider result only while the order remains
+     * processing; never regress a webhook-reconciled terminal status.
+     */
+    protected function markVtuOrderProcessing(VtuOrder $order, array $response): bool
+    {
+        return DB::transaction(function () use ($order, $response) {
+            $lockedOrder = VtuOrder::lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->status !== 'processing') {
+                return false;
+            }
+
+            $lockedOrder->api_response = json_encode($response);
+            $lockedOrder->save();
+
+            return true;
+        });
+    }
+
     protected function refundFailedVtuOrder(VtuOrder $order, $user, float $amount, Transaction $debitTx, array $response, string $description): bool
     {
         return DB::transaction(function () use ($order, $user, $amount, $debitTx, $response, $description) {
