@@ -17,6 +17,7 @@ class AiToolProduct extends Model
 
     protected $fillable = [
         'provider_product_id',
+        'provider',
         'category_id',
         'name',
         'slug',
