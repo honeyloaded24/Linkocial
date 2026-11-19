@@ -509,3 +509,10 @@ input:checked+.slider:before {
 [data-theme="dark"] .btn-close, [data-bs-theme="dark"] .btn-close {
     filter: invert(1) grayscale(100%) brightness(200%);
 }
+
+
+/* Theme-aware Bootstrap utility surfaces */
+[data-theme="dark"] .btn-light, [data-bs-theme="dark"] .btn-light { background-color: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .input-group-text.bg-light, [data-bs-theme="dark"] .input-group-text.bg-light { background-color: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .table-light, [data-bs-theme="dark"] .table-light { --bs-table-bg: var(--bg-surface); --bs-table-color: var(--text-main); --bs-table-border-color: var(--border-color); }
+[data-theme="dark"] .table-light th, [data-bs-theme="dark"] .table-light th { background-color: var(--bg-surface) !important; color: var(--text-muted) !important; }
