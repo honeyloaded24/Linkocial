@@ -72,19 +72,19 @@
 
                 <div class="row g-3 mt-auto pt-3 border-top">
                     <div class="col-6 col-sm-4">
-                        <div class="p-3 rounded-3 bg-light">
+                        <div class="p-3 rounded-3" style="background: var(--bg-muted);">
                             <small class="text-muted d-block" style="font-size: 0.72rem;">UNIT PRICE</small>
                             <span class="fw-extrabold text-primary fs-5">{{ money($product->effective_selling_price) }}</span>
                         </div>
                     </div>
                     <div class="col-6 col-sm-4">
-                        <div class="p-3 rounded-3 bg-light">
+                        <div class="p-3 rounded-3" style="background: var(--bg-muted);">
                             <small class="text-muted d-block" style="font-size: 0.72rem;">DELIVERY MODE</small>
-                            <span class="fw-bold text-dark">{{ ucfirst($product->delivery_type) }}</span>
+                            <span class="fw-bold text-main">{{ ucfirst($product->delivery_type) }}</span>
                         </div>
                     </div>
                     <div class="col-12 col-sm-4">
-                        <div class="p-3 rounded-3 bg-light">
+                        <div class="p-3 rounded-3" style="background: var(--bg-muted);">
                             <small class="text-muted d-block" style="font-size: 0.72rem;">AVAILABLE STOCK</small>
                             <span class="fw-bold {{ $product->in_stock ? 'text-success' : 'text-danger' }}">
                                 @if(!$product->in_stock)
@@ -136,7 +136,7 @@
 
                     <div class="d-flex justify-content-between align-items-center py-2 mt-2 mb-3">
                         <span class="text-muted">Your Wallet Balance</span>
-                        <span class="fw-bold text-dark">{{ money($user->balance ?? 0) }}</span>
+                        <span class="fw-bold text-main">{{ money($user->balance ?? 0) }}</span>
                     </div>
 
                     <div id="showBalanceAlert" class="alert alert-warning small {{ (($user->balance ?? 0) < $product->effective_selling_price) ? '' : 'd-none' }} mb-3">
