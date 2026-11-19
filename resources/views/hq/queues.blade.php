@@ -3,7 +3,27 @@
 @section('header_title', 'Queue Monitoring')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-queues .bg-light,
+    [data-bs-theme="dark"] .hq-queues .bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-queues .bg-white,
+    [data-bs-theme="dark"] .hq-queues .bg-white {
+        background-color: var(--bg-body, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-queues .btn-light,
+    [data-bs-theme="dark"] .hq-queues .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-queues">
     <div class="row g-4 mb-4">
         <!-- Redis Status -->
         <div class="col-12 col-md-6">
