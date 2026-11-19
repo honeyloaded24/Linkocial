@@ -343,6 +343,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const labels = {!! json_encode($chartData['labels']) !!};
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+    const chartTextColor = isDarkTheme ? '#cbd5e1' : '#475569';
+    const chartGridColor = isDarkTheme ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)';
     
     // Growth Chart (Orders & Users)
     const growthCtx = document.getElementById('growthChart').getContext('2d');
@@ -373,11 +376,11 @@
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom' }
+                legend: { position: 'bottom', labels: { color: chartTextColor } }
             },
             scales: {
-                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } },
-                x: { grid: { display: false } }
+                y: { beginAtZero: true, grid: { color: chartGridColor }, ticks: { color: chartTextColor } },
+                x: { grid: { display: false }, ticks: { color: chartTextColor } }
             }
         }
     });
