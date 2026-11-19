@@ -453,8 +453,15 @@ class AiToolsIntegrationTest extends TestCase
             'max_quantity' => 1,
         ]);
 
-        Http::fake(function ($request) {
-            throw new \Illuminate\Http\Client\ConnectionException('Connection reset after submission');
+        $this->mock(AlaricApiService::class, function ($mock) {
+            $mock->shouldReceive('createOrder')
+                ->once()
+                ->andReturn([
+                    'success' => false,
+                    'timed_out' => false,
+                    'ambiguous' => true,
+                    'error_message' => 'Provider communication failed. The order outcome is unknown.',
+                ]);
         });
 
         $response = $this->actingAs($user)->post('/ai-tools/purchase', [
