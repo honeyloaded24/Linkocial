@@ -292,6 +292,16 @@ class AiToolOrder extends Model
                 return false;
             }
 
+            // Failed provider submissions are already refunded in the purchase flow.
+            // Protect against a second admin refund even if the order status was not
+            // transitioned to REFUNDED, using the idempotent refund ledger reference.
+            if (Transaction::where('reference', 'REF-AITOOLS-' . $order->id)
+                ->where('transaction_type', 'ai_tools_refund')
+                ->where('type', 'credit')
+                ->exists()) {
+                return false;
+            }
+
             $user = User::query()->lockForUpdate()->find($order->user_id);
             if ($user && (float) $order->total_paid_ngn > 0) {
                 $user->addBalance((float) $order->total_paid_ngn);
