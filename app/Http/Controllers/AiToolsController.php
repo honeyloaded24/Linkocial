@@ -181,12 +181,14 @@ class AiToolsController extends Controller
 
                 if (!($providerResponse['success'] ?? false)) {
                     if (($providerResponse['timed_out'] ?? false) || ($providerResponse['ambiguous'] ?? false)) {
-                        // Timeout — do NOT refund; keep order as processing
+                        // Provider may have accepted the order, but we have no provider
+                        // order ID to poll. Do not claim automatic processing or issue
+                        // an unsafe refund; flag for admin reconciliation.
                         $order->update([
-                            'status'            => AiToolOrder::STATUS_PROCESSING,
+                            'status'            => AiToolOrder::STATUS_UNDER_REVIEW,
+                            'failure_reason'    => 'Provider submission outcome is ambiguous. Reconcile with provider before fulfillment or refund.',
                             'provider_response' => $providerResponse,
                         ]);
-                        PollAiToolOrderStatus::dispatch($order)->delay(now()->addSeconds(10));
                         return $order;
                     }
 
