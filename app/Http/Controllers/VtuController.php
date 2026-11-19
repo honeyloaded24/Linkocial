@@ -87,13 +87,19 @@ class VtuController extends Controller
                 ]);
                 return back()->with('success', 'Airtime purchased successfully!');
             } else {
-                // Handle failure/refund in NGN
+                if (!empty($response['ambiguous'])) {
+                    $order->update([
+                        'status' => 'processing',
+                        'api_response' => json_encode($response),
+                    ]);
+                    return back()->with('error', 'Your airtime purchase is still being verified. Your wallet has not been refunded to prevent a duplicate purchase. Please check your order history before retrying.');
+                }
+
+                // Refund only provider-confirmed failures.
                 $order->update([
                     'status' => 'refunded',
                     'api_response' => json_encode($response),
                 ]);
-
-                // Refund User in NGN
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up", null, $debitTx->created_at ?? null);
 
@@ -103,12 +109,10 @@ class VtuController extends Controller
         } catch (\Throwable $e) {
             Log::error('VTU Airtime API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'refunded',
-                'api_response' => json_encode(['error' => $e->getMessage()]),
+                'status' => 'processing',
+                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
             ]);
-            $user->addBalance($chargedAmountNgn);
-            Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Airtime network is temporarily unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Your airtime purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
 
@@ -174,11 +178,19 @@ class VtuController extends Controller
                 ]);
                 return back()->with('success', 'Data purchased successfully!');
             } else {
+                if (!empty($response['ambiguous'])) {
+                    $order->update([
+                        'status' => 'processing',
+                        'api_response' => json_encode($response),
+                    ]);
+                    return back()->with('error', 'Your data purchase is still being verified. Your wallet has not been refunded to prevent a duplicate purchase. Please check your order history before retrying.');
+                }
+
+                // Refund only provider-confirmed failures.
                 $order->update([
                     'status' => 'refunded',
                     'api_response' => json_encode($response),
                 ]);
-
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase", null, $debitTx->created_at ?? null);
 
@@ -188,12 +200,10 @@ class VtuController extends Controller
         } catch (\Throwable $e) {
             Log::error('VTU Data API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'refunded',
-                'api_response' => json_encode(['error' => $e->getMessage()]),
+                'status' => 'processing',
+                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
             ]);
-            $user->addBalance($chargedAmountNgn);
-            Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', "We couldn't process your request right now. Please try again shortly.");
+            return back()->with('error', 'Your data purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
 
