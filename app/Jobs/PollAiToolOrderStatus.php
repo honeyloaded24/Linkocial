@@ -6,6 +6,7 @@ use App\Models\AiToolOrder;
 use App\Models\AiToolOrderItem;
 use App\Models\Transaction;
 use App\Services\AlaricApiService;
+use App\Services\PixelSubApiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,7 +29,7 @@ class PollAiToolOrderStatus implements ShouldQueue
 
     public function __construct(public readonly AiToolOrder $order) {}
 
-    public function handle(AlaricApiService $alaricService): void
+    public function handle(AlaricApiService $alaricService, PixelSubApiService $pixelSubService): void
     {
         $order = $this->order->fresh();
 
@@ -58,7 +59,7 @@ class PollAiToolOrderStatus implements ShouldQueue
             return;
         }
 
-        $result = $alaricService->getOrder($order->provider_order_id);
+        $result = ($order->provider === 'pixelsub' ? $pixelSubService : $alaricService)->getOrder($order->provider_order_id);
 
         if (!($result['success'] ?? false)) {
             Log::warning('PollAiToolOrderStatus: getOrder API call failed', [
