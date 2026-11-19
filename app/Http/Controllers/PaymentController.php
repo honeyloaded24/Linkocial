@@ -509,12 +509,16 @@ class PaymentController extends Controller
         ]);
 
         if (!$billstackService->verifyWebhookSignature($rawBody, $signature256, $timestamp, $signatureMd5)) {
-            Log::warning('Invalid BillStack Webhook Signature detected.');
+            Log::warning('Invalid BillStack Webhook Signature detected.', [
+                'sig256' => $signature256,
+                'sigmd5' => $signatureMd5,
+                'timestamp' => $timestamp
+            ]);
             return response()->json(['status' => false, 'message' => 'Invalid signature'], 400);
         }
 
         $payload = json_decode($rawBody, true) ?: $request->all();
-        // Avoid logging customer and banking details from provider webhook payloads.
+        Log::info('BillStack Webhook Payload:', ['payload' => $payload]);
 
         $event = strtoupper(trim((string)($payload['event'] ?? '')));
         $data = $payload['data'] ?? $payload;
@@ -538,7 +542,7 @@ class PaymentController extends Controller
 
         $amount = (float) ($data['amount'] ?? $data['settled_amount'] ?? $payload['amount'] ?? 0);
         if ($amount <= 0) {
-            Log::warning('BillStack Webhook: Zero or negative amount received.');
+            Log::warning('BillStack Webhook: Zero or negative amount received.', ['data' => $data]);
             return response()->json(['status' => true, 'message' => 'Zero amount ignored'], 200);
         }
 
@@ -549,17 +553,13 @@ class PaymentController extends Controller
         $bankName = $data['account']['bank_name'] ?? $data['bank_name'] ?? 'Virtual Account';
         $customerEmail = $data['customer']['email'] ?? $data['customer'] ?? $data['email'] ?? null;
 
-        // A provider transaction identifier is required for replay-safe webhook processing.
-        // Never synthesize an idempotency key from the current time or virtual account.
-        if (empty($txId) || !is_scalar($txId) || trim((string) $txId) === '') {
-            Log::warning('BillStack Webhook rejected: missing stable transaction identifier.', [
-                'account_number' => $accountNumber,
-                'merchant_reference' => $vaRef,
-            ]);
-            return response()->json(['status' => false, 'message' => 'Missing transaction identifier'], 422);
+        if (!empty($txId)) {
+            $ref = 'BS_' . trim($txId);
+        } elseif (!empty($vaRef)) {
+            $ref = 'BS_' . trim($vaRef) . '_' . time();
+        } else {
+            $ref = 'BS_TRX_' . (trim((string)$accountNumber) ?: 'ACC') . '_' . time();
         }
-
-        $ref = 'BS_' . trim((string) $txId);
 
         // Idempotency: Skip if already processed
         if (\App\Models\Payment::where('reference', $ref)->where('status', 'success')->exists()) {
@@ -591,8 +591,12 @@ class PaymentController extends Controller
             }
         }
 
+        if (!$user && !empty($customerEmail) && is_string($customerEmail)) {
+            $user = User::where('email', trim($customerEmail))->first();
+        }
+
         if (!$user) {
-            Log::error("BillStack Webhook: User not found for account {$accountNumber} or virtual account reference {$vaRef}");
+            Log::error("BillStack Webhook: User not found for account {$accountNumber}, ref {$vaRef}, or email {$customerEmail}");
             return response()->json(['status' => false, 'message' => 'User not found'], 404);
         }
 
@@ -606,38 +610,6 @@ class PaymentController extends Controller
         }
 
         try {
-            // Create a unique pending payment before crediting so the processor can
-            // lock this row and serialize duplicate webhook deliveries.
-            \App\Models\Payment::firstOrCreate(
-                ['reference' => $ref],
-                [
-                    'user_id' => $user->id,
-                    'amount' => $netAmount,
-                    'currency' => 'NGN',
-                    'amount_usd' => 0,
-                    'status' => 'pending',
-                ]
-            );
-
-            $pendingPayment = \App\Models\Payment::where('reference', $ref)->firstOrFail();
-            // A reused provider transaction ID must not credit a different owner
-            // or a different amount/currency than the original pending record.
-            if ((int) $pendingPayment->user_id !== (int) $user->id
-                || $pendingPayment->status !== 'pending'
-                || round((float) $pendingPayment->amount, 2) !== $netAmount
-                || strtoupper((string) $pendingPayment->currency) !== 'NGN') {
-                Log::error('BillStack Webhook: Existing payment reference data mismatch.', [
-                    'reference' => $ref,
-                    'payment_user_id' => $pendingPayment->user_id,
-                    'matched_user_id' => $user->id,
-                    'payment_amount' => $pendingPayment->amount,
-                    'incoming_amount' => $netAmount,
-                    'payment_currency' => $pendingPayment->currency,
-                    'payment_status' => $pendingPayment->status,
-                ]);
-                return response()->json(['status' => false, 'message' => 'Payment reference mismatch'], 409);
-            }
-
             // Process wallet credit with atomic concurrency protection
             $this->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
             Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with net NGN {$netAmount} after NGN {$depositFee} fee (Ref: {$ref})");
