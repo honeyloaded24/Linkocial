@@ -21,8 +21,12 @@ class ReconcileAffiliateLedger extends Command
         User::where(function ($q) {
             $q->where('commission_balance', '!=', 0)
               ->orWhere('total_earned_commission', '!=', 0)
-              ->orWhere('total_withdrawn_commission', '!=', 0);
-        })->orWhereHas('affiliateTransactions')->chunkById(100, function ($users) use ($apply, &$mismatches) {
+              ->orWhere('total_withdrawn_commission', '!=', 0)
+              ->orWhereExists(function ($sub) {
+                  $sub->select(DB::raw(1))->from('affiliate_transactions')
+                      ->whereColumn('affiliate_transactions.user_id', 'users.id');
+              });
+        })->chunkById(100, function ($users) use ($apply, &$mismatches) {
             foreach ($users as $user) {
                 $ledger = AffiliateTransaction::where('user_id', $user->id)
                     ->selectRaw("SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) as earned")
