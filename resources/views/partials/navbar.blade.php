@@ -248,6 +248,20 @@
         }
     }
 
+    [data-theme="dark"] .mega-menu, [data-bs-theme="dark"] .mega-menu {
+        background: var(--bg-surface, #1e293b) !important;
+        border-color: var(--border-color, #334155) !important;
+        color: var(--text-main, #f8fafc);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+    }
+    [data-theme="dark"] .mega-item:hover, [data-bs-theme="dark"] .mega-item:hover {
+        background: rgba(255,255,255,0.06);
+    }
+    [data-theme="dark"] .mega-item span, [data-bs-theme="dark"] .mega-item span,
+    [data-theme="dark"] .mega-title, [data-bs-theme="dark"] .mega-title {
+        color: var(--text-main, #f8fafc);
+    }
+
     .mega-col {
         padding: 0.5rem;
     }
