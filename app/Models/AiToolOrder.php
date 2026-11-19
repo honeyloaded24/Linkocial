@@ -274,7 +274,8 @@ class AiToolOrder extends Model
                     'credit',
                     'ai_tools_refund',
                     "Refund — AI TOOLS order #{$order->order_number}" . ($reason ? " ({$reason})" : ''),
-                    'REF-AITOOLS-' . $order->id
+                    'REF-AITOOLS-' . $order->id,
+                    $order->created_at
                 );
             }
 
