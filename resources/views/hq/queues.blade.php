@@ -148,7 +148,7 @@
                             <tr>
                                 <td class="ps-4"><span class="text-muted fw-bold">#{{ $job->id }}</span></td>
                                 <td>
-                                    <span class="badge bg-light text-dark border fw-bold">{{ $job->connection }}</span>
+                                    <span class="badge bg-light text-main border fw-bold">{{ $job->connection }}</span>
                                     <span class="badge bg-light text-primary border fw-bold">{{ $job->queue }}</span>
                                 </td>
                                 <td>
