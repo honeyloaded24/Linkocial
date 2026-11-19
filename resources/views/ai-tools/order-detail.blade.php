@@ -298,7 +298,7 @@ function copyById(btn, elemId) {
                 if (det && typeof det === 'object') {
                     Object.keys(det).forEach(function(k) {
                         if (k !== 'code' && det[k] !== null && typeof det[k] !== 'object' && String(det[k]).trim()) {
-                            var label = k.replace(/_/g, ' ').replace(/\\b\\w/g, function(c){ return c.toUpperCase(); });
+                            var label = k.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
                             parts.push(label + ': ' + String(det[k]).trim());
                         }
                     });
