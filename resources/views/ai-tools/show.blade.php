@@ -44,7 +44,7 @@
             <div class="product-detail-card">
                 <div class="d-flex align-items-center gap-2 mb-1">
                     @if($product->category)
-                        <span class="badge bg-light text-muted border">{{ $product->category->name }}</span>
+                        <span class="badge bg-light text-main border">{{ $product->category->name }}</span>
                     @endif
                     <span class="badge {{ $product->in_stock ? 'bg-success' : 'bg-danger' }} bg-opacity-10 {{ $product->in_stock ? 'text-success' : 'text-danger' }}">
                         {{ $product->in_stock ? '● In Stock' : '● Out of Stock' }}
@@ -143,7 +143,7 @@
 
                     <div class="mb-3 p-2 rounded border small text-muted">
                         <i class="fa fa-wallet me-1"></i>Wallet Balance:
-                        <strong class="text-dark">₦{{ number_format(auth()->user()->balance, 2) }}</strong>
+                        <strong class="text-main">₦{{ number_format(auth()->user()->balance, 2) }}</strong>
                     </div>
 
                     <button type="button" class="btn btn-primary w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#confirmModal"
