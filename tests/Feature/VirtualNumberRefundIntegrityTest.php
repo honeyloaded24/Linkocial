@@ -94,7 +94,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         ]);
 
         $this->mock(SmsPoolService::class, function ($mock) {
-            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \\RuntimeException('Provider cancellation failed'));
+            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \RuntimeException('Provider cancellation failed'));
         });
         $this->mock(GrizzlySmsService::class);
 
