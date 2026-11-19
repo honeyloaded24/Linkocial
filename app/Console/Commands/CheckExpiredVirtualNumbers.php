@@ -305,7 +305,9 @@ class CheckExpiredVirtualNumbers extends Command
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedOrder || $lockedOrder->status !== 'pending') {
+            // Recheck SMS receipt while holding the row lock. A code can arrive
+            // between the earlier provider status check and this refund attempt.
+            if (!$lockedOrder || $lockedOrder->status !== 'pending' || !empty($lockedOrder->sms_code)) {
                 return;
             }
 
