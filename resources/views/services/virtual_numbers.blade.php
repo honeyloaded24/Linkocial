@@ -298,7 +298,7 @@
             <span class="service-name-inline d-none"></span>
             
             <!-- SMS Code Area -->
-            <div class="text-center p-3 rounded-3 bg-white border border-light sms-area">
+            <div class="text-center p-3 rounded-3 bg-white border border-secondary border-opacity-25 sms-area">
                 <div class="spinner-border spinner-border-sm text-primary-custom mb-2 waiting-spinner" role="status"></div>
                 <p class="small text-muted mb-0 waiting-text fw-bold">Waiting for SMS...</p>
                 <div class="small fw-bold text-danger mt-2 countdown-timer d-none">
