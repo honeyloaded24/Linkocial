@@ -489,11 +489,7 @@ class PaymentController extends Controller
         ]);
 
         if (!$billstackService->verifyWebhookSignature($rawBody, $signature256, $timestamp, $signatureMd5)) {
-            Log::warning('Invalid BillStack Webhook Signature detected.', [
-                'sig256' => $signature256,
-                'sigmd5' => $signatureMd5,
-                'timestamp' => $timestamp
-            ]);
+            Log::warning('Invalid BillStack Webhook Signature detected.');
             return response()->json(['status' => false, 'message' => 'Invalid signature'], 400);
         }
 
@@ -522,7 +518,7 @@ class PaymentController extends Controller
 
         $amount = (float) ($data['amount'] ?? $data['settled_amount'] ?? $payload['amount'] ?? 0);
         if ($amount <= 0) {
-            Log::warning('BillStack Webhook: Zero or negative amount received.', ['data' => $data]);
+            Log::warning('BillStack Webhook: Zero or negative amount received.');
             return response()->json(['status' => true, 'message' => 'Zero amount ignored'], 200);
         }
 
