@@ -693,28 +693,45 @@ class AdminController extends Controller
     {
         $order = Order::with('user')->findOrFail($id);
 
-        if ($order->status === 'canceled') {
-            return back()->with('error', 'This order is already canceled.');
+        if (in_array($order->status, ['canceled', 'completed'], true)) {
+            return back()->with('error', $order->status === 'completed'
+                ? 'Completed orders cannot be canceled and refunded.'
+                : 'This order is already canceled.');
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
             $lockedOrder = Order::where('id', $id)->lockForUpdate()->firstOrFail();
-            if ($lockedOrder->status === 'canceled' && $lockedOrder->is_refunded) {
-                return;
+
+            if ($lockedOrder->status === 'completed') {
+                return 'completed';
             }
 
-            $lockedUser = \App\Models\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
+            if ($lockedOrder->status === 'canceled' && $lockedOrder->is_refunded) {
+                return 'already_refunded';
+            }
 
-            // Only refund if not already marked as refunded
+            $lockedUser = \\App\\Models\\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
+
+            // A prior refund ledger entry is authoritative even if the order flag
+            // was not synchronized by an older code path.
+            $refundReference = 'REF-SMM-ADMIN-' . $lockedOrder->id;
+            if (\\App\\Models\\Transaction::where('reference', $refundReference)->exists()) {
+                $lockedOrder->is_refunded = true;
+                $lockedOrder->status = 'canceled';
+                $lockedOrder->save();
+                return 'already_refunded';
+            }
+
             if (!$lockedOrder->is_refunded && $lockedUser) {
                 $lockedUser->addBalance((float) $lockedOrder->charge);
 
-                \App\Models\Transaction::add(
+                \\App\\Models\\Transaction::add(
                     $lockedUser->id,
                     $lockedOrder->charge,
                     'credit',
                     'refund',
-                    "Manual refund for order #{$lockedOrder->id} by Admin"
+                    "Manual refund for order #{$lockedOrder->id} by Admin",
+                    $refundReference
                 );
 
                 $lockedOrder->is_refunded = true;
@@ -723,14 +740,24 @@ class AdminController extends Controller
             $lockedOrder->status = 'canceled';
             $lockedOrder->save();
 
-            \App\Models\ActivityLog::log("Manually canceled order", $lockedOrder, [
+            \\App\\Models\\ActivityLog::log("Manually canceled order", $lockedOrder, [
                 'refund_amount' => $lockedOrder->charge,
                 'new_balance' => $lockedUser ? $lockedUser->balance : null
             ]);
+
+            return 'canceled';
         });
 
-        // Send Notification to user
-        \App\Models\Notification::send(
+        if ($result === 'completed') {
+            return back()->with('error', 'Completed orders cannot be canceled and refunded.');
+        }
+
+        if ($result === 'already_refunded') {
+            return back()->with('error', 'This order has already been refunded.');
+        }
+
+        // Send notification only after a new cancellation/refund has committed.
+        \\App\\Models\\Notification::send(
             $order->user_id,
             "Order Refunded",
             "Order #{$order->id} has been canceled. ₦" . number_format((float) $order->charge, 2) . " has been refunded to your wallet.",
