@@ -489,7 +489,7 @@
                                     <span class="fw-bold text-truncate d-block" title="{{ $item['name'] }}">{{ $item['name'] }}</span>
                                     <small class="text-muted">{{ $item['type'] }} | Min: {{ $item['min'] }} Max: {{ $item['max'] }}</small>
                                 </td>
-                                <td><span class="badge bg-light text-dark border">{{ $item['category'] }}</span></td>
+                                <td><span class="badge bg-light text-main border">{{ $item['category'] }}</span></td>
                                 <td class="font-monospace small">${{ number_format($item['provider_rate_usd'], 4) }}</td>
                                 <td class="font-monospace small text-muted">₦{{ number_format($item['cost_ngn'], 2) }}</td>
                                 <td class="font-monospace small">
