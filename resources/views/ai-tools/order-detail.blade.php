@@ -290,52 +290,50 @@ function copyById(btn, elemId) {
         if (!container) return;
 
         if (data.status === 'completed' && data.items_count > 0) {
+            function credentialText(item) {
+                var parts = [];
+                if (item.code && String(item.code).trim()) parts.push(String(item.code).trim());
+                var det = item.details;
+                try { det = typeof det === 'string' ? JSON.parse(det) : det; } catch(e) { det = null; }
+                if (det && typeof det === 'object') {
+                    Object.keys(det).forEach(function(k) {
+                        if (k !== 'code' && det[k] !== null && typeof det[k] !== 'object' && String(det[k]).trim()) {
+                            var label = k.replace(/_/g, ' ').replace(/\\b\\w/g, function(c){ return c.toUpperCase(); });
+                            parts.push(label + ': ' + String(det[k]).trim());
+                        }
+                    });
+                }
+                return parts.join(' | ');
+            }
+
+            var credentials = (data.items || []).map(credentialText).filter(Boolean);
+            if (Number(data.quantity) === 1 && credentials.length > 1) {
+                credentials = [credentials.join(' | ')];
+            }
             var html = '';
-            data.items.forEach(function(item, idx) {
+            credentials.forEach(function(credential, idx) {
                 var copyId = 'cred-' + idx;
                 html += '<div class="mb-3">';
-                if (data.items.length > 1) {
+                if (Number(data.quantity) > 1) {
                     html += '<p class="text-muted small mb-1 fw-semibold">Item ' + (idx + 1) + '</p>';
                 }
                 html += '<div class="cred-box">' +
-                    '<pre class="mb-0 font-monospace text-wrap" id="' + copyId + '" style="white-space:pre-wrap;">' + escapeHtml(item.code) + '</pre>' +
-                    '<button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyById(this,\'' + copyId + '\')">' +
+                    '<pre class="mb-0 font-monospace text-wrap" id="' + copyId + '" style="white-space:pre-wrap;">' + escapeHtml(credential) + '</pre>' +
+                    '<button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyById(this,\\'' + copyId + '\\')">' +
                     '<i class="fa fa-copy"></i></button>' +
-                    '</div>';
-
-                if (item.details) {
-                    try {
-                        var det = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-                        if (det && typeof det === 'object') {
-                            html += '<div class="mt-2 p-2 rounded small bg-light border">';
-                            Object.keys(det).forEach(function(k) {
-                                if (k !== 'code' && typeof det[k] !== 'object') {
-                                    html += '<div class="d-flex gap-2 mb-1">' +
-                                        '<span class="text-muted fw-semibold" style="min-width:100px;">' + escapeHtml(k.replace(/_/g,' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); })) + ':</span>' +
-                                        '<span class="fw-semibold font-monospace">' + escapeHtml(String(det[k])) + '</span>' +
-                                        '</div>';
-                                }
-                            });
-                            html += '</div>';
-                        }
-                    } catch(e) {}
-                }
-                html += '</div>';
+                    '</div></div>';
             });
             html += '<div class="alert alert-success small mb-0"><i class="fa fa-shield-halved me-1"></i>Keep your credentials secure. Do not share them publicly.</div>';
             container.innerHTML = html;
 
-            // Update status pill
             var pill = document.getElementById('status-pill');
             if (pill) {
                 pill.className = 'status-pill completed';
                 pill.innerHTML = '<i class="fa-solid fa-circle-check"></i> Completed';
             }
-            // Hide processing alert
             var alert = document.getElementById('processing-alert');
             if (alert) alert.style.display = 'none';
 
-            // Update completed_at if present
             if (data.completed_at) {
                 var ca = document.getElementById('completed-at-row');
                 if (ca) ca.style.display = '';
