@@ -90,7 +90,7 @@ class Transaction extends Model
 
         $reference = $ref ?? strtoupper(Str::uuid()->toString());
         if ($ref !== null && self::where('reference', $ref)->exists()) {
-            throw new \\RuntimeException('Transaction reference already exists: ' . $ref);
+            throw new \RuntimeException('Transaction reference already exists: ' . $ref);
         }
 
         $data = [
