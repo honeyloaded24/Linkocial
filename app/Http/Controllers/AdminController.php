@@ -544,7 +544,7 @@ class AdminController extends Controller
                     $user->addBalance($request->amount);
 
                     // Admin wallet funding intentionally contributes to the user's total deposits.
-                    \\App\\Models\\Payment::create([
+                    \App\Models\Payment::create([
                         'user_id' => $user->id,
                         'amount' => $request->amount,
                         'currency' => $user->currency_code ?? 'NGN',
