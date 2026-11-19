@@ -3,7 +3,10 @@
 @section('header_title', 'HQ: Manage Local Stock')
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-stock .bg-light, [data-bs-theme="dark"] .hq-stock .bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-stock .btn-light, [data-bs-theme="dark"] .hq-stock .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+</style><div class="container-fluid hq-stock">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-0">Manage Stock: {{ $product->name }}</h4>
