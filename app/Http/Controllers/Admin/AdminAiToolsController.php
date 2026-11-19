@@ -269,6 +269,7 @@ class AdminAiToolsController extends Controller
     {
         $request->validate([
             'alaric_api_key'   => 'sometimes|nullable|string|max:255',
+            'pixelsub_api_key'  => 'sometimes|nullable|string|max:255',
             'usdt_to_ngn_rate' => 'required|numeric|min:1|max:9999999',
             'markup_ai_tools'  => 'required|numeric|min:0|max:9999',
         ]);
