@@ -108,6 +108,7 @@
                 <select name="status" class="form-select border-secondary bg-transparent" style="color: var(--text-main);">
                     <option value="">All Statuses</option>
                     <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                    <option value="processing" {{ request('status') === 'processing' ? 'selected' : '' }}>Processing / Verification</option>
                     <option value="completed" {{ request('status') === 'completed' ? 'selected' : '' }}>Completed</option>
                     <option value="failed" {{ request('status') === 'failed' ? 'selected' : '' }}>Failed</option>
                     <option value="refunded" {{ request('status') === 'refunded' ? 'selected' : '' }}>Refunded</option>
@@ -197,15 +198,17 @@
                             <div class="text-muted" style="font-size: 0.7rem;">{{ $order->created_at->format('h:i A') }}</div>
                         </td>
                         <td class="px-3 text-end">
-                            @if($order->status !== 'refunded')
-                            <form action="{{ route('hq.vtu.refund', $order->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to refund this VTU order? The amount will be added to the user\'s wallet.');">
+                            @if($order->status === 'failed')
+                            <form action="{{ route('hq.vtu.refund', $order->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Refund this provider-confirmed failed VTU order?');">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-outline-danger px-3 py-1 fw-bold rounded-pill" style="font-size: 0.75rem;">
                                     <i class="fa-solid fa-undo"></i> Refund
                                 </button>
                             </form>
-                            @else
+                            @elseif($order->status === 'refunded')
                             <span class="text-muted small"><i class="fa-solid fa-check"></i> Refunded</span>
+                            @else
+                            <span class="text-muted small">No refund action</span>
                             @endif
                         </td>
                     </tr>
