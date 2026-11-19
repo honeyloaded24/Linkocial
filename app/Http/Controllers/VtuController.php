@@ -96,12 +96,7 @@ class VtuController extends Controller
                 }
 
                 // Refund only provider-confirmed failures.
-                $order->update([
-                    'status' => 'refunded',
-                    'api_response' => json_encode($response),
-                ]);
-                $user->addBalance($chargedAmountNgn);
-                Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Airtime top-up", null, $debitTx->created_at ?? null);
+                $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Airtime top-up");
 
                 $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
@@ -187,12 +182,7 @@ class VtuController extends Controller
                 }
 
                 // Refund only provider-confirmed failures.
-                $order->update([
-                    'status' => 'refunded',
-                    'api_response' => json_encode($response),
-                ]);
-                $user->addBalance($chargedAmountNgn);
-                Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Data purchase", null, $debitTx->created_at ?? null);
+                $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Data purchase");
 
                 $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
@@ -428,9 +418,7 @@ class VtuController extends Controller
                     $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
                     return back()->with('error', 'Your electricity payment is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
                 }
-                $order->update(['status' => 'refunded', 'api_response' => json_encode($response)]);
-                $user->addBalance($chargedAmountNgn);
-                Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment", null, $debitTx->created_at ?? null);
+                $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Electricity payment");
 
                 $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
@@ -548,9 +536,7 @@ class VtuController extends Controller
                     $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
                     return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
                 }
-                $order->update(['status' => 'refunded', 'api_response' => json_encode($response)]);
-                $user->addBalance($chargedAmountNgn);
-                Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription", null, $debitTx->created_at ?? null);
+                $this->refundFailedVtuOrder($order, $user, $chargedAmountNgn, $debitTx, $response, "Cable subscription");
 
                 $message = $this->sanitizeDataErrorMessage($response);
                 return back()->with('error', $message);
@@ -563,6 +549,34 @@ class VtuController extends Controller
             ]);
             return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
+    }
+
+    /** Refund only once, with the order state, wallet balance, and ledger entry committed atomically. */
+    protected function refundFailedVtuOrder(VtuOrder $order, $user, float $amount, Transaction $debitTx, array $response, string $description): bool
+    {
+        return DB::transaction(function () use ($order, $user, $amount, $debitTx, $response, $description) {
+            $lockedOrder = VtuOrder::lockForUpdate()->findOrFail($order->id);
+            if ($lockedOrder->status !== 'processing') {
+                return false;
+            }
+
+            $lockedUser = \App\Models\User::lockForUpdate()->findOrFail($lockedOrder->user_id);
+            $lockedUser->addBalance($amount);
+            Transaction::add(
+                $lockedUser->id,
+                $amount,
+                'credit',
+                'vtu_refund',
+                'Refund for failed ' . $description . ' (order #' . $lockedOrder->id . ')',
+                'REF-VTU-' . $lockedOrder->id,
+                $debitTx->created_at ?? null
+            );
+            $lockedOrder->update([
+                'status' => 'refunded',
+                'api_response' => json_encode($response),
+            ]);
+            return true;
+        });
     }
 
     // ==========================================
