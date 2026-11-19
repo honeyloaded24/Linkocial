@@ -75,7 +75,7 @@
                         </div>
                         
                         <a href="{{ route('wallet.index') }}" class="btn btn-sm bg-white text-dark rounded-pill px-3 py-1 mt-3 fw-bold d-inline-flex align-items-center gap-2 shadow-sm" style="font-size: 0.85rem; transition: transform 0.2s;">
-                            <i class="fa-solid fa-plus-circle" style="color: #090e36;"></i> Add Funds
+                            <i class="fa-solid fa-plus-circle" style="color: var(--primary-color);"></i> Add Funds
                         </a>
                     </div>
                     
