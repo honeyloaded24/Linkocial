@@ -534,36 +534,45 @@ class AdminController extends Controller
             'type' => 'required|in:add,subtract'
         ]);
 
-        $user = User::findOrFail($id);
+        $ref = 'MANUAL_' . strtoupper(\Illuminate\Support\Str::random(16));
 
-        if ($request->type === 'add') {
-            $user->addBalance($request->amount);
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, &$user, $ref) {
+                $user = User::whereKey($id)->lockForUpdate()->firstOrFail();
 
-            // Record as a Payment so it accumulates in total deposits and financial metrics
-            $ref = 'DEP_MANUAL_' . strtoupper(\Illuminate\Support\Str::random(10));
-            \App\Models\Payment::create([
-                'user_id' => $user->id,
-                'amount' => $request->amount,
-                'currency' => $user->currency_code ?? 'NGN',
-                'amount_usd' => $request->amount,
-                'reference' => $ref,
-                'status' => 'success',
-            ]);
-        } else {
-            $deducted = $user->deductBalance($request->amount);
-            if (!$deducted) {
+                if ($request->type === 'add') {
+                    $user->addBalance($request->amount);
+
+                    // Record manual additions as successful payments for financial metrics.
+                    \App\Models\Payment::create([
+                        'user_id' => $user->id,
+                        'amount' => $request->amount,
+                        'currency' => $user->currency_code ?? 'NGN',
+                        'amount_usd' => $request->amount,
+                        'reference' => $ref,
+                        'status' => 'success',
+                        'method' => 'Admin Manual Adjustment',
+                    ]);
+                } elseif (!$user->deductBalance($request->amount)) {
+                    throw new \RuntimeException('INSUFFICIENT_BALANCE');
+                }
+
+                \App\Models\Transaction::add(
+                    $user->id,
+                    $request->amount,
+                    $request->type === 'add' ? 'credit' : 'debit',
+                    'manual',
+                    "Admin adjustment (" . ($request->type === 'add' ? 'Added' : 'Deducted') . ")",
+                    $ref
+                );
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'INSUFFICIENT_BALANCE') {
+                $user = User::findOrFail($id);
                 return back()->with('error', 'Cannot deduct: user balance (' . money($user->balance, true, $user->currency_code) . ') is insufficient for this deduction.');
             }
+            throw $e;
         }
-
-        \App\Models\Transaction::add(
-            $user->id,
-            $request->amount,
-            $request->type === 'add' ? 'credit' : 'debit',
-            'manual',
-            "Admin adjustment (" . ($request->type === 'add' ? 'Added' : 'Deducted') . ")",
-            $ref ?? null
-        );
 
         \App\Models\ActivityLog::log("Manually updated user balance", $user, [
             'type' => $request->type,
