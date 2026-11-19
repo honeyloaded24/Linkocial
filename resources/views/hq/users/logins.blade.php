@@ -8,7 +8,13 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-user-logins .bg-light, [data-bs-theme="dark"] .hq-user-logins .bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-logins .bg-white, [data-bs-theme="dark"] .hq-user-logins .bg-white { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-logins .btn-light, [data-bs-theme="dark"] .hq-user-logins .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-logins .input-group-text, [data-bs-theme="dark"] .hq-user-logins .input-group-text { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-logins .table thead.bg-light, [data-bs-theme="dark"] .hq-user-logins .table thead.bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; }
+</style><div class="container-fluid hq-user-logins">
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
