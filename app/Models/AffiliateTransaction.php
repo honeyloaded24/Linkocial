@@ -18,9 +18,9 @@ class AffiliateTransaction extends Model
         $amount = round((float) $amount, 2);
         $type = strtolower((string) $type);
         if ($amount <= 0 || !in_array($type, ['credit', 'debit'], true)) {
-            throw new \\InvalidArgumentException('Affiliate transaction must have a positive amount and valid type.');
+            throw new \InvalidArgumentException('Affiliate transaction must have a positive amount and valid type.');
         }
-        $user = \\App\\Models\\User::where('id', $userId)->lockForUpdate()->firstOrFail();
+        $user = \App\Models\User::where('id', $userId)->lockForUpdate()->firstOrFail();
         $after = round((float) $user->commission_balance, 2);
         $before = round($after - ($type === 'credit' ? $amount : -$amount), 2);
         
@@ -29,7 +29,7 @@ class AffiliateTransaction extends Model
             'amount' => $amount,
             'type' => $type,
             'description' => $description,
-            'balance_before' => $before - ($type === 'credit' ? $amount : -$amount),
+            'balance_before' => $before,
             'balance_after' => $after,
         ]);
     }
