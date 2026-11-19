@@ -305,7 +305,7 @@ class PaymentController extends Controller
         DB::transaction(function () use ($user, $ngnAmount, $originalAmount, $currencyCode, $rateUsed, $reference, $method, $fee) {
             // Lock an existing pending payment row. Every payment credit must have
             // a pre-created unique reference so concurrent webhook deliveries serialize.
-            $lockedPayment = \App\\Models\\Payment::where('reference', $reference)
+            $lockedPayment = \App\Models\Payment::where('reference', $reference)
                 ->lockForUpdate()
                 ->first();
 
@@ -608,7 +608,7 @@ class PaymentController extends Controller
         try {
             // Create a unique pending payment before crediting so the processor can
             // lock this row and serialize duplicate webhook deliveries.
-            \App\\Models\\Payment::firstOrCreate(
+            \App\Models\Payment::firstOrCreate(
                 ['reference' => $ref],
                 [
                     'user_id' => $user->id,
