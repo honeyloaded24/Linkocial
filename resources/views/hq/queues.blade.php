@@ -95,7 +95,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="fw-bold small text-dark">{{ $task['next_run'] }}</div>
+                                    <div class="fw-bold small text-main">{{ $task['next_run'] }}</div>
                                     <div class="text-muted" style="font-size: 0.7rem;">UTC Time</div>
                                 </td>
                                 <td class="text-end pe-0">
