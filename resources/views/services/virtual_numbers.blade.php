@@ -17,6 +17,22 @@
     [data-theme="dark"] .ts-dropdown .active, [data-bs-theme="dark"] .ts-dropdown .active { background: #334155 !important; color: #fff !important; }
     [data-theme="dark"] .ts-dropdown .option:hover, [data-bs-theme="dark"] .ts-dropdown .option:hover { background: #334155 !important; color: #fff !important; }
 
+    /* Active virtual-number cards and SMS panels */
+    [data-theme="dark"] .vn-order-item.bg-light, [data-bs-theme="dark"] .vn-order-item.bg-light {
+        background: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border: 1px solid var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .vn-order-item .phone-number.bg-white, [data-bs-theme="dark"] .vn-order-item .phone-number.bg-white {
+        background: var(--bg-body, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .vn-order-item .sms-area.bg-white, [data-bs-theme="dark"] .vn-order-item .sms-area.bg-white {
+        background: var(--bg-body, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+    }
+
     /* ZuvaPay Server Selection Styles */
     .server-toggle-btn {
         background: var(--bg-surface, #fff);
