@@ -551,7 +551,6 @@ class AdminController extends Controller
                         'amount_usd' => $request->amount,
                         'reference' => $ref,
                         'status' => 'success',
-                        'method' => 'Admin Manual Adjustment',
                     ]);
                 } elseif (!$user->deductBalance($request->amount)) {
                     throw new \RuntimeException('INSUFFICIENT_BALANCE');
