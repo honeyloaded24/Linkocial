@@ -39,6 +39,27 @@
         cursor: pointer; transition: all 0.15s; text-decoration: none; color: var(--text-muted,#64748b);
     }
     .cat-pill.active, .cat-pill:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+    [data-theme="dark"] .search-box,
+    [data-bs-theme="dark"] .search-box {
+        background: var(--bg-surface, #1e293b);
+        color: var(--text-main, #f8fafc);
+    }
+    [data-theme="dark"] .search-box::placeholder,
+    [data-bs-theme="dark"] .search-box::placeholder {
+        color: var(--text-muted, #94a3b8);
+        opacity: 1;
+    }
+    [data-theme="dark"] .badge-instock { background: #064e3b; color: #d1fae5; }
+    [data-theme="dark"] .badge-oos { background: #7f1d1d; color: #fee2e2; }
+    [data-theme="dark"] .bg-light.text-muted.border {
+        background: rgba(255,255,255,0.06) !important;
+        color: var(--text-muted, #94a3b8) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .product-card,
+    [data-bs-theme="dark"] .product-card {
+        color: var(--text-main, #f8fafc);
+    }
 </style>
 @endpush
 
