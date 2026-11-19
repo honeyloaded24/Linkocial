@@ -142,9 +142,43 @@
         color: #fde68a !important;
         border-color: rgba(251, 191, 36, 0.45) !important;
     }
+    [data-theme="dark"] .ai-marketplace .bg-light,
+    [data-bs-theme="dark"] .ai-marketplace .bg-light,
+    [data-theme="dark"] .ai-marketplace .input-group-text,
+    [data-bs-theme="dark"] .ai-marketplace .input-group-text {
+        background-color: var(--bg-muted, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .ai-marketplace .form-control.bg-light,
+    [data-bs-theme="dark"] .ai-marketplace .form-control.bg-light,
+    [data-theme="dark"] .ai-marketplace .form-select.bg-light,
+    [data-bs-theme="dark"] .ai-marketplace .form-select.bg-light {
+        background-color: var(--bg-surface, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .ai-marketplace .form-control::placeholder,
+    [data-bs-theme="dark"] .ai-marketplace .form-control::placeholder {
+        color: var(--text-muted, #94a3b8) !important;
+        opacity: 1;
+    }
+    [data-theme="dark"] .ai-marketplace .text-dark,
+    [data-bs-theme="dark"] .ai-marketplace .text-dark {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .ai-marketplace .bg-dark.bg-opacity-10,
+    [data-bs-theme="dark"] .ai-marketplace .bg-dark.bg-opacity-10 {
+        background-color: rgba(255,255,255,.08) !important;
+    }
+    [data-theme="dark"] .ai-marketplace .card,
+    [data-bs-theme="dark"] .ai-marketplace .card {
+        background-color: var(--bg-surface, #1e293b);
+        color: var(--text-main, #f8fafc);
+    }
 </style>
 
-<div class="container-fluid py-2">
+<div class="container-fluid py-2 ai-marketplace">
 
     <!-- Prominent Mobile-First Top Bar: Store vs My AI Orders -->
     <div class="ai-top-switcher d-flex align-items-center gap-2 mb-3 shadow-sm">
