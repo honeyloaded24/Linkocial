@@ -3,7 +3,25 @@
 @section('header_title', 'Refine Insight')
 
 @section('content')
-<div class="container-fluid px-md-5">
+<style>
+    [data-theme="dark"] .hq-blog-edit .bg-light,
+    [data-bs-theme="dark"] .hq-blog-edit .bg-light {
+        background-color: rgba(255,255,255,0.06) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-blog-edit .text-dark,
+    [data-bs-theme="dark"] .hq-blog-edit .text-dark {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-blog-edit .btn-light,
+    [data-bs-theme="dark"] .hq-blog-edit .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-blog-edit px-md-5">
     <div class="row justify-content-center">
         <div class="col-lg-10">
             <div class="premium-card p-4 p-md-5 border-0 shadow-sm">
