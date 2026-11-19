@@ -619,6 +619,25 @@ class PaymentController extends Controller
                 ]
             );
 
+            $pendingPayment = \\App\\Models\\Payment::where('reference', $ref)->firstOrFail();
+            // A reused provider transaction ID must not credit a different owner
+            // or a different amount/currency than the original pending record.
+            if ((int) $pendingPayment->user_id !== (int) $user->id
+                || $pendingPayment->status !== 'pending'
+                || round((float) $pendingPayment->amount, 2) !== $netAmount
+                || strtoupper((string) $pendingPayment->currency) !== 'NGN') {
+                Log::error('BillStack Webhook: Existing payment reference data mismatch.', [
+                    'reference' => $ref,
+                    'payment_user_id' => $pendingPayment->user_id,
+                    'matched_user_id' => $user->id,
+                    'payment_amount' => $pendingPayment->amount,
+                    'incoming_amount' => $netAmount,
+                    'payment_currency' => $pendingPayment->currency,
+                    'payment_status' => $pendingPayment->status,
+                ]);
+                return response()->json(['status' => false, 'message' => 'Payment reference mismatch'], 409);
+            }
+
             // Process wallet credit with atomic concurrency protection
             $this->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
             Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with net NGN {$netAmount} after NGN {$depositFee} fee (Ref: {$ref})");
