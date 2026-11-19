@@ -187,6 +187,8 @@ class AiToolsController extends Controller
                         // an unsafe refund; flag for admin reconciliation.
                         $order->update([
                             'status'            => AiToolOrder::STATUS_UNDER_REVIEW,
+                            'provider_order_id' => $provider === 'pixelsub' ? $idempotencyKey : null,
+                            'provider'          => $provider,
                             'failure_reason'    => 'Provider submission outcome is ambiguous. Reconcile with provider before fulfillment or refund.',
                             'provider_response' => $providerResponse,
                         ]);
