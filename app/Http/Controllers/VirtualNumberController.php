@@ -372,9 +372,7 @@ class VirtualNumberController extends Controller
                             if ($finalCheckCost > 0) {
                                 Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', "Refund for failed Virtual Number Purchase ({$serviceName} - {$country})");
                             }
-                        if ($finalCheckCost > 0) {
-                            Transaction::add($refundUser->id, $finalCheckCost, 'credit', 'refund', 'Refund for Virtual Number Purchase (Rejected: minimum profit protection)');
-                        }
+
                     }
                     DB::commit();
                 } catch (\Exception $ex) {
