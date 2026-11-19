@@ -976,11 +976,13 @@ class VirtualNumberController extends Controller
 
                 if ($lockedOrder->cost > 0) {
                     Transaction::add(
-                        $lockedUser->id, 
-                        $lockedOrder->cost, 
-                        'credit', 
-                        'refund', 
-                        "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})"
+                        $lockedUser->id,
+                        $lockedOrder->cost,
+                        'credit',
+                        'refund',
+                        "Refund for Virtual Number Purchase ({$lockedOrder->product} - {$lockedOrder->country})",
+                        'REF-VN-' . $lockedOrder->id,
+                        $lockedOrder->created_at
                     );
                 }
             }
