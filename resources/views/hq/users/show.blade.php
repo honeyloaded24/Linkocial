@@ -71,7 +71,7 @@
                         </div>
                         <div>
                             <small class="text-muted d-block fw-bold" style="font-size: 0.8rem;">Transactions</small>
-                            <h5 class="fw-bold mb-0 text-dark" style="font-size: 1.1rem;">{{ $totalTransactions }}</h5>
+                            <h5 class="fw-bold mb-0 text-main" style="font-size: 1.1rem;">{{ $totalTransactions }}</h5>
                         </div>
                         <i class="fa-solid fa-chevron-right ms-auto text-muted small" style="font-size: 0.6rem;"></i>
                     </div>
