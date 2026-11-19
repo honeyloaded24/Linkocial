@@ -432,4 +432,48 @@ class AiToolsIntegrationTest extends TestCase
     }
 
 
+    public function test_stale_order_recovery_command_automatically_delivers_completed_order()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'tool-recovery-test',
+            'product_name' => 'Recovery Test Tool',
+            'idempotency_key' => 'idemp-recovery-test',
+            'provider_order_id' => 'alaric-recovery-123',
+            'status' => AiToolOrder::STATUS_PROCESSING,
+            'quantity' => 1,
+            'unit_price_usdt' => 5,
+            'total_price_usdt' => 5,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 9000,
+            'total_paid_ngn' => 9000,
+            'provider_cost_ngn' => 7500,
+            'profit_ngn' => 1500,
+            'last_polled_at' => null,
+        ]);
+
+        Setting::set('alaric_api_key', 'test_key_123');
+        Http::fake([
+            'https://api.alaricstore.com/api/v1/orders/alaric-recovery-123' => Http::response([
+                'success' => true,
+                'data' => [
+                    'id' => 'alaric-recovery-123',
+                    'status' => 'COMPLETED',
+                    'items' => [['code' => 'recovered-secret-credential']],
+                ],
+            ], 200),
+        ]);
+
+        $exitCode = Artisan::call('ai-tools:poll-stale-orders');
+        $this->assertSame(0, $exitCode);
+        $order->refresh();
+
+        $this->assertSame(AiToolOrder::STATUS_COMPLETED, $order->status);
+        $this->assertNotNull($order->completed_at);
+        $this->assertNotNull($order->last_polled_at);
+        $this->assertSame('recovered-secret-credential', $order->items()->first()->code);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'alaric-recovery-123'));
+    }
+
 }
