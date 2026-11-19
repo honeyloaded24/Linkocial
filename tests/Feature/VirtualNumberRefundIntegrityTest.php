@@ -8,6 +8,7 @@ use App\Models\VirtualNumberOrder;
 use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Tests\TestCase;
 
