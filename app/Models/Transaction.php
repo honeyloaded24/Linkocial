@@ -72,16 +72,29 @@ class Transaction extends Model
 
     public static function add($userId, $amount, $type, $txType, $description = null, $ref = null, $createdAt = null)
     {
-        $user = \App\Models\User::find($userId);
-        $before = (float)$user->balance;
-        
+        $amount = round((float) $amount, 4);
+        $type = strtolower((string) $type);
+
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Transaction amount must be greater than zero.');
+        }
+
+        if (!in_array($type, ['credit', 'debit'], true)) {
+            throw new \InvalidArgumentException('Transaction type must be credit or debit.');
+        }
+
+        $user = \App\Models\User::findOrFail($userId);
+        // Wallet mutations occur before this call in existing flows. Snapshot the
+        // post-mutation balance and derive the prior balance from the ledger amount.
+        $after = round((float) $user->balance, 4);
+
         $data = [
             'user_id' => $userId,
             'amount' => $amount,
             'type' => $type,
             'transaction_type' => $txType,
-            'balance_before' => $before - ($type === 'credit' ? $amount : -$amount),
-            'balance_after' => $before,
+            'balance_before' => round($after - ($type === 'credit' ? $amount : -$amount), 4),
+            'balance_after' => $after,
             'description' => $description,
             'reference' => $ref ?? strtoupper(Str::random(10)),
         ];
