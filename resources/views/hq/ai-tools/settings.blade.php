@@ -29,10 +29,12 @@
                 <div>
                     <h6 class="fw-bold mb-1">API Connection</h6>
                     @if($apiConfigured)
-                        <span class="badge bg-success bg-opacity-15 text-success">API key configured</span>
+                        <span class="badge bg-success bg-opacity-15 text-success">At least one API key configured</span>
+                        @if($maskedKey) <span class="badge bg-secondary">Alaric configured</span> @endif
+                        @if($maskedPixelSubKey) <span class="badge bg-secondary">PixelSub configured</span> @endif
                         <span class="text-muted small ms-2">Last sync: {{ $lastSync ? \Carbon\Carbon::parse($lastSync)->diffForHumans() : 'Never' }}</span>
                     @else
-                        <span class="badge bg-warning bg-opacity-15 text-warning">No API key configured</span>
+                        <span class="badge bg-warning bg-opacity-15 text-warning">No API keys configured</span>
                     @endif
                 </div>
                 <div class="d-flex gap-2">
