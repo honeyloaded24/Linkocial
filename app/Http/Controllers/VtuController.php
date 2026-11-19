@@ -424,10 +424,11 @@ class VtuController extends Controller
                 
                 return back()->with('success', "Electricity payment successful! Token: $token");
             } else {
-                $order->update([
-                    'status' => 'refunded',
-                    'api_response' => json_encode($response),
-                ]);
+                if (!empty($response['ambiguous'])) {
+                    $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
+                    return back()->with('error', 'Your electricity payment is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
+                }
+                $order->update(['status' => 'refunded', 'api_response' => json_encode($response)]);
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment", null, $debitTx->created_at ?? null);
 
@@ -437,12 +438,10 @@ class VtuController extends Controller
         } catch (\Throwable $e) {
             Log::error('VTU Electricity API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'refunded',
-                'api_response' => json_encode(['error' => $e->getMessage()]),
+                'status' => 'processing',
+                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
             ]);
-            $user->addBalance($chargedAmountNgn);
-            Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Electricity payment (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Electricity network is temporarily unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Your electricity payment is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
 
@@ -545,11 +544,11 @@ class VtuController extends Controller
                 
                 return back()->with('success', "Cable subscription successful!");
             } else {
-                $order->update([
-                    'status' => 'refunded',
-                    'api_response' => json_encode($response),
-                ]);
-                
+                if (!empty($response['ambiguous'])) {
+                    $order->update(['status' => 'processing', 'api_response' => json_encode($response)]);
+                    return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
+                }
+                $order->update(['status' => 'refunded', 'api_response' => json_encode($response)]);
                 $user->addBalance($chargedAmountNgn);
                 Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription", null, $debitTx->created_at ?? null);
 
@@ -559,12 +558,10 @@ class VtuController extends Controller
         } catch (\Throwable $e) {
             Log::error('VTU Cable API Exception: ' . $e->getMessage());
             $order->update([
-                'status' => 'refunded',
-                'api_response' => json_encode(['error' => $e->getMessage()]),
+                'status' => 'processing',
+                'api_response' => json_encode(['ambiguous' => true, 'message' => 'Provider outcome could not be confirmed.']),
             ]);
-            $user->addBalance($chargedAmountNgn);
-            Transaction::add($user->id, $chargedAmountNgn, 'credit', 'vtu_refund', "Refund for failed ₦" . number_format($chargedAmountNgn, 2) . " Cable subscription (Connection error)", null, $debitTx->created_at ?? null);
-            return back()->with('error', 'Cable network is temporarily unreachable. Your funds have been automatically refunded.');
+            return back()->with('error', 'Your cable subscription is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
         }
     }
 
