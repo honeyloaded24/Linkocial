@@ -80,6 +80,6 @@
     .premium-card:hover .article-title-link {
         color: var(--primary);
     }
-    .text-main { color: #0f172a; }
+    .text-main { color: var(--text-main) !important; }
 </style>
 @endsection
