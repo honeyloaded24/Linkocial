@@ -279,8 +279,8 @@ class RecoverLegacyBalancesCommand extends Command
                 $ref = 'REC_' . strtoupper(Str::random(10));
                 Transaction::create([
                     'user_id' => $lockedUser->id,
-                    'amount' => $diff,
-                    'type' => 'credit',
+                    'amount' => abs($diff),
+                    'type' => $diff >= 0 ? 'credit' : 'debit',
                     'transaction_type' => 'currency_migration',
                     'balance_before' => $oldUsd,
                     'balance_after' => $newNgn,
