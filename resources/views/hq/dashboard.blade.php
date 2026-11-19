@@ -3,7 +3,19 @@
 @section('header_title', 'HQ Dashboard')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-dashboard-search .form-control.bg-white,
+    [data-bs-theme="dark"] .hq-dashboard-search .form-control.bg-white {
+        background-color: var(--bg-body, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-dashboard-search .form-control.bg-white::placeholder,
+    [data-bs-theme="dark"] .hq-dashboard-search .form-control.bg-white::placeholder {
+        color: var(--text-muted, #94a3b8) !important;
+    }
+</style>
+<div class="container-fluid hq-dashboard-search">
     <!-- Quick User Search -->
     <div class="row mb-4">
         <div class="col-12">
