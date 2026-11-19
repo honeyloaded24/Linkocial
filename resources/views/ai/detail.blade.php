@@ -48,7 +48,7 @@
                 <!-- Product Details -->
                 <div class="mb-4">
                     <h6 class="text-muted text-uppercase small fw-bold mb-3">Item Details</h6>
-                    <div class="p-3 bg-light rounded-3 d-flex justify-content-between align-items-center">
+                    <div class="p-3 rounded-3 d-flex justify-content-between align-items-center" style="background: var(--bg-muted);">
                         <div class="d-flex align-items-center gap-3">
                             <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary">
                                 <i class="fa-solid fa-brain fs-4"></i>
@@ -87,7 +87,7 @@
 
                 <!-- Instructions -->
                 <div class="alert alert-light border rounded-3 p-3 mb-0 small text-muted">
-                    <div class="fw-bold text-dark mb-1"><i class="fa-solid fa-shield-halved me-1 text-primary"></i> Need Help with this Order?</div>
+                    <div class="fw-bold text-main mb-1"><i class="fa-solid fa-shield-halved me-1 text-primary"></i> Need Help with this Order?</div>
                     If you experience any issues accessing your AI service or have questions regarding activation, please open a ticket from your <a href="{{ route('tickets.index') }}" class="text-decoration-underline text-primary">Support Dashboard</a> referencing Order #{{ $order->id }}.
                 </div>
 
