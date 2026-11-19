@@ -64,7 +64,7 @@ class PaymentController extends Controller
 
         // Create the pending record before calling Korapay. This prevents an immediate
         // webhook from arriving before Linkocial has a reference/user mapping.
-        \\App\\Models\\Payment::create([
+        \App\Models\Payment::create([
             'user_id' => $user->id,
             'amount' => $chargeAmount,
             'currency' => $chargeCurrency,
@@ -75,9 +75,9 @@ class PaymentController extends Controller
         ]);
 
         try {
-            $koraSecret = \\App\\Models\\Setting::get('korapay_mode', 'test') === 'live'
-                ? \\App\\Models\\Setting::get('korapay_live_secret_key')
-                : \\App\\Models\\Setting::get('korapay_test_secret_key');
+            $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live'
+                ? \App\Models\Setting::get('korapay_live_secret_key')
+                : \App\Models\Setting::get('korapay_test_secret_key');
             $koraSecret = trim($koraSecret ?? '');
 
             $response = Http::withToken($koraSecret)
@@ -111,7 +111,7 @@ class PaymentController extends Controller
                 'reference' => $reference
             ], 500);
 
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             // Network/timeout outcomes are ambiguous. Keep the reference pending so
             // provider verification or webhook reconciliation can safely recover it.
             Log::error('Korapay Initialization Exception: ' . $e->getMessage(), ['reference' => $reference]);
@@ -159,7 +159,7 @@ class PaymentController extends Controller
                 }
 
                 // Require an exact pending deposit record and match the confirmed amount.
-                $payment = \App\Models\\Payment::where('reference', $reference)->first();
+                $payment = \App\Models\Payment::where('reference', $reference)->first();
                 if (!$payment || $payment->status !== 'pending') {
                     Log::warning("Korapay Verification: No pending payment found for {$reference}.");
                     return;
@@ -198,9 +198,9 @@ class PaymentController extends Controller
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
 
-        $koraSecret = \App\Models\\Setting::get('korapay_mode', 'test') === 'live'
-            ? \App\Models\\Setting::get('korapay_live_secret_key')
-            : \App\Models\\Setting::get('korapay_test_secret_key');
+        $koraSecret = \App\Models\Setting::get('korapay_mode', 'test') === 'live'
+            ? \App\Models\Setting::get('korapay_live_secret_key')
+            : \App\Models\Setting::get('korapay_test_secret_key');
         $koraSecret = trim($koraSecret ?? '');
 
         if (empty($koraSecret)) {
@@ -233,7 +233,7 @@ class PaymentController extends Controller
             return response()->json(['status' => 'invalid payment data'], 400);
         }
 
-        $payment = \App\Models\\Payment::where('reference', $reference)->first();
+        $payment = \App\Models\Payment::where('reference', $reference)->first();
         if (!$payment) {
             Log::error("Korapay Webhook: No initialized payment found for {$reference}");
             return response()->json(['status' => 'payment not found'], 404);
@@ -265,7 +265,7 @@ class PaymentController extends Controller
         try {
             $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
             return response()->json(['status' => 'success']);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error("Failed to process Korapay webhook for {$reference}: " . $e->getMessage());
             return response()->json(['status' => 'processing failed'], 500);
         }
