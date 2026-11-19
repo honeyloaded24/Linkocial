@@ -8,6 +8,8 @@ use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\ProviderRouter;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ProcessSmmOrder implements ShouldQueue
 {
@@ -48,7 +50,7 @@ class ProcessSmmOrder implements ShouldQueue
             // Refund only confirmed failures. Ambiguous provider timeouts are
             // marked unresolved by ProviderRouter and return success-like handling.
             if (!$success) {
-                \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($currentOrder) {
+                DB::transaction(function () use ($currentOrder) {
                     $lockedOrder = Order::where('id', $currentOrder->id)
                         ->lockForUpdate()
                         ->first();
@@ -65,12 +67,14 @@ class ProcessSmmOrder implements ShouldQueue
                         $refundCharge = (float) $lockedOrder->charge;
                         $lockedUser->addBalance($refundCharge);
 
-                        \\App\\Models\\Transaction::add(
+                        \App\Models\Transaction::add(
                             $lockedUser->id,
                             $refundCharge,
                             'credit',
                             'refund',
-                            "Auto-refund for failed order #{$lockedOrder->id}"
+                            "Auto-refund for failed order #{$lockedOrder->id}",
+                            'REF-SMM-' . $lockedOrder->id,
+                            $lockedOrder->created_at
                         );
 
                         $lockedOrder->update(['is_refunded' => true]);
