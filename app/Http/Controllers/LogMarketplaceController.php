@@ -376,26 +376,34 @@ class LogMarketplaceController extends Controller
 
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
             } else {
-                // Atomic refund in NGN
-                $user->addBalance($totalCostNgn);
-                Transaction::add(
-                    $user->id, 
-                    $totalCostNgn, 
-                    'credit', 
-                    'log_refund', 
-                    "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")",
-                    null,
-                    $debitTx->created_at ?? null
-                );
+                // Refund, ledger entry, and failed order status must commit together.
+                DB::transaction(function () use ($user, $order, $totalCostNgn, $product, $response, $debitTx) {
+                    $lockedOrder = LogOrder::lockForUpdate()->findOrFail($order->id);
+                    if ($lockedOrder->status !== 'pending') {
+                        return;
+                    }
 
-                // Sanitize order delivered_items record to NOT contain API credentials
-                $sanitizedResponse = $response;
-                unset($sanitizedResponse['api_key'], $sanitizedResponse['key']);
+                    $lockedUser = \App\Models\User::lockForUpdate()->findOrFail($user->id);
+                    $lockedUser->addBalance($totalCostNgn);
+                    Transaction::add(
+                        $lockedUser->id,
+                        $totalCostNgn,
+                        'credit',
+                        'log_refund',
+                        "Refund for failed log purchase: {$product->name} (₦" . number_format($totalCostNgn, 2) . ")",
+                        'REF-LOG-' . $lockedOrder->id,
+                        $debitTx->created_at ?? null
+                    );
 
-                $order->update([
-                    'status' => 'failed',
-                    'delivered_items' => json_encode($sanitizedResponse)
-                ]);
+                    // Sanitize order delivered_items record to NOT contain API credentials
+                    $sanitizedResponse = $response;
+                    unset($sanitizedResponse['api_key'], $sanitizedResponse['key']);
+
+                    $lockedOrder->update([
+                        'status' => 'failed',
+                        'delivered_items' => json_encode($sanitizedResponse)
+                    ]);
+                });
 
                 // Admin diagnostic logging
                 $adminMsg = $response['admin_message'] ?? ($response['message'] ?? 'Provider error');
