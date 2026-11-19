@@ -45,6 +45,10 @@ class SmmProviderService
 
             return null;
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            // Provider may have accepted the order before the connection timed out.
+            Log::warning("SMM API purchase outcome is ambiguous ({$provider->name}): " . $e->getMessage());
+            throw new \App\Exceptions\ProviderTimeoutException("SMM provider purchase outcome could not be confirmed.", 0, $e);
         } catch (\Exception $e) {
             Log::error("SMM API Connection Failed ({$provider->name}): " . $e->getMessage());
             return null;
