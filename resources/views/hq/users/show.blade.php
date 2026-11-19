@@ -10,7 +10,13 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-user-detail .bg-light, [data-bs-theme="dark"] .hq-user-detail .bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-detail .bg-white, [data-bs-theme="dark"] .hq-user-detail .bg-white { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-detail .btn-light, [data-bs-theme="dark"] .hq-user-detail .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-detail .input-group-text, [data-bs-theme="dark"] .hq-user-detail .input-group-text { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-user-detail .table thead.bg-light, [data-bs-theme="dark"] .hq-user-detail .table thead.bg-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; }
+</style><div class="container-fluid hq-user-detail">
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4">{{ session('success') }}</div>
     @endif
