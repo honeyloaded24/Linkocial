@@ -3,7 +3,25 @@
 @section('header_title', 'Blog Management')
 
 @section('content')
-<div class="container-fluid px-md-5">
+<style>
+    [data-theme="dark"] .hq-blog-list .bg-light,
+    [data-bs-theme="dark"] .hq-blog-list .bg-light {
+        background-color: rgba(255,255,255,0.06) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-blog-list .text-dark,
+    [data-bs-theme="dark"] .hq-blog-list .text-dark {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-blog-list .btn-light,
+    [data-bs-theme="dark"] .hq-blog-list .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-blog-list px-md-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold mb-0">Platform Insights</h5>
         <a href="{{ route('hq.blog.create') }}" class="btn btn-primary-custom px-4">
