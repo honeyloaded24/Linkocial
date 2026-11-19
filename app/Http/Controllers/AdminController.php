@@ -1772,7 +1772,7 @@ class AdminController extends Controller
         $user = \App\Models\User::findOrFail($request->user_id);
         $rate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
 
-        \Illuminate\Support\Facades\$reconciliationResult = DB::transaction(function () use ($user, $request, $rate) {
+        $reconciliationResult = \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $rate) {
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->firstOrFail();
             $oldBalance = (float) $lockedUser->balance;
 
