@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands([
-        __DIR__.'/../app/Console/Commands',
+        \\App\\Console\\Commands\\PollStaleAiToolOrders::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectTo(
