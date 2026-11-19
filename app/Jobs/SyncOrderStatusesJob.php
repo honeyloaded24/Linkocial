@@ -51,6 +51,13 @@ class SyncOrderStatusesJob implements ShouldQueue
                         $lockedOrder = Order::whereKey($order->id)->lockForUpdate()->first();
                         if (!$lockedOrder) return;
 
+                        // A provider response fetched before another worker finalized
+                        // the order must not regress a terminal state or trigger a refund.
+                        if (in_array($lockedOrder->status, ['completed', 'failed', 'canceled'], true)
+                            || $lockedOrder->is_refunded) {
+                            return;
+                        }
+
                         $lockedOrder->update([
                             'status' => $newStatus,
                             'start_count' => $statusData['start_count'] ?? $lockedOrder->start_count,
