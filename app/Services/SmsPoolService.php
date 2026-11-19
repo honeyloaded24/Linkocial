@@ -174,18 +174,18 @@ class SmsPoolService
             ]);
 
             if (!$response->successful()) {
-                throw new \\RuntimeException("SMSPool active-orders request failed with HTTP {$response->status()}.");
+                throw new \RuntimeException("SMSPool active-orders request failed with HTTP {$response->status()}.");
             }
 
             $data = $response->json();
             if (!is_array($data)) {
-                throw new \\RuntimeException('SMSPool active-orders response was not valid JSON data.');
+                throw new \RuntimeException('SMSPool active-orders response was not valid JSON data.');
             }
 
             return $data;
         } catch (\\Throwable $e) {
             Log::warning("SMSPool getActiveOrders failed: " . $e->getMessage());
-            throw new \\RuntimeException('Unable to verify SMSPool active orders.', 0, $e);
+            throw new \RuntimeException('Unable to verify SMSPool active orders.', 0, $e);
         }
     }
 
@@ -201,18 +201,18 @@ class SmsPoolService
             ]);
 
             if (!$response->successful()) {
-                throw new \\RuntimeException("SMSPool history request failed with HTTP {$response->status()}.");
+                throw new \RuntimeException("SMSPool history request failed with HTTP {$response->status()}.");
             }
 
             $data = $response->json();
             if (!is_array($data)) {
-                throw new \\RuntimeException('SMSPool history response was not valid JSON data.');
+                throw new \RuntimeException('SMSPool history response was not valid JSON data.');
             }
 
             return $data;
         } catch (\\Throwable $e) {
             Log::warning("SMSPool getOrderHistory failed: " . $e->getMessage());
-            throw new \\RuntimeException('Unable to verify SMSPool order history.', 0, $e);
+            throw new \RuntimeException('Unable to verify SMSPool order history.', 0, $e);
         }
     }
 
@@ -300,7 +300,7 @@ class SmsPoolService
                 'orderid' => $orderId,
                 'error' => $e->getMessage(),
             ]);
-            throw new \\RuntimeException('SMSPool cancellation could not be confirmed. Do not refund until provider status is verified.', 0, $e);
+            throw new \RuntimeException('SMSPool cancellation could not be confirmed. Do not refund until provider status is verified.', 0, $e);
         }
 
         if ($response->failed()) {
@@ -311,7 +311,7 @@ class SmsPoolService
         $data = $response->json();
         if (!is_array($data) || !array_key_exists('success', $data) || (int) $data['success'] !== 1) {
             Log::warning('SMSPool cancellation was not confirmed', ['orderid' => $orderId, 'response' => $data]);
-            throw new \\RuntimeException($data['message'] ?? 'SMSPool did not confirm cancellation. Do not refund until provider status is verified.');
+            throw new \RuntimeException($data['message'] ?? 'SMSPool did not confirm cancellation. Do not refund until provider status is verified.');
         }
 
         return $data;
@@ -338,7 +338,7 @@ class SmsPoolService
         // SMSPool may return HTTP 200 for rejected operations. Require explicit success.
         if (!is_array($data) || !array_key_exists('success', $data) || (int) $data['success'] !== 1) {
             $msg = is_array($data) ? ($data['message'] ?? 'SMSPool did not confirm the resend request.') : 'SMSPool returned an invalid resend response.';
-            throw new \\RuntimeException(html_entity_decode(strip_tags((string) $msg), ENT_QUOTES, 'UTF-8'));
+            throw new \RuntimeException(html_entity_decode(strip_tags((string) $msg), ENT_QUOTES, 'UTF-8'));
         }
 
         return $data;
