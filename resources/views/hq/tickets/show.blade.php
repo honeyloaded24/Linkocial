@@ -77,7 +77,7 @@
                 </div>
 
                 <!-- Chat Body -->
-                <div class="flex-grow-1 p-4" style="background: #f8fafc; overflow-y: auto;">
+                <div class="flex-grow-1 p-4" style="background: var(--bg-body); overflow-y: auto;">
                     @foreach($ticket->messages as $msg)
                         <div class="d-flex mb-4 @if($msg->is_admin) justify-content-end @else justify-content-start @endif">
                             @if(!$msg->is_admin)
@@ -108,11 +108,11 @@
                 </div>
 
                 <!-- Footer Reply Box -->
-                <div class="p-4 bg-white border-top">
+                <div class="p-4 bg-surface border-top">
                     <form action="{{ route('hq.tickets.reply', $ticket->id) }}" method="POST">
                         @csrf
                         <div class="form-floating mb-3">
-                            <textarea name="message" class="form-control" placeholder="Write your response..." id="replyTextarea" style="height: 100px; background: #fdfdfd; border-radius: 15px; font-size: 0.85rem;"></textarea>
+                            <textarea name="message" class="form-control" placeholder="Write your response..." id="replyTextarea" style="height: 100px; background: var(--bg-surface); color: var(--text-main); border-radius: 15px; font-size: 0.85rem;"></textarea>
                             <label for="replyTextarea" class="text-muted small">Type your reply here...</label>
                         </div>
                         
