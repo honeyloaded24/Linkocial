@@ -173,4 +173,38 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame('received', $order->fresh()->status);
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
     }
+    public function test_user_cancel_refunds_when_diagnostic_sms_text_exists_but_no_code_arrived(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Cancel';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_cancel_text_customer';
+        $customer->email = 'vn-cancel-text@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 500;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-CANCEL-TEXT',
+            'phone_number' => '+234000000000', 'country' => 'Nigeria', 'operator' => 'Test',
+            'server' => 'server1', 'product' => 'test-service', 'cost' => 250,
+            'provider_cost' => 1, 'status' => 'pending',
+            'sms_text' => 'Cancellation not confirmed by provider. Refund withheld pending reconciliation.',
+        ]);
+
+        $this->mock(SmsPoolService::class, function ($mock) {
+            $mock->shouldReceive('cancelOrder')->once()->with('AUDIT-VN-CANCEL-TEXT')->andReturn(['success' => 1]);
+        });
+        $this->mock(GrizzlySmsService::class);
+
+        $this->actingAs($customer)
+            ->post('/api/virtual-numbers/' . $order->id . '/cancel')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame(750.0, (float) $customer->fresh()->balance);
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
 }
