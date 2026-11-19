@@ -530,7 +530,37 @@ class VirtualNumberController extends Controller
                         }
                     }
                 } else {
-                    $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
+                    try {
+                        $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
+                    } catch (\\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {
+                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
+                        // the provider may have created an activation before the response was lost.
+                        // Never refund or permit another Server 2 purchase until reconciled.
+                        Log::warning('Grizzly purchase timed out; preserving attempt as unresolved.', [
+                            'user_id' => $user->id,
+                            'attempt' => $attemptRecord->id ?? null,
+                            'country' => $country,
+                            'product' => $productId,
+                        ]);
+
+                        if ($attemptRecord) {
+                            DB::transaction(function () use ($attemptRecord, $timeoutEx) {
+                                $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                    $lockedOrder->update([
+                                        'status' => 'unresolved',
+                                        'sms_text' => 'Grizzly provider timeout. Activation outcome unknown; retained for manual reconciliation. No automatic refund.',
+                                    ]);
+                                }
+                            });
+                        }
+
+                        return response()->json([
+                            'error' => 'Your request timed out while communicating with Server 2. The purchase is being verified to prevent a duplicate charge. Please check order history or contact support.',
+                            'order_id' => $attemptRecord->id ?? null,
+                            'status' => 'unresolved',
+                        ], 504);
+                    }
                 }
             } catch (\Exception $e) {
                 // Refund the reserved balance safely and idempotently if purchase fails
