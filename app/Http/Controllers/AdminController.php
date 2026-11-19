@@ -543,15 +543,6 @@ class AdminController extends Controller
                 if ($request->type === 'add') {
                     $user->addBalance($request->amount);
 
-                    // Record manual additions as successful payments for financial metrics.
-                    \App\Models\Payment::create([
-                        'user_id' => $user->id,
-                        'amount' => $request->amount,
-                        'currency' => $user->currency_code ?? 'NGN',
-                        'amount_usd' => $request->amount,
-                        'reference' => $ref,
-                        'status' => 'success',
-                    ]);
                 } elseif (!$user->deductBalance($request->amount)) {
                     throw new \RuntimeException('INSUFFICIENT_BALANCE');
                 }
