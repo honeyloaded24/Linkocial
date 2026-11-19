@@ -280,6 +280,36 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertEquals(25.00, (float) Setting::get('markup_ai_tools'));
     }
 
+    public function test_refunded_ai_tool_order_cannot_be_fulfilled_after_refund()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+
+        $order = AiToolOrder::create([
+            'user_id'             => $user->id,
+            'provider_product_id'  => 'tool-refund-fulfillment-guard',
+            'product_name'         => 'Refund Guard Test',
+            'idempotency_key'      => 'idemp-refund-fulfillment-guard',
+            'status'                => AiToolOrder::STATUS_REFUNDED,
+            'quantity'              => 1,
+            'unit_price_usdt'       => 5.00,
+            'total_price_usdt'      => 5.00,
+            'exchange_rate'         => 1500.00,
+            'unit_price_ngn'        => 9000.00,
+            'total_paid_ngn'        => 9000.00,
+            'provider_cost_ngn'     => 7500.00,
+            'profit_ngn'            => 1500.00,
+            'refunded_at'           => now(),
+        ]);
+
+        $result = $order->fulfillWithCredentials('SHOULD-NOT-BE-DELIVERED');
+
+        $this->assertFalse($result);
+        $this->assertSame(AiToolOrder::STATUS_REFUNDED, $order->fresh()->status);
+        $this->assertDatabaseMissing('ai_tool_order_items', [
+            'ai_tool_order_id' => $order->id,
+        ]);
+    }
+
     public function test_admin_can_manually_fulfill_ai_tool_order()
     {
         $admin = User::factory()->create(['role' => 'admin', 'is_admin' => true]);
