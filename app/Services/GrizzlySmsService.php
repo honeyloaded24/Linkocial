@@ -706,7 +706,7 @@ class GrizzlySmsService
     public function cancelOrder(string|int $orderId): array
     {
         if (empty($this->apiKey)) {
-            return ['success' => true];
+            throw new \\RuntimeException('Grizzly SMS API key is not configured. Cancellation cannot be confirmed.');
         }
 
         try {
@@ -766,7 +766,7 @@ class GrizzlySmsService
     public function resendOrder(string|int $orderId): array
     {
         if (empty($this->apiKey)) {
-            return ['success' => true];
+            throw new \\RuntimeException('Grizzly SMS API key is not configured. Resend cannot be confirmed.');
         }
 
         try {
