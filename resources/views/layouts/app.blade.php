@@ -756,29 +756,50 @@
     <!-- Theme Toggle JS -->
     <script>
         const toggleSwitch = document.querySelector('#checkbox');
-        const currentTheme = localStorage.getItem('theme');
+        const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-        if (currentTheme) {
-            document.documentElement.setAttribute('data-theme', currentTheme);
-            document.documentElement.setAttribute('data-bs-theme', currentTheme);
-            if (currentTheme === 'dark') {
-                toggleSwitch.checked = false;
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            if (toggleSwitch) {
+                toggleSwitch.checked = theme === 'light';
+                toggleSwitch.setAttribute('aria-label', 'Switch to ' + (theme === 'light' ? 'dark' : 'light') + ' mode');
             }
         }
 
+        // Keep the switch synchronized with the theme selected before page render.
+        const savedTheme = localStorage.getItem('theme');
+        const initialTheme = savedTheme || (themeMediaQuery.matches ? 'dark' : 'light');
+        applyTheme(initialTheme);
+
         function switchTheme(e) {
-            if (e.target.checked) {
-                document.documentElement.setAttribute('data-theme', 'light');
-                document.documentElement.setAttribute('data-bs-theme', 'light');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
-                localStorage.setItem('theme', 'dark');
-            }    
+            const theme = e.target.checked ? 'light' : 'dark';
+            applyTheme(theme);
+            localStorage.setItem('theme', theme);
         }
 
-        toggleSwitch.addEventListener('change', switchTheme, false);
+        if (toggleSwitch) {
+            toggleSwitch.addEventListener('change', switchTheme, false);
+        }
+
+        // Follow OS preference only until the user explicitly selects a theme.
+        function handleSystemThemeChange(e) {
+            if (!localStorage.getItem('theme')) {
+                applyTheme(e.matches ? 'dark' : 'light');
+            }
+        }
+        if (themeMediaQuery.addEventListener) {
+            themeMediaQuery.addEventListener('change', handleSystemThemeChange);
+        } else if (themeMediaQuery.addListener) {
+            themeMediaQuery.addListener(handleSystemThemeChange);
+        }
+
+        // Sync explicit theme choices across tabs.
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'theme' && (e.newValue === 'light' || e.newValue === 'dark')) {
+                applyTheme(e.newValue);
+            }
+        });
 
         // Topbar Balance Visibility Toggle
         function toggleTopbarBalance(btn) {
