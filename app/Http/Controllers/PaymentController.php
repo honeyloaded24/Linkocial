@@ -498,7 +498,7 @@ class PaymentController extends Controller
         }
 
         $payload = json_decode($rawBody, true) ?: $request->all();
-        Log::info('BillStack Webhook Payload:', ['payload' => $payload]);
+        // Avoid logging customer and banking details from provider webhook payloads.
 
         $event = strtoupper(trim((string)($payload['event'] ?? '')));
         $data = $payload['data'] ?? $payload;
@@ -575,12 +575,8 @@ class PaymentController extends Controller
             }
         }
 
-        if (!$user && !empty($customerEmail) && is_string($customerEmail)) {
-            $user = User::where('email', trim($customerEmail))->first();
-        }
-
         if (!$user) {
-            Log::error("BillStack Webhook: User not found for account {$accountNumber}, ref {$vaRef}, or email {$customerEmail}");
+            Log::error("BillStack Webhook: User not found for account {$accountNumber} or virtual account reference {$vaRef}");
             return response()->json(['status' => false, 'message' => 'User not found'], 404);
         }
 
