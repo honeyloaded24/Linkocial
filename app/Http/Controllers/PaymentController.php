@@ -303,32 +303,26 @@ class PaymentController extends Controller
         }
 
         DB::transaction(function () use ($user, $ngnAmount, $originalAmount, $currencyCode, $rateUsed, $reference, $method, $fee) {
-            // Lock an existing pending payment row. Every payment credit must have
-            // a pre-created unique reference so concurrent webhook deliveries serialize.
+            // Re-verify under lock to prevent any race condition double-writes
             $lockedPayment = \App\Models\Payment::where('reference', $reference)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedPayment) {
-                throw new \RuntimeException("Payment record missing for reference {$reference}");
-            }
-
-            if ($lockedPayment->status === 'success') {
+            if ($lockedPayment && $lockedPayment->status === 'success') {
                 return;
             }
 
-            if ($lockedPayment->status !== 'pending' || (int) $lockedPayment->user_id !== (int) $user->id) {
-                throw new \RuntimeException("Payment state or owner mismatch for reference {$reference}");
-            }
-
-            // Mark the locked pending payment successful within the same transaction
-            // as wallet credit and ledger writes.
-            $lockedPayment->update([
-                'amount' => $ngnAmount,
-                'currency' => 'NGN',
-                'amount_usd' => $currencyCode === 'USD' ? $originalAmount : round($ngnAmount / $rateUsed, 4),
-                'status' => 'success',
-            ]);
+            // Record/Update the payment history in NGN
+            \App\Models\Payment::updateOrCreate(
+                ['reference' => $reference],
+                [
+                    'user_id' => $user->id,
+                    'amount' => $ngnAmount,
+                    'currency' => 'NGN',
+                    'amount_usd' => $currencyCode === 'USD' ? $originalAmount : round($ngnAmount / $rateUsed, 4),
+                    'status' => 'success',
+                ]
+            );
 
             // Lock and Credit the user's wallet directly in NGN
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
@@ -344,17 +338,15 @@ class PaymentController extends Controller
             if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
                 if ($ngnAmount >= $promoMinNgn) {
                     $bonusAmount = round(($ngnAmount * $promoPercent) / 100, 2);
-                    if ($bonusAmount > 0) {
-                        $lockedUser->addBalance($bonusAmount);
-
-                        \App\Models\Transaction::add(
+                    $lockedUser->addBalance($bonusAmount);
+                    
+                    \App\Models\Transaction::add(
                         $lockedUser->id, 
                         $bonusAmount, 
                         'credit', 
                         'deposit', 
-                            "Promo Bonus (+{$promoPercent}%) for deposit"
-                        );
-                    }
+                        "Promo Bonus (+{$promoPercent}%) for deposit"
+                    );
                 }
             }
 
@@ -393,7 +385,7 @@ class PaymentController extends Controller
 
             // 5. Referral Commission Logic (in NGN)
             if ($lockedUser->referred_by) {
-                $referrer = User::where('id', $lockedUser->referred_by)->lockForUpdate()->first();
+                $referrer = User::find($lockedUser->referred_by);
                 if ($referrer) {
                     $paymentCount = \App\Models\Payment::where('user_id', $lockedUser->id)->where('status', 'success')->count();
                     
@@ -405,20 +397,8 @@ class PaymentController extends Controller
                         $typeLabel = "Recurring";
                     }
 
-                    if (!is_finite($rate) || $rate <= 0 || $rate > 100) {
-                        Log::warning('Affiliate commission skipped due to invalid configured rate', [
-                            'referrer_id' => $referrer->id,
-                            'rate' => $rate,
-                            'payment_reference' => $reference,
-                        ]);
-                        return;
-                    }
-
                     $commissionRate = $rate / 100;
                     $commissionAmount = round($ngnAmount * $commissionRate, 2);
-                    if ($commissionAmount <= 0) {
-                        return;
-                    }
 
                     $referrer->increment('commission_balance', $commissionAmount);
                     $referrer->increment('total_earned_commission', $commissionAmount);
