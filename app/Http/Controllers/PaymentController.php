@@ -145,7 +145,7 @@ class PaymentController extends Controller
                 }
 
                 // Require an exact pending deposit record and match the confirmed amount.
-                $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
+                $payment = \App\Models\\Payment::where('reference', $reference)->first();
                 if (!$payment || $payment->status !== 'pending') {
                     Log::warning("Korapay Verification: No pending payment found for {$reference}.");
                     return;
@@ -184,9 +184,9 @@ class PaymentController extends Controller
         $signature = $request->header('x-korapay-signature');
         $payload = $request->getContent();
 
-        $koraSecret = \\App\\Models\\Setting::get('korapay_mode', 'test') === 'live'
-            ? \\App\\Models\\Setting::get('korapay_live_secret_key')
-            : \\App\\Models\\Setting::get('korapay_test_secret_key');
+        $koraSecret = \App\Models\\Setting::get('korapay_mode', 'test') === 'live'
+            ? \App\Models\\Setting::get('korapay_live_secret_key')
+            : \App\Models\\Setting::get('korapay_test_secret_key');
         $koraSecret = trim($koraSecret ?? '');
 
         if (empty($koraSecret)) {
@@ -219,7 +219,7 @@ class PaymentController extends Controller
             return response()->json(['status' => 'invalid payment data'], 400);
         }
 
-        $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
+        $payment = \App\Models\\Payment::where('reference', $reference)->first();
         if (!$payment) {
             Log::error("Korapay Webhook: No initialized payment found for {$reference}");
             return response()->json(['status' => 'payment not found'], 404);
