@@ -156,8 +156,8 @@
         .logo-dark { display: none !important; }
         .logo-light { display: block !important; }
 
-        [data-theme="dark"] .logo-dark { display: block !important; }
-        [data-theme="dark"] .logo-light { display: none !important; }
+        [data-theme="dark"] .logo-dark, [data-bs-theme="dark"] .logo-dark { display: block !important; }
+        [data-theme="dark"] .logo-light, [data-bs-theme="dark"] .logo-light { display: none !important; }
 
         /* Ensure Bootstrap modals always layer above topbar and all elements */
         .modal {
