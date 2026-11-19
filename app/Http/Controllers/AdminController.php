@@ -1781,7 +1781,7 @@ class AdminController extends Controller
                 // already recovered NGN balance would multiply the balance again.
                 if ($lockedUser->legacy_balance_recovered_at !== null
                     || $lockedUser->currency_reconciliation_status === 'migrated') {
-                    throw new \\RuntimeException('BALANCE_ALREADY_MIGRATED');
+                    return 'already_migrated';
                 }
 
                 $newBalance = round($oldBalance * $rate, 2);
