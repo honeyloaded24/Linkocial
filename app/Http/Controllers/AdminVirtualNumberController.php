@@ -85,15 +85,18 @@ class AdminVirtualNumberController extends Controller
                 return back()->with('error', 'That order is already terminal or has already been refunded.');
             }
 
-            // Attempt to tell provider to cancel it so we get our API money back too, if it's pending.
-            if ($order->status === 'pending' || $order->status === 'received') {
-                try {
-                    $provider = ($order->server === 'server2') ? $grizzly : $smspool;
-                    $provider->cancelOrder($order->api_order_id);
-                } catch (\Exception $e) {
-                    // Ignore API fails on manual admin overrides to ensure the user gets refunded regardless
-                }
+            // Admin refunds are not allowed after an SMS has been received or for
+            // unresolved/terminal provider states. For a pending order, provider
+            // cancellation must be confirmed before issuing a customer refund.
+            if ($order->status !== 'pending'
+                || !empty($order->sms_code)
+                || !empty($order->sms_text)) {
+                DB::rollBack();
+                return back()->with('error', 'Only pending virtual-number orders without received SMS can be refunded.');
             }
+
+            $provider = ($order->server === 'server2') ? $grizzly : $smspool;
+            $provider->cancelOrder($order->api_order_id);
 
             // Perform Refund
             $order->user->addBalance($order->cost);
