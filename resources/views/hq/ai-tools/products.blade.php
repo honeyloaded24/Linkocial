@@ -69,7 +69,7 @@
                             <td class="px-3 fw-semibold">{{ \Illuminate\Support\Str::limit($product->name, 35) }}</td>
                             <td class="font-monospace text-muted">{{ $product->provider_product_id }}</td>
                             <td>{{ $product->category->name ?? '—' }}</td>
-                            <td>${{ number_format((float) $product->price_usdt, 4) }} USDT</td>
+                            <td>${{ number_format((float) $product->price_usdt, 4) }} {{ strtoupper($product->currency ?: 'USDT') }}</td>
                             <td>
                                 @if($product->fulfillment === 'on_demand')
                                     <span class="badge bg-info bg-opacity-15 text-info">On-demand</span>
