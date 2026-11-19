@@ -654,41 +654,35 @@ class AdminController extends Controller
      */
     public function forceCompleteOrder($id)
     {
-        $order = Order::findOrFail($id);
+        try {
+            $order = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
+                $lockedOrder = Order::whereKey($id)->lockForUpdate()->firstOrFail();
 
-        // If the order was already refunded (failed/canceled), we must RE-DEBIT the user 
-        // because we are now saying the work was actually done.
-        if ($order->is_refunded) {
-            $user = $order->user;
-
-            try {
-                \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
-                    if (!$user->deductBalance((float) $order->charge)) {
-                        throw new \Exception("Cannot force complete. User has already been refunded and now has insufficient balance (₦" . number_format((float) $user->balance, 2) . ") to be re-charged.");
+                if ($lockedOrder->is_refunded) {
+                    $user = User::whereKey($lockedOrder->user_id)->lockForUpdate()->firstOrFail();
+                    if (!$user->deductBalance((float) $lockedOrder->charge)) {
+                        throw new \\RuntimeException("Cannot force complete. User has insufficient balance to re-charge this refunded order.");
                     }
 
-                    \App\Models\Transaction::add(
+                    \\App\\Models\\Transaction::add(
                         $user->id,
-                        $order->charge,
+                        $lockedOrder->charge,
                         'debit',
                         'order',
-                        "Re-debit for Force-Completed order #{$order->id}"
+                        "Re-debit for Force-Completed order #{$lockedOrder->id}"
                     );
+                    $lockedOrder->is_refunded = false;
+                }
 
-                    $order->update([
-                        'status' => 'completed',
-                        'is_refunded' => false
-                    ]);
-                });
-            } catch (\Exception $e) {
-                return back()->with('error', $e->getMessage());
-            }
-        } else {
-            $order->update(['status' => 'completed']);
+                $lockedOrder->status = 'completed';
+                $lockedOrder->save();
+                return $lockedOrder;
+            });
+        } catch (\\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        \App\Models\ActivityLog::log("Force completed order", $order);
-
+        \\App\\Models\\ActivityLog::log("Force completed order", $order);
         return back()->with('success', 'Order marked as completed.');
     }
 
@@ -752,46 +746,38 @@ class AdminController extends Controller
      */
     public function resubmitOrder($id)
     {
-        $order = Order::with(['service', 'user'])->findOrFail($id);
+        try {
+            $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
+                $order = Order::with(['service'])->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        // If the order was already refunded (status canceled or failed), we must re-debit the user
-        if (in_array($order->status, ['canceled', 'failed'])) {
-            $user = $order->user;
-
-            try {
-                \Illuminate\Support\Facades\DB::transaction(function () use ($order, $user) {
+                if (in_array($order->status, ['canceled', 'failed'])) {
+                    $user = User::whereKey($order->user_id)->lockForUpdate()->firstOrFail();
                     if (!$user->deductBalance((float) $order->charge)) {
-                        throw new \Exception("Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
+                        throw new \\RuntimeException("Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
                     }
 
-                    \App\Models\Transaction::add(
+                    \\App\\Models\\Transaction::add(
                         $user->id,
                         $order->charge,
                         'debit',
                         'order',
                         "Re-debit for resubmitted order #{$order->id}"
                     );
+                    $order->is_refunded = false;
+                }
 
-                    $order->update([
-                        'status' => 'processing',
-                        'is_refunded' => false,
-                        'error_log' => null
-                    ]);
-                    \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
-                });
-            } catch (\Exception $e) {
-                return back()->with('error', $e->getMessage());
-            }
+                $order->status = 'processing';
+                $order->error_log = null;
+                $order->save();
 
-            return back()->with('success', "Order #{$id} has been re-debited and re-queued for processing.");
+                \\App\\Jobs\\ProcessSmmOrder::dispatch($order, $order->service);
+                return $order;
+            });
+        } catch (\\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        // Otherwise just re-queue (e.g. if it was just stuck)
-        $order->update(['status' => 'processing', 'error_log' => null]);
-        \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
-
-        \App\Models\ActivityLog::log("Resubmitted order to provider", $order);
-
+        \\App\\Models\\ActivityLog::log("Resubmitted order to provider", $result);
         return back()->with('success', "Order #{$id} has been re-queued for processing.");
     }
 
