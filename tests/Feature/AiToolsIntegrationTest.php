@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schedule;
 use Tests\TestCase;
 
 class AiToolsIntegrationTest extends TestCase
@@ -474,6 +475,13 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertNotNull($order->last_polled_at);
         $this->assertSame('recovered-secret-credential', $order->items()->first()->code);
         Http::assertSent(fn ($request) => str_contains($request->url(), 'alaric-recovery-123'));
+
+        // Verify the recovery command is registered and scheduled every minute.
+        $this->assertArrayHasKey('ai-tools:poll-stale-orders', Artisan::all());
+        $this->assertTrue(collect(Schedule::events())->contains(function ($event) {
+            return str_contains($event->command, 'ai-tools:poll-stale-orders')
+                && $event->expression === '* * * * *';
+        }));
     }
 
 }
