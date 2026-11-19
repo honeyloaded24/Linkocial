@@ -8,7 +8,12 @@
 @endsection
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-user-transactions .btn-light, [data-bs-theme="dark"] .hq-user-transactions .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+</style>
+
+
+<div class="container-fluid hq-user-transactions">
     <div class="premium-card p-0 border-0 shadow-lg overflow-hidden">
         <!-- Tab Navigation -->
         <div class="bg-light bg-opacity-5 p-2 border-bottom border-secondary border-opacity-10">
