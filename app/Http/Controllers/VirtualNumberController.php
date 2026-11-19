@@ -711,42 +711,35 @@ class VirtualNumberController extends Controller
     public function checkStatus($id)
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->findOrFail($id);
+        if ($order->status !== 'pending') return response()->json(['order' => $order]);
 
-        if ($order->status !== 'pending') {
-            return response()->json(['order' => $order]);
-        }
+        $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
+        if (!$actionLock->get()) return response()->json(['error' => 'Another action is being processed for this order. Please retry shortly.'], 409);
 
         try {
+            $order = $order->fresh();
+            if (!$order || $order->status !== 'pending') return response()->json(['order' => $order]);
+
             $provider = $this->getProvider($order->server ?? 'server1');
             $checkData = $provider->checkOrder($order->api_order_id);
-
-            // Status values: 1 = pending, 2 = expired, 3 = completed (SMS received), 5/6 = refunded/canceled
-            $status = isset($checkData['status']) ? (int)$checkData['status'] : 1;
+            $status = isset($checkData['status']) ? (int) $checkData['status'] : 1;
 
             if ($status === 3) {
                 DB::transaction(function () use ($order, $checkData) {
-                    $lockedOrder = VirtualNumberOrder::where('id', $order->id)
-                        ->lockForUpdate()
-                        ->first();
-                    
+                    $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
                     if ($lockedOrder && $lockedOrder->status === 'pending') {
-                        $lockedOrder->update([
-                            'status' => 'received',
-                            'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '',
-                            'sms_code' => $checkData['sms'] ?? ''
-                        ]);
+                        $lockedOrder->update(['status' => 'received', 'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '', 'sms_code' => $checkData['sms'] ?? '']);
                     }
                 });
-            } elseif ($status === 2 || $status === 5 || $status === 6) {
-                // Refund the user if it failed, expired, or was canceled upstream
+            } elseif (in_array($status, [2, 5, 6], true)) {
                 $this->refundOrder($order);
             }
-
             return response()->json(['order' => $order->fresh()]);
-
         } catch (\Exception $e) {
             Log::error('Virtual number checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to check status.'], 500);
+        } finally {
+            $actionLock->release();
         }
     }
 
@@ -756,23 +749,25 @@ class VirtualNumberController extends Controller
     public function cancelOrder($id)
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->where('status', 'pending')->findOrFail($id);
+        if (!empty($order->sms_code) || !empty($order->sms_text)) return response()->json(['error' => 'Cannot cancel a number that has already received an SMS code.'], 400);
 
-        if (!empty($order->sms_code) || !empty($order->sms_text)) {
-            return response()->json(['error' => 'Cannot cancel a number that has already received an SMS code.'], 400);
-        }
+        $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
+        if (!$actionLock->get()) return response()->json(['error' => 'Another action is being processed for this order. Please retry shortly.'], 409);
 
         try {
+            $order = $order->fresh();
+            if (!$order || $order->status !== 'pending' || !empty($order->sms_code) || !empty($order->sms_text)) {
+                return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
+            }
             $provider = $this->getProvider($order->server ?? 'server1');
             $provider->cancelOrder($order->api_order_id);
-            
-            // Perform the refund
             $this->refundOrder($order);
-
             return response()->json(['success' => true, 'order' => $order->fresh()]);
-
         } catch (\Exception $e) {
             Log::error('Virtual number cancelOrder failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage() ?: 'Could not cancel the order at this time.'], 400);
+        } finally {
+            $actionLock->release();
         }
     }
 
@@ -786,7 +781,7 @@ class VirtualNumberController extends Controller
             ->findOrFail($id);
 
         // Prevent duplicate resend calls for the same order from concurrent requests.
-        $resendLock = Cache::lock("vn_resend_order_{$order->id}", 30);
+        $resendLock = Cache::lock("vn_order_action_{$order->id}", 60);
         if (!$resendLock->get()) {
             return response()->json(['error' => 'A resend request is already in progress for this order.'], 409);
         }
