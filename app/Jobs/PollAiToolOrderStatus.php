@@ -29,7 +29,7 @@ class PollAiToolOrderStatus implements ShouldQueue
 
     public function __construct(public readonly AiToolOrder $order) {}
 
-    public function handle(AlaricApiService $alaricService, PixelSubApiService $pixelSubService): void
+    public function handle(AlaricApiService $alaricService, ?PixelSubApiService $pixelSubService = null): void
     {
         $order = $this->order->fresh();
 
@@ -59,7 +59,7 @@ class PollAiToolOrderStatus implements ShouldQueue
             return;
         }
 
-        $result = ($order->provider === 'pixelsub' ? $pixelSubService : $alaricService)->getOrder($order->provider_order_id);
+        $result = ($order->provider === 'pixelsub' ? ($pixelSubService ?? app(PixelSubApiService::class)) : $alaricService)->getOrder($order->provider_order_id);
 
         if (!($result['success'] ?? false)) {
             Log::warning('PollAiToolOrderStatus: getOrder API call failed', [
