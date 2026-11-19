@@ -655,16 +655,16 @@ class AdminController extends Controller
     public function forceCompleteOrder($id)
     {
         try {
-            $order = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
+            $order = \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
                 $lockedOrder = Order::whereKey($id)->lockForUpdate()->firstOrFail();
 
                 if ($lockedOrder->is_refunded) {
                     $user = User::whereKey($lockedOrder->user_id)->lockForUpdate()->firstOrFail();
                     if (!$user->deductBalance((float) $lockedOrder->charge)) {
-                        throw new \\RuntimeException("Cannot force complete. User has insufficient balance to re-charge this refunded order.");
+                        throw new \RuntimeException("Cannot force complete. User has insufficient balance to re-charge this refunded order.");
                     }
 
-                    \\App\\Models\\Transaction::add(
+                    \App\Models\Transaction::add(
                         $user->id,
                         $lockedOrder->charge,
                         'debit',
@@ -678,11 +678,11 @@ class AdminController extends Controller
                 $lockedOrder->save();
                 return $lockedOrder;
             });
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        \\App\\Models\\ActivityLog::log("Force completed order", $order);
+        \App\Models\ActivityLog::log("Force completed order", $order);
         return back()->with('success', 'Order marked as completed.');
     }
 
@@ -747,16 +747,16 @@ class AdminController extends Controller
     public function resubmitOrder($id)
     {
         try {
-            $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
+            $result = \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
                 $order = Order::with(['service'])->whereKey($id)->lockForUpdate()->firstOrFail();
 
                 if (in_array($order->status, ['canceled', 'failed'])) {
                     $user = User::whereKey($order->user_id)->lockForUpdate()->firstOrFail();
                     if (!$user->deductBalance((float) $order->charge)) {
-                        throw new \\RuntimeException("Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
+                        throw new \RuntimeException("Insufficient user balance to resubmit this order. (Needed: ₦" . number_format((float) $order->charge, 2) . ")");
                     }
 
-                    \\App\\Models\\Transaction::add(
+                    \App\Models\Transaction::add(
                         $user->id,
                         $order->charge,
                         'debit',
@@ -770,14 +770,14 @@ class AdminController extends Controller
                 $order->error_log = null;
                 $order->save();
 
-                \\App\\Jobs\\ProcessSmmOrder::dispatch($order, $order->service);
+                \App\Jobs\ProcessSmmOrder::dispatch($order, $order->service);
                 return $order;
             });
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        \\App\\Models\\ActivityLog::log("Resubmitted order to provider", $result);
+        \App\Models\ActivityLog::log("Resubmitted order to provider", $result);
         return back()->with('success', "Order #{$id} has been re-queued for processing.");
     }
 
