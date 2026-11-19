@@ -185,7 +185,7 @@
 <!-- Add Balance Modal -->
 <div class="modal fade" id="addBalanceModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content border-0 shadow" style="background-color: var(--bg-surface); color: var(--text-main);">
             <form action="{{ route('hq.users.balance', $user->id) }}" method="POST">
                 @csrf
                 <input type="hidden" name="type" value="add">
