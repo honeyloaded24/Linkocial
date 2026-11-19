@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\AiToolOrder;
 use App\Services\AlaricApiService;
+use App\Services\PixelSubApiService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -12,7 +13,7 @@ class PollStaleAiToolOrders extends Command
     protected $signature = 'ai-tools:poll-stale-orders {--limit=100}';
     protected $description = 'Recover automatic AI Tools fulfillment polling for stale processing orders';
 
-    public function handle(AlaricApiService $alaric): int
+    public function handle(AlaricApiService $alaric, PixelSubApiService $pixelSub): int
     {
         $limit = max(1, (int) $this->option('limit'));
         $orders = AiToolOrder::query()
@@ -28,7 +29,7 @@ class PollStaleAiToolOrders extends Command
 
         foreach ($orders as $order) {
             try {
-                $order->livePollStatus($alaric);
+                $order->livePollStatus($order->provider === 'pixelsub' ? $pixelSub : $alaric);
                 // livePollStatus updates last_polled_at when the provider responds.
                 // Record the attempt even on transient failures to prevent a tight retry loop.
                 if (!$order->fresh()->last_polled_at || $order->fresh()->last_polled_at->lt(now()->subMinute())) {
