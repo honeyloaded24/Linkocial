@@ -415,6 +415,49 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertEquals(26000.00, (float) $user->fresh()->balance);
     }
 
+    public function test_failed_ai_tool_order_with_existing_refund_ledger_cannot_be_refunded_twice()
+    {
+        $admin = User::factory()->create(['role' => 'admin', 'is_admin' => true]);
+        $user = User::factory()->create(['balance' => 26000]);
+
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'tool-duplicate-refund',
+            'product_name' => 'Duplicate Refund Guard',
+            'idempotency_key' => 'idemp-duplicate-refund',
+            'status' => AiToolOrder::STATUS_FAILED,
+            'quantity' => 1,
+            'unit_price_usdt' => 15.00,
+            'total_price_usdt' => 15.00,
+            'exchange_rate' => 1500.00,
+            'unit_price_ngn' => 25000.00,
+            'total_paid_ngn' => 25000.00,
+            'provider_cost_ngn' => 22500.00,
+            'profit_ngn' => 2500.00,
+        ]);
+
+        // Simulate the automatic refund already recorded by a hard provider rejection.
+        Transaction::add(
+            $user->id,
+            25000.00,
+            'credit',
+            'ai_tools_refund',
+            'Refund — failed AI TOOLS order',
+            'REF-AITOOLS-' . $order->id
+        );
+
+        $balanceBefore = (float) $user->fresh()->balance;
+        $result = $order->refundCustomer('Duplicate refund attempt');
+
+        $this->assertFalse($result);
+        $this->assertEquals($balanceBefore, (float) $user->fresh()->balance);
+        $this->assertSame(1, Transaction::where('reference', 'REF-AITOOLS-' . $order->id)
+            ->where('transaction_type', 'ai_tools_refund')
+            ->where('type', 'credit')
+            ->count());
+        $this->assertSame(AiToolOrder::STATUS_FAILED, $order->fresh()->status);
+    }
+
     public function test_get_on_fulfill_refund_sync_redirects_cleanly_without_500()
     {
         $admin = User::factory()->create(['role' => 'admin']);
