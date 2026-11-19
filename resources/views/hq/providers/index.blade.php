@@ -21,7 +21,7 @@
             <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center">
                 <h5 class="fw-bold mb-0">Configured Providers</h5>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="{{ route('hq.providers.pricing') }}" class="btn btn-outline-warning btn-sm px-3 rounded-pill text-dark fw-bold" style="background-color: #fef08a; border-color: #facc15;">
+                    <a href="{{ route('hq.providers.pricing') }}" class="btn btn-outline-warning btn-sm px-3 rounded-pill text-dark fw-bold" style="background-color: #fef08a; border-color: #facc15; color: #0f172a !important;">
                         <i class="fa-solid fa-tags me-1"></i> Pricing & Markup Settings
                     </a>
                     <button class="btn btn-primary btn-sm px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#addProviderModal" onclick="resetModal()">
