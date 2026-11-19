@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg fixed-top border-bottom" id="mainNav" class="theme-navbar">
+<nav class="navbar navbar-expand-lg fixed-top border-bottom theme-navbar" id="mainNav">
     <div class="container">
         <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('landing') }}">
             @if($siteLogoLight || $siteLogoDark)
