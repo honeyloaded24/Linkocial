@@ -29,61 +29,8 @@ class ConvertUserBalancesToNgn extends Command
      */
     public function handle()
     {
-        $rate = (float) $this->argument('rate');
-        $threshold = (float) $this->option('max-threshold');
-        $isDryRun = $this->option('dry-run');
-
-        if ($rate <= 0) {
-            $this->error("Invalid conversion rate specified: {$rate}");
-            return Command::FAILURE;
-        }
-
-        $this->info("Scanning users with balance > 0 and <= {$threshold} (legacy USD denomination)...");
-        if ($isDryRun) {
-            $this->warn("DRY RUN MODE: No user wallet balances will be modified.");
-        }
-
-        $users = User::where('balance', '>', 0)
-            ->where('balance', '<=', $threshold)
-            ->get();
-
-        $totalFound = $users->count();
-
-        if ($totalFound === 0) {
-            $this->info("No legacy USD user balances found below threshold {$threshold}. All active balances appear to already be in NGN.");
-            return Command::SUCCESS;
-        }
-
-        $this->info("Found {$totalFound} user balance(s) eligible for conversion at 1 USD = {$rate} NGN.");
-
-        $bar = $this->output->createProgressBar($totalFound);
-        $bar->start();
-
-        $convertedCount = 0;
-        foreach ($users as $user) {
-            $oldBalance = (float) $user->balance;
-            $newBalance = round($oldBalance * $rate, 2);
-
-            if (!$isDryRun) {
-                $user->update([
-                    'balance' => $newBalance,
-                    'currency_code' => 'NGN'
-                ]);
-            }
-
-            $convertedCount++;
-            $bar->advance();
-        }
-
-        $bar->finish();
-        $this->newLine();
-
-        if ($isDryRun) {
-            $this->info("DRY RUN COMPLETE: Would restore {$convertedCount} user wallet balances to NGN.");
-        } else {
-            $this->info("SUCCESS: Restored {$convertedCount} user wallet balances to NGN using rate {$rate}.");
-        }
-
-        return Command::SUCCESS;
+        $this->error('This legacy balance conversion command is disabled because it changes wallet balances without transactional ledger entries.');
+        $this->line('Use wallet:recover-legacy-balances for audited, idempotent recovery or the Admin currency reconciliation workflow.');
+        return Command::FAILURE;
     }
 }
