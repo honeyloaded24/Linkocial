@@ -207,4 +207,110 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
     }
 
+    public function test_expired_virtual_number_is_refunded_once_and_ledger_balances(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Expiry';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_expiry_customer';
+        $customer->email = 'vn-expiry-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 250;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-EXPIRED',
+            'phone_number' => '+234000000001', 'country' => 'Nigeria', 'operator' => 'Test',
+            'server' => 'server1', 'product' => 'test-service', 'cost' => 250,
+            'provider_cost' => 1, 'status' => 'pending', 'expires_at' => now()->subMinutes(10),
+        ]);
+
+        $this->mock(SmsPoolService::class, function ($mock) {
+            $mock->shouldReceive('checkOrder')->once()->with('AUDIT-VN-EXPIRED')->andReturn(['status' => 2]);
+        });
+        $this->mock(GrizzlySmsService::class);
+
+        $this->artisan('vn:check-expired')->assertExitCode(0);
+        $this->assertSame(500.0, (float) $customer->fresh()->balance);
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+
+        // A second reconciliation pass must not credit the wallet again.
+        $this->artisan('vn:check-expired')->assertExitCode(0);
+        $this->assertSame(500.0, (float) $customer->fresh()->balance);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
+    public function test_expiry_worker_does_not_refund_if_sms_code_arrives_during_provider_check(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Race';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_expiry_race_customer';
+        $customer->email = 'vn-expiry-race@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 250;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-EXPIRY-RACE',
+            'phone_number' => '+234000000002', 'country' => 'Nigeria', 'operator' => 'Test',
+            'server' => 'server1', 'product' => 'test-service', 'cost' => 250,
+            'provider_cost' => 1, 'status' => 'pending', 'expires_at' => now()->subMinutes(10),
+        ]);
+
+        $this->mock(SmsPoolService::class, function ($mock) use ($order) {
+            $mock->shouldReceive('checkOrder')->once()->with('AUDIT-VN-EXPIRY-RACE')->andReturnUsing(function () use ($order) {
+                // Simulate the SMS polling path persisting a code after the worker's initial check.
+                $order->update(['sms_code' => '123456']);
+                return ['status' => 2];
+            });
+        });
+        $this->mock(GrizzlySmsService::class);
+
+        $this->artisan('vn:check-expired')->assertExitCode(0);
+        $this->assertSame(250.0, (float) $customer->fresh()->balance);
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame('123456', $order->fresh()->sms_code);
+        $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
+    public function test_virtual_number_refund_ledger_reference_is_unique_and_balance_reconciles(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Ledger';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_ledger_customer';
+        $customer->email = 'vn-ledger-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 1000;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-LEDGER',
+            'phone_number' => '', 'country' => 'Nigeria', 'operator' => 'Test',
+            'server' => 'server1', 'product' => 'test-service', 'cost' => 250,
+            'provider_cost' => 1, 'status' => 'failed',
+        ]);
+
+        Transaction::create([
+            'user_id' => $customer->id, 'amount' => 250, 'type' => 'debit',
+            'transaction_type' => 'virtual_number', 'balance_before' => 1000,
+            'balance_after' => 750, 'description' => 'Virtual Number Purchase',
+            'reference' => 'VN-DEBIT-' . $order->id,
+        ]);
+        Transaction::create([
+            'user_id' => $customer->id, 'amount' => 250, 'type' => 'credit',
+            'transaction_type' => 'refund', 'balance_before' => 750,
+            'balance_after' => 1000, 'description' => 'Virtual Number Refund',
+            'reference' => 'REF-VN-' . $order->id,
+        ]);
+
+        $debits = Transaction::where('user_id', $customer->id)->where('type', 'debit')->sum('amount');
+        $credits = Transaction::where('user_id', $customer->id)->where('type', 'credit')->sum('amount');
+        $this->assertSame(0.0, round((float) $debits - (float) $credits, 4));
+        $this->assertSame(1000.0, (float) $customer->fresh()->balance);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
 }
