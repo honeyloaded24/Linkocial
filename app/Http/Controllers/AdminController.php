@@ -699,7 +699,7 @@ class AdminController extends Controller
                 : 'This order is already canceled.');
         }
 
-        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id) {
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
             $lockedOrder = Order::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($lockedOrder->status === 'completed') {
@@ -710,12 +710,12 @@ class AdminController extends Controller
                 return 'already_refunded';
             }
 
-            $lockedUser = \\App\\Models\\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
+            $lockedUser = \App\Models\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
 
             // A prior refund ledger entry is authoritative even if the order flag
             // was not synchronized by an older code path.
             $refundReference = 'REF-SMM-ADMIN-' . $lockedOrder->id;
-            if (\\App\\Models\\Transaction::where('reference', $refundReference)->exists()) {
+            if (\App\Models\Transaction::where('reference', $refundReference)->exists()) {
                 $lockedOrder->is_refunded = true;
                 $lockedOrder->status = 'canceled';
                 $lockedOrder->save();
@@ -725,7 +725,7 @@ class AdminController extends Controller
             if (!$lockedOrder->is_refunded && $lockedUser) {
                 $lockedUser->addBalance((float) $lockedOrder->charge);
 
-                \\App\\Models\\Transaction::add(
+                \App\Models\Transaction::add(
                     $lockedUser->id,
                     $lockedOrder->charge,
                     'credit',
@@ -740,7 +740,7 @@ class AdminController extends Controller
             $lockedOrder->status = 'canceled';
             $lockedOrder->save();
 
-            \\App\\Models\\ActivityLog::log("Manually canceled order", $lockedOrder, [
+            \App\Models\ActivityLog::log("Manually canceled order", $lockedOrder, [
                 'refund_amount' => $lockedOrder->charge,
                 'new_balance' => $lockedUser ? $lockedUser->balance : null
             ]);
@@ -757,7 +757,7 @@ class AdminController extends Controller
         }
 
         // Send notification only after a new cancellation/refund has committed.
-        \\App\\Models\\Notification::send(
+        \App\Models\Notification::send(
             $order->user_id,
             "Order Refunded",
             "Order #{$order->id} has been canceled. ₦" . number_format((float) $order->charge, 2) . " has been refunded to your wallet.",
