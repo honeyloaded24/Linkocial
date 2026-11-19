@@ -357,6 +357,9 @@
 
 @push('styles')
 <style>
+[data-theme="dark"] .vtu-pricing-page .bg-light, [data-bs-theme="dark"] .vtu-pricing-page .bg-light { background-color: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .vtu-pricing-page .input-group-text.bg-light, [data-bs-theme="dark"] .vtu-pricing-page .input-group-text.bg-light { background-color: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; }
+[data-theme="dark"] .vtu-pricing-page .text-muted, [data-bs-theme="dark"] .vtu-pricing-page .text-muted { color: var(--text-muted, #94a3b8) !important; }
 [data-theme="dark"] .vtu-pricing-page .btn-light, [data-bs-theme="dark"] .vtu-pricing-page .btn-light { background: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
 [data-theme="dark"] .vtu-pricing-page .table-light, [data-bs-theme="dark"] .vtu-pricing-page .table-light { --bs-table-bg: var(--bg-surface); --bs-table-color: var(--text-main); }
 [data-theme="dark"] .vtu-pricing-page .input-group-text, [data-bs-theme="dark"] .vtu-pricing-page .input-group-text { background: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
