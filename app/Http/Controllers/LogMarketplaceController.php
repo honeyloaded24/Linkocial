@@ -356,12 +356,15 @@ class LogMarketplaceController extends Controller
                 $response = $api->order($product->api_product_key, $request->quantity, $externalOrderId);
             } catch (\Throwable $apiEx) {
                 Log::error("Logs Marketplace Provider API Exception: " . $apiEx->getMessage());
+                // A transport exception may occur after the provider accepted the order.
+                // Treat it as ambiguous and retain the debit pending reconciliation.
                 $response = [
                     'success' => false,
+                    'ambiguous' => true,
                     'code' => 'EXCEPTION',
-                    'admin_message' => 'Provider communication exception: ' . $apiEx->getMessage(),
-                    'customer_message' => 'Unable to complete order with provider at this time. Your wallet balance has been refunded.',
-                    'message' => 'Unable to complete order with provider at this time. Your wallet balance has been refunded.'
+                    'admin_message' => 'Provider communication exception; outcome is unconfirmed: ' . $apiEx->getMessage(),
+                    'customer_message' => 'Your purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain.',
+                    'message' => 'Provider outcome is uncertain; order requires reconciliation.'
                 ];
             }
 
