@@ -522,7 +522,8 @@ class AiToolsIntegrationTest extends TestCase
             'quantity' => 1,
         ]);
 
-        $order = AiToolOrder::where('user_id', $user->id)->firstOrFail();
+        $order = AiToolOrder::where('user_id', $user->id)->first();
+        $this->assertNotNull($order, 'PixelSub purchase did not create an order. Session error: ' . session('error', 'none'));
         $response->assertRedirect(route('ai-tools.order.detail', $order->id));
         $this->assertEquals('pixelsub', $order->provider);
         $this->assertEquals('pixelsub-order-123', $order->provider_order_id);
