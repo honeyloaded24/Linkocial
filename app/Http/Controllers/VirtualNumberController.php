@@ -540,14 +540,14 @@ class VirtualNumberController extends Controller
                                         $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
                                         break;
-                                    } catch (\\Exception $fallbackEx) {
+                                    } catch (\Exception $fallbackEx) {
                                         // A fallback timeout is ambiguous: SMSPool may have created
                                         // the activation even though this request received no response.
                                         // Do not continue to another pool or refund the customer.
-                                        if ($fallbackEx instanceof \\App\\Exceptions\\ProviderTimeoutException
-                                            || $fallbackEx instanceof \\Illuminate\\Http\\Client\\ConnectionException) {
+                                        if ($fallbackEx instanceof \App\Exceptions\ProviderTimeoutException
+                                            || $fallbackEx instanceof \Illuminate\Http\Client\ConnectionException) {
                                             DB::transaction(function () use ($attemptRecord, $fallbackEx) {
-                                                $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                                $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                                                 if ($lockedOrder && $lockedOrder->status === 'processing') {
                                                     $lockedOrder->update([
                                                         'status' => 'unresolved',
