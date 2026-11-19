@@ -26,30 +26,8 @@ class ConvertUserBalancesToUsd extends Command
      */
     public function handle()
     {
-        $rate = (float) $this->argument('rate');
-        
-        if ($rate <= 0) {
-            $this->error("Invalid rate!");
-            return;
-        }
-
-        $this->info("Starting user balance conversion using rate: 1 USD = {$rate} NGN");
-
-        $users = User::all();
-        $count = 0;
-
-        foreach ($users as $user) {
-            $oldBalance = $user->balance;
-            $newBalance = $oldBalance / $rate;
-            
-            $user->update([
-                'balance' => $newBalance,
-                'currency_code' => 'NGN' // Keep display as NGN for existing users
-            ]);
-            
-            $count++;
-        }
-
-        $this->info("Successfully converted {$count} user balances to USD base and set their display currency to NGN.");
+        $this->error('This legacy balance conversion command is disabled because it changes wallet balances without transactional ledger entries.');
+        $this->line('Use wallet:recover-legacy-balances for audited, idempotent recovery or the Admin currency reconciliation workflow.');
+        return Command::FAILURE;
     }
 }
