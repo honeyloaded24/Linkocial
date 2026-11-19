@@ -159,7 +159,7 @@ class AiToolsController extends Controller
                 $user->deductBalance($totalNgn);
 
                 // Record debit in transaction ledger
-                Transaction::add(
+                $debitTx = Transaction::add(
                     $user->id,
                     $totalNgn,
                     'debit',
@@ -194,7 +194,8 @@ class AiToolsController extends Controller
                         'credit',
                         'ai_tools_refund',
                         "Refund — failed AI TOOLS order #{$order->order_number}",
-                        'REF-AITOOLS-' . $order->id
+                        'REF-AITOOLS-' . $order->id,
+                        $debitTx->created_at ?? null
                     );
                     $order->update([
                         'status'            => AiToolOrder::STATUS_FAILED,
