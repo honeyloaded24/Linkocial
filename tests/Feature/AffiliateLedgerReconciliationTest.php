@@ -9,6 +9,7 @@ use Tests\TestCase;
 
 class AffiliateLedgerReconciliationTest extends TestCase
 {
+    use RefreshDatabase;
     public function test_apply_reconciliation_recomputes_totals_from_ledger(): void
     {
         $user = User::factory()->create([
