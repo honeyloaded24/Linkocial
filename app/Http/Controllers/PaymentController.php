@@ -516,13 +516,17 @@ class PaymentController extends Controller
         $bankName = $data['account']['bank_name'] ?? $data['bank_name'] ?? 'Virtual Account';
         $customerEmail = $data['customer']['email'] ?? $data['customer'] ?? $data['email'] ?? null;
 
-        if (!empty($txId)) {
-            $ref = 'BS_' . trim($txId);
-        } elseif (!empty($vaRef)) {
-            $ref = 'BS_' . trim($vaRef) . '_' . time();
-        } else {
-            $ref = 'BS_TRX_' . (trim((string)$accountNumber) ?: 'ACC') . '_' . time();
+        // A provider transaction identifier is required for replay-safe webhook processing.
+        // Never synthesize an idempotency key from the current time or virtual account.
+        if (empty($txId) || !is_scalar($txId) || trim((string) $txId) === '') {
+            Log::warning('BillStack Webhook rejected: missing stable transaction identifier.', [
+                'account_number' => $accountNumber,
+                'merchant_reference' => $vaRef,
+            ]);
+            return response()->json(['status' => false, 'message' => 'Missing transaction identifier'], 422);
         }
+
+        $ref = 'BS_' . trim((string) $txId);
 
         // Idempotency: Skip if already processed
         if (\App\Models\Payment::where('reference', $ref)->where('status', 'success')->exists()) {
