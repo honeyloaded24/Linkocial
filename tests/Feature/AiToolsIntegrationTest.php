@@ -436,7 +436,7 @@ class AiToolsIntegrationTest extends TestCase
     public function test_ambiguous_provider_submission_is_flagged_for_reconciliation_without_false_processing(): void
     {
         Queue::fake();
-        $user = User::factory()->create(['balance' => 20000, 'status' => 'active']);
+        $user = User::factory()->create(['balance' => 100000000, 'status' => 'active']);
         Setting::set('alaric_api_key', 'test_key_123');
         Setting::set('usdt_to_ngn_rate', 1500.0);
         Setting::set('markup_ai_tools', 20.0);
@@ -475,7 +475,7 @@ class AiToolsIntegrationTest extends TestCase
         $this->assertSame(AiToolOrder::STATUS_UNDER_REVIEW, $order->status);
         $this->assertNull($order->provider_order_id);
         $this->assertStringContainsString('ambiguous', strtolower($order->failure_reason));
-        $this->assertLessThan(20000, (float) $user->fresh()->balance);
+        $this->assertLessThan(100000000, (float) $user->fresh()->balance);
         Queue::assertNotPushed(PollAiToolOrderStatus::class);
     }
 
