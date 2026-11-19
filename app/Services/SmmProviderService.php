@@ -31,6 +31,13 @@ class SmmProviderService
 
             $result = $response->json();
 
+            // A provider server error can occur after accepting the order.
+            // Do not fail over or refund on an ambiguous 5xx response.
+            if ($response->serverError()) {
+                Log::warning("SMM provider returned HTTP {$response->status()} with ambiguous purchase outcome ({$provider->name}).");
+                throw new \\App\\Exceptions\\ProviderTimeoutException("SMM provider purchase outcome could not be confirmed.");
+            }
+
             // Successful orders usually return an array containing 'order' (the order ID)
             if ($response->successful() && isset($result['order'])) {
                 return (int) $result['order'];
