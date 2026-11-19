@@ -173,15 +173,20 @@ class SmsPoolService
                 'key' => $this->apiKey,
             ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                return is_array($data) ? $data : [];
+            if (!$response->successful()) {
+                throw new \\RuntimeException("SMSPool active-orders request failed with HTTP {$response->status()}.");
             }
-        } catch (\Throwable $e) {
-            Log::warning("SMSPool getActiveOrders failed: " . $e->getMessage());
-        }
 
-        return [];
+            $data = $response->json();
+            if (!is_array($data)) {
+                throw new \\RuntimeException('SMSPool active-orders response was not valid JSON data.');
+            }
+
+            return $data;
+        } catch (\\Throwable $e) {
+            Log::warning("SMSPool getActiveOrders failed: " . $e->getMessage());
+            throw new \\RuntimeException('Unable to verify SMSPool active orders.', 0, $e);
+        }
     }
 
     /**
@@ -195,15 +200,20 @@ class SmsPoolService
                 'key' => $this->apiKey,
             ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                return is_array($data) ? $data : [];
+            if (!$response->successful()) {
+                throw new \\RuntimeException("SMSPool history request failed with HTTP {$response->status()}.");
             }
-        } catch (\Throwable $e) {
-            Log::warning("SMSPool getOrderHistory failed: " . $e->getMessage());
-        }
 
-        return [];
+            $data = $response->json();
+            if (!is_array($data)) {
+                throw new \\RuntimeException('SMSPool history response was not valid JSON data.');
+            }
+
+            return $data;
+        } catch (\\Throwable $e) {
+            Log::warning("SMSPool getOrderHistory failed: " . $e->getMessage());
+            throw new \\RuntimeException('Unable to verify SMSPool order history.', 0, $e);
+        }
     }
 
     /**
