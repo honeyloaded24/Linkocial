@@ -119,7 +119,7 @@ class PollAiToolOrderStatus implements ShouldQueue
             $lockedOrder = AiToolOrder::lockForUpdate()->find($order->id);
 
             // Provider status polling may overlap or be retried. Refund only once.
-            if (!$lockedOrder || $lockedOrder->status === AiToolOrder::STATUS_REFUNDED || $lockedOrder->isTerminal()) {
+            if (!$lockedOrder || in_array($lockedOrder->status, [AiToolOrder::STATUS_REFUNDED, AiToolOrder::STATUS_COMPLETED], true)) {
                 return false;
             }
 
