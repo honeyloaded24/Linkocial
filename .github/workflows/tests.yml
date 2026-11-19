@@ -48,5 +48,5 @@ jobs:
           php artisan key:generate --ansi
           touch database/database.sqlite
 
-      - name: Run Gift Card Foundation Tests
-        run: php artisan test --filter=GiftCardBackendFoundationTest
+      - name: Run Financial Integrity Regression Tests
+        run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest'
