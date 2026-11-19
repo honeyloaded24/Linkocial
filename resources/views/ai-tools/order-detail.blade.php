@@ -5,15 +5,26 @@
 @push('styles')
 <style>
     .cred-box {
-        background: var(--bg-muted,#f8fafc);
-        border: 1px solid var(--border-color,#e2e8f0);
+        background: #111827 !important;
+        border: 1px solid #475569 !important;
         border-radius: 10px;
-        padding: 1rem;
+        padding: 1rem 3rem 1rem 1rem;
         font-family: monospace;
-        font-size: 0.9rem;
-        word-break: break-all;
+        font-size: 0.95rem;
+        word-break: break-word;
         position: relative;
+        color: #f9fafb !important;
     }
+    .cred-box pre,
+    .cred-box code {
+        color: #f9fafb !important;
+        background: transparent !important;
+        opacity: 1 !important;
+        font-size: inherit;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+    .cred-box .copy-btn { background: #1e40af; color: #fff; border-color: #60a5fa; }
     .copy-btn { position: absolute; top: 8px; right: 8px; }
     .status-pill {
         display: inline-flex; align-items: center; gap: 6px;
@@ -140,34 +151,44 @@
 
                     <div id="cred-container">
                     @if($order->status === 'completed' && $order->items->count())
-                        @foreach($order->items as $item)
+                        @php
+                            // Legacy orders may have one credential split across several rows.
+                            // Normalize only for display; encrypted stored records remain untouched.
+                            $displayCredentials = [];
+                            foreach ($order->items as $credentialItem) {
+                                $parts = [];
+                                $credentialCode = trim((string) ($credentialItem->code ?? ''));
+                                if ($credentialCode !== '') {
+                                    $parts[] = $credentialCode;
+                                }
+                                $credentialDetails = $credentialItem->details;
+                                $credentialDetails = is_string($credentialDetails) ? json_decode($credentialDetails, true) : $credentialDetails;
+                                if (is_array($credentialDetails)) {
+                                    foreach ($credentialDetails as $detailKey => $detailValue) {
+                                        if ($detailKey !== 'code' && is_scalar($detailValue) && trim((string) $detailValue) !== '') {
+                                            $parts[] = ucfirst(str_replace('_', ' ', (string) $detailKey)) . ': ' . trim((string) $detailValue);
+                                        }
+                                    }
+                                }
+                                if ($parts) {
+                                    $displayCredentials[] = implode(' | ', $parts);
+                                }
+                            }
+                            if ((int) $order->quantity === 1 && count($displayCredentials) > 1) {
+                                $displayCredentials = [implode(' | ', $displayCredentials)];
+                            }
+                        @endphp
+                        @foreach($displayCredentials as $credentialIndex => $credentialText)
                         <div class="mb-3">
-                            @if($order->items->count() > 1)
-                                <p class="text-muted small mb-1 fw-semibold">Item {{ $item->item_index + 1 }}</p>
+                            @if((int) $order->quantity > 1)
+                                <p class="text-muted small mb-1 fw-semibold">Item {{ $credentialIndex + 1 }}</p>
                             @endif
                             <div class="cred-box">
-                                <pre class="mb-0 font-monospace text-wrap" style="white-space:pre-wrap;">{{ $item->code ?? 'No code available' }}</pre>
-                                <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $item->code }}" onclick="copyCred(this)">
+                                <pre class="mb-0 font-monospace text-wrap" style="white-space:pre-wrap;">{{ $credentialText }}</pre>
+                                <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $credentialText }}" onclick="copyCred(this)">
                                     <i class="fa fa-copy"></i>
                                 </button>
                             </div>
-                            @if($item->details)
-                            @php
-                                $details = is_string($item->details) ? json_decode($item->details, true) : $item->details;
-                            @endphp
-                            @if(is_array($details))
-                            <div class="mt-2 p-2 rounded small bg-light border">
-                                @foreach($details as $key => $val)
-                                    @if(!in_array($key, ['code']) && is_scalar($val))
-                                    <div class="d-flex gap-2 mb-1">
-                                        <span class="text-muted fw-semibold" style="min-width:100px;">{{ ucfirst(str_replace('_', ' ', $key)) }}:</span>
-                                        <span class="fw-semibold font-monospace">{{ $val }}</span>
-                                    </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                            @endif
-                            @endif
                         </div>
                         @endforeach
 
