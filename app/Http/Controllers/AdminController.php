@@ -1772,7 +1772,7 @@ class AdminController extends Controller
         $user = \App\Models\User::findOrFail($request->user_id);
         $rate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $rate) {
+        \Illuminate\Support\Facades\$reconciliationResult = DB::transaction(function () use ($user, $request, $rate) {
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->firstOrFail();
             $oldBalance = (float) $lockedUser->balance;
 
@@ -1841,7 +1841,12 @@ class AdminController extends Controller
                 'new_balance' => $lockedUser->balance,
                 'notes' => $request->notes,
             ]);
+            return 'completed';
         });
+
+        if ($reconciliationResult === 'already_migrated') {
+            return back()->with('error', 'This user balance has already been converted. Reconciliation was blocked to prevent double conversion.');
+        }
 
         return back()->with('success', 'User balance successfully reconciled.');
     }
