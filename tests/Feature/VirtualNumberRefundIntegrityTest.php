@@ -313,4 +313,32 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
     }
 
+    public function test_stock_unavailable_purchase_does_not_debit_wallet_or_create_order(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Stock';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_stock_customer';
+        $customer->email = 'vn-stock-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 1000;
+        $customer->save();
+
+        Cache::put('smspool_prices_NG', [['service' => 'test-service', 'service_name' => 'Test Service', 'price' => 1.0]], 60);
+        $this->mock(SmsPoolService::class, function ($mock) {
+            $mock->shouldReceive('getServiceLiveInfo')->once()->with('test-service', 'NG')->andReturn(['stock' => 0]);
+            $mock->shouldNotReceive('buyNumber');
+        });
+        $this->mock(GrizzlySmsService::class);
+
+        $this->actingAs($customer)
+            ->post('/api/virtual-numbers/purchase', ['country' => 'NG', 'product' => 'test-service', 'server' => 'server1'])
+            ->assertStatus(400)
+            ->assertJsonPath('error', 'Test Service is currently out of stock for this country on Server 1. Please try Server 2 or select another country.');
+
+        $this->assertSame(1000.0, (float) $customer->fresh()->balance);
+        $this->assertSame(0, VirtualNumberOrder::where('user_id', $customer->id)->count());
+        $this->assertSame(0, Transaction::where('user_id', $customer->id)->count());
+    }
+
 }
