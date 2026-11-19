@@ -79,7 +79,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $admin = User::create([
             'first_name' => 'Audit', 'last_name' => 'Admin',
             'username' => 'vn_cancel_admin', 'email' => 'vn-cancel-admin@example.test',
-            'password' => bcrypt('password'), 'is_admin' => true, 'role' => 'admin',
+            'password' => bcrypt('password'), 'email_verified_at' => now(), 'is_admin' => true, 'role' => 'admin',
         ]);
         $customer = User::create([
             'first_name' => 'Pending', 'last_name' => 'Customer',
