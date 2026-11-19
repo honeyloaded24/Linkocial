@@ -245,10 +245,10 @@ class CheckExpiredVirtualNumbers extends Command
                 }
 
                 // If the number already received an SMS code previously (e.g. user requested resend and abandoned), do NOT refund
-                if (!empty($order->sms_code) || !empty($order->sms_text)) {
+                if (!empty($order->sms_code)) {
                     DB::transaction(function () use ($order) {
                         $locked = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
-                        if ($locked && $locked->status === 'pending' && (!empty($locked->sms_code) || !empty($locked->sms_text))) {
+                        if ($locked && $locked->status === 'pending' && !empty($locked->sms_code)) {
                             $locked->update(['status' => 'received']);
                         }
                     });
