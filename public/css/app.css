@@ -10,6 +10,7 @@
     /* Light Mode Variables */
     --bg-body: #f8fafc;
     --bg-surface: #ffffff;
+    --bg-muted: #f8fafc;
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border-color: #e2e8f0;
@@ -22,6 +23,7 @@
     /* Balanced Midnight Palette */
     --bg-body: #080a0f;
     --bg-surface: #1a202c;
+    --bg-muted: rgba(255, 255, 255, 0.04);
     --text-main: #ffffff;
     --text-muted: #a1a1aa;
     --border-color: rgba(255, 255, 255, 0.1);
