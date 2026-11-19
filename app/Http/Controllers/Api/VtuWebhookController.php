@@ -18,7 +18,7 @@ class VtuWebhookController extends Controller
     public function handle(Request $request)
     {
         $payload = $request->all();
-        Log::info('VTU Webhook Received: ', $payload);
+        // Avoid logging customer identifiers, phone numbers, and provider payloads.
 
         // Verify webhook secret - strictly fail-closed for security
         $configuredSecret = \App\Models\Setting::get('vtu_webhook_secret');
@@ -59,13 +59,16 @@ class VtuWebhookController extends Controller
                 return response()->json(['message' => 'Order not found'], 200);
             }
 
-            // Guard against duplicate refunds (both 'refunded' and already 'failed' orders)
-            if ($order->status === 'refunded' || $order->status === 'failed') {
-                Log::info("VTU Webhook: Order {$order->id} already marked as {$order->status}. Skipping refund.");
+            // Terminal states must not be reversed by a delayed or conflicting webhook.
+            if (in_array($order->status, ['refunded', 'failed'], true)) {
                 return response()->json(['message' => 'Already refunded or failed'], 200);
             }
 
             if (in_array($statusStr, ['failed', 'refunded', 'reversed'])) {
+                if ($order->status === 'completed') {
+                    Log::warning("VTU Webhook: Refusing failure/refund event for completed order {$order->id}.");
+                    return response()->json(['message' => 'Completed order protected from refund'], 200);
+                }
                 // Mark order as refunded
                 $order->status = 'refunded';
                 $existingResponse = json_decode($order->api_response, true) ?? [];
