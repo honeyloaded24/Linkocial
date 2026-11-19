@@ -8,11 +8,21 @@ use App\Models\VirtualNumberOrder;
 use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Tests\TestCase;
 
 class VirtualNumberRefundIntegrityTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These tests exercise the admin refund controller's financial logic,
+        // not the unrelated email-verification gate.
+        $this->withoutMiddleware(EnsureEmailIsVerified::class);
+    }
 
     public function test_admin_cannot_refund_an_already_refunded_failed_virtual_number_order(): void
     {
@@ -73,7 +83,8 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame('failed', $order->fresh()->status);
         $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
-    }    
+    }
+
     public function test_admin_refund_is_withheld_when_provider_cancellation_fails(): void
     {
         $admin = new User();
@@ -104,7 +115,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         ]);
 
         $this->mock(SmsPoolService::class, function ($mock) {
-            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \\RuntimeException('Provider cancellation failed'));
+            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \RuntimeException('Provider cancellation failed'));
         });
         $this->mock(GrizzlySmsService::class);
 
@@ -160,5 +171,4 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame('received', $order->fresh()->status);
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
     }
-
 }
