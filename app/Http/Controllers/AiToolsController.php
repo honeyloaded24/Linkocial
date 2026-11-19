@@ -172,7 +172,7 @@ class AiToolsController extends Controller
                 );
 
                 // ── Submit provider order ─────────────────────────────────────
-                $providerResponse = app(AlaricApiService::class)->createOrder(
+                $providerResponse = $this->alaricService->createOrder(
                     $product->provider_product_id,
                     $qty,
                     $maxTotalUsdt,
