@@ -502,23 +502,10 @@
                     <i class="fa-solid fa-bars-staggered fs-5"></i>
                 </button>
 
-                @auth
-                <!-- 2. Balance Pill -->
-                <div class="d-flex align-items-center gap-1 px-2 py-1 rounded-pill shadow-sm" style="background: var(--bg-surface); border: 1px solid var(--border-color); font-size: 0.8rem; height: 32px;" title="Current Balance">
-                    <a href="{{ route('wallet.index') }}" class="text-decoration-none text-main fw-bold d-flex align-items-center gap-1">
-                        <i class="fa-solid fa-wallet text-muted me-1"></i>
-                        <span class="topbarBalanceValue" data-raw-balance="{{ money(Auth::user()->balance ?? 0) }}">{{ money(Auth::user()->balance ?? 0) }}</span>
-                    </a>
-                    <button type="button" class="btn btn-link p-0 text-muted border-0 lh-1" onclick="toggleTopbarBalance(this)" style="font-size: 0.78rem;" title="Show/Hide Balance">
-                        <i class="fa-regular fa-eye topbarBalanceEye"></i>
-                    </button>
-                </div>
-
-                <!-- 3. Fund Wallet Button (+) -->
-                <a href="{{ route('wallet.index') }}" class="btn btn-sm btn-success fw-bold rounded-pill d-flex align-items-center justify-content-center shadow-sm px-2 py-1" style="height: 32px; min-width: 32px;" title="Fund Wallet">
-                    <i class="fa-solid fa-plus"></i>
-                </a>
-                @endauth
+                <!-- Mobile Theme Toggle -->
+                <button type="button" class="btn p-0 border-0 text-muted flex-shrink-0" id="mobileThemeToggle" aria-label="Switch theme" title="Switch theme">
+                    <i class="fa-solid fa-moon fs-5"></i>
+                </button>
 
                 @auth
                 <!-- 5. Profile Avatar -->
