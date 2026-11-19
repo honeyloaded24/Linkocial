@@ -1363,25 +1363,26 @@ class AdminController extends Controller
      */
     public function hqApproveWithdrawal(Request $request, $id)
     {
-        $withdrawal = \App\Models\WithdrawalRequest::with('user')->findOrFail($id);
+        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id, $request) {
+            $withdrawal = \\App\\Models\\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
 
-        if ($withdrawal->status !== 'pending') {
-            return back()->with('error', 'This request is already processed.');
-        }
+            if ($withdrawal->status !== 'pending') {
+                return 'processed';
+            }
 
-        $user = $withdrawal->user;
-        if ($user->commission_balance < $withdrawal->amount) {
-            return back()->with('error', 'User has insufficient commission balance to fulfill this request.');
-        }
+            $user = \\App\\Models\\User::where('id', $withdrawal->user_id)->lockForUpdate()->firstOrFail();
+            $amount = round((float) $withdrawal->amount, 2);
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($withdrawal, $user, $request) {
-            // Deduct from commission balance
-            $user->decrement('commission_balance', $withdrawal->amount);
+            if ($amount <= 0 || (float) $user->commission_balance < $amount) {
+                return 'insufficient';
+            }
 
-            // Log to Affiliate Ledger
-            \App\Models\AffiliateTransaction::log(
+            $user->decrement('commission_balance', $amount);
+            $user->increment('total_withdrawn_commission', $amount);
+
+            \\App\\Models\\AffiliateTransaction::log(
                 $user->id,
-                $withdrawal->amount,
+                $amount,
                 'debit',
                 "Withdrawal #{$withdrawal->id} Approved"
             );
@@ -1391,11 +1392,21 @@ class AdminController extends Controller
                 'admin_note' => $request->admin_note ?? 'Paid successfully.'
             ]);
 
-            \App\Models\ActivityLog::log("Approved withdrawal request", $user, [
-                'amount' => $withdrawal->amount,
+            \\App\\Models\\ActivityLog::log("Approved withdrawal request", $user, [
+                'amount' => $amount,
                 'withdrawal_id' => $withdrawal->id
             ]);
+
+            return 'approved';
         });
+
+        if ($result === 'processed') {
+            return back()->with('error', 'This request is already processed.');
+        }
+
+        if ($result === 'insufficient') {
+            return back()->with('error', 'User has insufficient commission balance to fulfill this request.');
+        }
 
         return back()->with('success', 'Withdrawal request approved and balance updated.');
     }
