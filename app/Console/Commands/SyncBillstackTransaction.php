@@ -111,34 +111,6 @@ class SyncBillstackTransaction extends Command
         $this->info("Crediting User #{$user->id} ({$user->username} - {$user->email}) with net NGN {$netAmount} (Gross: NGN {$amount}, Fee: NGN {$depositFee})...");
 
         try {
-            // The shared payment processor requires a pending payment record to lock
-            // and serialize settlement. Recovery must establish that record first.
-            $payment = Payment::firstOrCreate(
-                ['reference' => $ref],
-                [
-                    'user_id' => $user->id,
-                    'amount' => $netAmount,
-                    'currency' => 'NGN',
-                    'amount_usd' => 0,
-                    'status' => 'pending',
-                ]
-            );
-
-            if ((int) $payment->user_id !== (int) $user->id) {
-                $this->error("Payment reference {$ref} is already associated with a different user. Refusing credit.");
-                return 1;
-            }
-
-            if ($payment->status === 'success') {
-                $this->warn("Payment reference {$ref} has already been credited.");
-                return 0;
-            }
-
-            if ($payment->status !== 'pending') {
-                $this->error("Payment reference {$ref} is in status '{$payment->status}'. Refusing credit.");
-                return 1;
-            }
-
             $paymentController->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
             $this->info("SUCCESS! User #{$user->id} credited with net NGN {$netAmount} (Ref: {$ref}).");
             return 0;
