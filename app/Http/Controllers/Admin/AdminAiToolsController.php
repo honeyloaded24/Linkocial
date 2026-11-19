@@ -258,7 +258,7 @@ class AdminAiToolsController extends Controller
         $pixelSubKey = (string) Setting::get('pixelsub_api_key', '');
         $maskedPixelSubKey = $pixelSubKey ? substr($pixelSubKey, 0, 4) . str_repeat('*', max(0, strlen($pixelSubKey) - 8)) . substr($pixelSubKey, -4) : '';
         $pixelSubConfigured = !empty($pixelSubKey);
-        $apiConfigured = !empty($apiKey);
+        $apiConfigured = !empty($apiKey) || $pixelSubConfigured;
 
         return view('hq.ai-tools.settings', compact(
             'maskedKey', 'maskedPixelSubKey', 'pixelSubConfigured', 'exchangeRate', 'markupPercent', 'lastSync', 'apiConfigured'
