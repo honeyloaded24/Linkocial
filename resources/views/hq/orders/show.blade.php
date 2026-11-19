@@ -40,7 +40,7 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Service</label>
-                        <p class="fw-bold mb-0 text-dark fs-5">{{ $order->service->name ?? 'Deleted Service' }}</p>
+                        <p class="fw-bold mb-0 text-main fs-5">{{ $order->service->name ?? 'Deleted Service' }}</p>
                         <small class="text-muted">Internal ID: #{{ $order->service_id }}</small>
                     </div>
                     <div class="col-md-6">
@@ -52,15 +52,15 @@
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Quantity</label>
-                        <p class="fw-bold mb-0 text-dark fs-5">{{ number_format($order->quantity) }}</p>
+                        <p class="fw-bold mb-0 text-main fs-5">{{ number_format($order->quantity) }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Start Count</label>
-                        <p class="fw-bold mb-0 text-dark fs-5">{{ $order->start_count ?? '---' }}</p>
+                        <p class="fw-bold mb-0 text-main fs-5">{{ $order->start_count ?? '---' }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">User Charge</label>
-                        <p class="fw-bold mb-0 text-dark fs-5">{{ money((float)$order->charge) }}</p>
+                        <p class="fw-bold mb-0 text-main fs-5">{{ money((float)$order->charge) }}</p>
                     </div>
                     <div class="col-md-3">
                         <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Gross Margin</label>
@@ -92,7 +92,7 @@
                                 <div class="timeline-marker position-absolute rounded-circle bg-primary" style="width: 12px; height: 12px; left: -6px; top: 5px;"></div>
                                 <div class="ms-4">
                                     <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <h6 class="fw-bold mb-0 text-dark">
+                                        <h6 class="fw-bold mb-0 text-main">
                                             Status: {{ ucfirst($log->new_status) }}
                                         </h6>
                                         <small class="text-muted fw-bold">{{ $log->created_at->format('M d, H:i:s') }}</small>
@@ -120,19 +120,19 @@
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-4">
                             <label class="text-muted small text-uppercase fw-bold mb-1 d-block">SMM Provider</label>
-                            <p class="fw-bold mb-0 text-dark">{{ $order->provider->name ?? 'N/A' }}</p>
+                            <p class="fw-bold mb-0 text-main">{{ $order->provider->name ?? 'N/A' }}</p>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-4">
                             <label class="text-muted small text-uppercase fw-bold mb-1 d-block">External Order ID</label>
-                            <p class="fw-bold mb-0 text-dark">{{ $order->provider_order_id ?? 'N/A' }}</p>
+                            <p class="fw-bold mb-0 text-main">{{ $order->provider_order_id ?? 'N/A' }}</p>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-4">
                             <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Provider Cost</label>
-                            <p class="fw-bold mb-0 text-dark">{{ money((float)$order->provider_cost) }}</p>
+                            <p class="fw-bold mb-0 text-main">{{ money((float)$order->provider_cost) }}</p>
                             <small class="text-muted" style="font-size: 0.65rem;">
                                 for {{ number_format($order->quantity) }} units 
                                 <span class="d-block mt-1">({{ money(((float)$order->provider_cost / $order->quantity) * 1000) }}/1k rate)</span>
@@ -142,7 +142,7 @@
                     <div class="col-md-3">
                         <div class="p-3 bg-light rounded-4">
                             <label class="text-muted small text-uppercase fw-bold mb-1 d-block">Remains</label>
-                            <p class="fw-bold mb-0 text-dark">{{ $order->remains ?? '---' }}</p>
+                            <p class="fw-bold mb-0 text-main">{{ $order->remains ?? '---' }}</p>
                         </div>
                     </div>
                 </div>
