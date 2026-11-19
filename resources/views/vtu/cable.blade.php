@@ -55,7 +55,7 @@
                             
                             <!-- Validation status container -->
                             <div id="validationResult" class="mt-2" style="display: none;">
-                                <div class="p-3 rounded-3 bg-light border">
+                                <div class="p-3 rounded-3 bg-light bg-opacity-10 border border-secondary border-opacity-25">
                                     <h6 class="fw-bold mb-1" id="customerName"></h6>
                                 </div>
                             </div>
