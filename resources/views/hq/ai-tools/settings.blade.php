@@ -188,8 +188,29 @@ function checkBalance() {
         if (d.success) {
             var data = d.data || {};
             var html = '<table class="table table-sm small"><tbody>';
-            Object.entries(data).forEach(([k, v]) => {
-                html += '<tr><td class="text-muted">' + k + '</td><td class="fw-bold">' + v + '</td></tr>';
+            function escapeBalanceHtml(value) {
+                return String(value).replace(/[&<>"']/g, function(char) {
+                    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char];
+                });
+            }
+            function flattenBalance(prefix, value) {
+                if (value === null || value === undefined) return [[prefix, '—']];
+                if (typeof value === 'object') {
+                    if (Array.isArray(value)) {
+                        if (!value.length) return [[prefix, '—']];
+                        return value.flatMap(function(item, index) { return flattenBalance(prefix + '[' + index + ']', item); });
+                    }
+                    var entries = Object.entries(value);
+                    if (!entries.length) return [[prefix, '—']];
+                    return entries.flatMap(function(entry) {
+                        return flattenBalance(prefix ? prefix + ' · ' + entry[0] : entry[0], entry[1]);
+                    });
+                }
+                return [[prefix, value]];
+            }
+            var rows = Object.entries(data).flatMap(function(entry) { return flattenBalance(entry[0], entry[1]); });
+            rows.forEach(function(row) {
+                html += '<tr><td class="text-muted">' + escapeBalanceHtml(row[0]) + '</td><td class="fw-bold">' + escapeBalanceHtml(row[1]) + '</td></tr>';
             });
             html += '</tbody></table>';
             document.getElementById('balanceContent').innerHTML = html;
