@@ -908,14 +908,14 @@ class VirtualNumberController extends Controller
     public function cancelOrder($id)
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->where('status', 'pending')->findOrFail($id);
-        if (!empty($order->sms_code) || !empty($order->sms_text)) return response()->json(['error' => 'Cannot cancel a number that has already received an SMS code.'], 400);
+        if (!empty($order->sms_code)) return response()->json(['error' => 'Cannot cancel a number that has already received an SMS code.'], 400);
 
         $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
         if (!$actionLock->get()) return response()->json(['error' => 'Another action is being processed for this order. Please retry shortly.'], 409);
 
         try {
             $order = $order->fresh();
-            if (!$order || $order->status !== 'pending' || !empty($order->sms_code) || !empty($order->sms_text)) {
+            if (!$order || $order->status !== 'pending' || !empty($order->sms_code)) {
                 return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
             }
             $provider = $this->getProvider($order->server ?? 'server1');
@@ -1008,7 +1008,7 @@ class VirtualNumberController extends Controller
                 ->first();
 
             // Guard: Cannot refund if order is not pending or if it has ever received an SMS
-            if (!$lockedOrder || $lockedOrder->status !== 'pending' || !empty($lockedOrder->sms_code) || !empty($lockedOrder->sms_text)) {
+            if (!$lockedOrder || $lockedOrder->status !== 'pending' || !empty($lockedOrder->sms_code)) {
                 return;
             }
 
