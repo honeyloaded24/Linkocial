@@ -19,6 +19,12 @@
     .info-row:last-child { border-bottom: none; }
     .tier-table { font-size: 0.82rem; }
     .confirm-modal-price { font-size: 1.5rem; font-weight: 800; color: #6366f1; }
+    [data-theme="dark"] .product-detail-card .badge.bg-light,
+    [data-bs-theme="dark"] .product-detail-card .badge.bg-light {
+        background: rgba(255,255,255,0.08) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
 </style>
 @endpush
 
