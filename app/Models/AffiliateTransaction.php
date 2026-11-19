@@ -15,8 +15,14 @@ class AffiliateTransaction extends Model
 
     public static function log($userId, $amount, $type, $description)
     {
-        $user = \App\Models\User::find($userId);
-        $before = (float)$user->commission_balance;
+        $amount = round((float) $amount, 2);
+        $type = strtolower((string) $type);
+        if ($amount <= 0 || !in_array($type, ['credit', 'debit'], true)) {
+            throw new \\InvalidArgumentException('Affiliate transaction must have a positive amount and valid type.');
+        }
+        $user = \\App\\Models\\User::where('id', $userId)->lockForUpdate()->firstOrFail();
+        $after = round((float) $user->commission_balance, 2);
+        $before = round($after - ($type === 'credit' ? $amount : -$amount), 2);
         
         return self::create([
             'user_id' => $userId,
@@ -24,7 +30,7 @@ class AffiliateTransaction extends Model
             'type' => $type,
             'description' => $description,
             'balance_before' => $before - ($type === 'credit' ? $amount : -$amount),
-            'balance_after' => $before,
+            'balance_after' => $after,
         ]);
     }
 }
