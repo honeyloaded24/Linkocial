@@ -62,7 +62,7 @@ class ProviderRouter
                     $order->link,
                     $order->quantity
                 );
-            } catch (\App\Exceptions\\ProviderTimeoutException $timeout) {
+            } catch (\App\Exceptions\ProviderTimeoutException $timeout) {
                 // Do not fail over: the provider may have created the order before the response was lost.
                 $order->update([
                     'status' => 'unresolved',
