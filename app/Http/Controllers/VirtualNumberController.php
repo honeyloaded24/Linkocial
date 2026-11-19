@@ -629,21 +629,31 @@ class VirtualNumberController extends Controller
             }
 
             if (!$apiOrderId) {
+                // Provider returned a purchase response without an activation ID.
+                // Treat the outcome as ambiguous and retain funds for reconciliation.
                 if (isset($attemptRecord) && $attemptRecord) {
-                    DB::beginTransaction();
                     try {
-                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
-                        if ($lockedOrder && $lockedOrder->status === 'processing') {
-                            $lockedOrder->update(['status' => 'failed', 'sms_text' => 'Missing provider order ID']);
-                            $refundUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
-                            $refundUser->addBalance($finalCheckCost);
-                        }
-                        DB::commit();
-                    } catch (\Exception $ex) {
-                        DB::rollBack();
+                        DB::transaction(function () use ($attemptRecord, $buyResponse) {
+                            $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                            if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                $lockedOrder->update([
+                                    'status' => 'unresolved',
+                                    'sms_text' => 'Provider returned a purchase response without an activation ID. Response preserved for manual reconciliation: ' . substr(json_encode($buyResponse) ?: 'unavailable', 0, 500),
+                                ]);
+                            }
+                        });
+                    } catch (\\Throwable $recoveryEx) {
+                        Log::critical('Could not preserve provider purchase with missing activation ID', [
+                            'attempt_id' => $attemptRecord->id,
+                            'error' => $recoveryEx->getMessage(),
+                        ]);
                     }
                 }
-                return response()->json(['error' => 'Service is temporarily busy. Please try again in a few moments.'], 500);
+                return response()->json([
+                    'error' => 'The provider returned an incomplete purchase confirmation. Your payment has been retained while this order is verified. Please check order history or contact support.',
+                    'order_id' => $attemptRecord->id ?? null,
+                    'status' => 'unresolved',
+                ], 500);
             }
 
             // User is charged the exact contracted retail quote confirmed on screen
