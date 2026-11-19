@@ -3,7 +3,7 @@
 @section('header_title', 'HQ: VTU Pricing & Markup Settings')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid vtu-pricing-page>
     <!-- Header / Navigation Bar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div class="d-flex align-items-center gap-3">
@@ -354,6 +354,14 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+<style>
+[data-theme="dark"] .vtu-pricing-page .btn-light, [data-bs-theme="dark"] .vtu-pricing-page .btn-light { background: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
+[data-theme="dark"] .vtu-pricing-page .table-light, [data-bs-theme="dark"] .vtu-pricing-page .table-light { --bs-table-bg: var(--bg-surface); --bs-table-color: var(--text-main); }
+[data-theme="dark"] .vtu-pricing-page .input-group-text, [data-bs-theme="dark"] .vtu-pricing-page .input-group-text { background: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
+</style>
+@endpush
 
 @push('scripts')
 <script>
