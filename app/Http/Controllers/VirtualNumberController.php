@@ -557,7 +557,7 @@ class VirtualNumberController extends Controller
                 } else {
                     try {
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
-                    } catch (\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {
+                    } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
@@ -570,7 +570,7 @@ class VirtualNumberController extends Controller
 
                         if ($attemptRecord) {
                             DB::transaction(function () use ($attemptRecord, $timeoutEx) {
-                                $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                                 if ($lockedOrder && $lockedOrder->status === 'processing') {
                                     $lockedOrder->update([
                                         'status' => 'unresolved',
@@ -603,7 +603,7 @@ class VirtualNumberController extends Controller
                             $refundUser->addBalance($finalCheckCost);
 
                         if ($finalCheckCost > 0) {
-                            \App\\Models\\Transaction::add(
+                            \App\Models\Transaction::add(
                                 $refundUser->id,
                                 $finalCheckCost,
                                 'credit',
@@ -640,7 +640,7 @@ class VirtualNumberController extends Controller
                 // number the activation cannot safely be presented as usable.
                 try {
                     DB::transaction(function () use ($attemptRecord, $apiOrderId, $buyResponse, $server, $country, $productId) {
-                        $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') {
                             $lockedOrder->update([
                                 'api_order_id' => (string) $apiOrderId,
@@ -701,7 +701,7 @@ class VirtualNumberController extends Controller
                 if (isset($attemptRecord) && $attemptRecord) {
                     try {
                         DB::transaction(function () use ($attemptRecord, $buyResponse) {
-                            $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                            $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                             if ($lockedOrder && $lockedOrder->status === 'processing') {
                                 $lockedOrder->update([
                                     'status' => 'unresolved',
@@ -763,7 +763,7 @@ class VirtualNumberController extends Controller
                 // failure must not refund the user because the number may be live.
                 try {
                     DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $e) {
-                        $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') {
                             $lockedOrder->update([
                                 'api_order_id' => (string) $apiOrderId,
