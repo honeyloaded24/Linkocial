@@ -90,7 +90,7 @@ class AdminVirtualNumberController extends Controller
             // cancellation must be confirmed before issuing a customer refund.
             if ($order->status !== 'pending'
                 || !empty($order->sms_code)
-                || !empty($order->sms_text)) {
+                ) {
                 DB::rollBack();
                 return back()->with('error', 'Only pending virtual-number orders without received SMS can be refunded.');
             }
