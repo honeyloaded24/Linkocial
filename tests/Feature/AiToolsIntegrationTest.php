@@ -487,6 +487,7 @@ class AiToolsIntegrationTest extends TestCase
     public function test_pixelsub_purchase_uses_unified_wallet_and_delivers_credentials()
     {
         Queue::fake();
+        Transaction::where('reference', 'like', 'DEBIT-AITOOLS-%')->delete();
 
         $user = User::factory()->create(['balance' => 10000.00, 'status' => 'active']);
         Setting::set('pixelsub_api_key', 'pixelsub-test-key');
