@@ -1763,11 +1763,11 @@ class AdminController extends Controller
             'notes' => 'nullable|string|max:500'
         ]);
 
-        $user = \\App\\Models\\User::findOrFail($request->user_id);
-        $rate = app(\\App\\Services\\CurrencyConversionService::class)->getUsdToNgnRate();
+        $user = \App\Models\User::findOrFail($request->user_id);
+        $rate = app(\App\Services\CurrencyConversionService::class)->getUsdToNgnRate();
 
-        \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($user, $request, $rate) {
-            $lockedUser = \\App\\Models\\User::where('id', $user->id)->lockForUpdate()->firstOrFail();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($user, $request, $rate) {
+            $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->firstOrFail();
             $oldBalance = (float) $lockedUser->balance;
 
             if ($request->action === 'convert_as_usd') {
@@ -1783,7 +1783,7 @@ class AdminController extends Controller
 
                 $difference = round($newBalance - $oldBalance, 4);
                 if ($difference != 0.0) {
-                    \\App\\Models\\Transaction::create([
+                    \App\Models\Transaction::create([
                         'user_id' => $lockedUser->id,
                         'amount' => abs($difference),
                         'type' => $difference > 0 ? 'credit' : 'debit',
@@ -1791,7 +1791,7 @@ class AdminController extends Controller
                         'balance_before' => $oldBalance,
                         'balance_after' => $newBalance,
                         'description' => "Manual reconciliation: Converted \${$oldBalance} USD to ₦" . number_format($newBalance, 2) . " NGN",
-                        'reference' => 'MANREC_' . strtoupper(\\Illuminate\\Support\\Str::random(8)),
+                        'reference' => 'MANREC_' . strtoupper(\Illuminate\Support\Str::random(8)),
                     ]);
                 }
             } elseif ($request->action === 'mark_as_ngn') {
@@ -1809,7 +1809,7 @@ class AdminController extends Controller
 
                 $difference = round($newBalance - $oldBalance, 4);
                 if ($difference != 0.0) {
-                    \\App\\Models\\Transaction::create([
+                    \App\Models\Transaction::create([
                         'user_id' => $lockedUser->id,
                         'amount' => abs($difference),
                         'type' => $difference > 0 ? 'credit' : 'debit',
@@ -1817,12 +1817,12 @@ class AdminController extends Controller
                         'balance_before' => $oldBalance,
                         'balance_after' => $newBalance,
                         'description' => "Manual balance reconciliation adjustment",
-                        'reference' => 'MANREC_' . strtoupper(\\Illuminate\\Support\\Str::random(8)),
+                        'reference' => 'MANREC_' . strtoupper(\Illuminate\Support\Str::random(8)),
                     ]);
                 }
             }
 
-            \\App\\Models\\ActivityLog::log("Manually reconciled user #{$lockedUser->id} currency balance", auth()->user(), [
+            \App\Models\ActivityLog::log("Manually reconciled user #{$lockedUser->id} currency balance", auth()->user(), [
                 'action' => $request->action,
                 'old_balance' => $oldBalance,
                 'new_balance' => $lockedUser->balance,
