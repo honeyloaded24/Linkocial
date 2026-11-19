@@ -8,6 +8,7 @@ use App\Models\AiToolOrder;
 use App\Models\AiToolProduct;
 use App\Models\Setting;
 use App\Services\AlaricApiService;
+use App\Services\PixelSubApiService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Artisan;
@@ -254,10 +255,13 @@ class AdminAiToolsController extends Controller
         $exchangeRate  = Setting::get('usdt_to_ngn_rate', Setting::get('usd_to_ngn_rate', 1500));
         $markupPercent = Setting::get('markup_ai_tools', 20);
         $lastSync      = Schema::hasTable('ai_tool_products') ? AiToolProduct::max('last_synced_at') : null;
+        $pixelSubKey = (string) Setting::get('pixelsub_api_key', '');
+        $maskedPixelSubKey = $pixelSubKey ? substr($pixelSubKey, 0, 4) . str_repeat('*', max(0, strlen($pixelSubKey) - 8)) . substr($pixelSubKey, -4) : '';
+        $pixelSubConfigured = !empty($pixelSubKey);
         $apiConfigured = !empty($apiKey);
 
         return view('hq.ai-tools.settings', compact(
-            'maskedKey', 'exchangeRate', 'markupPercent', 'lastSync', 'apiConfigured'
+            'maskedKey', 'maskedPixelSubKey', 'pixelSubConfigured', 'exchangeRate', 'markupPercent', 'lastSync', 'apiConfigured'
         ));
     }
 
@@ -274,6 +278,10 @@ class AdminAiToolsController extends Controller
             Setting::set('alaric_api_key', $request->alaric_api_key);
         }
 
+        if ($request->filled('pixelsub_api_key') && !str_contains($request->pixelsub_api_key, '***')) {
+            Setting::set('pixelsub_api_key', $request->pixelsub_api_key);
+        }
+
         Setting::set('usdt_to_ngn_rate', $request->usdt_to_ngn_rate);
         Setting::set('markup_ai_tools',  $request->markup_ai_tools);
 
@@ -287,12 +295,12 @@ class AdminAiToolsController extends Controller
         /** @var AlaricApiService $service */
         $service = app(AlaricApiService::class);
         $ok      = $service->testConnection();
+        $pixelSubOk = app(PixelSubApiService::class)->testConnection();
 
         return response()->json([
-            'success' => $ok,
-            'message' => $ok
-                ? 'Connection successful. API key is valid.'
-                : 'Connection failed. Please check your API key.',
+            'success' => $ok || $pixelSubOk,
+            'message' => ($ok && $pixelSubOk) ? 'Both API connections are successful.' : (($ok || $pixelSubOk) ? 'At least one API connection is successful.' : 'Both API connections failed. Please check the configured keys.'),
+            'connections' => ['alaric' => $ok, 'pixelsub' => $pixelSubOk],
         ]);
     }
 
@@ -301,8 +309,9 @@ class AdminAiToolsController extends Controller
         /** @var AlaricApiService $service */
         $service = app(AlaricApiService::class);
         $result  = $service->checkBalance();
+        $pixelSubResult = app(PixelSubApiService::class)->checkBalance();
 
-        return response()->json($result);
+        return response()->json(['success' => ($result['success'] ?? false) || ($pixelSubResult['success'] ?? false), 'data' => ['alaric' => $result['data'] ?? $result, 'pixelsub' => $pixelSubResult['data'] ?? $pixelSubResult]]);
     }
 
     public function syncProducts()
