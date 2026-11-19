@@ -3,7 +3,29 @@
 @section('header_title', 'HQ Support: Ticket #' . $ticket->id)
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-ticket-detail .bg-light,
+    [data-bs-theme="dark"] .hq-ticket-detail .bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-ticket-detail .bg-light.bg-opacity-75,
+    [data-bs-theme="dark"] .hq-ticket-detail .bg-light.bg-opacity-75 {
+        background-color: rgba(255,255,255,0.06) !important;
+    }
+    [data-theme="dark"] .hq-ticket-detail .input-group-text.bg-light,
+    [data-bs-theme="dark"] .hq-ticket-detail .input-group-text.bg-light {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-ticket-detail .btn-light,
+    [data-bs-theme="dark"] .hq-ticket-detail .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-ticket-detail">
     <div class="row g-4">
         <!-- Ticket Information Sidebar -->
         <div class="col-xl-3 col-lg-4">
