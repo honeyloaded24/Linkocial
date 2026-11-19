@@ -78,7 +78,7 @@ class SyncAiToolProducts extends Command
                     $inStock = $source['provider'] === 'pixelsub'
                         ? (($p['inStock'] ?? ($stockValue === null || (int) $stockValue > 0)) === true || ($stockValue === null || (int) $stockValue > 0))
                         : (isset($p['in_stock']) ? (bool) $p['in_stock'] : ($stockValue === null || (int) $stockValue > 0));
-                    $stock = $stockValue === null ? null : (int) $stockValue;
+                    $stock = $stockValue === null ? 0 : (int) $stockValue;
                     $maxQuantity = max(1, (int) ($p['max_quantity'] ?? $p['max'] ?? 20));
                     $categoryName = is_string($p['category'] ?? null) ? trim($p['category']) : trim((string) ($p['category_name'] ?? ''));
                     $categoryId = null;
