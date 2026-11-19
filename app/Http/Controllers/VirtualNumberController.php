@@ -785,32 +785,61 @@ class VirtualNumberController extends Controller
             ->whereIn('status', ['received', 'pending'])
             ->findOrFail($id);
 
+        // Prevent duplicate resend calls for the same order from concurrent requests.
+        $resendLock = Cache::lock("vn_resend_order_{$order->id}", 30);
+        if (!$resendLock->get()) {
+            return response()->json(['error' => 'A resend request is already in progress for this order.'], 409);
+        }
+
         try {
+            // Recheck eligibility under a row lock before contacting the provider.
+            $eligible = DB::transaction(function () use ($order) {
+                $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                return $lockedOrder && in_array($lockedOrder->status, ['received', 'pending'], true);
+            });
+
+            if (!$eligible) {
+                return response()->json(['error' => 'This order is no longer eligible for SMS resend.'], 409);
+            }
+
             $provider = $this->getProvider($order->server ?? 'server1');
             $resendData = $provider->resendOrder($order->api_order_id);
 
-            // Set order status back to pending to wait for the next SMS (retaining sms_text as audit trail of initial delivery)
-            DB::transaction(function () use ($order) {
+            // Only transition back to pending if it is still eligible. Do not overwrite
+            // a concurrent terminal state or a status update made while the provider call ran.
+            $updated = DB::transaction(function () use ($order) {
                 $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
-                if ($lockedOrder) {
-                    $lockedOrder->update([
-                        'status' => 'pending',
-                        'sms_code' => null,
-                    ]);
+                if (!$lockedOrder || !in_array($lockedOrder->status, ['received', 'pending'], true)) {
+                    return false;
                 }
+
+                $lockedOrder->update([
+                    'status' => 'pending',
+                    'sms_code' => null,
+                ]);
+                return true;
             });
+
+            if (!$updated) {
+                Log::warning('Provider accepted resend but local order state changed concurrently', ['order_id' => $order->id]);
+                return response()->json([
+                    'error' => 'The provider accepted the resend, but this order changed concurrently. Refresh order history before taking further action.',
+                    'provider_resend_confirmed' => true,
+                ], 409);
+            }
 
             return response()->json([
                 'success' => true,
                 'message' => $resendData['message'] ?? 'SMS resend requested successfully. Waiting for new code.',
                 'order' => $order->fresh(),
             ]);
-
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             Log::error('Virtual number resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json([
                 'error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'
             ], 400);
+        } finally {
+            $resendLock->release();
         }
     }
 
