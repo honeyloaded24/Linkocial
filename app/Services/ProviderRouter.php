@@ -55,12 +55,23 @@ class ProviderRouter
             }
 
             // Attempt to place the order
-            $providerOrderId = $this->smmService->placeOrder(
-                $provider,
-                $mapping->provider_service_id,
-                $order->link,
-                $order->quantity
-            );
+            try {
+                $providerOrderId = $this->smmService->placeOrder(
+                    $provider,
+                    $mapping->provider_service_id,
+                    $order->link,
+                    $order->quantity
+                );
+            } catch (\\App\\Exceptions\\ProviderTimeoutException $timeout) {
+                // Do not fail over: the provider may have created the order before the response was lost.
+                $order->update([
+                    'status' => 'unresolved',
+                    'provider_id' => $provider->id,
+                    'error_log' => trim(($order->error_log ?? '') . ' | Provider purchase outcome ambiguous; automatic refund/failover withheld.'),
+                ]);
+                Log::critical("SMM order {$order->id} has an ambiguous provider purchase outcome; preserving charge.");
+                return true;
+            }
 
             if ($providerOrderId !== null) {
                 // Success! Update order and break out of failover loop
