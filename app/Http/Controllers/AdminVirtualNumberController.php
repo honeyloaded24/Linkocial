@@ -77,9 +77,10 @@ class AdminVirtualNumberController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($order->status === 'canceled') {
+            $refundReference = 'REF-VN-ADMIN-' . $order->id;
+            if ($order->status === 'canceled' || Transaction::where('reference', $refundReference)->exists()) {
                 DB::rollBack();
-                return back()->with('error', 'That order is already canceled and refunded.');
+                return back()->with('error', 'That order has already been refunded.');
             }
 
             // Attempt to tell provider to cancel it so we get our API money back too, if it's pending.
@@ -97,11 +98,12 @@ class AdminVirtualNumberController extends Controller
             
             if ($order->cost > 0) {
                 Transaction::add(
-                    $order->user_id, 
-                    $order->cost, 
-                    'credit', 
-                    'refund', 
-                    "Admin manual refund for Virtual Number #{$order->id} ({$order->product})"
+                    $order->user_id,
+                    $order->cost,
+                    'credit',
+                    'refund',
+                    "Admin manual refund for Virtual Number #{$order->id} ({$order->product})",
+                    $refundReference
                 );
             }
 
