@@ -1382,14 +1382,14 @@ class AdminController extends Controller
      */
     public function hqApproveWithdrawal(Request $request, $id)
     {
-        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id, $request) {
-            $withdrawal = \\App\\Models\\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($id, $request) {
+            $withdrawal = \App\Models\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($withdrawal->status !== 'pending') {
                 return 'processed';
             }
 
-            $user = \\App\\Models\\User::where('id', $withdrawal->user_id)->lockForUpdate()->firstOrFail();
+            $user = \App\Models\User::where('id', $withdrawal->user_id)->lockForUpdate()->firstOrFail();
             $amount = round((float) $withdrawal->amount, 2);
 
             if ($amount <= 0 || (float) $user->commission_balance < $amount) {
@@ -1399,7 +1399,7 @@ class AdminController extends Controller
             $user->decrement('commission_balance', $amount);
             $user->increment('total_withdrawn_commission', $amount);
 
-            \\App\\Models\\AffiliateTransaction::log(
+            \App\Models\AffiliateTransaction::log(
                 $user->id,
                 $amount,
                 'debit',
@@ -1411,7 +1411,7 @@ class AdminController extends Controller
                 'admin_note' => $request->admin_note ?? 'Paid successfully.'
             ]);
 
-            \\App\\Models\\ActivityLog::log("Approved withdrawal request", $user, [
+            \App\Models\ActivityLog::log("Approved withdrawal request", $user, [
                 'amount' => $amount,
                 'withdrawal_id' => $withdrawal->id
             ]);
@@ -1435,8 +1435,8 @@ class AdminController extends Controller
      */
     public function hqDeclineWithdrawal(Request $request, $id)
     {
-        $result = \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($id, $request) {
-            $withdrawal = \\App\\Models\\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
+        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($id, $request) {
+            $withdrawal = \App\Models\WithdrawalRequest::where('id', $id)->lockForUpdate()->firstOrFail();
 
             if ($withdrawal->status !== 'pending') {
                 return false;
