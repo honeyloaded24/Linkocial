@@ -315,10 +315,11 @@ class FaddedApi
             Log::error('Fadded order error: ' . $e->getMessage());
             return [
                 'success' => false,
+                'ambiguous' => true,
                 'code' => 'CONNECTION_ERROR',
-                'admin_message' => 'Connection to Fadded failed: ' . $e->getMessage(),
-                'customer_message' => 'Unable to connect to provider server. Your wallet balance has been refunded.',
-                'message' => 'Unable to connect to provider server. Your wallet balance has been refunded.'
+                'admin_message' => 'Connection to Fadded failed; provider order outcome is unconfirmed: ' . $e->getMessage(),
+                'customer_message' => 'The provider outcome is being verified. Your wallet has not been refunded because the order may have been accepted.',
+                'message' => 'The provider outcome is being verified. Your wallet has not been refunded because the order may have been accepted.'
             ];
         }
     }
