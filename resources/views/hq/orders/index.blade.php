@@ -3,7 +3,15 @@
 @section('header_title', 'HQ: SOCIAL (Boost)')
 
 @section('content')
-<div class="container-fluid">
+<style>
+[data-theme="dark"] .hq-orders .btn-light, [data-bs-theme="dark"] .hq-orders .btn-light { background: var(--bg-surface, #1e293b) !important; color: var(--text-main, #f8fafc) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-orders .dropdown-menu, [data-bs-theme="dark"] .hq-orders .dropdown-menu { background: var(--bg-surface, #1e293b) !important; border-color: var(--border-color, #334155) !important; }
+[data-theme="dark"] .hq-orders .dropdown-item, [data-bs-theme="dark"] .hq-orders .dropdown-item { color: var(--text-main, #f8fafc) !important; }
+[data-theme="dark"] .hq-orders .dropdown-item:hover, [data-bs-theme="dark"] .hq-orders .dropdown-item:hover { background: var(--bg-body, #0f172a) !important; }
+</style>
+
+
+<div class="container-fluid hq-orders">
     <!-- Header Title & Quick Links -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
@@ -189,7 +197,7 @@
                         </td>
                         <td class="fw-bold small">{{ number_format($order->quantity) }}</td>
                         <td>
-                            <div class="fw-bold text-dark">{{ money((float)$order->charge) }} <span class="text-muted small">/ {{ money((float)$order->provider_cost) }}</span></div>
+                            <div class="fw-bold text-main">{{ money((float)$order->charge) }} <span class="text-muted small">/ {{ money((float)$order->provider_cost) }}</span></div>
                             <small class="text-success" style="font-size: 0.7rem;"><i class="fa-solid fa-chart-line"></i> Revenue Audit</small>
                         </td>
                         <td>
