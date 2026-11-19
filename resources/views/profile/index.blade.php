@@ -14,7 +14,7 @@
                 <h4 class="fw-bold mb-1">{{ $user->first_name }} {{ $user->last_name }}</h4>
                 <p class="text-muted small mb-4">{{ $user->email }}</p>
                 
-                <div class="bg-dark bg-opacity-25 rounded-4 p-3 mb-4 border border-secondary border-opacity-10">
+                <div class="rounded-4 p-3 mb-4 border" style="background: var(--bg-muted); border-color: var(--border-color) !important;">
                     <div class="d-flex justify-content-between mb-2 text-start">
                         <span class="text-muted small">Username</span>
                         <span class="fw-bold small text-primary-custom">{{ $user->username }}</span>
@@ -70,7 +70,7 @@
                                     <i class="fa-solid fa-copy me-1"></i> Copy
                                 </button>
                                 <button type="button" class="btn btn-secondary btn-sm py-2 px-3 border-0 bg-opacity-25" onclick="toggleKeyVisibility(this)">
-                                    <i class="fa-solid fa-eye text-white"></i>
+                                    <i class="fa-solid fa-eye text-main"></i>
                                 </button>
                             </div>
                         </div>
@@ -162,7 +162,7 @@
 
             <!-- Security Log -->
             <div class="premium-card shadow-sm">
-                <div class="p-4 border-bottom border-secondary bg-dark bg-opacity-25 d-flex justify-content-between align-items-center">
+                <div class="p-4 border-bottom border-secondary d-flex justify-content-between align-items-center" style="background: var(--bg-muted);">
                     <h5 class="fw-bold mb-0">Recent Security Activity</h5>
                     <span class="badge bg-primary text-white px-3 shadow-sm">PROTECTED</span>
                 </div>
