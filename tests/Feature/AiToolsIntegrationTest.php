@@ -772,6 +772,46 @@ class AiToolsIntegrationTest extends TestCase
         $response->assertSee('Amazon Prime Video - 1 Month');
     }
 
+    public function test_legacy_single_quantity_split_credentials_render_as_one_high_contrast_copyable_field()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'legacy-split-credential-test',
+            'product_name' => 'Legacy Credential Test',
+            'idempotency_key' => 'idemp-legacy-split-credential-test',
+            'status' => AiToolOrder::STATUS_COMPLETED,
+            'quantity' => 1,
+            'unit_price_usdt' => 1,
+            'total_price_usdt' => 1,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 1500,
+            'total_paid_ngn' => 1500,
+            'provider_cost_ngn' => 1000,
+            'profit_ngn' => 500,
+            'completed_at' => now(),
+        ]);
+
+        AiToolOrderItem::create([
+            'ai_tool_order_id' => $order->id,
+            'item_index' => 0,
+            'code' => 'Email: test@example.com',
+        ]);
+        AiToolOrderItem::create([
+            'ai_tool_order_id' => $order->id,
+            'item_index' => 1,
+            'code' => 'Password: secret123',
+        ]);
+
+        $response = $this->actingAs($user)->get(route('ai-tools.order.detail', $order->id));
+        $response->assertOk();
+        $response->assertSee('Email: test@example.com | Password: secret123');
+        $response->assertDontSee('Item 1');
+        $response->assertDontSee('Item 2');
+        $response->assertSee('#111827');
+        $response->assertSee('#f9fafb');
+    }
+
     public function test_single_quantity_multiline_credential_string_stays_in_one_delivery_field()
     {
         $user = User::factory()->create(['balance' => 1000]);
