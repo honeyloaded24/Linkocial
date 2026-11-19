@@ -167,7 +167,8 @@ class AiToolsController extends Controller
                     $totalNgn,
                     'debit',
                     'ai_tools',
-                    "AI TOOLS purchase: {$product->name}" . ($qty > 1 ? " x{$qty}" : '')
+                    "AI TOOLS purchase: {$product->name}" . ($qty > 1 ? " x{$qty}" : ''),
+                    'DEBIT-AITOOLS-' . $order->id
                 );
 
                 // ── Submit provider order ─────────────────────────────────────
