@@ -319,7 +319,7 @@ function copyById(btn, elemId) {
                 }
                 html += '<div class="cred-box">' +
                     '<pre class="mb-0 font-monospace text-wrap" id="' + copyId + '" style="white-space:pre-wrap;">' + escapeHtml(credential) + '</pre>' +
-                    '<button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyById(this,\\'' + copyId + '\\')">' +
+                    '<button class="btn btn-sm btn-outline-primary copy-btn" onclick="copyById(this,\'' + copyId + '\')">' +
                     '<i class="fa fa-copy"></i></button>' +
                     '</div></div>';
             });
