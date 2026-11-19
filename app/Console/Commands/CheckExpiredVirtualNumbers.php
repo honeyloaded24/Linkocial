@@ -238,10 +238,18 @@ class CheckExpiredVirtualNumbers extends Command
                     $this->refundOrder($order);
                     $this->info("Order {$order->id} was refunded/expired by provider (status {$status}). Processed local refund.");
                 } else {
-                    // Still pending on provider but time is up locally: attempt cancel on provider and refund locally
+                    // Still pending on provider: refund only after cancellation is confirmed.
                     try {
                         $provider->cancelOrder($order->api_order_id);
-                    } catch (\Throwable $cancelEx) {
+                        $this->refundOrder($order);
+                        $this->info("Order {$order->id} cancellation confirmed and locally refunded.");
+                    } catch (\\Throwable $cancelEx) {
+                        Log::warning("Cancellation was not confirmed for order {$order->api_order_id}; refund withheld: " . $cancelEx->getMessage());
+                        $order->update([
+                            'sms_text' => 'Cancellation not confirmed by provider. Refund withheld pending reconciliation.',
+                        ]);
+                    }
+            } catch (\Throwable $cancelEx) {
                         Log::warning("Could not cancel order {$order->api_order_id} on provider: " . $cancelEx->getMessage());
                     }
                     $this->refundOrder($order);
