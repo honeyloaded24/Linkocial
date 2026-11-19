@@ -555,11 +555,6 @@ input:checked+.slider:before {
 
 
 /* Theme parity for shared Bootstrap components */
-[data-theme="dark"] .dropdown-item:hover, [data-bs-theme="dark"] .dropdown-item:hover,
-[data-theme="dark"] .dropdown-item:focus, [data-bs-theme="dark"] .dropdown-item:focus {
-    background-color: var(--bg-muted) !important;
-    color: var(--text-main) !important;
-}
 [data-theme="dark"] .table-hover tbody tr:hover td, [data-bs-theme="dark"] .table-hover tbody tr:hover td {
     background-color: rgba(129, 140, 248, 0.08) !important;
     color: var(--text-main) !important;
