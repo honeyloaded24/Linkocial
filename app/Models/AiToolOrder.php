@@ -164,8 +164,14 @@ class AiToolOrder extends Model
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                     $itemsToSave = array_is_list($decoded) ? $decoded : [$decoded];
                 } else {
-                    $lines = array_filter(array_map('trim', preg_split('/\\r\\n|\\r|\\n/', $trimmed)));
-                    $itemsToSave = !empty($lines) ? array_values($lines) : [$trimmed];
+                    // A single purchased unit is one credential, even if the
+                    // provider formats its fields across multiple lines.
+                    if ((int) $lockedOrder->quantity === 1) {
+                        $itemsToSave = [$trimmed];
+                    } else {
+                        $lines = array_filter(array_map('trim', preg_split('/\\r\\n|\\r|\\n/', $trimmed)));
+                        $itemsToSave = !empty($lines) ? array_values($lines) : [$trimmed];
+                    }
                 }
             } elseif (is_array($credentials)) {
                 $itemsToSave = array_is_list($credentials) ? $credentials : [$credentials];
