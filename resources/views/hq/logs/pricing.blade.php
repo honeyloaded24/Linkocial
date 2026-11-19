@@ -23,7 +23,31 @@
         border-color: var(--border-color, #334155) !important;
     }
 </style>
-<div class="container-fluid hq-log-pricing">
+<style>
+    [data-theme="dark"] .hq-smm-pricing .btn-light,
+    [data-bs-theme="dark"] .hq-smm-pricing .btn-light {
+        background: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-smm-pricing .input-group-text,
+    [data-bs-theme="dark"] .hq-smm-pricing .input-group-text {
+        background: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-smm-pricing .bg-light,
+    [data-bs-theme="dark"] .hq-smm-pricing .bg-light {
+        background: rgba(255,255,255,0.06) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-smm-pricing .bg-light.bg-opacity-75,
+    [data-bs-theme="dark"] .hq-smm-pricing .bg-light.bg-opacity-75 {
+        background: rgba(255,255,255,0.06) !important;
+    }
+</style>
+<div class="container-fluid hq-smm-pricing hq-log-pricing">
     <!-- Header / Navigation Bar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div class="d-flex align-items-center gap-3">
