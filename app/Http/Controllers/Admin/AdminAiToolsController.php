@@ -233,7 +233,7 @@ class AdminAiToolsController extends Controller
         }
 
         $order = AiToolOrder::findOrFail($id);
-        $result = $order->livePollStatus(app(AlaricApiService::class));
+        $result = $order->livePollStatus($order->provider === 'pixelsub' ? app(PixelSubApiService::class) : app(AlaricApiService::class));
 
         if ($result['success'] ?? false) {
             return back()->with('success', 'Provider status check: ' . ($result['message'] ?? 'Status updated.'));
