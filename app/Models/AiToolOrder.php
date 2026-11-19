@@ -140,7 +140,22 @@ class AiToolOrder extends Model
      */
     public function fulfillWithCredentials(string|array $credentials, ?string $instructions = null): bool
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($credentials, $instructions) {
+        return \\Illuminate\\Support\\Facades\\DB::transaction(function () use ($credentials, $instructions) {
+            // Serialize fulfillment against refunds. A refund may win while a provider
+            // poll is in flight; never deliver credentials after the wallet is refunded.
+            $lockedOrder = self::query()->lockForUpdate()->findOrFail($this->id);
+
+            if ($lockedOrder->status === self::STATUS_REFUNDED) {
+                return false;
+            }
+
+            // Repeated provider polling must not delete and recreate already delivered
+            // credentials. Completed orders with no items may still be manually fulfilled.
+            if ($lockedOrder->status === self::STATUS_COMPLETED && $lockedOrder->items()->exists()) {
+                $this->refresh();
+                return true;
+            }
+
             $itemsToSave = [];
 
             if (is_string($credentials)) {
@@ -149,15 +164,14 @@ class AiToolOrder extends Model
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                     $itemsToSave = array_is_list($decoded) ? $decoded : [$decoded];
                 } else {
-                    $lines = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $trimmed)));
+                    $lines = array_filter(array_map('trim', preg_split('/\\r\\n|\\r|\\n/', $trimmed)));
                     $itemsToSave = !empty($lines) ? array_values($lines) : [$trimmed];
                 }
             } elseif (is_array($credentials)) {
                 $itemsToSave = array_is_list($credentials) ? $credentials : [$credentials];
             }
 
-            // Remove any existing items if re-fulfilling
-            $this->items()->delete();
+            $lockedOrder->items()->delete();
 
             foreach ($itemsToSave as $index => $item) {
                 $code = null;
@@ -195,19 +209,20 @@ class AiToolOrder extends Model
                 }
 
                 AiToolOrderItem::create([
-                    'ai_tool_order_id' => $this->id,
+                    'ai_tool_order_id' => $lockedOrder->id,
                     'item_index'       => (int) $index,
                     'code'             => (string) $code,
                     'details'          => $details ? (is_array($details) ? json_encode($details) : (string) $details) : null,
                 ]);
             }
 
-            $this->update([
+            $lockedOrder->update([
                 'status'         => self::STATUS_COMPLETED,
                 'completed_at'   => now(),
                 'failure_reason' => null,
             ]);
 
+            $this->refresh();
             return true;
         });
     }
