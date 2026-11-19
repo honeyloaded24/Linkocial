@@ -303,13 +303,19 @@ class FaddedApi
             $rawMsg = $response->json('message');
             $parsed = self::parseProviderError($status, $code, $rawMsg);
 
+            $ambiguous = $status >= 500;
             return [
                 'success' => false,
+                'ambiguous' => $ambiguous,
                 'status' => $status,
                 'code' => $parsed['code'],
-                'admin_message' => "Fadded order failed ({$url}): {$parsed['admin_message']}",
-                'customer_message' => $parsed['customer_message'],
-                'message' => $parsed['customer_message']
+                'admin_message' => "Fadded order response ({$url}): {$parsed['admin_message']}",
+                'customer_message' => $ambiguous
+                    ? 'The provider outcome is being verified. Your wallet has not been refunded because the order may have been accepted.'
+                    : $parsed['customer_message'],
+                'message' => $ambiguous
+                    ? 'The provider outcome is being verified. Your wallet has not been refunded because the order may have been accepted.'
+                    : $parsed['customer_message']
             ];
         } catch (\Exception $e) {
             Log::error('Fadded order error: ' . $e->getMessage());
