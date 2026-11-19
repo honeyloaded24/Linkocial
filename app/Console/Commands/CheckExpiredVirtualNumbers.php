@@ -7,6 +7,7 @@ use App\Models\VirtualNumberOrder;
 use App\Models\Transaction;
 use App\Services\SmsPoolService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class CheckExpiredVirtualNumbers extends Command
