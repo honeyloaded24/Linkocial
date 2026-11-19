@@ -254,7 +254,7 @@ class AiToolsIntegrationTest extends TestCase
         $item = AiToolOrderItem::where('ai_tool_order_id', $order->id)->first();
         $this->assertNotNull($item);
         // Ensure decrypted property matches original secret
-        $this->assertEquals('runway-secret-key-xyz-123', $item->code);
+        $this->assertEquals('runway-secret-key-xyz-123 | login: test@linkocial.com | pass: SecretPass!123', $item->code);
 
         // Ensure raw database column is encrypted, not plaintext
         $rawItem = DB::table('ai_tool_order_items')->where('id', $item->id)->first();
