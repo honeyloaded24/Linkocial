@@ -3,7 +3,25 @@
 @section('header_title', 'AI TOOLS — Order ' . $order->order_number)
 
 @section('content')
-<div class="container-fluid px-4 py-3">
+<style>
+    [data-theme="dark"] .hq-ai-order-detail .bg-light,
+    [data-bs-theme="dark"] .hq-ai-order-detail .bg-light {
+        background-color: rgba(255,255,255,0.06) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-ai-order-detail .text-dark,
+    [data-bs-theme="dark"] .hq-ai-order-detail .text-dark {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-ai-order-detail .btn-light,
+    [data-bs-theme="dark"] .hq-ai-order-detail .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-ai-order-detail px-4 py-3">
 
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <a href="{{ route('hq.ai-tools.orders') }}" class="btn btn-outline-secondary btn-sm">
