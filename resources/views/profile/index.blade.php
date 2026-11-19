@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const profileBadge = document.getElementById('profileThemeBadge');
 
     if (profileToggle) {
-        const activeTheme = localStorage.getItem('theme') || 'dark';
+        const activeTheme = localStorage.getItem('theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         profileToggle.checked = (activeTheme === 'dark');
         if (profileBadge) {
             profileBadge.textContent = activeTheme === 'dark' ? 'Dark Mode' : 'Light Mode';
