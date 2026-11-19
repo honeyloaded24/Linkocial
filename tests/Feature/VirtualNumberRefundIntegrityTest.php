@@ -67,7 +67,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->actingAs($admin)
             ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
-            ->assertRedirect(route('hq.virtual-numbers'));
+            ->assertRedirect(route('dashboard'));
 
         $this->assertSame(1200.0, (float) $customer->fresh()->balance);
         $this->assertSame('failed', $order->fresh()->status);
