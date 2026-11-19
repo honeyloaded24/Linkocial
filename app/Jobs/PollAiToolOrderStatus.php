@@ -72,6 +72,9 @@ class PollAiToolOrderStatus implements ShouldQueue
         }
 
         $data           = $result['data'] ?? [];
+        if (isset($data['order']) && is_array($data['order'])) {
+            $data = $data['order'];
+        }
         $providerStatus = strtoupper((string) ($data['status'] ?? ''));
 
         $order->update([
