@@ -454,7 +454,7 @@ class AiToolsIntegrationTest extends TestCase
         ]);
 
         Http::fake(function ($request) {
-            throw new \\Illuminate\\Http\\Client\\ConnectionException('Connection reset after submission');
+            throw new \Illuminate\Http\Client\ConnectionException('Connection reset after submission');
         });
 
         $response = $this->actingAs($user)->post('/ai-tools/purchase', [
