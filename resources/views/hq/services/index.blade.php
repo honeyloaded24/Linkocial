@@ -63,27 +63,27 @@
                 <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">PROVIDER</label>
                     <select name="provider_id" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
-                        <option value="" class="text-dark">All Providers</option>
+                        <option value="" >All Providers</option>
                         @foreach($providers as $provider)
-                            <option value="{{ $provider->id }}" {{ request('provider_id') == $provider->id ? 'selected' : '' }} class="text-dark">{{ $provider->name }}</option>
+                            <option value="{{ $provider->id }}" {{ request('provider_id') == $provider->id ? 'selected' : '' }} >{{ $provider->name }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">CHANNEL/TYPE</label>
                     <select name="type" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
-                        <option value="" class="text-dark">All Types</option>
+                        <option value="" >All Types</option>
                         @foreach($types as $type)
-                            <option value="{{ $type }}" {{ request('type') == $type ? 'selected' : '' }} class="text-dark">{{ $type }}</option>
+                            <option value="{{ $type }}" {{ request('type') == $type ? 'selected' : '' }} >{{ $type }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">STATUS</label>
                     <select name="status" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
-                        <option value="" class="text-dark">All Status</option>
-                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }} class="text-dark">Active Only</option>
-                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }} class="text-dark">Inactive Only</option>
+                        <option value="" >All Status</option>
+                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }} >Active Only</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }} >Inactive Only</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -98,15 +98,15 @@
                 <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">HOT</label>
                     <select name="is_hot" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
-                        <option value="" class="text-dark">Both</option>
-                        <option value="1" {{ request('is_hot') == '1' ? 'selected' : '' }} class="text-dark">Hot Only</option>
+                        <option value="" >Both</option>
+                        <option value="1" {{ request('is_hot') == '1' ? 'selected' : '' }} >Hot Only</option>
                     </select>
                 </div>
                 <div class="col-md-2">
                     <label class="form-label small text-muted fw-bold">TRENDING</label>
                     <select name="is_trending" class="form-select form-select-sm bg-transparent border-secondary" style="color: var(--text-main);">
-                        <option value="" class="text-dark">Both</option>
-                        <option value="1" {{ request('is_trending') == '1' ? 'selected' : '' }} class="text-dark">Trending Only</option>
+                        <option value="" >Both</option>
+                        <option value="1" {{ request('is_trending') == '1' ? 'selected' : '' }} >Trending Only</option>
                     </select>
                 </div>
                 <div class="col-md-4">
