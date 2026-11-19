@@ -76,18 +76,26 @@ class VirtualNumberRefundIntegrityTest extends TestCase
     }    
     public function test_admin_refund_is_withheld_when_provider_cancellation_fails(): void
     {
-        $admin = User::create([
-            'first_name' => 'Audit', 'last_name' => 'Admin',
-            'username' => 'vn_cancel_admin', 'email' => 'vn-cancel-admin@example.test',
-            'password' => bcrypt('password'), 'is_admin' => true, 'role' => 'admin',
-        ]);
+        $admin = new User();
+        $admin->first_name = 'Audit';
+        $admin->last_name = 'Admin';
+        $admin->username = 'vn_cancel_admin';
+        $admin->email = 'vn-cancel-admin@example.test';
+        $admin->password = bcrypt('password');
         $admin->email_verified_at = now();
+        $admin->is_admin = true;
+        $admin->role = 'admin';
         $admin->save();
-        $customer = User::create([
-            'first_name' => 'Pending', 'last_name' => 'Customer',
-            'username' => 'vn_cancel_customer', 'email' => 'vn-cancel-customer@example.test',
-            'password' => bcrypt('password'), 'balance' => 500,
-        ]);
+
+        $customer = new User();
+        $customer->first_name = 'Pending';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_cancel_customer';
+        $customer->email = 'vn-cancel-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 500;
+        $customer->save();
+
         $order = VirtualNumberOrder::create([
             'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-CANCEL-FAIL',
             'phone_number' => '', 'country' => 'Nigeria', 'operator' => 'Test',
@@ -96,14 +104,13 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         ]);
 
         $this->mock(SmsPoolService::class, function ($mock) {
-            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \RuntimeException('Provider cancellation failed'));
+            $mock->shouldReceive('cancelOrder')->once()->andThrow(new \\RuntimeException('Provider cancellation failed'));
         });
         $this->mock(GrizzlySmsService::class);
 
         $this->actingAs($admin)
-            ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('hq.virtual-numbers'));
 
         $this->assertSame(500.0, (float) $customer->fresh()->balance);
         $this->assertSame('pending', $order->fresh()->status);
@@ -112,18 +119,26 @@ class VirtualNumberRefundIntegrityTest extends TestCase
 
     public function test_admin_cannot_refund_virtual_number_after_sms_received(): void
     {
-        $admin = User::create([
-            'first_name' => 'Audit', 'last_name' => 'Admin',
-            'username' => 'vn_received_admin', 'email' => 'vn-received-admin@example.test',
-            'password' => bcrypt('password'), 'is_admin' => true, 'role' => 'admin',
-        ]);
+        $admin = new User();
+        $admin->first_name = 'Audit';
+        $admin->last_name = 'Admin';
+        $admin->username = 'vn_received_admin';
+        $admin->email = 'vn-received-admin@example.test';
+        $admin->password = bcrypt('password');
         $admin->email_verified_at = now();
+        $admin->is_admin = true;
+        $admin->role = 'admin';
         $admin->save();
-        $customer = User::create([
-            'first_name' => 'Received', 'last_name' => 'Customer',
-            'username' => 'vn_received_customer', 'email' => 'vn-received-customer@example.test',
-            'password' => bcrypt('password'), 'balance' => 500,
-        ]);
+
+        $customer = new User();
+        $customer->first_name = 'Received';
+        $customer->last_name = 'Customer';
+        $customer->username = 'vn_received_customer';
+        $customer->email = 'vn-received-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 500;
+        $customer->save();
+
         $order = VirtualNumberOrder::create([
             'user_id' => $customer->id, 'api_order_id' => 'AUDIT-VN-RECEIVED',
             'phone_number' => '+234000000000', 'country' => 'Nigeria', 'operator' => 'Test',
@@ -138,9 +153,8 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->mock(GrizzlySmsService::class);
 
         $this->actingAs($admin)
-            ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
-            ->assertRedirect(route('dashboard'));
+            ->assertRedirect(route('hq.virtual-numbers'));
 
         $this->assertSame(500.0, (float) $customer->fresh()->balance);
         $this->assertSame('received', $order->fresh()->status);
