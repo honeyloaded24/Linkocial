@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WithdrawalRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Auth;\nuse Illuminate\Support\Facades\DB;
 
 class AffiliateController extends Controller
 {
@@ -34,23 +34,41 @@ class AffiliateController extends Controller
             'bank_details' => 'required|string|min:15',
         ]);
 
-        if ((float) $user->commission_balance < (float) $request->amount) {
+        $created = DB::transaction(function () use ($user, $request) {
+            $lockedUser = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
+
+            if ((float) $lockedUser->commission_balance < (float) $request->amount) {
+                return 'insufficient';
+            }
+
+            // Serialize withdrawal requests for this affiliate so concurrent requests
+            // cannot both pass the pending-request check.
+            $pending = WithdrawalRequest::where('user_id', $lockedUser->id)
+                ->where('status', 'pending')
+                ->lockForUpdate()
+                ->exists();
+
+            if ($pending) {
+                return 'pending';
+            }
+
+            WithdrawalRequest::create([
+                'user_id' => $lockedUser->id,
+                'amount' => round((float) $request->amount, 2),
+                'bank_details' => $request->bank_details,
+                'status' => 'pending',
+            ]);
+
+            return 'created';
+        });
+
+        if ($created === 'insufficient') {
             return back()->with('error', 'Insufficient commission balance.');
         }
 
-        // Check if there's already a pending request
-        $pending = WithdrawalRequest::where('user_id', $user->id)->where('status', 'pending')->exists();
-        if ($pending) {
+        if ($created === 'pending') {
             return back()->with('error', 'You already have a pending withdrawal request.');
         }
-
-        WithdrawalRequest::create([
-            'user_id' => $user->id,
-            'amount' => $request->amount,
-            'bank_details' => $request->bank_details,
-            'status' => 'pending',
-        ]);
-
         return back()->with('success', 'Your withdrawal request has been submitted for approval.');
     }
 }
