@@ -405,6 +405,15 @@ class PaymentController extends Controller
                         $typeLabel = "Recurring";
                     }
 
+                    if (!is_finite($rate) || $rate <= 0 || $rate > 100) {
+                        Log::warning('Affiliate commission skipped due to invalid configured rate', [
+                            'referrer_id' => $referrer->id,
+                            'rate' => $rate,
+                            'payment_reference' => $reference,
+                        ]);
+                        return;
+                    }
+
                     $commissionRate = $rate / 100;
                     $commissionAmount = round($ngnAmount * $commissionRate, 2);
                     if ($commissionAmount <= 0) {
