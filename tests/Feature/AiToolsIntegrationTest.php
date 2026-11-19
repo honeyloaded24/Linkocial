@@ -482,6 +482,61 @@ class AiToolsIntegrationTest extends TestCase
             return str_contains($event->command, 'ai-tools:poll-stale-orders')
                 && $event->expression === '* * * * *';
         }));
+        public function test_pixelsub_purchase_uses_unified_wallet_and_delivers_credentials()
+    {
+        Queue::fake();
+
+        $user = User::factory()->create(['balance' => 10000.00, 'status' => 'active']);
+        Setting::set('pixelsub_api_key', 'pixelsub-test-key');
+        Setting::set('usdt_to_ngn_rate', 1500.0);
+        Setting::set('markup_ai_tools', 0.0);
+
+        $product = AiToolProduct::create([
+            'provider_product_id' => 'pixelsub:5',
+            'provider' => 'pixelsub',
+            'name' => 'Test Digital Product',
+            'slug' => 'pixelsub-test-product',
+            'price_usdt' => 2.00,
+            'currency' => 'USD',
+            'in_stock' => true,
+            'is_active' => true,
+            'fulfillment' => 'on_demand',
+            'max_quantity' => 2,
+        ]);
+
+        Http::fake([
+            'https://pixelsub-production-f248.up.railway.app/api/v1/orders' => Http::response([
+                'success' => true,
+                'data' => [
+                    'id' => 'pixelsub-order-123',
+                    'status' => 'COMPLETED',
+                    'items' => [['delivered' => 'TEST-CREDENTIAL-123']],
+                ],
+            ], 200),
+        ]);
+
+        $response = $this->actingAs($user)->post('/ai-tools/purchase', [
+            'product_id' => $product->id,
+            'quantity' => 1,
+        ]);
+
+        $order = AiToolOrder::where('user_id', $user->id)->firstOrFail();
+        $response->assertRedirect(route('ai-tools.order.detail', $order->id));
+        $this->assertEquals('pixelsub', $order->provider);
+        $this->assertEquals('pixelsub-order-123', $order->provider_order_id);
+        $this->assertEquals(AiToolOrder::STATUS_COMPLETED, $order->status);
+        $this->assertEquals(7000.00, (float) $user->fresh()->balance);
+        $this->assertDatabaseHas('ai_tool_order_items', ['ai_tool_order_id' => $order->id]);
+
+        Http::assertSent(function ($request) use ($order) {
+            return $request->url() === 'https://pixelsub-production-f248.up.railway.app/api/v1/orders'
+                && $request->hasHeader('X-API-Key', 'pixelsub-test-key')
+                && $request['productId'] === 5
+                && $request['quantity'] === 1
+                && $request['reference'] === $order->idempotency_key;
+        });
     }
+
+}
 
 }
