@@ -3,7 +3,29 @@
 @section('header_title', 'HQ: Virtual Numbers & Financial Records')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-vn-list .bg-light,
+    [data-bs-theme="dark"] .hq-vn-list .bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-vn-list .bg-light.bg-opacity-75,
+    [data-bs-theme="dark"] .hq-vn-list .bg-light.bg-opacity-75 {
+        background-color: rgba(255,255,255,0.06) !important;
+    }
+    [data-theme="dark"] .hq-vn-list .input-group-text.bg-light,
+    [data-bs-theme="dark"] .hq-vn-list .input-group-text.bg-light {
+        color: var(--text-main, #f8fafc) !important;
+    }
+    [data-theme="dark"] .hq-vn-list .btn-light,
+    [data-bs-theme="dark"] .hq-vn-list .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-vn-list">
     <!-- Header Title & Action -->
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
