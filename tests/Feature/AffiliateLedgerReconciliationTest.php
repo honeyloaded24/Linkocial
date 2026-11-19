@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AffiliateTransaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AffiliateLedgerReconciliationTest extends TestCase
