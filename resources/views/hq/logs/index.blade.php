@@ -3,7 +3,27 @@
 @section('header_title', 'HQ: Logs & Accounts')
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-log-catalogue .bg-light,
+    [data-bs-theme="dark"] .hq-log-catalogue .bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-log-catalogue .bg-white,
+    [data-bs-theme="dark"] .hq-log-catalogue .bg-white {
+        background-color: var(--bg-body, #0f172a) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-log-catalogue .btn-light,
+    [data-bs-theme="dark"] .hq-log-catalogue .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-log-catalogue">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h4 class="fw-bold mb-0">Logs Marketplace Products</h4>
         <div class="d-flex gap-2 flex-wrap">
