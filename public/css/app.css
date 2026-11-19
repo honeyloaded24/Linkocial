@@ -528,3 +528,27 @@ input:checked+.slider:before {
 [data-theme="dark"] .input-group-text.bg-light, [data-bs-theme="dark"] .input-group-text.bg-light { background-color: var(--bg-surface) !important; color: var(--text-main) !important; border-color: var(--border-color) !important; }
 [data-theme="dark"] .table-light, [data-bs-theme="dark"] .table-light { --bs-table-bg: var(--bg-surface); --bs-table-color: var(--text-main); --bs-table-border-color: var(--border-color); }
 [data-theme="dark"] .table-light th, [data-bs-theme="dark"] .table-light th { background-color: var(--bg-surface) !important; color: var(--text-muted) !important; }
+
+
+/* Public navigation and dropdown surfaces follow the active theme. */
+.theme-navbar {
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+[data-theme="dark"] .dropdown-menu, [data-bs-theme="dark"] .dropdown-menu {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .dropdown-divider, [data-bs-theme="dark"] .dropdown-divider {
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .dropdown-item, [data-bs-theme="dark"] .dropdown-item {
+    color: var(--text-main) !important;
+}
+[data-theme="dark"] .dropdown-item:hover, [data-bs-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:focus, [data-bs-theme="dark"] .dropdown-item:focus {
+    background-color: var(--bg-muted) !important;
+    color: var(--text-main) !important;
+}
