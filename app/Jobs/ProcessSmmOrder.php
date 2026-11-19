@@ -30,7 +30,14 @@ class ProcessSmmOrder implements ShouldQueue
      */
     public function handle(ProviderRouter $router): void
     {
-        $success = $router->routeOrder($this->order, $this->service);
+        // Prevent queue retries from re-submitting already processing, unresolved,
+        // completed, or refunded orders to an external provider.
+        $currentOrder = Order::find($this->order->id);
+        if (!$currentOrder || $currentOrder->status !== 'pending' || $currentOrder->is_refunded) {
+            return;
+        }
+
+        $success = $router->routeOrder($currentOrder, $this->service);
 
         // Refund the user if all failovers failed AND not already refunded
         if (!$success) {
