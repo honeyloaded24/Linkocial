@@ -59,7 +59,7 @@
             <h6 class="fw-bold text-uppercase small text-muted mb-4" style="letter-spacing: 1px;">Service ID Reference</h6>
             <div class="table-responsive" style="max-height: 600px;">
                 <table class="table table-sm table-hover align-middle">
-                    <thead class="bg-light sticky-top">
+                    <thead class="bg-light bg-opacity-10 sticky-top">
                         <tr>
                             <th class="small py-2">ID</th>
                             <th class="small py-2">Service Name</th>
