@@ -22,6 +22,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $admin->username = 'vn_refund_admin';
         $admin->email = 'vn-refund-admin@example.test';
         $admin->password = bcrypt('password');
+        $admin->email_verified_at = now();
         $admin->is_admin = true;
         $admin->role = 'admin';
         $admin->save();
