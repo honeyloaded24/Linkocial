@@ -115,28 +115,52 @@ class PollAiToolOrderStatus implements ShouldQueue
 
     private function handleRefunded(AiToolOrder $order): void
     {
-        DB::transaction(function () use ($order) {
-            $user = $order->user;
+        $credited = DB::transaction(function () use ($order) {
+            $lockedOrder = AiToolOrder::lockForUpdate()->find($order->id);
 
-            if ($user) {
-                $user->addBalance((float) $order->total_paid_ngn);
+            // Provider status polling may overlap or be retried. Refund only once.
+            if (!$lockedOrder || $lockedOrder->status === AiToolOrder::STATUS_REFUNDED || $lockedOrder->isTerminal()) {
+                return false;
+            }
+
+            $user = \App\Models\User::lockForUpdate()->find($lockedOrder->user_id);
+            if (!$user) {
+                Log::error('PollAiToolOrderStatus: refund owner missing', ['order_id' => $lockedOrder->id]);
+                return false;
+            }
+
+            $amount = round((float) $lockedOrder->total_paid_ngn, 4);
+            if ($amount > 0) {
+                $user->addBalance($amount);
+                $debit = Transaction::where('user_id', $user->id)
+                    ->where('transaction_type', 'ai_tools')
+                    ->where('description', 'like', 'AI TOOLS purchase:%')
+                    ->where('created_at', '<=', $lockedOrder->created_at)
+                    ->orderByDesc('created_at')
+                    ->first();
 
                 Transaction::add(
                     $user->id,
-                    (float) $order->total_paid_ngn,
+                    $amount,
                     'credit',
                     'ai_tools_refund',
-                    "AI TOOLS refund for order {$order->order_number}"
+                    "AI TOOLS refund for order {$lockedOrder->order_number}",
+                    'REF-AITOOLS-' . $lockedOrder->id,
+                    $debit?->created_at ?? $lockedOrder->created_at
                 );
             }
 
-            $order->update([
+            $lockedOrder->update([
                 'status'      => AiToolOrder::STATUS_REFUNDED,
                 'refunded_at' => now(),
             ]);
+
+            return true;
         });
 
-        Log::info('PollAiToolOrderStatus: order refunded — wallet credited', ['order_id' => $order->id]);
+        if ($credited) {
+            Log::info('PollAiToolOrderStatus: order refunded — wallet credited', ['order_id' => $order->id]);
+        }
     }
 
     private function handleFailed(AiToolOrder $order, array $data): void
