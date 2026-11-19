@@ -82,6 +82,11 @@ class PollAiToolOrderStatus implements ShouldQueue
             'provider_response' => $data,
         ]);
 
+        if (!empty($data['items']) || !empty($data['credentials']) || !empty($data['code']) || !empty($data['delivered'])) {
+            $this->handleCompleted($order, $data);
+            return;
+        }
+
         match ($providerStatus) {
             'COMPLETED'    => $this->handleCompleted($order, $data),
             'REFUNDED'     => $this->handleRefunded($order),
