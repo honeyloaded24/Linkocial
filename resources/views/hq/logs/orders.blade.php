@@ -159,7 +159,7 @@
                         </td>
                         <td>
                             @if($order->user)
-                                <a href="{{ route('hq.users.show', $order->user->id) }}" class="text-decoration-none text-dark">
+                                <a href="{{ route('hq.users.show', $order->user->id) }}" class="text-decoration-none text-main">
                                     <div class="fw-bold" style="font-size: 0.85rem;">{{ trim(($order->user->first_name ?? '') . ' ' . ($order->user->last_name ?? '')) ?: $order->user->username }}</div>
                                     <small class="text-muted" style="font-size: 0.75rem;">{{ $order->user->email }}</small>
                                 </a>
@@ -174,7 +174,7 @@
                             </div>
                             <small class="text-muted">Quantity: <strong>{{ $order->quantity }}</strong> &times; ₦{{ number_format((float)$order->unit_cost, 2) }}</small>
                         </td>
-                        <td class="fw-bold text-dark">
+                        <td class="fw-bold text-main">
                             ₦{{ number_format((float)$order->total_cost, 2) }}
                         </td>
                         <td>
@@ -186,7 +186,7 @@
                                     <i class="fa-solid fa-check me-1"></i>COMPLETED
                                 </span>
                             @elseif($status === 'pending')
-                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1 fw-bold shadow-sm" style="font-size: 0.7rem;">
+                                <span class="badge bg-warning text-main rounded-pill px-2 py-1 fw-bold shadow-sm" style="font-size: 0.7rem;">
                                     <i class="fa-solid fa-clock me-1"></i>PENDING
                                 </span>
                             @elseif($status === 'failed')
