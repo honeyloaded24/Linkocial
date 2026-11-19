@@ -25,22 +25,13 @@ class CheckExpiredVirtualNumbers extends Command
             DB::transaction(function () use ($stale) {
                 $locked = VirtualNumberOrder::where('id', $stale->id)->lockForUpdate()->first();
                 if ($locked && $locked->status === 'processing') {
+                    // Provider purchase may have succeeded before the process crashed.
+                    // Keep this order unresolved until provider reconciliation confirms its outcome.
                     $locked->update([
-                        'status' => 'failed',
-                        'sms_text' => 'Crash recovery: order timed out in processing state.',
+                        'status' => 'unresolved',
+                        'sms_text' => 'Crash recovery: provider purchase outcome unknown. Retained for reconciliation; no automatic refund issued.',
                     ]);
-                    $user = \App\Models\User::where('id', $locked->user_id)->lockForUpdate()->first();
-                    if ($user) {
-                        $user->addBalance($locked->cost);
-                        Transaction::add(
-                            $user->id,
-                            $locked->cost,
-                            'credit',
-                            'refund',
-                            "Automatic Refund: Unresolved virtual number checkout attempt"
-                        );
-                    }
-                    $this->info("Crash recovery: Processed stale processing order {$locked->id} and refunded user.");
+                    Log::warning("Stale processing virtual number order {$locked->id} moved to unresolved without refund.");
                 }
             });
         }
