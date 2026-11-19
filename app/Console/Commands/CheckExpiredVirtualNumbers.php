@@ -209,10 +209,26 @@ class CheckExpiredVirtualNumbers extends Command
             ->get();
 
         foreach ($orders as $order) {
+            // Serialize scheduled reconciliation with user status/cancel/resend actions.
+            $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
+            if (!$actionLock->get()) {
+                continue;
+            }
+
             try {
+                $order = $order->fresh();
+                if (!$order || $order->status !== 'pending') {
+                    continue;
+                }
+
                 // If the number already received an SMS code previously (e.g. user requested resend and abandoned), do NOT refund
                 if (!empty($order->sms_code) || !empty($order->sms_text)) {
-                    $order->update(['status' => 'received']);
+                    DB::transaction(function () use ($order) {
+                        $locked = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                        if ($locked && $locked->status === 'pending' && (!empty($locked->sms_code) || !empty($locked->sms_text))) {
+                            $locked->update(['status' => 'received']);
+                        }
+                    });
                     $this->info("Order {$order->id} already received SMS previously. Marked received without refund.");
                     continue;
                 }
@@ -223,11 +239,16 @@ class CheckExpiredVirtualNumbers extends Command
 
                 if ($status === 3) {
                     // SMS was received but user never saw it
-                    $order->update([
-                        'status' => 'received',
-                        'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '',
-                        'sms_code' => $checkData['sms'] ?? ''
-                    ]);
+                    DB::transaction(function () use ($order, $checkData) {
+                        $locked = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                        if ($locked && $locked->status === 'pending') {
+                            $locked->update([
+                                'status' => 'received',
+                                'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '',
+                                'sms_code' => $checkData['sms'] ?? ''
+                            ]);
+                        }
+                    });
                     $this->info("Order {$order->id} was received. Updated.");
                 } elseif ($status === 2 || $status === 5 || $status === 6) {
                     // Provider marked expired (2), canceled (5), or refunded (6)
@@ -248,6 +269,8 @@ class CheckExpiredVirtualNumbers extends Command
                 }
             } catch (\\Throwable $e) {
                 Log::error('Background VN check failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
+            } finally {
+                $actionLock->release();
             }
         }
     }
