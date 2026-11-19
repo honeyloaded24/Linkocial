@@ -319,7 +319,7 @@
                                             <div class="bg-primary bg-opacity-10 rounded-3 mb-3 d-flex align-items-center justify-content-center" style="height: 100px;">
                                                 <i class="fa-solid fa-image fa-3x text-primary opacity-25"></i>
                                             </div>
-                                            <div class="fw-bold text-dark mb-1">Offer Headline</div>
+                                            <div class="fw-bold text-main mb-1">Offer Headline</div>
                                             <div class="text-muted x-small mb-3">Your marketing message will appear right here in this section...</div>
                                             <div class="btn btn-primary-custom btn-sm w-100 rounded-pill">Action Button</div>
                                         </div>
@@ -720,11 +720,11 @@
                 <h6 class="fw-bold mb-3">Configuration Guide</h6>
                 <div class="small text-muted">
                     <div class="mb-3">
-                        <div class="fw-bold text-dark mb-1">Markup Strategy:</div>
+                        <div class="fw-bold text-main mb-1">Markup Strategy:</div>
                         Your <strong>VIP</strong> and <strong>Reseller</strong> discounts are deducted from the base selling price you set in the Services tab.
                     </div>
                     <div class="mb-3">
-                        <div class="fw-bold text-dark mb-1">Instruction Context:</div>
+                        <div class="fw-bold text-main mb-1">Instruction Context:</div>
                         Instructions defined here will override standard API descriptions for better user guidance.
                     </div>
                     <div class="p-2 bg-warning bg-opacity-10 text-warning rounded-3 border border-warning border-opacity-25">
