@@ -772,4 +772,32 @@ class AiToolsIntegrationTest extends TestCase
         $response->assertSee('Amazon Prime Video - 1 Month');
     }
 
+    public function test_single_quantity_multiline_credential_string_stays_in_one_delivery_field()
+    {
+        $user = User::factory()->create(['balance' => 1000]);
+        $order = AiToolOrder::create([
+            'user_id' => $user->id,
+            'provider_product_id' => 'alaric-multiline-test',
+            'product_name' => 'Multiline Credential Test',
+            'idempotency_key' => 'idemp-multiline-test',
+            'status' => AiToolOrder::STATUS_PROCESSING,
+            'quantity' => 1,
+            'unit_price_usdt' => 1,
+            'total_price_usdt' => 1,
+            'exchange_rate' => 1500,
+            'unit_price_ngn' => 1500,
+            'total_paid_ngn' => 1500,
+            'provider_cost_ngn' => 1000,
+            'profit_ngn' => 500,
+        ]);
+
+        $order->fulfillWithCredentials("Email: test@example.com\nPassword: secret123");
+
+        $this->assertSame(1, $order->items()->count());
+        $this->assertSame(
+            "Email: test@example.com\nPassword: secret123",
+            $order->items()->first()->code
+        );
+    }
+
 }
