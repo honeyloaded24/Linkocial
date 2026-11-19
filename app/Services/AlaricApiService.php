@@ -79,20 +79,25 @@ class AlaricApiService
             $timedOut = str_contains(strtolower($e->getMessage()), 'timed out')
                      || str_contains(strtolower($e->getMessage()), 'timeout');
 
+            // Any exception during order submission may happen after the provider
+            // accepted the request. Only explicit HTTP rejection responses are
+            // treated as definitive failures; transport exceptions are ambiguous.
+            $ambiguous = true;
+
             Log::error('AlaricApi: createOrder failed', [
                 'product_id'      => $productId,
                 'quantity'        => $quantity,
                 'idempotency_key' => $idempotencyKey,
                 'timed_out'       => $timedOut,
+                'ambiguous'       => $ambiguous,
                 'error'           => $e->getMessage(),
             ]);
 
             return [
                 'success'       => false,
                 'timed_out'     => $timedOut,
-                'error_message' => $timedOut
-                    ? 'Request timed out. The order status is unknown — do not retry with a new key.'
-                    : $e->getMessage(),
+                'ambiguous'     => $ambiguous,
+                'error_message' => 'Provider communication failed. The order outcome is unknown — do not retry with a new key.',
             ];
         }
     }
