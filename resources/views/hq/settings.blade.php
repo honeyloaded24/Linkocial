@@ -824,7 +824,7 @@
 <!-- Test Email Modal -->
 <div class="modal fade" id="testEmailModal" tabindex="-1" aria-labelledby="testEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4" style="background-color: #ffffff; color: #2d3748;">
+        <div class="modal-content border-0 shadow-lg rounded-4" style="background-color: var(--bg-surface); color: var(--text-main);">
             <form action="{{ route('hq.settings.test-email') }}" method="POST">
                 @csrf
                 <div class="modal-header border-0 bg-light bg-opacity-50 p-4">
@@ -837,7 +837,7 @@
                     <p class="small text-muted mb-4">Make sure you have clicked <strong>"Save Changes"</strong> to save your current SMTP credentials before sending the test email.</p>
                     <div class="mb-3">
                         <label class="form-label text-muted small fw-bold text-uppercase">Recipient Email Address</label>
-                        <input type="email" name="test_email" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. admin@yourdomain.com" required style="color: #2d3748;">
+                        <input type="email" name="test_email" class="form-control border-secondary bg-transparent py-2" placeholder="e.g. admin@yourdomain.com" required style="color: var(--text-main);">
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 bg-light bg-opacity-50">
