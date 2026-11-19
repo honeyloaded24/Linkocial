@@ -1777,6 +1777,13 @@ class AdminController extends Controller
             $oldBalance = (float) $lockedUser->balance;
 
             if ($request->action === 'convert_as_usd') {
+                // Currency migration is a one-time operation. Re-running it on an
+                // already recovered NGN balance would multiply the balance again.
+                if ($lockedUser->legacy_balance_recovered_at !== null
+                    || $lockedUser->currency_reconciliation_status === 'migrated') {
+                    throw new \\RuntimeException('BALANCE_ALREADY_MIGRATED');
+                }
+
                 $newBalance = round($oldBalance * $rate, 2);
                 $lockedUser->balance = $newBalance;
                 $lockedUser->legacy_balance_usd = $oldBalance;
