@@ -484,6 +484,41 @@ class AiToolsIntegrationTest extends TestCase
         }));
     }
 
+    public function test_pixelsub_products_sync_into_existing_ai_tools_catalogue_in_usd()
+    {
+        Setting::set('pixelsub_api_key', 'pixelsub-sync-key');
+        Http::fake([
+            'https://pixelsub-production-f248.up.railway.app/api/v1/products' => Http::response([
+                'products' => [
+                    ['id' => 5, 'name' => 'PixelSub In Stock Product', 'price' => 2.50, 'stock' => 15, 'inStock' => true],
+                    ['id' => 8, 'name' => 'PixelSub Unlimited Product', 'price' => 4.00, 'stock' => null, 'inStock' => true],
+                ],
+            ], 200),
+            'https://pixelsub-production-f248.up.railway.app/api/v1/stock' => Http::response(['5' => 0, '8' => null], 200),
+        ]);
+
+        $exitCode = Artisan::call('ai-tools:sync-products', ['--force' => true]);
+        $this->assertSame(0, $exitCode);
+
+        $this->assertDatabaseHas('ai_tool_products', [
+            'provider_product_id' => 'pixelsub:5',
+            'provider' => 'pixelsub',
+            'name' => 'PixelSub In Stock Product',
+            'currency' => 'USD',
+            'in_stock' => 0,
+        ]);
+        $this->assertDatabaseHas('ai_tool_products', [
+            'provider_product_id' => 'pixelsub:8',
+            'provider' => 'pixelsub',
+            'name' => 'PixelSub Unlimited Product',
+            'currency' => 'USD',
+            'in_stock' => 1,
+        ]);
+
+        Http::assertSent(fn ($request) => $request->url() === 'https://pixelsub-production-f248.up.railway.app/api/v1/products'
+            && $request->hasHeader('X-API-Key', 'pixelsub-sync-key'));
+    }
+
     public function test_pixelsub_purchase_uses_unified_wallet_and_delivers_credentials()
     {
         Queue::fake();
