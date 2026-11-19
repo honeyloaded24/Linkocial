@@ -375,6 +375,18 @@ class LogMarketplaceController extends Controller
                 $product->decrement('in_stock', (int) $request->quantity);
 
                 return redirect()->route('logs.order', $order->id)->with('success', 'Purchase successful! Here are your items.');
+            } elseif (!empty($response['ambiguous'])) {
+                // A timeout/connection failure after submission may still have created
+                // the provider order. Keep the charge and mark it for reconciliation.
+                $order->update([
+                    'status' => 'processing',
+                    'delivered_items' => json_encode([
+                        'provider_outcome' => 'unconfirmed',
+                        'message' => 'Provider outcome is uncertain; order requires reconciliation.',
+                    ]),
+                ]);
+
+                return back()->with('error', 'Your purchase is being verified. Your wallet has not been refunded because the provider outcome is uncertain. Please check order history before retrying.');
             } else {
                 // Refund, ledger entry, and failed order status must commit together.
                 DB::transaction(function () use ($user, $order, $totalCostNgn, $product, $response, $debitTx) {
