@@ -557,7 +557,7 @@ class VirtualNumberController extends Controller
                 } else {
                     try {
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
-                    } catch (\\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {
+                    } catch (\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {
                         // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
@@ -570,7 +570,7 @@ class VirtualNumberController extends Controller
 
                         if ($attemptRecord) {
                             DB::transaction(function () use ($attemptRecord, $timeoutEx) {
-                                $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                                 if ($lockedOrder && $lockedOrder->status === 'processing') {
                                     $lockedOrder->update([
                                         'status' => 'unresolved',
@@ -603,7 +603,7 @@ class VirtualNumberController extends Controller
                             $refundUser->addBalance($finalCheckCost);
 
                         if ($finalCheckCost > 0) {
-                            \\App\\Models\\Transaction::add(
+                            \App\\Models\\Transaction::add(
                                 $refundUser->id,
                                 $finalCheckCost,
                                 'credit',
@@ -640,7 +640,7 @@ class VirtualNumberController extends Controller
                 // number the activation cannot safely be presented as usable.
                 try {
                     DB::transaction(function () use ($attemptRecord, $apiOrderId, $buyResponse, $server, $country, $productId) {
-                        $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') {
                             $lockedOrder->update([
                                 'api_order_id' => (string) $apiOrderId,
@@ -652,7 +652,7 @@ class VirtualNumberController extends Controller
                             ]);
                         }
                     });
-                } catch (\\Throwable $recoveryEx) {
+                } catch (\Throwable $recoveryEx) {
                     Log::critical('Could not preserve provider activation with missing phone number', [
                         'attempt_id' => $attemptRecord->id,
                         'provider_order_id' => $apiOrderId,
@@ -701,7 +701,7 @@ class VirtualNumberController extends Controller
                 if (isset($attemptRecord) && $attemptRecord) {
                     try {
                         DB::transaction(function () use ($attemptRecord, $buyResponse) {
-                            $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                            $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                             if ($lockedOrder && $lockedOrder->status === 'processing') {
                                 $lockedOrder->update([
                                     'status' => 'unresolved',
@@ -709,7 +709,7 @@ class VirtualNumberController extends Controller
                                 ]);
                             }
                         });
-                    } catch (\\Throwable $recoveryEx) {
+                    } catch (\Throwable $recoveryEx) {
                         Log::critical('Could not preserve provider purchase with missing activation ID', [
                             'attempt_id' => $attemptRecord->id,
                             'error' => $recoveryEx->getMessage(),
@@ -756,14 +756,14 @@ class VirtualNumberController extends Controller
                     'success' => true,
                     'order' => $lockedOrder
                 ]);
-            } catch (\\Exception $e) {
+            } catch (\Exception $e) {
                 DB::rollBack();
 
                 // Provider already returned an activation. A local persistence
                 // failure must not refund the user because the number may be live.
                 try {
                     DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $e) {
-                        $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        $lockedOrder = \App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') {
                             $lockedOrder->update([
                                 'api_order_id' => (string) $apiOrderId,
@@ -778,7 +778,7 @@ class VirtualNumberController extends Controller
                             ]);
                         }
                     });
-                } catch (\\Throwable $recoveryError) {
+                } catch (\Throwable $recoveryError) {
                     Log::critical('Failed to preserve provider-confirmed virtual number after local finalization error.', [
                         'attempt_id' => $attemptRecord->id ?? null,
                         'provider_order_id' => $apiOrderId,
@@ -799,7 +799,7 @@ class VirtualNumberController extends Controller
                 ], 500);
             }
 
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             $rawError = $e->getMessage();
 
             // Secure private diagnostic logging for administrators (never leaked to customer)
@@ -961,7 +961,7 @@ class VirtualNumberController extends Controller
                 'message' => $resendData['message'] ?? 'SMS resend requested successfully. Waiting for new code.',
                 'order' => $order->fresh(),
             ]);
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Virtual number resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json([
                 'error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'
