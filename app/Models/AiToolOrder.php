@@ -220,7 +220,19 @@ class AiToolOrder extends Model
         $data = $response['data'] ?? $response['order'] ?? $response;
 
         $items = [];
+        // PixelSub returns delivered credentials nested in order.items[].delivered.
         if (!empty($data['items']) && is_array($data['items'])) {
+            $delivered = [];
+            foreach ($data['items'] as $providerItem) {
+                if (is_array($providerItem) && array_key_exists('delivered', $providerItem) && $providerItem['delivered'] !== null && $providerItem['delivered'] !== '') {
+                    $delivered[] = $providerItem['delivered'];
+                }
+            }
+            if (!empty($delivered)) {
+                $items = $delivered;
+            }
+        }
+        if (empty($items) && !empty($data['items']) && is_array($data['items'])) {
             $items = $data['items'];
         } elseif (!empty($data['credentials']) && is_array($data['credentials'])) {
             $items = $data['credentials'];
