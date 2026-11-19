@@ -216,8 +216,11 @@ class AiToolsController extends Controller
 
                 // ── Handle provider response ──────────────────────────────────
                 $providerData    = $providerResponse['data'] ?? $providerResponse['raw'] ?? [];
-                $providerOrderId = $providerData['id'] ?? null;
-                $providerStatus  = strtoupper((string) ($providerData['status'] ?? 'PROCESSING'));
+                if (isset($providerData['order']) && is_array($providerData['order'])) {
+                    $providerData = $providerData['order'];
+                }
+                $providerOrderId = $providerData['id'] ?? $providerData['reference'] ?? $idempotencyKey;
+                $providerStatus  = strtoupper((string) ($providerData['status'] ?? (!empty($providerData['items']) ? 'COMPLETED' : 'PROCESSING')));
 
                 $order->update([
                     'provider_order_id' => $providerOrderId ?: $idempotencyKey,
