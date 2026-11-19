@@ -393,7 +393,7 @@ class PaymentController extends Controller
 
             // 5. Referral Commission Logic (in NGN)
             if ($lockedUser->referred_by) {
-                $referrer = User::find($lockedUser->referred_by);
+                $referrer = User::where('id', $lockedUser->referred_by)->lockForUpdate()->first();
                 if ($referrer) {
                     $paymentCount = \App\Models\Payment::where('user_id', $lockedUser->id)->where('status', 'success')->count();
                     
@@ -407,6 +407,9 @@ class PaymentController extends Controller
 
                     $commissionRate = $rate / 100;
                     $commissionAmount = round($ngnAmount * $commissionRate, 2);
+                    if ($commissionAmount <= 0) {
+                        return;
+                    }
 
                     $referrer->increment('commission_balance', $commissionAmount);
                     $referrer->increment('total_earned_commission', $commissionAmount);
