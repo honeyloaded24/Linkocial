@@ -303,26 +303,32 @@ class PaymentController extends Controller
         }
 
         DB::transaction(function () use ($user, $ngnAmount, $originalAmount, $currencyCode, $rateUsed, $reference, $method, $fee) {
-            // Re-verify under lock to prevent any race condition double-writes
-            $lockedPayment = \App\Models\Payment::where('reference', $reference)
+            // Lock an existing pending payment row. Every payment credit must have
+            // a pre-created unique reference so concurrent webhook deliveries serialize.
+            $lockedPayment = \\App\\Models\\Payment::where('reference', $reference)
                 ->lockForUpdate()
                 ->first();
 
-            if ($lockedPayment && $lockedPayment->status === 'success') {
+            if (!$lockedPayment) {
+                throw new \\RuntimeException("Payment record missing for reference {$reference}");
+            }
+
+            if ($lockedPayment->status === 'success') {
                 return;
             }
 
-            // Record/Update the payment history in NGN
-            \App\Models\Payment::updateOrCreate(
-                ['reference' => $reference],
-                [
-                    'user_id' => $user->id,
-                    'amount' => $ngnAmount,
-                    'currency' => 'NGN',
-                    'amount_usd' => $currencyCode === 'USD' ? $originalAmount : round($ngnAmount / $rateUsed, 4),
-                    'status' => 'success',
-                ]
-            );
+            if ($lockedPayment->status !== 'pending' || (int) $lockedPayment->user_id !== (int) $user->id) {
+                throw new \\RuntimeException("Payment state or owner mismatch for reference {$reference}");
+            }
+
+            // Mark the locked pending payment successful within the same transaction
+            // as wallet credit and ledger writes.
+            $lockedPayment->update([
+                'amount' => $ngnAmount,
+                'currency' => 'NGN',
+                'amount_usd' => $currencyCode === 'USD' ? $originalAmount : round($ngnAmount / $rateUsed, 4),
+                'status' => 'success',
+            ]);
 
             // Lock and Credit the user's wallet directly in NGN
             $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
@@ -586,6 +592,19 @@ class PaymentController extends Controller
         }
 
         try {
+            // Create a unique pending payment before crediting so the processor can
+            // lock this row and serialize duplicate webhook deliveries.
+            \\App\\Models\\Payment::firstOrCreate(
+                ['reference' => $ref],
+                [
+                    'user_id' => $user->id,
+                    'amount' => $netAmount,
+                    'currency' => 'NGN',
+                    'amount_usd' => 0,
+                    'status' => 'pending',
+                ]
+            );
+
             // Process wallet credit with atomic concurrency protection
             $this->processSuccessfulPayment($user, $netAmount, $ref, "Virtual Account ({$bankName})", 'NGN', $depositFee);
             Log::info("BillStack Webhook: Successfully credited user {$user->id} ({$user->username}) with net NGN {$netAmount} after NGN {$depositFee} fee (Ref: {$ref})");
