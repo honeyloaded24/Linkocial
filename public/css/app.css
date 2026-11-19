@@ -475,3 +475,15 @@ input:checked+.slider:before {
         font-size: 0.78rem;
     }
 }
+
+/* SMM channel filters: keep inactive buttons aligned with the active theme. */
+[data-theme="dark"] .channel-filter:not(.active-channel),
+[data-bs-theme="dark"] .channel-filter:not(.active-channel) {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .channel-filter:not(.active-channel) i,
+[data-bs-theme="dark"] .channel-filter:not(.active-channel) i {
+    color: inherit;
+}
