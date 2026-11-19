@@ -53,7 +53,12 @@ class CheckExpiredVirtualNumbers extends Command
         //    - If completed / received -> adopt and fulfill without refund
         //    - If still ambiguous or active -> preserve for manual admin review
         // ─────────────────────────────────────────────────────────────────────
+        // SMSPool reconciliation must never inspect or refund Grizzly orders.
+        // Legacy rows with a null server are treated as Server 1 for compatibility.
         $unresolvedOrders = VirtualNumberOrder::where('status', 'unresolved')
+            ->where(function ($query) {
+                $query->where('server', 'server1')->orWhereNull('server');
+            })
             ->where('created_at', '<', now()->subMinutes(20))
             ->get();
 
