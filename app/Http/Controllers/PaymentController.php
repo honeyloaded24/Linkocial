@@ -144,25 +144,31 @@ class PaymentController extends Controller
                     return;
                 }
 
-                // Priority 1: Match by reference in Payment record
-                $payment = \App\Models\Payment::where('reference', $reference)->first();
-                $user = $payment ? User::find($payment->user_id) : null;
-
-                // Priority 2: Fallback to customer email lookup
-                if (!$user && $customerEmail) {
-                    $user = User::where('email', $customerEmail)->first();
+                // Require an exact pending deposit record and match the confirmed amount.
+                $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
+                if (!$payment || $payment->status !== 'pending') {
+                    Log::warning("Korapay Verification: No pending payment found for {$reference}.");
+                    return;
                 }
 
-                // Priority 3: Fallback by extracting user ID from reference pattern DEP_KORA_{time}_{userId}
-                if (!$user && preg_match('/^DEP_KORA_\d+_(\d+)$/', $reference, $matches)) {
-                    $user = User::find($matches[1]);
+                if (round((float) $payment->amount, 2) !== round($amount, 2)
+                    || strtoupper((string) $payment->currency) !== 'NGN') {
+                    Log::error("Korapay Verification: Amount/currency mismatch for {$reference}", [
+                        'expected_amount' => $payment->amount,
+                        'received_amount' => $amount,
+                        'expected_currency' => $payment->currency,
+                        'received_currency' => $currency,
+                    ]);
+                    return;
                 }
 
-                if ($user) {
-                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
-                } else {
-                    Log::error("Korapay Verification: Could not find user for ref {$reference} or email {$customerEmail}");
+                $user = User::find($payment->user_id);
+                if (!$user) {
+                    Log::error("Korapay Verification: Payment owner missing for {$reference}.");
+                    return;
                 }
+
+                $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
             }
         } catch (\Exception $e) {
             Log::error("Manual Korapay Verification Failed for {$reference}: " . $e->getMessage());
@@ -222,28 +228,40 @@ class PaymentController extends Controller
 
             DB::beginTransaction();
             try {
-                // Priority 1: Match by reference in Payment record
-                $payment = \App\Models\Payment::where('reference', $reference)->first();
-                $user = $payment ? User::find($payment->user_id) : null;
+            // Require exact reference matching; never credit by email or parsed user ID.
+            $payment = \\App\\Models\\Payment::where('reference', $reference)->first();
+            if (!$payment) {
+                Log::error("Korapay Webhook: No pending payment record for {$reference}");
+                return response()->json(['status' => 'payment not found'], 404);
+            }
 
-                // Priority 2: Fallback to customer email lookup
-                if (!$user && $customerEmail) {
-                    $user = User::where('email', $customerEmail)->first();
-                }
+            if ($payment->status === 'success') {
+                return response()->json(['status' => 'already processed']);
+            }
 
-                // Priority 3: Fallback by extracting user ID from reference pattern DEP_KORA_{time}_{userId}
-                if (!$user && preg_match('/^DEP_KORA_\d+_(\d+)$/', $reference, $matches)) {
-                    $user = User::find($matches[1]);
-                }
+            if ($payment->status !== 'pending'
+                || round((float) $payment->amount, 2) !== round($amount, 2)
+                || strtoupper((string) $payment->currency) !== 'NGN') {
+                Log::error("Korapay Webhook: Payment state/amount/currency mismatch for {$reference}", [
+                    'payment_status' => $payment->status,
+                    'expected_amount' => $payment->amount,
+                    'received_amount' => $amount,
+                    'expected_currency' => $payment->currency,
+                    'received_currency' => $currency,
+                ]);
+                return response()->json(['status' => 'payment mismatch'], 400);
+            }
 
-                if ($user) {
-                    $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
-                    DB::commit();
-                } else {
-                    DB::rollBack();
-                    Log::error("Korapay Webhook: Could not find user for ref {$reference} or email {$customerEmail}");
-                    return response()->json(['status' => 'user not found'], 404);
-                }
+            $user = User::find($payment->user_id);
+            if (!$user) {
+                Log::error("Korapay Webhook: Payment owner missing for {$reference}");
+                return response()->json(['status' => 'user not found'], 404);
+            }
+
+            DB::beginTransaction();
+            try {
+                $this->processSuccessfulPayment($user, $amount, $reference, 'Korapay', 'NGN');
+                DB::commit();
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error("Failed to process Korapay webhook for {$reference}: " . $e->getMessage());
