@@ -344,15 +344,17 @@ class PaymentController extends Controller
             if ($promoEnabled && $promoExpiry && Carbon::parse($promoExpiry)->isFuture()) {
                 if ($ngnAmount >= $promoMinNgn) {
                     $bonusAmount = round(($ngnAmount * $promoPercent) / 100, 2);
-                    $lockedUser->addBalance($bonusAmount);
-                    
-                    \App\Models\Transaction::add(
+                    if ($bonusAmount > 0) {
+                        $lockedUser->addBalance($bonusAmount);
+
+                        \App\Models\Transaction::add(
                         $lockedUser->id, 
                         $bonusAmount, 
                         'credit', 
                         'deposit', 
-                        "Promo Bonus (+{$promoPercent}%) for deposit"
-                    );
+                            "Promo Bonus (+{$promoPercent}%) for deposit"
+                        );
+                    }
                 }
             }
 
