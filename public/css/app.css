@@ -552,3 +552,37 @@ input:checked+.slider:before {
     background-color: var(--bg-muted) !important;
     color: var(--text-main) !important;
 }
+
+
+/* Theme parity for shared Bootstrap components */
+[data-theme="dark"] .dropdown-item:hover, [data-bs-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:focus, [data-bs-theme="dark"] .dropdown-item:focus {
+    background-color: var(--bg-muted) !important;
+    color: var(--text-main) !important;
+}
+[data-theme="dark"] .table-hover tbody tr:hover td, [data-bs-theme="dark"] .table-hover tbody tr:hover td {
+    background-color: rgba(129, 140, 248, 0.08) !important;
+    color: var(--text-main) !important;
+}
+[data-theme="dark"] .border, [data-bs-theme="dark"] .border,
+[data-theme="dark"] .border-top, [data-bs-theme="dark"] .border-top,
+[data-theme="dark"] .border-bottom, [data-bs-theme="dark"] .border-bottom,
+[data-theme="dark"] .border-start, [data-bs-theme="dark"] .border-start,
+[data-theme="dark"] .border-end, [data-bs-theme="dark"] .border-end {
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .modal-content, [data-bs-theme="dark"] .modal-content,
+[data-theme="dark"] .offcanvas, [data-bs-theme="dark"] .offcanvas {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .input-group-text, [data-bs-theme="dark"] .input-group-text {
+    background-color: var(--bg-muted) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+[data-theme="dark"] .form-control::placeholder, [data-bs-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] .form-select::placeholder, [data-bs-theme="dark"] .form-select::placeholder {
+    color: var(--text-muted) !important;
+}
