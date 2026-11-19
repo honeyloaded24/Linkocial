@@ -170,9 +170,12 @@ function testConnection() {
         method: 'POST',
         headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content, Accept: 'application/json' }
     }).then(r => r.json()).then(d => {
-        el.innerHTML = d.success
-            ? '<div class="alert alert-success py-2 small mb-0"><i class="fa fa-check me-1"></i>' + d.message + '</div>'
-            : '<div class="alert alert-danger py-2 small mb-0"><i class="fa fa-times me-1"></i>' + d.message + '</div>';
+        var connections = d.connections || {};
+        var both = connections.alaric && connections.pixelsub;
+        var any = connections.alaric || connections.pixelsub;
+        var tone = both ? 'success' : (any ? 'warning' : 'danger');
+        var details = '<div class="mt-1">Alaric: ' + (connections.alaric ? 'Connected' : 'Failed / not configured') + ' · PixelSub: ' + (connections.pixelsub ? 'Connected' : 'Failed / not configured') + '</div>';
+        el.innerHTML = '<div class="alert alert-' + tone + ' py-2 small mb-0"><i class="fa fa-plug me-1"></i>' + d.message + details + '</div>';
     }).catch(() => { el.innerHTML = '<div class="alert alert-danger py-2 small mb-0">Request failed.</div>'; });
 }
 
