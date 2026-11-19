@@ -183,7 +183,7 @@ class SmsPoolService
             }
 
             return $data;
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning("SMSPool getActiveOrders failed: " . $e->getMessage());
             throw new \RuntimeException('Unable to verify SMSPool active orders.', 0, $e);
         }
@@ -210,7 +210,7 @@ class SmsPoolService
             }
 
             return $data;
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning("SMSPool getOrderHistory failed: " . $e->getMessage());
             throw new \RuntimeException('Unable to verify SMSPool order history.', 0, $e);
         }
@@ -295,7 +295,7 @@ class SmsPoolService
                 'orderid' => $orderId,
                 'key' => $this->apiKey,
             ]);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning('SMSPool cancellation outcome is unknown', [
                 'orderid' => $orderId,
                 'error' => $e->getMessage(),
