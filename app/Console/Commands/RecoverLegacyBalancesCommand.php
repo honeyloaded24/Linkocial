@@ -255,9 +255,23 @@ class RecoverLegacyBalancesCommand extends Command
                 // Lock row to prevent race conditions during migration
                 $lockedUser = User::where('id', $targetUser->id)->lockForUpdate()->first();
 
-                // Re-check balance hasn't shifted
-                if ((float) $lockedUser->balance !== (float) $oldUsd) {
-                    Log::warning("Skipping user {$lockedUser->id}: balance changed concurrently from {$oldUsd} to {$lockedUser->balance}");
+                // Revalidate every eligibility marker while holding the wallet lock.
+                // A reconciliation or migration may have happened after the initial scan.
+                if (!$lockedUser
+                    || (float) $lockedUser->balance !== (float) $oldUsd
+                    || ($hasTrackingColumns && (
+                        $lockedUser->legacy_balance_recovered_at !== null
+                        || $lockedUser->currency_reconciliation_status !== null
+                    ))
+                    || Transaction::where('user_id', $lockedUser->id)
+                        ->where('transaction_type', 'currency_migration')
+                        ->exists()
+                    || Payment::where('user_id', $lockedUser->id)
+                        ->where('status', 'success')
+                        ->where('created_at', '>=', '2026-10-25 00:00:00')
+                        ->where('currency', 'NGN')
+                        ->exists()) {
+                    Log::warning("Skipping user {$targetUser->id}: wallet recovery eligibility changed during execution.");
                     DB::rollBack();
                     $failedCount++;
                     continue;
