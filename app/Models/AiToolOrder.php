@@ -319,6 +319,9 @@ class AiToolOrder extends Model
             }
 
             $data = $result['data'] ?? [];
+            if (isset($data['order']) && is_array($data['order'])) {
+                $data = $data['order'];
+            }
             $providerStatus = strtoupper((string) ($data['status'] ?? ''));
 
             $this->update([
