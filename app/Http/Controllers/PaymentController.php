@@ -619,7 +619,7 @@ class PaymentController extends Controller
                 ]
             );
 
-            $pendingPayment = \\App\\Models\\Payment::where('reference', $ref)->firstOrFail();
+            $pendingPayment = \App\Models\Payment::where('reference', $ref)->firstOrFail();
             // A reused provider transaction ID must not credit a different owner
             // or a different amount/currency than the original pending record.
             if ((int) $pendingPayment->user_id !== (int) $user->id
