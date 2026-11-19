@@ -257,30 +257,34 @@ class AiToolOrder extends Model
      */
     public function refundCustomer(?string $reason = null): bool
     {
-        if ($this->status === self::STATUS_REFUNDED) {
-            return false;
-        }
-
         return \Illuminate\Support\Facades\DB::transaction(function () use ($reason) {
-            $user = $this->user;
-            if ($user && (float) $this->total_paid_ngn > 0) {
-                $user->addBalance((float) $this->total_paid_ngn);
+            $order = self::query()->lockForUpdate()->findOrFail($this->id);
+
+            if ($order->status === self::STATUS_REFUNDED || $order->status === self::STATUS_COMPLETED) {
+                return false;
+            }
+
+            $user = User::query()->lockForUpdate()->find($order->user_id);
+            if ($user && (float) $order->total_paid_ngn > 0) {
+                $user->addBalance((float) $order->total_paid_ngn);
 
                 Transaction::add(
                     $user->id,
-                    (float) $this->total_paid_ngn,
+                    (float) $order->total_paid_ngn,
                     'credit',
                     'ai_tools_refund',
-                    "Refund — AI TOOLS order #{$this->order_number}" . ($reason ? " ({$reason})" : '')
+                    "Refund — AI TOOLS order #{$order->order_number}" . ($reason ? " ({$reason})" : ''),
+                    'REF-AITOOLS-' . $order->id
                 );
             }
 
-            $this->update([
+            $order->update([
                 'status'         => self::STATUS_REFUNDED,
                 'refunded_at'    => now(),
                 'failure_reason' => $reason ?? 'Refunded by administrator',
             ]);
 
+            $this->refresh();
             return true;
         });
     }
