@@ -58,9 +58,14 @@ class ReconcileAffiliateLedger extends Command
                 if ($apply) {
                     DB::transaction(function () use ($user, $expected) {
                         $locked = User::where('id', $user->id)->lockForUpdate()->firstOrFail();
-                        $locked->commission_balance = $expected['commission_balance'];
-                        $locked->total_earned_commission = $expected['total_earned_commission'];
-                        $locked->total_withdrawn_commission = $expected['total_withdrawn_commission'];
+                        $freshLedger = AffiliateTransaction::where('user_id', $locked->id)
+                            ->selectRaw("SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) as earned")
+                            ->selectRaw("SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) as withdrawn")
+                            ->selectRaw("SUM(CASE WHEN type = 'credit' THEN amount ELSE -amount END) as balance")
+                            ->first();
+                        $locked->commission_balance = round((float) ($freshLedger->balance ?? 0), 2);
+                        $locked->total_earned_commission = round((float) ($freshLedger->earned ?? 0), 2);
+                        $locked->total_withdrawn_commission = round((float) ($freshLedger->withdrawn ?? 0), 2);
                         $locked->save();
                     });
                 }
