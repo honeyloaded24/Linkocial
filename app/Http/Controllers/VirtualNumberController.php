@@ -691,12 +691,50 @@ class VirtualNumberController extends Controller
                     'success' => true,
                     'order' => $lockedOrder
                 ]);
-            } catch (\Exception $e) {
+            } catch (\\Exception $e) {
                 DB::rollBack();
-                throw $e;
+
+                // Provider already returned an activation. A local persistence
+                // failure must not refund the user because the number may be live.
+                try {
+                    DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $e) {
+                        $lockedOrder = \\App\\Models\\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if ($lockedOrder && $lockedOrder->status === 'processing') {
+                            $lockedOrder->update([
+                                'api_order_id' => (string) $apiOrderId,
+                                'phone_number' => $phoneNumber ?: 'PENDING',
+                                'country' => $countryName ?: $lockedOrder->country,
+                                'operator' => ($server === 'server2') ? 'Server 2' : 'Server 1',
+                                'server' => $server,
+                                'product' => $serviceName,
+                                'provider_cost' => $actualCostUsd,
+                                'status' => 'unresolved',
+                                'sms_text' => 'Provider activation confirmed but local finalization failed. Retained without refund. Error: ' . substr($e->getMessage(), 0, 150),
+                            ]);
+                        }
+                    });
+                } catch (\\Throwable $recoveryError) {
+                    Log::critical('Failed to preserve provider-confirmed virtual number after local finalization error.', [
+                        'attempt_id' => $attemptRecord->id ?? null,
+                        'provider_order_id' => $apiOrderId,
+                        'error' => $recoveryError->getMessage(),
+                    ]);
+                }
+
+                Log::critical('Provider-confirmed virtual number could not be finalized locally; refund withheld.', [
+                    'attempt_id' => $attemptRecord->id ?? null,
+                    'provider_order_id' => $apiOrderId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'error' => 'The carrier issued your number, but we could not finish saving the order. Your payment has been retained for verification. Please contact support.',
+                    'order_id' => $attemptRecord->id ?? null,
+                    'status' => 'unresolved',
+                ], 500);
             }
 
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             $rawError = $e->getMessage();
 
             // Secure private diagnostic logging for administrators (never leaked to customer)
