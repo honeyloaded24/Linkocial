@@ -72,11 +72,10 @@ class SyncAiToolProducts extends Command
                     $providerId = $source['prefix'] . $rawId;
                     $name = (string) ($p['name'] ?? $p['title'] ?? $p['product_name'] ?? 'Unnamed Product');
                     $price = (float) ($p['price'] ?? $p['rate'] ?? $p['price_usdt'] ?? $p['cost'] ?? 0);
-                    $stockValue = $source['provider'] === 'pixelsub'
-                        ? ($stockMap[$rawId] ?? $p['stock'] ?? null)
-                        : ($p['stock'] ?? null);
+                    $hasLiveStock = $source['provider'] === 'pixelsub' && array_key_exists($rawId, $stockMap);
+                    $stockValue = $hasLiveStock ? $stockMap[$rawId] : ($p['stock'] ?? null);
                     $inStock = $source['provider'] === 'pixelsub'
-                        ? (array_key_exists('inStock', $p) ? (bool) $p['inStock'] : ($stockValue === null || (int) $stockValue > 0))
+                        ? ($hasLiveStock ? ($stockValue === null || (int) $stockValue > 0) : (array_key_exists('inStock', $p) ? (bool) $p['inStock'] : ($stockValue === null || (int) $stockValue > 0)) )
                         : (isset($p['in_stock']) ? (bool) $p['in_stock'] : ($stockValue === null || (int) $stockValue > 0));
                     $stock = $stockValue === null ? 0 : (int) $stockValue;
                     $maxQuantity = max(1, (int) ($p['max_quantity'] ?? $p['max'] ?? 20));
