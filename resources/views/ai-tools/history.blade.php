@@ -17,7 +17,7 @@
         <a href="{{ route('ai-tools.history') }}" class="btn btn-primary rounded-pill px-4 btn-sm fw-bold shadow-sm position-relative">
             <i class="fa-solid fa-clock-rotate-left me-1"></i>Order History
             @if($myAiOrdersCount > 0)
-                <span class="badge rounded-pill bg-light text-dark ms-1" style="font-size:0.7rem;">{{ $myAiOrdersCount }}</span>
+                <span class="badge rounded-pill bg-light text-main ms-1" style="font-size:0.7rem;">{{ $myAiOrdersCount }}</span>
             @endif
         </a>
     </div>
