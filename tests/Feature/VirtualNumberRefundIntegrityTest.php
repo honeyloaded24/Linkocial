@@ -76,7 +76,6 @@ class VirtualNumberRefundIntegrityTest extends TestCase
 
         $this->actingAs($admin)
             ->withHeader('referer', route('hq.virtual-numbers'))
-            ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
             ->assertRedirect(route('hq.virtual-numbers'));
 
@@ -121,6 +120,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->mock(GrizzlySmsService::class);
 
         $this->actingAs($admin)
+            ->withHeader('referer', route('hq.virtual-numbers'))
             ->post(route('hq.virtual-numbers.refund', $order->id))
             ->assertRedirect(route('hq.virtual-numbers'));
 
