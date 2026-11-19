@@ -3,7 +3,7 @@
 @section('header_title', 'HQ: VTU Pricing & Markup Settings')
 
 @section('content')
-<div class="container-fluid vtu-pricing-page>
+<div class="container-fluid vtu-pricing-page">
     <!-- Header / Navigation Bar -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div class="d-flex align-items-center gap-3">
