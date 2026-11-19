@@ -342,4 +342,14 @@
             height: 28px;
         }
     }
+
+    /* Public navigation mega-menu surfaces must follow the active theme. */
+    [data-theme="dark"] .mega-menu, [data-bs-theme="dark"] .mega-menu {
+        background: var(--bg-surface, #1f2937) !important;
+        border-color: var(--border-color, #374151) !important;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+    }
+    [data-theme="dark"] .mega-item:hover, [data-bs-theme="dark"] .mega-item:hover {
+        background: var(--bg-muted, rgba(255,255,255,0.06));
+    }
 </style>
