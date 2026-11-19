@@ -47,6 +47,7 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
           touch database/database.sqlite
+          php artisan migrate --force
 
       - name: Run Financial Integrity Regression Tests
         run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest|AiToolsIntegrationTest|AffiliateLedgerReconciliationTest'
