@@ -3,7 +3,21 @@
 @section('header_title', 'Order Details #' . $order->id)
 
 @section('content')
-<div class="container-fluid">
+<style>
+    [data-theme="dark"] .hq-order-detail .bg-light,
+    [data-bs-theme="dark"] .hq-order-detail .bg-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+    [data-theme="dark"] .hq-order-detail .btn-light,
+    [data-bs-theme="dark"] .hq-order-detail .btn-light {
+        background-color: var(--bg-surface, #1e293b) !important;
+        color: var(--text-main, #f8fafc) !important;
+        border-color: var(--border-color, #334155) !important;
+    }
+</style>
+<div class="container-fluid hq-order-detail">
     <div class="mb-4">
         <a href="{{ route('hq.orders') }}" class="btn btn-light rounded-pill px-3 shadow-sm border">
             Back to All Orders
