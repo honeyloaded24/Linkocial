@@ -928,31 +928,67 @@ class VirtualNumberController extends Controller
     public function checkStatus($id)
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->findOrFail($id);
-        if ($order->status !== 'pending') return response()->json(['order' => $order]);
+        // Received orders without a saved code must remain recoverable: poll the
+        // provider again instead of permanently returning an empty SMS result.
+        if ($order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
+            return response()->json(['order' => $order]);
+        }
 
         $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
         if (!$actionLock->get()) return response()->json(['error' => 'Another action is being processed for this order. Please retry shortly.'], 409);
 
         try {
             $order = $order->fresh();
-            if (!$order || $order->status !== 'pending') return response()->json(['order' => $order]);
+            if (!$order || !($order->status === 'pending' || ($order->status === 'received' && empty($order->sms_code)))) {
+                return response()->json(['order' => $order]);
+            }
 
             $provider = $this->getProvider($order->server ?? 'server1');
             $checkData = $provider->checkOrder($order->api_order_id);
             $status = isset($checkData['status']) ? (int) $checkData['status'] : 1;
 
             if ($status === 3) {
-                DB::transaction(function () use ($order, $checkData) {
-                    $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
-                    if ($lockedOrder && $lockedOrder->status === 'pending') {
-                        $lockedOrder->update(['status' => 'received', 'sms_text' => $checkData['full_sms'] ?? $checkData['sms'] ?? '', 'sms_code' => $checkData['sms'] ?? '']);
+                $smsCode = $checkData['sms'] ?? $checkData['sms_code'] ?? $checkData['code'] ?? '';
+                $fullSms = $checkData['full_sms'] ?? $checkData['sms_text'] ?? $smsCode;
+                if (is_array($smsCode)) {
+                    $smsCode = $smsCode['code'] ?? $smsCode['sms'] ?? '';
+                }
+                $smsCode = trim((string) $smsCode);
+                $fullSms = is_scalar($fullSms) ? trim((string) $fullSms) : '';
+
+                // Some provider responses expose the message but not a separate code.
+                if ($smsCode === '' && $fullSms !== '') {
+                    if (preg_match('/(?:code|验证码|otp)\\D{0,20}(\\d{3,10})/i', $fullSms, $matches)) {
+                        $smsCode = $matches[1];
+                    } elseif (preg_match('/\\b\\d{3,10}\\b/', $fullSms, $matches)) {
+                        $smsCode = $matches[0];
                     }
-                });
-            } elseif (in_array($status, [2, 5, 6], true)) {
+                }
+
+                if ($smsCode !== '') {
+                    DB::transaction(function () use ($order, $smsCode, $fullSms) {
+                        $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                        if ($lockedOrder && in_array($lockedOrder->status, ['pending', 'received'], true) && empty($lockedOrder->sms_code)) {
+                            $lockedOrder->update([
+                                'status' => 'received',
+                                'sms_text' => $fullSms !== '' ? $fullSms : $smsCode,
+                                'sms_code' => $smsCode,
+                            ]);
+                        }
+                    });
+                } else {
+                    Log::warning('Provider reported SMS received but no code was extractable; keeping order recoverable.', [
+                        'order_id' => $order->id,
+                        'server' => $order->server,
+                        'response_keys' => array_keys($checkData),
+                    ]);
+                }
+            } elseif (in_array($status, [2, 5, 6], true) && $order->status === 'pending') {
                 $this->refundOrder($order);
             }
+
             return response()->json(['order' => $order->fresh()]);
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             Log::error('Virtual number checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to check status.'], 500);
         } finally {
