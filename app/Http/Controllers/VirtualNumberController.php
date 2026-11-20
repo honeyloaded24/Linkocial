@@ -494,7 +494,12 @@ class VirtualNumberController extends Controller
                             stripos($firstError, 'occupied') !== false ||
                             stripos($firstError, 'suitable pool') !== false ||
                             stripos($firstError, 'out of stock') !== false ||
-                            stripos($firstError, 'no numbers') !== false
+                            stripos($firstError, 'no numbers') !== false ||
+                            stripos($firstError, 'below the price of') !== false ||
+                            stripos($firstError, 'carrier pricing') !== false ||
+                            stripos($firstError, 'pricing update') !== false ||
+                            stripos($firstError, 'max_price') !== false ||
+                            stripos($firstError, 'maximum price') !== false
                         );
 
                         $fallbackResponse = null;
