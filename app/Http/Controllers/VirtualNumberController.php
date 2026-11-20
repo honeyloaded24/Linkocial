@@ -524,6 +524,11 @@ class VirtualNumberController extends Controller
                                         continue;
                                     }
 
+                                    // Do not retry pools known to be exhausted
+                                    if (in_array($cName, $exhaustedPools)) {
+                                        continue;
+                                    }
+
                                     // Ask the customer to confirm a higher retail quote before attempting it.
                                     if ($cPrice > $maxAllowedProviderUsd) {
                                         $updatedRetailPrice = $this->calculateRetailPrice($cPrice);
@@ -555,12 +560,6 @@ class VirtualNumberController extends Controller
                                         continue;
                                     }
 
-                                    // Do not retry pools known to be exhausted
-                                    if (in_array($cName, $exhaustedPools)) {
-                                        continue;
-                                    }
-
-                                    $attemptsMade++;
                                     try {
                                         $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
