@@ -876,10 +876,10 @@ document.addEventListener('DOMContentLoaded', function() {
         activeOrdersContainer.prepend(card);
         
         // Check order status
-        if (order.status === 'received' || order.status === 'finished') {
-            showReceivedState(card, order.sms_code || order.sms_text || 'Received');
+        if ((order.status === 'received' || order.status === 'finished') && order.sms_code) {
+            showReceivedState(card, order.sms_code);
         } else {
-            // Start polling for pending order
+            // Keep polling orders whose provider marked SMS received but whose code was not saved.
             startPolling(order.id, card);
         }
     }
@@ -892,10 +892,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(res => res.json())
                 .then(data => {
                     const status = data.order?.status;
-                    if (data.order && (status === 'received' || status === 'finished')) {
+                    if (data.order && (status === 'received' || status === 'finished') && data.order.sms_code) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
-                        showReceivedState(cardNode, data.order.sms_code || data.order.sms_text || 'Received');
+                        showReceivedState(cardNode, data.order.sms_code);
                     } else if (data.order && (status === 'canceled' || status === 'expired' || status === 'refunded' || status === 'failed')) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
