@@ -1013,6 +1013,18 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
             }
             $provider = $this->getProvider($order->server ?? 'server1');
+
+            // Verify provider state immediately before cancellation. If the provider
+            // reports an SMS or an unknown state, fail closed and never refund.
+            $providerStatus = $provider->checkOrder($order->api_order_id);
+            $status = isset($providerStatus['status']) ? (int) $providerStatus['status'] : -1;
+            if ($status === 3) {
+                return response()->json(['error' => 'An SMS has already been received by this number. It cannot be canceled or refunded.'], 409);
+            }
+            if ($status !== 1) {
+                return response()->json(['error' => 'The provider could not confirm that this number is still waiting for an SMS. Cancellation is blocked to protect your wallet. Please retry shortly.'], 409);
+            }
+
             $provider->cancelOrder($order->api_order_id);
             $this->refundOrder($order);
             return response()->json(['success' => true, 'order' => $order->fresh()]);
