@@ -513,20 +513,45 @@ class VirtualNumberController extends Controller
                                 if (stripos($firstError, 'sierra') !== false) $exhaustedPools[] = 'sierra';
                                 if (stripos($firstError, 'mike') !== false) $exhaustedPools[] = 'mike';
 
-                                $maxFallbackAttempts = 2; // Strict bound: at most 2 fallback attempts
-                                $attemptsMade = 0;
-
+                                // Pools are sorted cheapest-first. Try the cheapest eligible pool first,
+                                // and only move upward when a cheaper pool is unavailable.
                                 foreach ($validPools as $poolCandidate) {
-                                    if ($attemptsMade >= $maxFallbackAttempts) {
-                                        break;
-                                    }
-
                                     $cId = $poolCandidate['pool_id'] ?? $poolCandidate['id'] ?? $poolCandidate['pool'] ?? null;
                                     $cName = strtolower($poolCandidate['name'] ?? $poolCandidate['pool'] ?? '');
                                     $cPrice = (float)($poolCandidate['price'] ?? $poolCandidate['cost'] ?? $poolCandidate['rate'] ?? 0);
 
-                                    // Must be within safe provider spending ceiling
-                                    if ($cPrice > $maxAllowedProviderUsd || $cPrice <= 0) {
+                                    if ($cPrice <= 0 || empty($cId)) {
+                                        continue;
+                                    }
+
+                                    // Ask the customer to confirm a higher retail quote before attempting it.
+                                    if ($cPrice > $maxAllowedProviderUsd) {
+                                        $updatedRetailPrice = $this->calculateRetailPrice($cPrice);
+                                        $expectedPrice = $request->filled('expected_price')
+                                            ? (float) $request->input('expected_price')
+                                            : 0.0;
+
+                                        if ($updatedRetailPrice > ($expectedPrice + 1.00)) {
+                                            DB::transaction(function () use ($attemptRecord, $user, $finalCheckCost) {
+                                                $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                                                if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                                    $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
+                                                    $lockedUser->addBalance($finalCheckCost);
+                                                    \App\Models\Transaction::where('reference', 'VN-DEBIT-' . $lockedOrder->id)->delete();
+                                                    $lockedOrder->delete();
+                                                }
+                                            });
+
+                                            return response()->json([
+                                                'error' => "The cheapest available carrier pool has updated the price from " . money($finalCheckCost) . " to " . money($updatedRetailPrice) . ". Please review and confirm the updated quotation.",
+                                                'price_changed' => true,
+                                                'old_price' => $finalCheckCost,
+                                                'new_price' => $updatedRetailPrice,
+                                                'formatted_new_price' => money($updatedRetailPrice),
+                                            ], 409);
+                                        }
+
+                                        // The confirmed quote still cannot breach the configured profit floor.
                                         continue;
                                     }
 
