@@ -954,13 +954,18 @@ class VirtualNumberController extends Controller
                     $smsCode = $smsCode['code'] ?? $smsCode['sms'] ?? '';
                 }
                 $smsCode = trim((string) $smsCode);
-                $fullSms = is_scalar($fullSms) ? trim((string) $fullSms) : '';
+                $fullSms = is_scalar($fullSms) ? trim((string) $fullSms : '';
+
+                // Decode provider HTML entities before extracting the OTP. Providers
+                // may return escaped SMS content (e.g. &amp;lt;...&amp;gt;).
+                $decodedSms = html_entity_decode($fullSms, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $decodedSms = trim(strip_tags($decodedSms));
 
                 // Some provider responses expose the message but not a separate code.
-                if ($smsCode === '' && $fullSms !== '') {
-                    if (preg_match('/(?:code|验证码|otp)\\D{0,20}(\\d{3,10})/i', $fullSms, $matches)) {
+                if ($smsCode === '' && $decodedSms !== '') {
+                    if (preg_match('/(?:code|验证码|otp|verification)\\D{0,50}(\\d{3,10})/i', $decodedSms, $matches)) {
                         $smsCode = $matches[1];
-                    } elseif (preg_match('/\\b\\d{3,10}\\b/', $fullSms, $matches)) {
+                    } elseif (preg_match('/\\b\\d{3,10}\\b/', $decodedSms, $matches)) {
                         $smsCode = $matches[0];
                     }
                 }
