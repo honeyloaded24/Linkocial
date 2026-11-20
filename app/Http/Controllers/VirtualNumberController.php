@@ -954,7 +954,7 @@ class VirtualNumberController extends Controller
                     $smsCode = $smsCode['code'] ?? $smsCode['sms'] ?? '';
                 }
                 $smsCode = trim((string) $smsCode);
-                $fullSms = is_scalar($fullSms) ? trim((string) $fullSms : '';
+                $fullSms = is_scalar($fullSms) ? trim((string) $fullSms) : '';
 
                 // Decode provider HTML entities before extracting the OTP. Providers
                 // may return escaped SMS content (e.g. &amp;lt;...&amp;gt;).
