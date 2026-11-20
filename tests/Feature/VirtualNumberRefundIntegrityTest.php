@@ -194,6 +194,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         ]);
 
         $this->mock(SmsPoolService::class, function ($mock) {
+            $mock->shouldReceive('checkOrder')->once()->with('AUDIT-VN-CANCEL-TEXT')->andReturn(['status' => 1]);
             $mock->shouldReceive('cancelOrder')->once()->with('AUDIT-VN-CANCEL-TEXT')->andReturn(['success' => 1]);
         });
         $this->mock(GrizzlySmsService::class);
