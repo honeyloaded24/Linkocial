@@ -583,7 +583,7 @@ class VirtualNumberController extends Controller
                                     }
 
                                     try {
-                                        $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cId);
+                                        $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cName);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
                                         break;
                                     } catch (\Exception $fallbackEx) {
