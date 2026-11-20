@@ -660,7 +660,7 @@ class GrizzlySmsService
     public function checkOrder(string|int $orderId): array
     {
         if (empty($this->apiKey)) {
-            return ['status' => 1];
+            return ['status' => -1, 'error' => 'API key is not configured'];
         }
 
         try {
@@ -692,10 +692,10 @@ class GrizzlySmsService
                 return ['status' => 5];
             }
 
-            return ['status' => 1];
+            return ['status' => -1, 'error' => 'Unrecognized provider status'];
         } catch (\Throwable $e) {
             Log::error("Grizzly checkOrder error: " . $e->getMessage());
-            return ['status' => 1];
+            return ['status' => -1, 'error' => 'Provider status check failed'];
         }
     }
 
