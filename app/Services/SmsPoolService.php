@@ -152,7 +152,28 @@ class SmsPoolService
                     } elseif (isset($data['data']) && is_array($data['data'])) {
                         $data = $data['data'];
                     }
-                    return array_values($data);
+
+                    // SMSPool may return pools as an ID => name map (e.g. 7 => Foxtrot).
+                    // Preserve those IDs instead of discarding them with array_values().
+                    $normalized = [];
+                    foreach ($data as $poolKey => $poolValue) {
+                        if (is_array($poolValue)) {
+                            if (!isset($poolValue['pool_id']) && !isset($poolValue['id']) && is_numeric($poolKey)) {
+                                $poolValue['pool_id'] = (string) $poolKey;
+                            }
+                            if (!isset($poolValue['name']) && is_string($poolKey) && !is_numeric($poolKey)) {
+                                $poolValue['name'] = $poolKey;
+                            }
+                            $normalized[] = $poolValue;
+                        } elseif (is_scalar($poolValue)) {
+                            $normalized[] = [
+                                'pool_id' => (string) $poolKey,
+                                'name' => (string) $poolValue,
+                            ];
+                        }
+                    }
+
+                    return $normalized;
                 }
             }
         } catch (\Throwable $e) {
