@@ -506,11 +506,46 @@ class VirtualNumberController extends Controller
                         if ($isPoolEligibleForFallback) {
                             $validPools = $this->smspool->getValidPools($country, $productId);
                             if (!empty($validPools)) {
-                                // Sort pools ascending by price
+                                // /pool/retrieve_valid may return only pool IDs and names.
+                                // Join those pools to country pricing rows before sorting.
+                                $countryPricing = $this->getCachedPricesForCountry($country, 'server1');
+                                $pricedPools = [];
+                                foreach ($validPools as $validPool) {
+                                    if (!is_array($validPool)) {
+                                        continue;
+                                    }
+
+                                    $poolId = (string)($validPool['pool_id'] ?? $validPool['id'] ?? $validPool['pool'] ?? '');
+                                    $poolName = strtolower((string)($validPool['name'] ?? $validPool['pool_name'] ?? ''));
+                                    if ($poolId === '' && $poolName === '') {
+                                        continue;
+                                    }
+
+                                    foreach ($countryPricing as $priceRow) {
+                                        if (!is_array($priceRow) || (string)($priceRow['service'] ?? '') !== (string)$productId) {
+                                            continue;
+                                        }
+
+                                        $rowPoolId = (string)($priceRow['pool_id'] ?? $priceRow['pool'] ?? $priceRow['poolid'] ?? $priceRow['operator'] ?? '');
+                                        $rowPoolName = strtolower((string)($priceRow['pool_name'] ?? $priceRow['name'] ?? $priceRow['operator_name'] ?? ''));
+                                        $matchesPool = ($poolId !== '' && $rowPoolId !== '' && $poolId === $rowPoolId)
+                                            || ($poolName !== '' && $rowPoolName !== '' && $poolName === $rowPoolName);
+                                        $poolPrice = (float)($priceRow['price'] ?? $priceRow['cost'] ?? $priceRow['rate'] ?? 0);
+
+                                        if ($matchesPool && $poolPrice > 0) {
+                                            $validPool['pool_id'] = $poolId;
+                                            $validPool['name'] = $validPool['name'] ?? $validPool['pool_name'] ?? $poolName;
+                                            $validPool['price'] = $poolPrice;
+                                            $pricedPools[] = $validPool;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                $validPools = $pricedPools;
+                                // Sort the joined pool records by actual provider price, cheapest first.
                                 usort($validPools, function ($a, $b) {
-                                    $pa = (float)($a['price'] ?? 999);
-                                    $pb = (float)($b['price'] ?? 999);
-                                    return $pa <=> $pb;
+                                    return (float)$a['price'] <=> (float)$b['price'];
                                 });
 
                                 $exhaustedPools = [];
