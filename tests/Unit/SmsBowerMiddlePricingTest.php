@@ -80,6 +80,22 @@ class SmsBowerMiddlePricingTest extends TestCase
         $this->assertSame([0.20, 0.20], array_column($middleOffers, 'price'));
     }
 
+
+    public function test_customer_quote_uses_cheapest_retained_middle_supplier_not_highest_fallback(): void
+    {
+        $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
+        $method = new \\ReflectionMethod(SmsBowerService::class, 'customerQuotePrice');
+        $method->setAccessible(true);
+
+        $offers = [
+            ['id' => 'first-attempt', 'price' => 1.067, 'stock' => 10],
+            ['id' => 'fallback', 'price' => 4.13, 'stock' => 5],
+        ];
+
+        $this->assertSame(1.067, $method->invoke($service, $offers));
+        $this->assertSame(0.0, $method->invoke($service, []));
+    }
+
     public function test_supplier_max_price_never_exceeds_the_selected_supplier_quote(): void
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
