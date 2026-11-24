@@ -55,6 +55,30 @@ class SmsBowerMiddlePricingTest extends TestCase
 
         $this->assertSame(['middle'], array_column($result, 'id'));
     }
+
+    public function test_gold_catalogue_parser_uses_partner_ids_and_stock_from_documented_response(): void
+    {
+        $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
+        $method = new \ReflectionMethod(SmsBowerService::class, 'goldPartnersFromResponse');
+        $method->setAccessible(true);
+
+        $response = [
+            'usa' => [
+                'lowest' => ['price' => 0.10, 'count' => 20],
+                'middle-a' => ['price' => 0.20, 'count' => 12],
+                'middle-b' => ['price' => 0.20, 'count' => 8],
+                'highest' => ['price' => 0.30, 'count' => 5],
+                'empty-stock' => ['price' => 0.25, 'count' => 0],
+            ],
+        ];
+
+        $goldOffers = $method->invoke($service, $response, 'United States');
+        $middleOffers = $this->filterMiddlePrices($goldOffers);
+
+        $this->assertSame(['middle-a', 'middle-b'], array_column($middleOffers, 'id'));
+        $this->assertSame([0.20, 0.20], array_column($middleOffers, 'price'));
+    }
+
     public function test_supplier_max_price_never_exceeds_the_selected_supplier_quote(): void
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
