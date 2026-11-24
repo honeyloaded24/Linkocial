@@ -275,89 +275,110 @@ class SmsBowerService
 
     public function buyNumber(string|int $country, string $service, ?float $maxPrice = null): array
     {
-        $countries = $this->getCountries();
-        $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
-        if (!$countryRow) {
-            throw new \RuntimeException('This country is not supported on Server 3.');
-        }
-
         // Refresh Gold membership and current stock immediately before purchase.
         Cache::forget('smsbower_gold_top_' . md5($service));
         $liveOffer = $this->getLiveGoldOffer($country, $service);
-        $providerIds = $liveOffer['provider_ids'] ?? [];
-        if (empty($providerIds)) {
-            throw new \RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
-        }
-        if (empty($providerIds)) {
-            throw new \RuntimeException('No verified Gold supplier IDs are available for this service and country.');
+        $offers = $liveOffer['providers'] ?? [];
+
+        if (empty($offers)) {
+            throw new \\RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
         }
 
-        $params = [
-            'action' => 'getNumberV2',
-            'service' => $service,
-            'country' => $country,
-            'providerIds' => implode(',', $providerIds),
-        ];
-        if ($maxPrice !== null && $maxPrice > 0) {
-            $params['maxPrice'] = number_format($maxPrice, 2, '.', '');
-        }
-
-        try {
-            $response = $this->request($params, 20);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            throw new ProviderTimeoutException('Server 3 purchase timed out; activation outcome is unknown.', 0, $e);
-        }
-
-        if (!$response->successful()) {
-            if ($response->serverError()) {
-                throw new ProviderTimeoutException('Server 3 returned an ambiguous server error during purchase; activation outcome is unknown.');
+        $attempted = [];
+        foreach ($offers as $offer) {
+            $providerId = (string) ($offer['id'] ?? '');
+            $providerPrice = (float) ($offer['price'] ?? 0);
+            if ($providerId === '' || $providerPrice <= 0) {
+                continue;
             }
-            throw new \RuntimeException('Server 3 rejected the purchase request before creating an activation.');
-        }
-
-        $body = trim($response->body());
-        $data = $response->json();
-
-        if (is_array($data) && !empty($data['activationId'])) {
-            return [
-                'order_id' => (string) $data['activationId'],
-                'phonenumber' => (string) ($data['phoneNumber'] ?? ''),
-                'cc' => (string) ($data['countryCode'] ?? ''),
-                'cost' => (float) ($data['activationCost'] ?? 0),
-                'time_left' => 1200,
-                'provider_id' => $data['activationOperator'] ?? null,
-            ];
-        }
-
-        if (preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
-            return [
-                'order_id' => $matches[1],
-                'phonenumber' => $matches[2],
-                'cc' => '',
-                'cost' => 0,
-                'time_left' => 1200,
-            ];
-        }
-
-        $error = (string) ($data['message'] ?? ($body !== '' ? $body : ''));
-        $knownNoPurchaseErrors = [
-            'BAD_KEY', 'BAD_ACTION', 'BAD_SERVICE', 'BAD_COUNTRY',
-            'NO_NUMBERS', 'NO_BALANCE', 'MAX_PRICE_EXCEEDED',
-            'NO_ACTIVATION', 'EARLY_CANCEL_DENIED',
-        ];
-        foreach ($knownNoPurchaseErrors as $knownError) {
-            if (stripos($error, $knownError) !== false) {
-                throw new \RuntimeException(substr($error, 0, 250));
+            if ($maxPrice !== null && $maxPrice > 0 && $providerPrice > $maxPrice) {
+                continue;
             }
+
+            $attempted[] = $providerId;
+            $params = [
+                'action' => 'getNumberV2',
+                'service' => $service,
+                'country' => $country,
+                // One ID per attempt guarantees we try the cheapest live Gold supplier first.
+                'providerIds' => $providerId,
+            ];
+            if ($maxPrice !== null && $maxPrice > 0) {
+                $params['maxPrice'] = number_format($maxPrice, 2, '.', '');
+            }
+
+            try {
+                $response = $this->request($params, 20);
+            } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+                // A timeout is ambiguous. Never try another supplier after a possibly successful purchase.
+                throw new ProviderTimeoutException('Server 3 purchase timed out; activation outcome is unknown.', 0, $e);
+            }
+
+            if (!$response->successful()) {
+                if ($response->serverError()) {
+                    throw new ProviderTimeoutException('Server 3 returned an ambiguous server error during purchase; activation outcome is unknown.');
+                }
+                // A definite client-side rejection did not create an activation; try the next Gold ID.
+                continue;
+            }
+
+            $body = trim($response->body());
+            $data = $response->json();
+
+            if (is_array($data) && !empty($data['activationId'])) {
+                return [
+                    'order_id' => (string) $data['activationId'],
+                    'phonenumber' => (string) ($data['phoneNumber'] ?? ''),
+                    'cc' => (string) ($data['countryCode'] ?? ''),
+                    'cost' => (float) ($data['activationCost'] ?? 0),
+                    'time_left' => 1200,
+                    'provider_id' => $data['activationOperator'] ?? $providerId,
+                ];
+            }
+
+            if (preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
+                return [
+                    'order_id' => $matches[1],
+                    'phonenumber' => $matches[2],
+                    'cc' => '',
+                    'cost' => $providerPrice,
+                    'time_left' => 1200,
+                    'provider_id' => $providerId,
+                ];
+            }
+
+            $error = (string) ($data['message'] ?? ($body !== '' ? $body : ''));
+            $knownNoPurchaseErrors = [
+                'BAD_KEY', 'BAD_ACTION', 'BAD_SERVICE', 'BAD_COUNTRY',
+                'NO_NUMBERS', 'NO_BALANCE', 'MAX_PRICE_EXCEEDED',
+                'NO_ACTIVATION', 'EARLY_CANCEL_DENIED',
+            ];
+            $definiteNoPurchase = false;
+            foreach ($knownNoPurchaseErrors as $knownError) {
+                if (stripos($error, $knownError) !== false) {
+                    $definiteNoPurchase = true;
+                    break;
+                }
+            }
+
+            if ($definiteNoPurchase) {
+                // Only a documented/recognized rejection permits trying another Gold supplier.
+                continue;
+            }
+
+            // Unknown provider responses are ambiguous: retain the debit and reconcile.
+            throw new ProviderTimeoutException(
+                'Server 3 returned an unrecognized purchase response; activation outcome is unknown.',
+                0,
+                new \\RuntimeException(substr($error, 0, 250))
+            );
         }
 
-        // Unknown provider responses are ambiguous: retain the debit and reconcile,
-        // rather than assuming no activation was created.
-        throw new ProviderTimeoutException(
-            'Server 3 returned an unrecognized purchase response; activation outcome is unknown.',
-            0,
-            new \RuntimeException(substr($error, 0, 250))
-        );
+        if (empty($attempted)) {
+            throw new \\RuntimeException('No Gold supplier price is within the confirmed purchase limit.');
+        }
+
+        throw new \\RuntimeException('No verified Gold supplier could fulfil this request at the confirmed price.');
     }
 
     public function checkOrder(string|int $orderId): array
