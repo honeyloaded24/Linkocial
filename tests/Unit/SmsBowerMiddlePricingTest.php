@@ -73,7 +73,8 @@ class SmsBowerMiddlePricingTest extends TestCase
         ];
 
         $goldOffers = $method->invoke($service, $response, 'United States');
-        $middleOffers = $this->filterMiddlePrices($goldOffers);
+        $inStockOffers = array_values(array_filter($goldOffers, fn ($offer) => (int) ($offer['count'] ?? 0) > 0));
+        $middleOffers = $this->filterMiddlePrices($inStockOffers);
 
         $this->assertSame(['middle-a', 'middle-b'], array_column($middleOffers, 'id'));
         $this->assertSame([0.20, 0.20], array_column($middleOffers, 'price'));
