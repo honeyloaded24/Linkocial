@@ -59,7 +59,7 @@
             <div>
                 <h4 class="fw-bold mb-0">Virtual Numbers Pricing & Markup Settings</h4>
                 <p class="text-muted small mb-0">
-                    Manage automated wholesale price conversion, profit markups, and rounding policies for Server 1 (SMSPool) and Server 2 (Grizzly SMS).
+                    Manage automated wholesale price conversion, profit markups, and rounding policies for the configured virtual-number servers.
                 </p>
             </div>
         </div>
@@ -147,6 +147,7 @@
                 <div class="fs-5 fw-bold text-main d-flex gap-1 align-items-center">
                     <span class="badge {{ $hasServer1 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 1</span>
                     <span class="badge {{ $hasServer2 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 2</span>
+                    <span class="badge {{ $hasServer3 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 3</span>
                 </div>
                 <small class="text-muted d-block mt-1">
                     {{ number_format($vnStats['completed'] ?? 0) }} SMS verifications completed
