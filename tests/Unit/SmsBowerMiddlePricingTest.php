@@ -58,7 +58,7 @@ class SmsBowerMiddlePricingTest extends TestCase
     public function test_supplier_max_price_never_exceeds_the_selected_supplier_quote(): void
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
-        $method = new \\ReflectionMethod(SmsBowerService::class, 'supplierMaxPrice');
+        $method = new \ReflectionMethod(SmsBowerService::class, 'supplierMaxPrice');
         $method->setAccessible(true);
 
         $this->assertSame(0.20, $method->invoke($service, 0.20, 0.50));
