@@ -160,8 +160,11 @@ class VirtualNumberController extends Controller
             }
 
             return response()->json($finalServices);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error("getPricesForCountry failed for {$server}: " . $e->getMessage(), ['country' => $country]);
+            if ($server === 'server3') {
+                return response()->json(['error' => 'Server 3 services could not be loaded. Please try again shortly.'], 502);
+            }
             return response()->json([]);
         }
     }
@@ -1373,7 +1376,7 @@ class VirtualNumberController extends Controller
      */
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
-        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v2_{$country}", default => "smspool_prices_{$country}" };
+        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v3_{$country}", default => "smspool_prices_{$country}" };
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
             return $cached;
@@ -1387,6 +1390,9 @@ class VirtualNumberController extends Controller
             return $pricesData ?: [];
         } catch (\Throwable $e) {
             Log::error("Failed fetching prices for country {$country} on {$server}: " . $e->getMessage());
+            if ($server === 'server3') {
+                throw $e;
+            }
             return [];
         }
     }
