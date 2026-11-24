@@ -84,7 +84,7 @@ class SmsBowerMiddlePricingTest extends TestCase
     public function test_customer_quote_uses_cheapest_retained_middle_supplier_not_highest_fallback(): void
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
-        $method = new \\ReflectionMethod(SmsBowerService::class, 'customerQuotePrice');
+        $method = new \ReflectionMethod(SmsBowerService::class, 'customerQuotePrice');
         $method->setAccessible(true);
 
         $offers = [
