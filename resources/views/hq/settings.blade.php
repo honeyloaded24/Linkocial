@@ -437,8 +437,8 @@
                             <!-- Virtual Numbers (Server 1: SMSPool & Server 2: Grizzly SMS) -->
                             <div class="row g-4 mb-4">
                                 <div class="col-12">
-                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Virtual Numbers (Dual Servers)</h6>
-                                    <small class="text-muted d-block mb-3">Configure Server 1 (SMSPool) and Server 2 (Grizzly SMS) for high-capacity SMS verification.</small>
+                                    <h6 class="text-primary small fw-bold text-uppercase mb-1 border-bottom pb-2" style="letter-spacing: 1px;">Virtual Numbers (Three Servers)</h6>
+                                    <small class="text-muted d-block mb-3">Configure the three virtual-number servers. Server 3 is restricted to verified Gold-ranked suppliers.</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Server 1 API Key (SMSPool - HOT)</label>
