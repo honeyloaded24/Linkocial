@@ -1,0 +1,335 @@
+<?php
+
+namespace App\\Services;
+
+use App\\Exceptions\\ProviderTimeoutException;
+use Illuminate\\Support\\Facades\\Cache;
+use Illuminate\\Support\\Facades\\Http;
+use Illuminate\\Support\\Facades\\Log;
+use Illuminate\\Support\\Str;
+
+class SmsBowerService
+{
+    protected string $baseUrl = 'https://smsbower.page/stubs/handler_api.php';
+    protected ?string $apiKey;
+
+    public function __construct()
+    {
+        $this->apiKey = \\App\\Models\\Setting::get('smsbower_api_key');
+    }
+
+    protected function request(array $params, int $timeout = 15): \\Illuminate\\Http\\Client\\Response
+    {
+        if (empty($this->apiKey)) {
+            throw new \\RuntimeException('Server 3 API key is not configured.');
+        }
+
+        return Http::timeout($timeout)->get($this->baseUrl, array_merge([
+            'api_key' => $this->apiKey,
+        ], $params));
+    }
+
+    public function getCountries(): array
+    {
+        $response = $this->request(['action' => 'getCountries'], 20);
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Server 3 could not retrieve countries.');
+        }
+
+        $data = $response->json();
+        if (!is_array($data)) {
+            throw new \\RuntimeException('Server 3 returned an invalid countries response.');
+        }
+
+        $countries = [];
+        foreach ($data as $key => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $id = $row['id'] ?? $row['ID'] ?? (is_numeric($key) ? $key : null);
+            $name = $row['eng'] ?? $row['name'] ?? null;
+            if ($id === null || !$name) {
+                continue;
+            }
+            $countries[] = [
+                'ID' => (string) $id,
+                'name' => (string) $name,
+                'cc' => (string) ($row['prefix'] ?? $row['code'] ?? ''),
+            ];
+        }
+
+        return $countries;
+    }
+
+    public function getServices(): array
+    {
+        $response = $this->request(['action' => 'getServicesList'], 20);
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Server 3 could not retrieve services.');
+        }
+
+        $data = $response->json();
+        $rows = $data['services'] ?? $data;
+        if (!is_array($rows)) {
+            throw new \\RuntimeException('Server 3 returned an invalid services response.');
+        }
+
+        $services = [];
+        foreach ($rows as $key => $row) {
+            if (is_array($row)) {
+                $code = $row['code'] ?? $row['id'] ?? null;
+                $name = $row['name'] ?? null;
+            } else {
+                $code = is_string($key) ? $key : null;
+                $name = is_scalar($row) ? (string) $row : null;
+            }
+            if ($code !== null && $name !== null && trim((string) $name) !== '') {
+                $services[] = ['code' => (string) $code, 'name' => (string) $name];
+            }
+        }
+
+        return $services;
+    }
+
+    protected function countryKey(string $name): string
+    {
+        $key = Str::lower(preg_replace('/[^a-z0-9]/i', '', $name) ?? '');
+        $aliases = [
+            'unitedstates' => 'usa',
+            'unitedstatesofamerica' => 'usa',
+            'us' => 'usa',
+            'unitedkingdom' => 'uk',
+            'greatbritain' => 'uk',
+            'uk' => 'uk',
+            'uae' => 'unitedarabemirates',
+            'southkorea' => 'korea',
+            'republicofkorea' => 'korea',
+            'northkorea' => 'koreademocraticpeoplesrepublic',
+        ];
+
+        return $aliases[$key] ?? $key;
+    }
+
+    protected function findGoldPartners(string $serviceCode, string $countryName): array
+    {
+        $data = Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
+            $response = $this->request([
+                'action' => 'getTopCountriesByService',
+                'service' => $serviceCode,
+            ], 15);
+
+            if (!$response->successful()) {
+                throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+            }
+
+            $json = $response->json();
+            if (!is_array($json)) {
+                throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
+            }
+
+            return $json;
+        });
+
+        $target = $this->countryKey($countryName);
+        foreach ($data as $countryKey => $partners) {
+            if ($this->countryKey((string) $countryKey) !== $target || !is_array($partners)) {
+                continue;
+            }
+
+            $eligible = [];
+            foreach ($partners as $partnerId => $details) {
+                if (!is_array($details)) {
+                    continue;
+                }
+                $price = (float) ($details['price'] ?? 0);
+                $count = (int) ($details['count'] ?? 0);
+                if ($price > 0 && $count > 0 && (string) $partnerId !== '') {
+                    $eligible[] = [
+                        'id' => (string) ($details['provider_id'] ?? $partnerId),
+                        'price' => $price,
+                        'count' => $count,
+                    ];
+                }
+            }
+
+            usort($eligible, fn ($a, $b) => $a['price'] <=> $b['price']);
+            return $eligible;
+        }
+
+        return [];
+    }
+
+    public function getPricesForCountry(string|int $country): array
+    {
+        $cacheKey = 'smsbower_gold_catalogue_' . $country;
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($country) {
+            $countries = $this->getCountries();
+            $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
+            if (!$countryRow) {
+                return [];
+            }
+
+            $services = $this->getServices();
+            $items = [];
+            foreach ($services as $service) {
+                try {
+                    $partners = $this->findGoldPartners($service['code'], $countryRow['name']);
+                    if (empty($partners)) {
+                        continue;
+                    }
+
+                    $items[] = [
+                        'service' => $service['code'],
+                        'service_name' => $service['name'],
+                        'price' => (float) $partners[0]['price'],
+                        'count' => array_sum(array_column($partners, 'count')),
+                        'gold_provider_ids' => array_values(array_unique(array_column($partners, 'id'))),
+                    ];
+                } catch (\\Throwable $e) {
+                    Log::warning('Server 3 Gold catalogue lookup failed for a service.', [
+                        'service' => $service['code'],
+                        'country' => $country,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return $items;
+        });
+    }
+
+    public function buyNumber(string|int $country, string $service, ?float $maxPrice = null): array
+    {
+        $countries = $this->getCountries();
+        $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
+        if (!$countryRow) {
+            throw new \\RuntimeException('This country is not supported on Server 3.');
+        }
+
+        // Re-fetch the service-specific Gold partner list immediately before purchase.
+        $partners = $this->findGoldPartners($service, $countryRow['name']);
+        if (empty($partners)) {
+            throw new \\RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
+        }
+
+        $providerIds = array_values(array_unique(array_column($partners, 'id')));
+        if (empty($providerIds)) {
+            throw new \\RuntimeException('No verified Gold supplier IDs are available for this service and country.');
+        }
+
+        $params = [
+            'action' => 'getNumberV2',
+            'service' => $service,
+            'country' => $country,
+            'providerIds' => implode(',', $providerIds),
+        ];
+        if ($maxPrice !== null && $maxPrice > 0) {
+            $params['maxPrice'] = number_format($maxPrice, 2, '.', '');
+        }
+
+        try {
+            $response = $this->request($params, 20);
+        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+            throw new ProviderTimeoutException('Server 3 purchase timed out; activation outcome is unknown.', 0, $e);
+        }
+
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Server 3 purchase request failed.');
+        }
+
+        $body = trim($response->body());
+        $data = $response->json();
+
+        if (is_array($data) && !empty($data['activationId']) && !empty($data['phoneNumber'])) {
+            return [
+                'order_id' => (string) $data['activationId'],
+                'phonenumber' => (string) $data['phoneNumber'],
+                'cc' => (string) ($data['countryCode'] ?? ''),
+                'cost' => (float) ($data['activationCost'] ?? 0),
+                'time_left' => 1200,
+                'provider_id' => $data['activationOperator'] ?? null,
+            ];
+        }
+
+        if (preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
+            return [
+                'order_id' => $matches[1],
+                'phonenumber' => $matches[2],
+                'cc' => '',
+                'cost' => 0,
+                'time_left' => 1200,
+            ];
+        }
+
+        $error = $data['message'] ?? $body ?: 'Server 3 could not fulfil this Gold-only request.';
+        throw new \\RuntimeException(substr((string) $error, 0, 250));
+    }
+
+    public function checkOrder(string|int $orderId): array
+    {
+        $response = $this->request([
+            'action' => 'getStatus',
+            'id' => $orderId,
+        ]);
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Server 3 status check failed.');
+        }
+
+        $body = trim($response->body());
+        if (str_starts_with($body, 'STATUS_OK:')) {
+            $code = trim(substr($body, strlen('STATUS_OK:')));
+            return ['status' => 3, 'sms' => $code, 'code' => $code, 'full_sms' => $code];
+        }
+        if (str_starts_with($body, 'STATUS_WAIT_CODE') || str_starts_with($body, 'STATUS_WAIT_RETRY')) {
+            return ['status' => 1, 'sms' => '', 'code' => ''];
+        }
+        if (str_starts_with($body, 'STATUS_CANCEL')) {
+            return ['status' => 6, 'sms' => '', 'code' => ''];
+        }
+
+        throw new \\RuntimeException('Server 3 returned an unrecognized activation status.');
+    }
+
+    protected function setStatus(string|int $orderId, int $status): string
+    {
+        $response = $this->request([
+            'action' => 'setStatus',
+            'id' => $orderId,
+            'status' => $status,
+        ]);
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Server 3 activation status request failed.');
+        }
+
+        $body = trim($response->body());
+        if (str_starts_with($body, 'ACCESS_')) {
+            return $body;
+        }
+
+        throw new \\RuntimeException($body !== '' ? substr($body, 0, 200) : 'Server 3 did not confirm the requested activation status.');
+    }
+
+    public function cancelOrder(string|int $orderId): array
+    {
+        $result = $this->setStatus($orderId, 8);
+        if ($result !== 'ACCESS_CANCEL') {
+            throw new \\RuntimeException('Server 3 did not confirm cancellation. No refund was issued.');
+        }
+        return ['success' => true, 'response' => $result];
+    }
+
+    public function resendOrder(string|int $orderId): array
+    {
+        $result = $this->setStatus($orderId, 3);
+        if ($result !== 'ACCESS_RETRY_GET') {
+            throw new \\RuntimeException('Server 3 did not confirm the SMS resend request.');
+        }
+        return ['success' => 1, 'message' => 'Waiting for the next SMS code.'];
+    }
+
+    public function finishOrder(string|int $orderId): array
+    {
+        $result = $this->setStatus($orderId, 6);
+        return ['success' => $result === 'ACCESS_ACTIVATION', 'response' => $result];
+    }
+}
