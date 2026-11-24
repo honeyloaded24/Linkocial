@@ -772,6 +772,10 @@ class VirtualNumberController extends Controller
                                 'country' => (string) $country,
                                 'product' => (string) $productId,
                                 'status' => 'unresolved',
+                                'provider_supplier_id' => $server === 'server3' ? ($buyResponse['requested_provider_id'] ?? null) : null,
+                                'provider_quote_usd' => $server === 'server3' ? ($buyResponse['provider_quote_usd'] ?? null) : null,
+                                'provider_returned_operator' => $server === 'server3' ? ($buyResponse['provider_returned_operator'] ?? null) : null,
+                                'provider_cost' => (float) ($buyResponse['cost'] ?? $buyResponse['provider_quote_usd'] ?? 0),
                                 'sms_text' => 'Provider confirmed activation ID but omitted phone number. Response preserved for manual reconciliation: ' . substr(json_encode($buyResponse) ?: 'unavailable', 0, 500),
                             ]);
                         }
@@ -792,7 +796,7 @@ class VirtualNumberController extends Controller
             $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
                 ? $buyResponse['phonenumber'] 
                 : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
-            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0) ? (float)$buyResponse['cost'] : $activeWholesalePrice;
+            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)\n                ? (float) $buyResponse['cost']\n                : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
 
             // Resolve human-friendly country name from provider list
             $countryName = null;
@@ -868,6 +872,9 @@ class VirtualNumberController extends Controller
                     'product' => $serviceName,
                     'cost' => $finalUserCostUsd,
                     'provider_cost' => $actualCostUsd,
+                    'provider_supplier_id' => $server === 'server3' ? ($buyResponse['requested_provider_id'] ?? null) : null,
+                    'provider_quote_usd' => $server === 'server3' ? ($buyResponse['provider_quote_usd'] ?? null) : null,
+                    'provider_returned_operator' => $server === 'server3' ? ($buyResponse['provider_returned_operator'] ?? null) : null,
                     'status' => 'pending',
                     'coupon_code' => null,
                     'discount' => 0.00,
