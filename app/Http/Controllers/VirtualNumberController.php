@@ -830,11 +830,15 @@ class VirtualNumberController extends Controller
                 // Treat the outcome as ambiguous and retain funds for reconciliation.
                 if (isset($attemptRecord) && $attemptRecord) {
                     try {
-                        DB::transaction(function () use ($attemptRecord, $buyResponse) {
+                        DB::transaction(function () use ($attemptRecord, $buyResponse, $server) {
                             $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                             if ($lockedOrder && $lockedOrder->status === 'processing') {
                                 $lockedOrder->update([
                                     'status' => 'unresolved',
+                                    'provider_supplier_id' => $server === 'server3' ? ($buyResponse['requested_provider_id'] ?? null) : null,
+                                    'provider_quote_usd' => $server === 'server3' ? ($buyResponse['provider_quote_usd'] ?? null) : null,
+                                    'provider_returned_operator' => $server === 'server3' ? ($buyResponse['provider_returned_operator'] ?? null) : null,
+                                    'provider_cost' => (float) ($buyResponse['cost'] ?? $buyResponse['provider_quote_usd'] ?? 0),
                                     'sms_text' => 'Provider returned a purchase response without an activation ID. Response preserved for manual reconciliation: ' . substr(json_encode($buyResponse) ?: 'unavailable', 0, 500),
                                 ]);
                             }
