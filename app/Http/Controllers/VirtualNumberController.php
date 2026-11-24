@@ -940,7 +940,15 @@ class VirtualNumberController extends Controller
             $ticketsUrl = route('tickets.index');
 
             // Sanitize customer-facing message (protect API keys, provider pool internals, and raw error traces)
-            if (stripos($rawError, 'below the price of') !== false || stripos($rawError, 'suitable pool') !== false) {
+            if ($server === 'server3' && (
+                stripos($rawError, 'Gold suppliers') !== false
+                || stripos($rawError, 'no numbers') !== false
+                || stripos($rawError, 'out of stock') !== false
+            )) {
+                $userFacingError = "No verified Gold supplier currently has stock for this service and country. Your wallet was not charged. Please try another service, country, or server.";
+            } elseif ($server === 'server3') {
+                $userFacingError = "Server 3 is temporarily unable to fulfil this request. Your wallet was not charged. Please try again shortly or choose another server.";
+            } elseif (stripos($rawError, 'below the price of') !== false || stripos($rawError, 'suitable pool') !== false) {
                 $userFacingError = "This service is temporarily unavailable due to carrier pricing updates. Your wallet was not charged. Please refresh for an updated quote or select Server 2.";
             } elseif (stripos($rawError, 'occupied') !== false || stripos($rawError, 'out of stock') !== false || stripos($rawError, 'no numbers') !== false) {
                 $userFacingError = "All number slots are temporarily occupied for this service. Your wallet was not charged. Please try again in a few minutes or switch to Server 2.";
