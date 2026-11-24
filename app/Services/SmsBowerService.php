@@ -135,9 +135,9 @@ class SmsBowerService
     {
         $data = Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
             $response = $this->request(['action' => 'getTopCountriesByService', 'service' => $serviceCode], 15);
-            if (!$response->successful()) throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+            if (!$response->successful()) throw new \RuntimeException('Server 3 could not retrieve Gold supplier availability.');
             $json = $response->json();
-            if (!is_array($json)) throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
+            if (!is_array($json)) throw new \RuntimeException('Server 3 returned an invalid Gold supplier response.');
             return $json;
         });
         return $this->goldPartnersFromResponse($data, $countryName);
@@ -279,7 +279,7 @@ class SmsBowerService
             if (!$countryRow) return [];
 
             $services = $this->getServices();
-            if (empty($services)) throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
+            if (empty($services)) throw new \RuntimeException('Server 3 returned no services from its service catalogue.');
 
             // The documented top-countries response already contains Gold supplier prices and stock.
             // Use it for catalogue discovery; getPricesV3 remains the live quote/purchase revalidation source.
@@ -327,7 +327,7 @@ class SmsBowerService
                         Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
                         $successfulLookups++;
                     }
-                } catch (\\Throwable $e) {
+                } catch (\Throwable $e) {
                     Log::warning('Server 3 concurrent Gold catalogue batch failed.', [
                         'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
                     ]);
@@ -335,7 +335,7 @@ class SmsBowerService
             }
 
             if ($successfulLookups === 0) {
-                throw new \\RuntimeException('Server 3 could not retrieve Gold supplier catalogue data. Please try again shortly.');
+                throw new \RuntimeException('Server 3 could not retrieve Gold supplier catalogue data. Please try again shortly.');
             }
 
             $items = [];
