@@ -115,12 +115,14 @@
                                 <span class="fw-bold">Server 2</span>
                             </button>
                         </div>
+                        @if($server3Enabled)
                         <div class="col-4">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server3" id="server-btn-3">
                                 <span class="server-dot server-dot-idle"></span>
                                 <span class="fw-bold">Server 3</span>
                             </button>
                         </div>
+                        @endif
                     </div>
                     <input type="hidden" name="server" id="vn-server-input" value="server1">
                 </div>
