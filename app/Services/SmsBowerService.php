@@ -6,6 +6,7 @@ use App\Exceptions\ProviderTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Support\Str;
 
 class SmsBowerService
@@ -110,53 +111,36 @@ class SmsBowerService
         return $aliases[$key] ?? $key;
     }
 
-    protected function findGoldPartners(string $serviceCode, string $countryName): array
+    protected function goldPartnersFromResponse(array $data, string $countryName): array
     {
-        $data = Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
-            $response = $this->request([
-                'action' => 'getTopCountriesByService',
-                'service' => $serviceCode,
-            ], 15);
-
-            if (!$response->successful()) {
-                throw new \RuntimeException('Server 3 could not retrieve Gold supplier availability.');
-            }
-
-            $json = $response->json();
-            if (!is_array($json)) {
-                throw new \RuntimeException('Server 3 returned an invalid Gold supplier response.');
-            }
-
-            return $json;
-        });
-
         $target = $this->countryKey($countryName);
         foreach ($data as $countryKey => $partners) {
-            if ($this->countryKey((string) $countryKey) !== $target || !is_array($partners)) {
-                continue;
-            }
-
+            if ($this->countryKey((string) $countryKey) !== $target || !is_array($partners)) continue;
             $eligible = [];
             foreach ($partners as $partnerId => $details) {
-                if (!is_array($details)) {
-                    continue;
-                }
+                if (!is_array($details)) continue;
                 $price = (float) ($details['price'] ?? 0);
                 $count = (int) ($details['count'] ?? 0);
-                if ($price > 0 && (string) $partnerId !== '') {
-                    $eligible[] = [
-                        'id' => (string) ($details['provider_id'] ?? $partnerId),
-                        'price' => $price,
-                        'count' => $count,
-                    ];
+                if ($price > 0 && $count > 0 && (string) $partnerId !== '') {
+                    $eligible[] = ['id' => (string) ($details['provider_id'] ?? $partnerId), 'price' => $price, 'count' => $count];
                 }
             }
-
             usort($eligible, fn ($a, $b) => $a['price'] <=> $b['price']);
             return $eligible;
         }
-
         return [];
+    }
+
+    protected function findGoldPartners(string $serviceCode, string $countryName): array
+    {
+        $data = Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
+            $response = $this->request(['action' => 'getTopCountriesByService', 'service' => $serviceCode], 15);
+            if (!$response->successful()) throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+            $json = $response->json();
+            if (!is_array($json)) throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
+            return $json;
+        });
+        return $this->goldPartnersFromResponse($data, $countryName);
     }
 
     /**
@@ -288,40 +272,87 @@ class SmsBowerService
 
     public function getPricesForCountry(string|int $country): array
     {
-        $cacheKey = 'smsbower_gold_middle_catalogue_v2_' . $country;
+        $cacheKey = 'smsbower_gold_middle_catalogue_v3_' . $country;
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
-            if (!$countryRow) {
-                return [];
+            if (!$countryRow) return [];
+
+            $services = $this->getServices();
+            if (empty($services)) throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
+
+            // The documented top-countries response already contains Gold supplier prices and stock.
+            // Use it for catalogue discovery; getPricesV3 remains the live quote/purchase revalidation source.
+            // Fetch uncached service responses in bounded concurrent batches instead of sequentially.
+            $topData = [];
+            $missing = [];
+            foreach ($services as $service) {
+                $code = (string) ($service['code'] ?? '');
+                if ($code === '') continue;
+                $cached = Cache::get('smsbower_gold_top_' . md5($code));
+                if (is_array($cached)) $topData[$code] = $cached;
+                else $missing[] = $code;
             }
 
-            $items = [];
-            foreach ($this->getServices() as $service) {
+            $successfulLookups = count($topData);
+            foreach (array_chunk(array_values(array_unique($missing)), 12) as $batch) {
                 try {
-                    // Catalogue availability, price and stock now come from the
-                    // exact same live Gold offer calculation used by quote/purchase.
-                    $offer = $this->resolveLiveGoldOffer($country, $service['code'], $countryRow);
-                    if (empty($offer['provider_ids']) || (float) ($offer['price'] ?? 0) <= 0) {
-                        continue;
-                    }
+                    $responses = Http::pool(function (Pool $pool) use ($batch) {
+                        foreach ($batch as $code) {
+                            $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
+                                'api_key' => $this->apiKey,
+                                'action' => 'getTopCountriesByService',
+                                'service' => $code,
+                            ]);
+                        }
+                    });
 
-                    $items[] = [
-                        'service' => $service['code'],
-                        'service_name' => $service['name'],
-                        'price' => (float) $offer['price'],
-                        'count' => (int) ($offer['stock'] ?? 0),
-                        'gold_provider_ids' => $offer['provider_ids'],
-                    ];
-                } catch (\Throwable $e) {
-                    Log::warning('Server 3 Gold catalogue lookup failed for a service.', [
-                        'service' => $service['code'],
-                        'country' => $country,
-                        'error' => $e->getMessage(),
+                    foreach ($batch as $code) {
+                        $response = $responses[$code] ?? null;
+                        if (!$response || !$response->successful()) {
+                            Log::warning('Server 3 Gold catalogue request failed.', [
+                                'service' => $code, 'country' => $country,
+                                'status' => $response ? $response->status() : null,
+                            ]);
+                            continue;
+                        }
+                        $json = $response->json();
+                        if (!is_array($json)) {
+                            Log::warning('Server 3 returned invalid Gold catalogue JSON.', ['service' => $code, 'country' => $country]);
+                            continue;
+                        }
+                        $topData[$code] = $json;
+                        Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
+                        $successfulLookups++;
+                    }
+                } catch (\\Throwable $e) {
+                    Log::warning('Server 3 concurrent Gold catalogue batch failed.', [
+                        'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
                     ]);
                 }
             }
 
+            if ($successfulLookups === 0) {
+                throw new \\RuntimeException('Server 3 could not retrieve Gold supplier catalogue data. Please try again shortly.');
+            }
+
+            $items = [];
+            foreach ($services as $service) {
+                $code = (string) ($service['code'] ?? '');
+                $name = trim((string) ($service['name'] ?? ''));
+                if ($code === '' || $name === '' || !isset($topData[$code])) continue;
+                $goldOffers = $this->goldPartnersFromResponse($topData[$code], $countryRow['name']);
+                $middleOffers = $this->middlePricedOffers($goldOffers);
+                if (empty($middleOffers)) continue;
+
+                $items[] = [
+                    'service' => $code,
+                    'service_name' => $name,
+                    'price' => (float) max(array_column($middleOffers, 'price')),
+                    'count' => (int) array_sum(array_column($middleOffers, 'count')),
+                    'gold_provider_ids' => array_values(array_unique(array_column($middleOffers, 'id'))),
+                ];
+            }
             return $items;
         });
     }
