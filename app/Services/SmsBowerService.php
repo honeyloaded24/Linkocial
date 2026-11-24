@@ -281,7 +281,7 @@ class SmsBowerService
         $offers = $liveOffer['providers'] ?? [];
 
         if (empty($offers)) {
-            throw new \\RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
+            throw new \RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
         }
 
         $attempted = [];
@@ -309,7 +309,7 @@ class SmsBowerService
 
             try {
                 $response = $this->request($params, 20);
-            } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
                 // A timeout is ambiguous. Never try another supplier after a possibly successful purchase.
                 throw new ProviderTimeoutException('Server 3 purchase timed out; activation outcome is unknown.', 0, $e);
             }
@@ -370,15 +370,15 @@ class SmsBowerService
             throw new ProviderTimeoutException(
                 'Server 3 returned an unrecognized purchase response; activation outcome is unknown.',
                 0,
-                new \\RuntimeException(substr($error, 0, 250))
+                new \RuntimeException(substr($error, 0, 250))
             );
         }
 
         if (empty($attempted)) {
-            throw new \\RuntimeException('No Gold supplier price is within the confirmed purchase limit.');
+            throw new \RuntimeException('No Gold supplier price is within the confirmed purchase limit.');
         }
 
-        throw new \\RuntimeException('No verified Gold supplier could fulfil this request at the confirmed price.');
+        throw new \RuntimeException('No verified Gold supplier could fulfil this request at the confirmed price.');
     }
 
     public function checkOrder(string|int $orderId): array
