@@ -796,9 +796,20 @@ class VirtualNumberController extends Controller
                     'status' => 'unresolved',
                 ], 500);
             }
-            $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
-                ? $buyResponse['phonenumber'] 
-                : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
+            $providerPhoneNumber = trim((string) ($buyResponse['phonenumber'] ?? ''));
+            if ($server === 'server3') {
+                // SMSBower's phoneNumber is the number to present to the customer.
+                // Its countryCode field is not safe to prepend here: it can be a
+                // provider country identifier rather than an international dial prefix.
+                $phoneDigits = preg_replace('/\\D+/', '', $providerPhoneNumber);
+                $phoneNumber = str_starts_with($providerPhoneNumber, '+')
+                    ? '+' . $phoneDigits
+                    : ($phoneDigits !== '' ? '+' . $phoneDigits : '');
+            } else {
+                $phoneNumber = str_starts_with($providerPhoneNumber, '+')
+                    ? $providerPhoneNumber
+                    : ('+' . ($buyResponse['cc'] ?? '') . $providerPhoneNumber);
+            }
             $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)
                 ? (float) $buyResponse['cost']
                 : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
