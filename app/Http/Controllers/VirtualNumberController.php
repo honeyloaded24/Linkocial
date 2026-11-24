@@ -222,6 +222,20 @@ class VirtualNumberController extends Controller
 
             $activeWholesalePrice = $cheapestPrice;
 
+            // Server 3 must revalidate live stock and pricing against current Gold IDs
+            // before any wallet debit or purchase-attempt ledger entry is created.
+            if ($server === 'server3') {
+                Cache::forget('smsbower_gold_top_' . md5((string) $productId));
+                $liveGoldOffer = $this->smsbower->getLiveGoldOffer($country, (string) $productId);
+                if (empty($liveGoldOffer['provider_ids']) || (float) ($liveGoldOffer['price'] ?? 0) <= 0) {
+                    return response()->json([
+                        'error' => 'No verified Gold supplier currently has stock for this service and country on Server 3.',
+                        'out_of_stock' => true,
+                    ], 400);
+                }
+                $activeWholesalePrice = (float) $liveGoldOffer['price'];
+            }
+
             // For Server 1 (SMSPool): verify real-time stock and active in-stock pool price
             if ($server === 'server1') {
                 // 1. Check if an active live pool quote was recently established (e.g. Sierra at $1.96)
@@ -1221,6 +1235,23 @@ class VirtualNumberController extends Controller
             $activeWholesalePrice = $cheapestPrice;
             $stockCount = null;
             $successRate = null;
+
+            // Server 3 quotes are live and restricted to the current Gold supplier set.
+            if ($server === 'server3') {
+                Cache::forget('smsbower_gold_top_' . md5((string) $productId));
+                $liveGoldOffer = $this->smsbower->getLiveGoldOffer($country, (string) $productId);
+                if (empty($liveGoldOffer['provider_ids']) || (float) ($liveGoldOffer['price'] ?? 0) <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'out_of_stock' => true,
+                        'stock' => 0,
+                        'service_name' => $serviceName,
+                        'message' => 'No verified Gold supplier currently has stock for this service and country on Server 3.',
+                    ]);
+                }
+                $activeWholesalePrice = (float) $liveGoldOffer['price'];
+                $stockCount = (int) ($liveGoldOffer['stock'] ?? 0);
+            }
 
             // For Server 1 (SMSPool): query real-time live price & stock availability directly on customer pick
             if ($server === 'server1') {
