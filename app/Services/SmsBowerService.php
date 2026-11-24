@@ -206,7 +206,9 @@ class SmsBowerService
             throw new \RuntimeException('This country is not supported on Server 3.');
         }
 
-        // Re-fetch the service-specific Gold partner list immediately before purchase.
+        // Refresh the Gold partner ranking immediately before purchase so cached tier
+        // membership cannot silently authorize a supplier from an older ranking.
+        Cache::forget('smsbower_gold_top_' . md5($service));
         $partners = $this->findGoldPartners($service, $countryRow['name']);
         if (empty($partners)) {
             throw new \RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
@@ -243,7 +245,7 @@ class SmsBowerService
         if (is_array($data) && !empty($data['activationId'])) {
             return [
                 'order_id' => (string) $data['activationId'],
-                'phonenumber' => (string) $data['phoneNumber'],
+                'phonenumber' => (string) ($data['phoneNumber'] ?? ''),
                 'cc' => (string) ($data['countryCode'] ?? ''),
                 'cost' => (float) ($data['activationCost'] ?? 0),
                 'time_left' => 1200,
@@ -261,7 +263,7 @@ class SmsBowerService
             ];
         }
 
-        $error = $data['message'] ?? $body ?: 'Server 3 could not fulfil this Gold-only request.';
+        $error = $data['message'] ?? ($body !== '' ? $body : 'Server 3 could not fulfil this Gold-only request.');
         throw new \RuntimeException(substr((string) $error, 0, 250));
     }
 
