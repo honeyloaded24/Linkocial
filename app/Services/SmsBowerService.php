@@ -200,6 +200,16 @@ class SmsBowerService
             return [];
         }
 
+        return $this->resolveLiveGoldOffer($country, $service, $countryRow);
+    }
+
+    /**
+     * Use one source of truth for both the customer catalogue and live quote:
+     * Gold membership from getTopCountriesByService, intersected with live
+     * getPricesV3 stock/prices, then filtered to the middle Gold price bands.
+     */
+    protected function resolveLiveGoldOffer(string|int $country, string $service, array $countryRow): array
+    {
         $goldPartners = $this->findGoldPartners($service, $countryRow['name']);
         if (empty($goldPartners)) {
             return [];
@@ -213,12 +223,12 @@ class SmsBowerService
         ], 15);
 
         if (!$response->successful()) {
-            throw new \RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
+            throw new \\RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
         }
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \RuntimeException('Server 3 returned invalid live Gold pricing data.');
+            throw new \\RuntimeException('Server 3 returned invalid live Gold pricing data.');
         }
 
         $countryData = $data[(string) $country] ?? $data[(int) $country] ?? (count($data) === 1 ? reset($data) : $data);
@@ -256,11 +266,9 @@ class SmsBowerService
         }
 
         // Quote the highest retained middle price so the wallet check covers
-        // either of the central supplier price bands when the count is even.
-        $middlePrice = max(array_column($offers, 'price'));
-
+        // every retained supplier price band.
         return [
-            'price' => (float) $middlePrice,
+            'price' => (float) max(array_column($offers, 'price')),
             'stock' => array_sum(array_column($offers, 'stock')),
             'providers' => $offers,
             'provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
@@ -269,34 +277,32 @@ class SmsBowerService
 
     public function getPricesForCountry(string|int $country): array
     {
-        $cacheKey = 'smsbower_gold_middle_catalogue_v1_' . $country;
-        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($country) {
+        $cacheKey = 'smsbower_gold_middle_catalogue_v2_' . $country;
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
             if (!$countryRow) {
                 return [];
             }
 
-            $services = $this->getServices();
             $items = [];
-            foreach ($services as $service) {
+            foreach ($this->getServices() as $service) {
                 try {
-                    $partners = $this->middlePricedOffers(
-                        $this->findGoldPartners($service['code'], $countryRow['name'])
-                    );
-                    if (empty($partners)) {
+                    // Catalogue availability, price and stock now come from the
+                    // exact same live Gold offer calculation used by quote/purchase.
+                    $offer = $this->resolveLiveGoldOffer($country, $service['code'], $countryRow);
+                    if (empty($offer['provider_ids']) || (float) ($offer['price'] ?? 0) <= 0) {
                         continue;
                     }
 
                     $items[] = [
                         'service' => $service['code'],
                         'service_name' => $service['name'],
-                        // Use the highest retained middle price for safe customer quoting.
-                        'price' => (float) max(array_column($partners, 'price')),
-                        'count' => array_sum(array_column($partners, 'count')),
-                        'gold_provider_ids' => array_values(array_unique(array_column($partners, 'id'))),
+                        'price' => (float) $offer['price'],
+                        'count' => (int) ($offer['stock'] ?? 0),
+                        'gold_provider_ids' => $offer['provider_ids'],
                     ];
-                } catch (\Throwable $e) {
+                } catch (\\Throwable $e) {
                     Log::warning('Server 3 Gold catalogue lookup failed for a service.', [
                         'service' => $service['code'],
                         'country' => $country,
@@ -368,7 +374,7 @@ class SmsBowerService
                     'cc' => (string) ($data['countryCode'] ?? ''),
                     'cost' => (float) ($data['activationCost'] ?? 0),
                     'time_left' => 1200,
-                    'provider_id' => $data['activationOperator'] ?? $providerId,
+                    'provider_id' => $data['activationOperator'] ?? $providerId,\n                    'requested_provider_id' => $providerId,\n                    'provider_quote_usd' => $providerPrice,\n                    'provider_returned_operator' => isset($data['activationOperator']) ? (string) $data['activationOperator'] : null,
                 ];
             }
 
@@ -379,7 +385,7 @@ class SmsBowerService
                     'cc' => '',
                     'cost' => $providerPrice,
                     'time_left' => 1200,
-                    'provider_id' => $providerId,
+                    'provider_id' => $providerId,\n                    'requested_provider_id' => $providerId,\n                    'provider_quote_usd' => $providerPrice,\n                    'provider_returned_operator' => null,
                 ];
             }
 
