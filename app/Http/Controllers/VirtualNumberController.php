@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
+use App\Services\SmsBowerService;
 use App\Models\VirtualNumberOrder;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
@@ -16,11 +17,13 @@ class VirtualNumberController extends Controller
 {
     protected SmsPoolService $smspool;
     protected GrizzlySmsService $grizzly;
+    protected SmsBowerService $smsbower;
 
-    public function __construct(SmsPoolService $smspool, GrizzlySmsService $grizzly)
+    public function __construct(SmsPoolService $smspool, GrizzlySmsService $grizzly, SmsBowerService $smsbower)
     {
         $this->smspool = $smspool;
         $this->grizzly = $grizzly;
+        $this->smsbower = $smsbower;
     }
 
     /**
@@ -28,7 +31,11 @@ class VirtualNumberController extends Controller
      */
     protected function getProvider(string $server = 'server1')
     {
-        return ($server === 'server2') ? $this->grizzly : $this->smspool;
+        return match ($server) {
+            'server2' => $this->grizzly,
+            'server3' => $this->smsbower,
+            default => $this->smspool,
+        };
     }
 
     /**
@@ -68,7 +75,7 @@ class VirtualNumberController extends Controller
     public function getCountries(Request $request)
     {
         $server = $request->query('server', 'server1');
-        $cacheKey = ($server === 'server2') ? "grizzly_countries" : "smspool_countries";
+        $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', default => 'smspool_countries' };
 
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
@@ -324,7 +331,7 @@ class VirtualNumberController extends Controller
                     'api_order_id' => $clientRef,
                     'phone_number' => 'PENDING',
                     'country' => (string) $country,
-                    'operator' => ($server === 'server2') ? 'Server 2' : 'Server 1',
+                    'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1'),
                     'server' => $server,
                     'product' => (string) ($serviceName ?? $product),
                     'cost' => $finalCheckCost,
@@ -626,7 +633,7 @@ class VirtualNumberController extends Controller
                             throw $firstEx;
                         }
                     }
-                } else {
+                } elseif ($server === 'server2') {
                     try {
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
                     } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
@@ -658,10 +665,27 @@ class VirtualNumberController extends Controller
                             'status' => 'unresolved',
                         ], 504);
                     }
+                } else {
+                    try {
+                        $buyResponse = $this->smsbower->buyNumber($country, (string) $productId, $maxAllowedProviderUsd);
+                    } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
+                        DB::transaction(function () use ($attemptRecord) {
+                            $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                            if ($lockedOrder && $lockedOrder->status === 'processing') {
+                                $lockedOrder->update(['status' => 'unresolved', 'sms_text' => 'Server 3 purchase timed out. Gold supplier activation outcome is unknown; retained for reconciliation. No automatic refund.']);
+                            }
+                        });
+                        return response()->json([
+                            'error' => 'Your request timed out while communicating with Server 3. The purchase is being verified to prevent a duplicate charge. Please check order history shortly.',
+                            'order_id' => $attemptRecord->id,
+                            'status' => 'unresolved',
+                        ], 504);
+                    }
                 }
             } catch (\Exception $e) {
                 $providerError = strtolower($e->getMessage());
-                $noPurchaseDueToQuote = str_contains($providerError, 'below the price of')
+                $noPurchaseDueToQuote = ($server === 'server3')
+                    || str_contains($providerError, 'below the price of')
                     || str_contains($providerError, 'suitable pool');
 
                 if (isset($attemptRecord) && $attemptRecord) {
@@ -816,7 +840,7 @@ class VirtualNumberController extends Controller
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
-                $operatorLabel = ($server === 'server2') ? 'Server 2' : 'Server 1';
+                $operatorLabel = $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1');
 
                 $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                 $lockedOrder->update([
@@ -1295,7 +1319,7 @@ class VirtualNumberController extends Controller
      */
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
-        $cacheKey = ($server === 'server2') ? "grizzly_prices_{$country}" : "smspool_prices_{$country}";
+        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_prices_{$country}", default => "smspool_prices_{$country}" };
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
             return $cached;
