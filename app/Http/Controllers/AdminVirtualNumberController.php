@@ -141,12 +141,14 @@ class AdminVirtualNumberController extends Controller
 
         $hasServer1 = !empty(\App\Models\Setting::get('smspool_api_key'));
         $hasServer2 = !empty(\App\Models\Setting::get('grizzly_api_key'));
+        $hasServer3 = !empty(\App\Models\Setting::get('smsbower_api_key'));
 
         return view('hq.virtual_numbers.pricing', compact(
             'settings',
             'vnStats',
             'hasServer1',
-            'hasServer2'
+            'hasServer2',
+            'hasServer3'
         ));
     }
 
