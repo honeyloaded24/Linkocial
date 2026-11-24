@@ -223,12 +223,12 @@ class SmsBowerService
         ], 15);
 
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
+            throw new \RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
         }
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \\RuntimeException('Server 3 returned invalid live Gold pricing data.');
+            throw new \RuntimeException('Server 3 returned invalid live Gold pricing data.');
         }
 
         $countryData = $data[(string) $country] ?? $data[(int) $country] ?? (count($data) === 1 ? reset($data) : $data);
@@ -302,7 +302,7 @@ class SmsBowerService
                         'count' => (int) ($offer['stock'] ?? 0),
                         'gold_provider_ids' => $offer['provider_ids'],
                     ];
-                } catch (\\Throwable $e) {
+                } catch (\Throwable $e) {
                     Log::warning('Server 3 Gold catalogue lookup failed for a service.', [
                         'service' => $service['code'],
                         'country' => $country,
