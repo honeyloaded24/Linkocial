@@ -269,7 +269,7 @@ class SmsBowerService
 
     public function getPricesForCountry(string|int $country): array
     {
-        $cacheKey = 'smsbower_gold_catalogue_' . $country;
+        $cacheKey = 'smsbower_gold_middle_catalogue_v1_' . $country;
         return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
