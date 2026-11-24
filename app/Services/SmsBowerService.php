@@ -345,9 +345,10 @@ class SmsBowerService
                 // One ID per attempt guarantees we try the cheapest live Gold supplier first.
                 'providerIds' => $providerId,
             ];
-            if ($maxPrice !== null && $maxPrice > 0) {
-                $params['maxPrice'] = number_format($maxPrice, 2, '.', '');
-            }
+            $supplierMaxPrice = $maxPrice !== null && $maxPrice > 0
+                ? min($maxPrice, $providerPrice)
+                : $providerPrice;
+            $params['maxPrice'] = number_format($supplierMaxPrice, 2, '.', '');
 
             try {
                 $response = $this->request($params, 20);
@@ -374,7 +375,10 @@ class SmsBowerService
                     'cc' => (string) ($data['countryCode'] ?? ''),
                     'cost' => (float) ($data['activationCost'] ?? 0),
                     'time_left' => 1200,
-                    'provider_id' => $data['activationOperator'] ?? $providerId,\n                    'requested_provider_id' => $providerId,\n                    'provider_quote_usd' => $providerPrice,\n                    'provider_returned_operator' => isset($data['activationOperator']) ? (string) $data['activationOperator'] : null,
+                    'provider_id' => $data['activationOperator'] ?? $providerId,
+                    'requested_provider_id' => $providerId,
+                    'provider_quote_usd' => $providerPrice,
+                    'provider_returned_operator' => isset($data['activationOperator']) ? (string) $data['activationOperator'] : null,
                 ];
             }
 
@@ -385,7 +389,10 @@ class SmsBowerService
                     'cc' => '',
                     'cost' => $providerPrice,
                     'time_left' => 1200,
-                    'provider_id' => $providerId,\n                    'requested_provider_id' => $providerId,\n                    'provider_quote_usd' => $providerPrice,\n                    'provider_returned_operator' => null,
+                    'provider_id' => $providerId,
+                    'requested_provider_id' => $providerId,
+                    'provider_quote_usd' => $providerPrice,
+                    'provider_returned_operator' => null,
                 ];
             }
 
