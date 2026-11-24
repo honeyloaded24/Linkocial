@@ -203,6 +203,18 @@ class SmsBowerService
      * Gold membership from getTopCountriesByService, intersected with live
      * getPricesV3 stock/prices, then filtered to the middle Gold price bands.
      */
+    protected function customerQuotePrice(array $offers): float
+    {
+        if (empty($offers)) {
+            return 0.0;
+        }
+
+        // The purchase routine attempts retained middle-band suppliers in ascending
+        // price order. Quote the first/cheapest eligible band, not the most expensive
+        // fallback band, so customers are not charged for a supplier that was not used.
+        return (float) min(array_column($offers, 'price'));
+    }
+
     protected function resolveLiveGoldOffer(string|int $country, string $service, array $countryRow): array
     {
         $goldPartners = $this->findGoldPartners($service, $countryRow['name']);
@@ -260,10 +272,11 @@ class SmsBowerService
             return [];
         }
 
-        // Quote the highest retained middle price so the wallet check covers
-        // every retained supplier price band.
+        // Quote the cheapest retained middle band because buyNumber tries suppliers
+        // in ascending order. More expensive fallbacks remain bounded by the
+        // controller's provider-spend ceiling and cannot silently overcharge users.
         return [
-            'price' => (float) max(array_column($offers, 'price')),
+            'price' => $this->customerQuotePrice($offers),
             'stock' => array_sum(array_column($offers, 'stock')),
             'providers' => $offers,
             'provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
@@ -354,7 +367,7 @@ class SmsBowerService
                 $items[] = [
                     'service' => $code,
                     'service_name' => $name,
-                    'price' => (float) max(array_column($middleOffers, 'price')),
+                    'price' => $this->customerQuotePrice($middleOffers),
                     'count' => (int) array_sum(array_column($middleOffers, 'count')),
                     'gold_provider_ids' => array_values(array_unique(array_column($middleOffers, 'id'))),
                 ];
