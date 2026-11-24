@@ -121,7 +121,7 @@ class SmsBowerService
                 if (!is_array($details)) continue;
                 $price = (float) ($details['price'] ?? 0);
                 $count = (int) ($details['count'] ?? 0);
-                if ($price > 0 && $count > 0 && (string) $partnerId !== '') {
+                if ($price > 0 && (string) $partnerId !== '') {
                     $eligible[] = ['id' => (string) ($details['provider_id'] ?? $partnerId), 'price' => $price, 'count' => $count];
                 }
             }
@@ -298,13 +298,15 @@ class SmsBowerService
             foreach (array_chunk(array_values(array_unique($missing)), 12) as $batch) {
                 try {
                     $responses = Http::pool(function (Pool $pool) use ($batch) {
+                        $pending = [];
                         foreach ($batch as $code) {
-                            $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
+                            $pending[] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
                                 'api_key' => $this->apiKey,
                                 'action' => 'getTopCountriesByService',
                                 'service' => $code,
                             ]);
                         }
+                        return $pending;
                     });
 
                     foreach ($batch as $code) {
@@ -342,7 +344,11 @@ class SmsBowerService
                 $name = trim((string) ($service['name'] ?? ''));
                 if ($code === '' || $name === '' || !isset($topData[$code])) continue;
                 $goldOffers = $this->goldPartnersFromResponse($topData[$code], $countryRow['name']);
-                $middleOffers = $this->middlePricedOffers($goldOffers);
+                $inStockGoldOffers = array_values(array_filter(
+                    $goldOffers,
+                    fn ($offer) => (int) ($offer['count'] ?? 0) > 0
+                ));
+                $middleOffers = $this->middlePricedOffers($inStockGoldOffers);
                 if (empty($middleOffers)) continue;
 
                 $items[] = [
