@@ -240,7 +240,7 @@ class SmsBowerService
         $body = trim($response->body());
         $data = $response->json();
 
-        if (is_array($data) && !empty($data['activationId']) && !empty($data['phoneNumber'])) {
+        if (is_array($data) && !empty($data['activationId'])) {
             return [
                 'order_id' => (string) $data['activationId'],
                 'phonenumber' => (string) $data['phoneNumber'],
