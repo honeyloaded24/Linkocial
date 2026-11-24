@@ -102,17 +102,23 @@
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-muted mb-2">Select Server</label>
                     <div class="row g-2">
-                        <div class="col-6">
+                        <div class="col-4">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn active-server" data-server="server1" id="server-btn-1">
                                 <span class="server-dot server-dot-hot pulse-hot"></span>
                                 <span class="fw-bold">Server 1</span>
                                 <span class="badge bg-danger ms-1 text-white" style="font-size: 0.65rem;">HOT</span>
                             </button>
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server2" id="server-btn-2">
                                 <span class="server-dot server-dot-idle"></span>
                                 <span class="fw-bold">Server 2</span>
+                            </button>
+                        </div>
+                        <div class="col-4">
+                            <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server3" id="server-btn-3">
+                                <span class="server-dot server-dot-idle"></span>
+                                <span class="fw-bold">Server 3</span>
                             </button>
                         </div>
                     </div>
@@ -445,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
         countryTs.clearOptions();
         countryTs.clear();
         countryTs.disable();
-        const serverName = server === 'server2' ? 'Server 2' : 'Server 1';
+        const serverName = server === 'server2' ? 'Server 2' : (server === 'server3' ? 'Server 3' : 'Server 1');
         setTsPlaceholder(countryTs, `Loading ${serverName} countries...`);
 
         fetch(`/api/virtual-numbers/countries?server=${encodeURIComponent(server)}`)
@@ -757,7 +763,9 @@ document.addEventListener('DOMContentLoaded', function() {
         card.querySelector('.service-name-inline').textContent = serviceName;
         const serverBadge = (order.server === 'server2')
             ? '<span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Server 2</span>'
-            : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>';
+            : (order.server === 'server3'
+                ? '<span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Server 3</span>'
+                : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>');
         card.querySelector('.country-name').innerHTML = `${order.country} ${serverBadge}`;
         card.querySelector('.phone-number').value = order.phone_number;
         
