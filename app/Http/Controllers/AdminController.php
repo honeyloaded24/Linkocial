@@ -1628,7 +1628,7 @@ class AdminController extends Controller
         $sanitizedLog = $request->except([
             '_token', 'password', 'mail_password',
             'korapay_live_secret_key', 'korapay_test_secret_key',
-            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'gongozconcept_api_key',
+            'billstack_secret_key', 'smspool_api_key', 'grizzly_api_key', 'smsbower_api_key', 'gongozconcept_api_key',
             'fadded_api_key'
         ]);
 
