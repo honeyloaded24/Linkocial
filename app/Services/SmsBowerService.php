@@ -192,8 +192,10 @@ class SmsBowerService
             throw new \RuntimeException('Server 3 returned invalid live Gold pricing data.');
         }
 
-        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? $data;
-        $serviceData = is_array($countryData) ? ($countryData[$service] ?? $countryData) : [];
+        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? (count($data) === 1 ? reset($data) : $data);
+        $serviceData = is_array($countryData)
+            ? ($countryData[$service] ?? (count($countryData) === 1 ? reset($countryData) : $countryData))
+            : [];
         if (!is_array($serviceData)) {
             return [];
         }
