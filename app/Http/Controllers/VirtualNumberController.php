@@ -796,7 +796,8 @@ class VirtualNumberController extends Controller
             $phoneNumber = str_starts_with($buyResponse['phonenumber'] ?? '', '+') 
                 ? $buyResponse['phonenumber'] 
                 : ('+' . ($buyResponse['cc'] ?? '') . ($buyResponse['phonenumber'] ?? ''));
-            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)\n                ? (float) $buyResponse['cost']\n                : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
+            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)
+                ? (float) $buyResponse['cost']\n                : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
 
             // Resolve human-friendly country name from provider list
             $countryName = null;
