@@ -54,7 +54,9 @@ class VirtualNumberController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('services.virtual_numbers', compact('activeOrders'));
+        $server3Enabled = !empty(\App\Models\Setting::get('smsbower_api_key'));
+
+        return view('services.virtual_numbers', compact('activeOrders', 'server3Enabled'));
     }
 
     /**
