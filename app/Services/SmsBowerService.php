@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Services;
+namespace App\Services;
 
-use App\\Exceptions\\ProviderTimeoutException;
-use Illuminate\\Support\\Facades\\Cache;
-use Illuminate\\Support\\Facades\\Http;
-use Illuminate\\Support\\Facades\\Log;
-use Illuminate\\Support\\Str;
+use App\Exceptions\ProviderTimeoutException;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SmsBowerService
 {
@@ -15,13 +15,13 @@ class SmsBowerService
 
     public function __construct()
     {
-        $this->apiKey = \\App\\Models\\Setting::get('smsbower_api_key');
+        $this->apiKey = \App\Models\Setting::get('smsbower_api_key');
     }
 
-    protected function request(array $params, int $timeout = 15): \\Illuminate\\Http\\Client\\Response
+    protected function request(array $params, int $timeout = 15): \Illuminate\Http\Client\Response
     {
         if (empty($this->apiKey)) {
-            throw new \\RuntimeException('Server 3 API key is not configured.');
+            throw new \RuntimeException('Server 3 API key is not configured.');
         }
 
         return Http::timeout($timeout)->get($this->baseUrl, array_merge([
@@ -33,12 +33,12 @@ class SmsBowerService
     {
         $response = $this->request(['action' => 'getCountries'], 20);
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 could not retrieve countries.');
+            throw new \RuntimeException('Server 3 could not retrieve countries.');
         }
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \\RuntimeException('Server 3 returned an invalid countries response.');
+            throw new \RuntimeException('Server 3 returned an invalid countries response.');
         }
 
         $countries = [];
@@ -65,13 +65,13 @@ class SmsBowerService
     {
         $response = $this->request(['action' => 'getServicesList'], 20);
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 could not retrieve services.');
+            throw new \RuntimeException('Server 3 could not retrieve services.');
         }
 
         $data = $response->json();
         $rows = $data['services'] ?? $data;
         if (!is_array($rows)) {
-            throw new \\RuntimeException('Server 3 returned an invalid services response.');
+            throw new \RuntimeException('Server 3 returned an invalid services response.');
         }
 
         $services = [];
@@ -119,12 +119,12 @@ class SmsBowerService
             ], 15);
 
             if (!$response->successful()) {
-                throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+                throw new \RuntimeException('Server 3 could not retrieve Gold supplier availability.');
             }
 
             $json = $response->json();
             if (!is_array($json)) {
-                throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
+                throw new \RuntimeException('Server 3 returned an invalid Gold supplier response.');
             }
 
             return $json;
@@ -185,7 +185,7 @@ class SmsBowerService
                         'count' => array_sum(array_column($partners, 'count')),
                         'gold_provider_ids' => array_values(array_unique(array_column($partners, 'id'))),
                     ];
-                } catch (\\Throwable $e) {
+                } catch (\Throwable $e) {
                     Log::warning('Server 3 Gold catalogue lookup failed for a service.', [
                         'service' => $service['code'],
                         'country' => $country,
@@ -203,18 +203,18 @@ class SmsBowerService
         $countries = $this->getCountries();
         $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
         if (!$countryRow) {
-            throw new \\RuntimeException('This country is not supported on Server 3.');
+            throw new \RuntimeException('This country is not supported on Server 3.');
         }
 
         // Re-fetch the service-specific Gold partner list immediately before purchase.
         $partners = $this->findGoldPartners($service, $countryRow['name']);
         if (empty($partners)) {
-            throw new \\RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
+            throw new \RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
         }
 
         $providerIds = array_values(array_unique(array_column($partners, 'id')));
         if (empty($providerIds)) {
-            throw new \\RuntimeException('No verified Gold supplier IDs are available for this service and country.');
+            throw new \RuntimeException('No verified Gold supplier IDs are available for this service and country.');
         }
 
         $params = [
@@ -229,12 +229,12 @@ class SmsBowerService
 
         try {
             $response = $this->request($params, 20);
-        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
             throw new ProviderTimeoutException('Server 3 purchase timed out; activation outcome is unknown.', 0, $e);
         }
 
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 purchase request failed.');
+            throw new \RuntimeException('Server 3 purchase request failed.');
         }
 
         $body = trim($response->body());
@@ -262,7 +262,7 @@ class SmsBowerService
         }
 
         $error = $data['message'] ?? $body ?: 'Server 3 could not fulfil this Gold-only request.';
-        throw new \\RuntimeException(substr((string) $error, 0, 250));
+        throw new \RuntimeException(substr((string) $error, 0, 250));
     }
 
     public function checkOrder(string|int $orderId): array
@@ -272,7 +272,7 @@ class SmsBowerService
             'id' => $orderId,
         ]);
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 status check failed.');
+            throw new \RuntimeException('Server 3 status check failed.');
         }
 
         $body = trim($response->body());
@@ -287,7 +287,7 @@ class SmsBowerService
             return ['status' => 6, 'sms' => '', 'code' => ''];
         }
 
-        throw new \\RuntimeException('Server 3 returned an unrecognized activation status.');
+        throw new \RuntimeException('Server 3 returned an unrecognized activation status.');
     }
 
     protected function setStatus(string|int $orderId, int $status): string
@@ -298,7 +298,7 @@ class SmsBowerService
             'status' => $status,
         ]);
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 activation status request failed.');
+            throw new \RuntimeException('Server 3 activation status request failed.');
         }
 
         $body = trim($response->body());
@@ -306,14 +306,14 @@ class SmsBowerService
             return $body;
         }
 
-        throw new \\RuntimeException($body !== '' ? substr($body, 0, 200) : 'Server 3 did not confirm the requested activation status.');
+        throw new \RuntimeException($body !== '' ? substr($body, 0, 200) : 'Server 3 did not confirm the requested activation status.');
     }
 
     public function cancelOrder(string|int $orderId): array
     {
         $result = $this->setStatus($orderId, 8);
         if ($result !== 'ACCESS_CANCEL') {
-            throw new \\RuntimeException('Server 3 did not confirm cancellation. No refund was issued.');
+            throw new \RuntimeException('Server 3 did not confirm cancellation. No refund was issued.');
         }
         return ['success' => true, 'response' => $result];
     }
@@ -322,7 +322,7 @@ class SmsBowerService
     {
         $result = $this->setStatus($orderId, 3);
         if ($result !== 'ACCESS_RETRY_GET') {
-            throw new \\RuntimeException('Server 3 did not confirm the SMS resend request.');
+            throw new \RuntimeException('Server 3 did not confirm the SMS resend request.');
         }
         return ['success' => 1, 'message' => 'Waiting for the next SMS code.'];
     }
