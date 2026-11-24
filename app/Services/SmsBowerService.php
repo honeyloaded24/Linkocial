@@ -309,7 +309,10 @@ class SmsBowerService
         }
 
         if (!$response->successful()) {
-            throw new \RuntimeException('Server 3 purchase request failed.');
+            if ($response->serverError()) {
+                throw new ProviderTimeoutException('Server 3 returned an ambiguous server error during purchase; activation outcome is unknown.');
+            }
+            throw new \RuntimeException('Server 3 rejected the purchase request before creating an activation.');
         }
 
         $body = trim($response->body());
@@ -336,8 +339,25 @@ class SmsBowerService
             ];
         }
 
-        $error = $data['message'] ?? ($body !== '' ? $body : 'Server 3 could not fulfil this Gold-only request.');
-        throw new \RuntimeException(substr((string) $error, 0, 250));
+        $error = (string) ($data['message'] ?? ($body !== '' ? $body : ''));
+        $knownNoPurchaseErrors = [
+            'BAD_KEY', 'BAD_ACTION', 'BAD_SERVICE', 'BAD_COUNTRY',
+            'NO_NUMBERS', 'NO_BALANCE', 'MAX_PRICE_EXCEEDED',
+            'NO_ACTIVATION', 'EARLY_CANCEL_DENIED',
+        ];
+        foreach ($knownNoPurchaseErrors as $knownError) {
+            if (stripos($error, $knownError) !== false) {
+                throw new \RuntimeException(substr($error, 0, 250));
+            }
+        }
+
+        // Unknown provider responses are ambiguous: retain the debit and reconcile,
+        // rather than assuming no activation was created.
+        throw new ProviderTimeoutException(
+            'Server 3 returned an unrecognized purchase response; activation outcome is unknown.',
+            0,
+            new \RuntimeException(substr($error, 0, 250))
+        );
     }
 
     public function checkOrder(string|int $orderId): array
