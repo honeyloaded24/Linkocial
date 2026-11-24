@@ -163,6 +163,35 @@ class SmsBowerService
      * Resolve live price and stock from getPricesV3, intersected strictly with
      * the Gold-ranked partner IDs returned for this exact service/country.
      */
+    /**
+     * Keep only the middle Gold price bands. The cheapest and most expensive
+     * distinct Gold prices are excluded; all suppliers sharing a retained
+     * middle price remain eligible. Fewer than three distinct price bands
+     * means there is no defensible middle-priced supplier.
+     */
+    protected function middlePricedOffers(array $offers): array
+    {
+        $prices = array_values(array_unique(array_map(
+            fn ($offer) => (float) ($offer['price'] ?? 0),
+            array_filter($offers, fn ($offer) => is_array($offer) && (float) ($offer['price'] ?? 0) > 0)
+        )));
+        sort($prices, SORT_NUMERIC);
+
+        if (count($prices) < 3) {
+            return [];
+        }
+
+        $lowest = $prices[0];
+        $highest = $prices[count($prices) - 1];
+        $middle = array_values(array_filter($offers, function ($offer) use ($lowest, $highest) {
+            $price = (float) ($offer['price'] ?? 0);
+            return $price > $lowest && $price < $highest;
+        }));
+
+        usort($middle, fn ($a, $b) => $a['price'] <=> $b['price']);
+        return $middle;
+    }
+
     public function getLiveGoldOffer(string|int $country, string $service): array
     {
         $countries = $this->getCountries();
@@ -221,13 +250,17 @@ class SmsBowerService
             ];
         }
 
-        usort($offers, fn ($a, $b) => $a['price'] <=> $b['price']);
+        $offers = $this->middlePricedOffers($offers);
         if (empty($offers)) {
             return [];
         }
 
+        // Quote the highest retained middle price so the wallet check covers
+        // either of the central supplier price bands when the count is even.
+        $middlePrice = max(array_column($offers, 'price'));
+
         return [
-            'price' => (float) $offers[0]['price'],
+            'price' => (float) $middlePrice,
             'stock' => array_sum(array_column($offers, 'stock')),
             'providers' => $offers,
             'provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
@@ -248,7 +281,9 @@ class SmsBowerService
             $items = [];
             foreach ($services as $service) {
                 try {
-                    $partners = $this->findGoldPartners($service['code'], $countryRow['name']);
+                    $partners = $this->middlePricedOffers(
+                        $this->findGoldPartners($service['code'], $countryRow['name'])
+                    );
                     if (empty($partners)) {
                         continue;
                     }
@@ -256,7 +291,8 @@ class SmsBowerService
                     $items[] = [
                         'service' => $service['code'],
                         'service_name' => $service['name'],
-                        'price' => (float) $partners[0]['price'],
+                        // Use the highest retained middle price for safe customer quoting.
+                        'price' => (float) max(array_column($partners, 'price')),
                         'count' => array_sum(array_column($partners, 'count')),
                         'gold_provider_ids' => array_values(array_unique(array_column($partners, 'id'))),
                     ];
