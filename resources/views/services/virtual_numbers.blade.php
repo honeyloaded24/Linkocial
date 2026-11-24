@@ -520,7 +520,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Discard if server changed
                         if (requestedServer !== currentServer) return;
 
-                        if (!Array.isArray(services) || services.length === 0) {
+                        if (!Array.isArray(services)) {
+                            setTsPlaceholder(serviceTs, services?.error || 'Failed to load services');
+                            return;
+                        }
+                        if (services.length === 0) {
                             setTsPlaceholder(serviceTs, 'No services available');
                             return;
                         }
