@@ -451,6 +451,11 @@
                                     <small class="text-muted" style="font-size: 0.75rem;">From <a href="https://grizzlysms.com" target="_blank" class="text-decoration-underline">grizzlysms.com</a></small>
                                 </div>
                                 <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold text-uppercase">Server 3 API Key (Gold-only)</label>
+                                    <input type="password" name="smsbower_api_key" class="form-control border-secondary bg-transparent py-2" value="{{ \App\Models\Setting::get('smsbower_api_key') }}" autocomplete="new-password" style="color: var(--text-main);">
+                                    <small class="text-muted" style="font-size: 0.75rem;">Configure the SMSBower API key. Server 3 will only request supplier IDs returned by its Gold-ranked partner endpoint.</small>
+                                </div>
+                                <div class="col-md-6">
                                     <label class="form-label text-muted small fw-bold text-uppercase">Fixed Profit Markup (NGN)</label>
                                     <div class="input-group">
                                         <span class="input-group-text border-secondary bg-transparent text-muted">₦</span>
