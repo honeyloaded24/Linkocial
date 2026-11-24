@@ -102,14 +102,14 @@
                 <div class="mb-3">
                     <label class="form-label fw-bold small text-muted mb-2">Select Server</label>
                     <div class="row g-2">
-                        <div class="col-4">
+                        <div class="col-{{ $server3Enabled ? '4' : '6' }}">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn active-server" data-server="server1" id="server-btn-1">
                                 <span class="server-dot server-dot-hot pulse-hot"></span>
                                 <span class="fw-bold">Server 1</span>
                                 <span class="badge bg-danger ms-1 text-white" style="font-size: 0.65rem;">HOT</span>
                             </button>
                         </div>
-                        <div class="col-4">
+                        <div class="col-{{ $server3Enabled ? '4' : '6' }}">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server2" id="server-btn-2">
                                 <span class="server-dot server-dot-idle"></span>
                                 <span class="fw-bold">Server 2</span>
