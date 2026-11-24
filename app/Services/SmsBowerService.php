@@ -192,6 +192,17 @@ class SmsBowerService
         return $middle;
     }
 
+    protected function supplierMaxPrice(float $providerPrice, ?float $maxPrice): float
+    {
+        if ($providerPrice <= 0) {
+            return 0.0;
+        }
+
+        return $maxPrice !== null && $maxPrice > 0
+            ? min($maxPrice, $providerPrice)
+            : $providerPrice;
+    }
+
     public function getLiveGoldOffer(string|int $country, string $service): array
     {
         $countries = $this->getCountries();
@@ -345,10 +356,8 @@ class SmsBowerService
                 // One ID per attempt guarantees we try the cheapest live Gold supplier first.
                 'providerIds' => $providerId,
             ];
-            $supplierMaxPrice = $maxPrice !== null && $maxPrice > 0
-                ? min($maxPrice, $providerPrice)
-                : $providerPrice;
-            $params['maxPrice'] = number_format($supplierMaxPrice, 2, '.', '');
+            $supplierMaxPrice = $this->supplierMaxPrice($providerPrice, $maxPrice);
+            $params['maxPrice'] = number_format($supplierMaxPrice, 4, '.', '');
 
             try {
                 $response = $this->request($params, 20);
