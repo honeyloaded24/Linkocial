@@ -353,7 +353,15 @@ class SmsBowerService
             $code = trim(substr($body, strlen('STATUS_OK:')));
             return ['status' => 3, 'sms' => $code, 'code' => $code, 'full_sms' => $code];
         }
-        if (str_starts_with($body, 'STATUS_WAIT_CODE') || str_starts_with($body, 'STATUS_WAIT_RETRY')) {
+        if (str_starts_with($body, 'STATUS_WAIT_RETRY')) {
+            $lastCode = trim(substr($body, strlen('STATUS_WAIT_RETRY')));
+            $lastCode = ltrim($lastCode, ':');
+            if ($lastCode !== '') {
+                return ['status' => 3, 'sms' => $lastCode, 'code' => $lastCode, 'full_sms' => $lastCode];
+            }
+            return ['status' => 1, 'sms' => '', 'code' => ''];
+        }
+        if (str_starts_with($body, 'STATUS_WAIT_CODE')) {
             return ['status' => 1, 'sms' => '', 'code' => ''];
         }
         if (str_starts_with($body, 'STATUS_CANCEL')) {
