@@ -15,7 +15,7 @@ class CheckExpiredVirtualNumbers extends Command
     protected $signature = 'vn:check-expired';
     protected $description = 'Check and refund expired or completed virtual number orders that users abandoned';
 
-    public function handle(SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly)
+    public function handle(SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly, \App\Services\SmsBowerService $smsbower)
     {
         // Crash Recovery: Check for orders stuck in 'processing' state for > 5 minutes (indicating a process crash before provider response)
         $staleProcessing = VirtualNumberOrder::where('status', 'processing')
@@ -256,7 +256,11 @@ class CheckExpiredVirtualNumbers extends Command
                     continue;
                 }
 
-                $provider = ($order->server === 'server2') ? $grizzly : $smspool;
+                $provider = match ($order->server) {
+                    'server2' => $grizzly,
+                    'server3' => $smsbower,
+                    default => $smspool,
+                };
                 $checkData = $provider->checkOrder($order->api_order_id);
                 $status = isset($checkData['status']) ? (int)$checkData['status'] : 1;
 
