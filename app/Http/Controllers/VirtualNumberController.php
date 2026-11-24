@@ -215,7 +215,7 @@ class VirtualNumberController extends Controller
             }
 
             if ($cheapestPrice === null) {
-                return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'], 400);
+                return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1')) . '.'], 400);
             }
 
             if ($server === 'server2' && $productId) {
@@ -1360,7 +1360,7 @@ class VirtualNumberController extends Controller
      */
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
-        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_prices_{$country}", default => "smspool_prices_{$country}" };
+        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v1_{$country}", default => "smspool_prices_{$country}" };
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
             return $cached;
