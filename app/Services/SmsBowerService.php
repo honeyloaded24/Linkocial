@@ -311,6 +311,12 @@ class SmsBowerService
 
     public function cancelOrder(string|int $orderId): array
     {
+        // Never cancel or refund unless the provider confirms the activation is still waiting for SMS.
+        $current = $this->checkOrder($orderId);
+        if ((int) ($current['status'] ?? -1) !== 1) {
+            throw new \\RuntimeException('Server 3 cannot confirm that this number is still waiting for an SMS. No cancellation or refund was issued.');
+        }
+
         $result = $this->setStatus($orderId, 8);
         if ($result !== 'ACCESS_CANCEL') {
             throw new \RuntimeException('Server 3 did not confirm cancellation. No refund was issued.');
