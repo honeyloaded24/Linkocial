@@ -143,7 +143,7 @@ class SmsBowerService
                 }
                 $price = (float) ($details['price'] ?? 0);
                 $count = (int) ($details['count'] ?? 0);
-                if ($price > 0 && $count > 0 && (string) $partnerId !== '') {
+                if ($price > 0 && (string) $partnerId !== '') {
                     $eligible[] = [
                         'id' => (string) ($details['provider_id'] ?? $partnerId),
                         'price' => $price,
@@ -157,6 +157,79 @@ class SmsBowerService
         }
 
         return [];
+    }
+
+    /**
+     * Resolve live price and stock from getPricesV3, intersected strictly with
+     * the Gold-ranked partner IDs returned for this exact service/country.
+     */
+    public function getLiveGoldOffer(string|int $country, string $service): array
+    {
+        $countries = $this->getCountries();
+        $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
+        if (!$countryRow) {
+            return [];
+        }
+
+        $goldPartners = $this->findGoldPartners($service, $countryRow['name']);
+        if (empty($goldPartners)) {
+            return [];
+        }
+
+        $goldIds = array_map('strval', array_column($goldPartners, 'id'));
+        $response = $this->request([
+            'action' => 'getPricesV3',
+            'service' => $service,
+            'country' => $country,
+        ], 15);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
+        }
+
+        $data = $response->json();
+        if (!is_array($data)) {
+            throw new \RuntimeException('Server 3 returned invalid live Gold pricing data.');
+        }
+
+        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? $data;
+        $serviceData = is_array($countryData) ? ($countryData[$service] ?? $countryData) : [];
+        if (!is_array($serviceData)) {
+            return [];
+        }
+
+        $offers = [];
+        foreach ($serviceData as $providerKey => $details) {
+            if (!is_array($details)) {
+                continue;
+            }
+
+            $providerId = (string) ($details['provider_id'] ?? $providerKey);
+            $price = (float) ($details['price'] ?? $details['cost'] ?? 0);
+            $stock = (int) ($details['count'] ?? 0);
+
+            if (!in_array($providerId, $goldIds, true) || $price <= 0 || $stock <= 0) {
+                continue;
+            }
+
+            $offers[] = [
+                'id' => $providerId,
+                'price' => $price,
+                'stock' => $stock,
+            ];
+        }
+
+        usort($offers, fn ($a, $b) => $a['price'] <=> $b['price']);
+        if (empty($offers)) {
+            return [];
+        }
+
+        return [
+            'price' => (float) $offers[0]['price'],
+            'stock' => array_sum(array_column($offers, 'stock')),
+            'providers' => $offers,
+            'provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
+        ];
     }
 
     public function getPricesForCountry(string|int $country): array
@@ -206,15 +279,13 @@ class SmsBowerService
             throw new \RuntimeException('This country is not supported on Server 3.');
         }
 
-        // Refresh the Gold partner ranking immediately before purchase so cached tier
-        // membership cannot silently authorize a supplier from an older ranking.
+        // Refresh Gold membership and current stock immediately before purchase.
         Cache::forget('smsbower_gold_top_' . md5($service));
-        $partners = $this->findGoldPartners($service, $countryRow['name']);
-        if (empty($partners)) {
+        $liveOffer = $this->getLiveGoldOffer($country, $service);
+        $providerIds = $liveOffer['provider_ids'] ?? [];
+        if (empty($providerIds)) {
             throw new \RuntimeException('No verified Gold suppliers currently have stock for this service and country.');
         }
-
-        $providerIds = array_values(array_unique(array_column($partners, 'id')));
         if (empty($providerIds)) {
             throw new \RuntimeException('No verified Gold supplier IDs are available for this service and country.');
         }
