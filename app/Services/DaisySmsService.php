@@ -146,6 +146,40 @@ class DaisySmsService
         return array_values($rows);
     }
 
+
+    /**
+     * Safe response-shape diagnostics for the two documented catalogue actions.
+     * Never includes request URLs, credentials, or full provider payloads.
+     */
+    public function getCatalogueDiagnostics(): array
+    {
+        $diagnostics = [];
+
+        foreach (['getPricesVerification', 'getPrices'] as $action) {
+            $response = $this->request(['action' => $action]);
+            $data = $response->json();
+            $decoded = is_array($data) ? $data : [];
+            $root = isset($decoded['data']) && is_array($decoded['data']) ? $decoded['data'] : $decoded;
+            $firstKey = array_key_first($root);
+            $firstValue = $firstKey !== null ? $root[$firstKey] : null;
+
+            $diagnostics[] = [
+                'action' => $action,
+                'http_status' => $response->status(),
+                'content_type' => $response->header('Content-Type'),
+                'json_response' => is_array($data),
+                'top_level_count' => count($root),
+                'top_level_keys_sample' => array_slice(array_map('strval', array_keys($root)), 0, 20),
+                'first_entry_key' => $firstKey !== null ? (string) $firstKey : null,
+                'first_entry_type' => gettype($firstValue),
+                'first_entry_keys' => is_array($firstValue) ? array_slice(array_map('strval', array_keys($firstValue)), 0, 20) : [],
+                'body_preview' => is_array($data) ? null : mb_substr(trim($response->body()), 0, 300),
+            ];
+        }
+
+        return $diagnostics;
+    }
+
     public function getPricesForCountry(string $country): array
     {
         if ($country !== self::USA_COUNTRY_ID) {
