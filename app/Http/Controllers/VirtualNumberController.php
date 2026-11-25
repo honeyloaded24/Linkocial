@@ -1387,7 +1387,7 @@ class VirtualNumberController extends Controller
      */
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
-        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v3_{$country}", default => "smspool_prices_{$country}" };
+        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v4_{$country}", default => "smspool_prices_{$country}" };
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
             return $cached;
