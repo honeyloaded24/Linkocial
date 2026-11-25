@@ -1256,7 +1256,7 @@ class VirtualNumberController extends Controller
                     return response()->json(['error' => 'Receive the first SMS before requesting another SMS.'], 409);
                 }
                 if (!empty($order->daisy_extra_activation_id) ||
-                    in_array($order->daisy_extra_activation_status, ['requested', 'waiting', 'ready', 'unknown'], true)) {
+                    in_array($order->daisy_extra_activation_status, ['requesting', 'requested', 'waiting', 'ready', 'unknown'], true)) {
                     return response()->json(['error' => 'An additional SMS has already been requested for this number.'], 409);
                 }
 
@@ -1352,10 +1352,27 @@ class VirtualNumberController extends Controller
                     ], 400);
                 }
 
-                VirtualNumberOrder::whereKey($order->id)->update([
-                    'daisy_extra_activation_id' => $extra['activation_id'],
-                    'daisy_extra_activation_status' => $extra['status'],
-                ]);
+                try {
+                    VirtualNumberOrder::whereKey($order->id)->update([
+                        'daisy_extra_activation_id' => $extra['activation_id'],
+                        'daisy_extra_activation_status' => $extra['status'],
+                    ]);
+                } catch (\\Throwable $persistError) {
+                    // The provider has confirmed a new activation, but its ID could
+                    // not be persisted. Never refund or issue another request blindly.
+                    VirtualNumberOrder::whereKey($order->id)->update([
+                        'daisy_extra_activation_status' => 'unknown',
+                    ]);
+                    Log::critical('DaisySMS accepted extra activation but local persistence failed.', [
+                        'order_id' => $order->id,
+                        'provider_activation_id' => $extra['activation_id'] ?? null,
+                        'error' => $persistError->getMessage(),
+                    ]);
+                    return response()->json([
+                        'error' => 'The provider accepted your additional SMS request, but Linkocial is still synchronizing its status. Your fee has been retained to prevent a duplicate charge.',
+                        'status' => 'unknown',
+                    ], 202);
+                }
 
                 return response()->json([
                     'success' => true,
