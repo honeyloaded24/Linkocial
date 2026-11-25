@@ -142,7 +142,7 @@ class DaisySmsServiceTest extends TestCase
             'daisysms.io/*' => Http::response('BAD_ID', 200),
         ]);
 
-        $this->expectException(\\RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('cannot provide another activation');
 
         app(DaisySmsService::class)->requestExtraActivation('act-missing');
