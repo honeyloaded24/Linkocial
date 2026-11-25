@@ -36,8 +36,8 @@ class DaisySmsService
             $response = Http::timeout($timeout)->accept('*/*')->get($this->baseUrl, array_merge([
                 'api_key' => $this->apiKey,
             ], $params));
-        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
-            throw new \\App\\Exceptions\\ProviderTimeoutException('DaisySMS request timed out or the connection was interrupted.', 0, $e);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            throw new \App\Exceptions\ProviderTimeoutException('DaisySMS request timed out or the connection was interrupted.', 0, $e);
         }
 
         if (!$response->successful()) {
