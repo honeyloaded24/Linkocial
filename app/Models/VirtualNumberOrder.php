@@ -21,6 +21,8 @@ class VirtualNumberOrder extends Model
         'daisy_extra_activation_status',
         'daisy_extra_activation_requested_at',
         'daisy_extra_activation_fee',
+        'daisy_extra_sms_code',
+        'daisy_extra_sms_text',
         'product',
         'cost',
         'provider_cost',
