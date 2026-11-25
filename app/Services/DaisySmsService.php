@@ -32,9 +32,13 @@ class DaisySmsService
             throw new \RuntimeException('DaisySMS API key is not configured for Server 3.');
         }
 
-        $response = Http::timeout($timeout)->accept('*/*')->get($this->baseUrl, array_merge([
-            'api_key' => $this->apiKey,
-        ], $params));
+        try {
+            $response = Http::timeout($timeout)->accept('*/*')->get($this->baseUrl, array_merge([
+                'api_key' => $this->apiKey,
+            ], $params));
+        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+            throw new \\App\\Exceptions\\ProviderTimeoutException('DaisySMS request timed out or the connection was interrupted.', 0, $e);
+        }
 
         if (!$response->successful()) {
             throw new \RuntimeException('DaisySMS request failed with HTTP '.$response->status().'.');
