@@ -131,6 +131,21 @@ class AdminVirtualNumberController extends Controller
     }
 
     /**
+     * Save the DaisySMS credential used by the optional Server 3 routing integration.
+     */
+    public function updateDaisySmsKey(Request $request)
+    {
+        $validated = $request->validate([
+            'daisysms_api_key' => 'required|string|max:500',
+        ]);
+
+        \\App\\Models\\Setting::set('daisysms_api_key', trim($validated['daisysms_api_key']));
+
+        return redirect()->route('hq.virtual-numbers.pricing')
+            ->with('success', 'DaisySMS API key saved securely. Server 3 routing has not been changed.');
+    }
+
+    /**
      * Show Virtual Numbers Pricing & Markup Settings
      */
     public function pricing(\App\Services\ProductPricingService $pricingService)
@@ -148,7 +163,8 @@ class AdminVirtualNumberController extends Controller
             'vnStats',
             'hasServer1',
             'hasServer2',
-            'hasServer3'
+            'hasServer3',
+            'hasDaisySmsKey'
         ));
     }
 
