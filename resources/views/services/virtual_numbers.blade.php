@@ -356,8 +356,8 @@
             
             <div class="mt-3 text-center d-flex justify-content-center align-items-center gap-2 flex-wrap action-buttons">
                 <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold cancel-btn">Cancel & Refund</button>
-                <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS / Reuse this number">
-                    <i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse
+                <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS. USD $0.20 converted to your wallet currency is deducted when tapped.">
+                    <i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted
                 </button>
             </div>
         </div>
@@ -771,6 +771,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderExtraSms(cardNode, order) {
         const panel = cardNode.querySelector('.extra-sms-panel');
         if (!panel || !order || (!order.daisy_extra_activation_id && !order.daisy_extra_sms_code)) return;
+        const resendButton = cardNode.querySelector('.resend-btn');
+        if (resendButton) resendButton.classList.add('d-none');
         panel.classList.remove('d-none');
         const waiting = panel.querySelector('.extra-sms-waiting');
         const result = panel.querySelector('.extra-sms-result');
@@ -942,7 +944,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if ((order.status === 'received' || order.status === 'finished') && order.sms_code) {
             showReceivedState(card, order.sms_code);
             renderExtraSms(card, order);
-            if (order.daisy_extra_activation_id && !order.daisy_extra_sms_code) startPolling(order.id, card);
+            if (order.daisy_extra_activation_id && !order.daisy_extra_sms_code && !['failed', 'canceled'].includes(order.daisy_extra_activation_status)) startPolling(order.id, card);
         } else {
             // Keep polling orders whose provider marked SMS received but whose code was not saved.
             startPolling(order.id, card);
@@ -958,7 +960,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     const status = data.order?.status;
                     if (data.order) renderExtraSms(cardNode, data.order);
-                    if (data.order && data.order.daisy_extra_activation_id && !data.order.daisy_extra_sms_code) {
+                    if (data.order && data.order.daisy_extra_activation_id && !data.order.daisy_extra_sms_code && !['failed', 'canceled'].includes(data.order.daisy_extra_activation_status)) {
                         // Continue polling the additional activation while preserving the original SMS.
                         if (status === 'received' || status === 'finished') return;
                     }
