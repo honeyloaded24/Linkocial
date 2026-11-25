@@ -17,6 +17,10 @@ class VirtualNumberOrder extends Model
         'operator',
         'server',
         'provider_key',
+        'daisy_extra_activation_id',
+        'daisy_extra_activation_status',
+        'daisy_extra_activation_requested_at',
+        'daisy_extra_activation_fee',
         'product',
         'cost',
         'provider_cost',
@@ -53,6 +57,8 @@ class VirtualNumberOrder extends Model
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'daisy_extra_activation_requested_at' => 'datetime',
+        'daisy_extra_activation_fee' => 'decimal:4',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
