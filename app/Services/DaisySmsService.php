@@ -64,7 +64,7 @@ class DaisySmsService
 
             // Some account responses flatten the country dimension. DaisySMS documents
             // USA as the SMS-Activate country ID 187; only accept flat data for that ID.
-            if ($country === self::USA_COUNTRY_ID && isset($catalogue[$service]['cost'])) {
+            if ($country === self::USA_COUNTRY_ID && (isset($catalogue[$service]['cost']) || isset($catalogue[$service]['count']))) {
                 return $catalogue[$service];
             }
         }
@@ -108,6 +108,23 @@ class DaisySmsService
 
                 $offer = $countries[$country];
                 if (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer)) {
+                    continue;
+                }
+
+                $rows[(string) $serviceCode] = [
+                    'service_code' => (string) $serviceCode,
+                    'country_id' => $country,
+                    'cost_usd' => isset($offer['cost']) ? (float) $offer['cost'] : null,
+                    'stock' => isset($offer['count']) ? (int) $offer['count'] : null,
+                    'multi' => isset($offer['multi']) ? (int) $offer['multi'] : null,
+                ];
+            }
+
+            // Shape C: account/country-scoped service => offer.
+            // This is the actual shape returned by the configured account: each
+            // top-level service code maps directly to cost/count/multi.
+            foreach ($catalogue as $serviceCode => $offer) {
+                if (!is_array($offer) || (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer))) {
                     continue;
                 }
 
