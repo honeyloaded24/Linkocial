@@ -67,6 +67,22 @@ class DaisySmsServiceTest extends TestCase
         });
     }
 
+
+    public function test_successful_activation_without_price_header_is_preserved_for_reconciliation(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('ACCESS_NUMBER:act-456:+12025550124', 200),
+        ]);
+
+        $result = app(DaisySmsService::class)->buyNumber('187', 'telegram', 1.25);
+
+        $this->assertSame('act-456', $result['order_id']);
+        $this->assertSame('+12025550124', $result['phonenumber']);
+        $this->assertTrue($result['price_unverified']);
+        $this->assertSame(0.0, $result['cost']);
+        $this->assertSame(1.25, $result['provider_quote_usd']);
+    }
+
     public function test_status_response_maps_sms_code_and_full_message(): void
     {
         Http::fake([
