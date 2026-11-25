@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
 use App\Services\SmsBowerService;
+use App\Services\DaisySmsService;
 use App\Models\VirtualNumberOrder;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
@@ -18,12 +19,26 @@ class VirtualNumberController extends Controller
     protected SmsPoolService $smspool;
     protected GrizzlySmsService $grizzly;
     protected SmsBowerService $smsbower;
+    protected DaisySmsService $daisysms;
 
-    public function __construct(SmsPoolService $smspool, GrizzlySmsService $grizzly, SmsBowerService $smsbower)
+    public function __construct(SmsPoolService $smspool, GrizzlySmsService $grizzly, SmsBowerService $smsbower, DaisySmsService $daisysms)
     {
         $this->smspool = $smspool;
         $this->grizzly = $grizzly;
         $this->smsbower = $smsbower;
+        $this->daisysms = $daisysms;
+    }
+
+    protected function isDaisyService(string $server, string $country, string $product): bool
+    {
+        return $server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID && isset(DaisySmsService::ROUTED_SERVICES[$product]);
+    }
+
+    protected function getOrderProvider(VirtualNumberOrder $order)
+    {
+        if (($order->provider_key ?? null) === 'daisysms') return $this->daisysms;
+        if (($order->provider_key ?? null) === 'smsbower') return $this->smsbower;
+        return $this->getProvider($order->server ?? 'server1');
     }
 
     /**
@@ -229,7 +244,7 @@ class VirtualNumberController extends Controller
 
             // Server 3 must revalidate live stock and pricing against current Gold IDs
             // before any wallet debit or purchase-attempt ledger entry is created.
-            if ($server === 'server3') {
+            if ($server === 'server3' && !$this->isDaisyService($server, (string) $country, (string) $productId)) {
                 Cache::forget('smsbower_gold_top_' . md5((string) $productId));
                 $liveGoldOffer = $this->smsbower->getLiveGoldOffer($country, (string) $productId);
                 if (empty($liveGoldOffer['provider_ids']) || (float) ($liveGoldOffer['price'] ?? 0) <= 0) {
@@ -352,6 +367,7 @@ class VirtualNumberController extends Controller
                     'country' => (string) $country,
                     'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1'),
                     'server' => $server,
+                    'provider_key' => $this->isDaisyService($server, (string) $country, (string) $productId) ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
                     'product' => (string) ($serviceName ?? $product),
                     'cost' => $finalCheckCost,
                     'provider_cost' => 0.0,
@@ -686,7 +702,9 @@ class VirtualNumberController extends Controller
                     }
                 } else {
                     try {
-                        $buyResponse = $this->smsbower->buyNumber($country, (string) $productId, $maxAllowedProviderUsd);
+                        $buyResponse = $this->isDaisyService($server, (string) $country, (string) $productId)
+                            ? $this->daisysms->buyNumber((string) $country, (string) $productId, $maxAllowedProviderUsd)
+                            : $this->smsbower->buyNumber($country, (string) $productId, $maxAllowedProviderUsd);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         DB::transaction(function () use ($attemptRecord) {
                             $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
@@ -703,7 +721,15 @@ class VirtualNumberController extends Controller
                 }
             } catch (\Exception $e) {
                 $providerError = strtolower($e->getMessage());
-                $noPurchaseDueToQuote = ($server === 'server3')
+                $isDaisyPurchase = $this->isDaisyService($server, (string) $country, (string) $productId);
+                if ($isDaisyPurchase && ($e instanceof \App\Exceptions\ProviderTimeoutException || str_contains($providerError, 'timed out') || str_contains($providerError, 'timeout') || str_contains($providerError, 'connection'))) {
+                    DB::transaction(function () use ($attemptRecord) {
+                        $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if ($lockedOrder && $lockedOrder->status === 'processing') $lockedOrder->update(['status' => 'unresolved', 'sms_text' => 'DaisySMS purchase outcome is unknown after a network failure. Funds retained for reconciliation; no automatic refund.']);
+                    });
+                    return response()->json(['error' => 'The Server 3 purchase is being verified because the carrier response was interrupted. Please check order history before retrying.', 'order_id' => $attemptRecord->id, 'status' => 'unresolved'], 504);
+                }
+                $noPurchaseDueToQuote = (!$isDaisyPurchase && $server === 'server3')
                     || str_contains($providerError, 'below the price of')
                     || str_contains($providerError, 'suitable pool');
 
@@ -889,6 +915,7 @@ class VirtualNumberController extends Controller
                     'country' => $countryName,
                     'operator' => $operatorLabel,
                     'server' => $server,
+                    'provider_key' => $this->isDaisyService($server, (string) $country, (string) $productId) ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
                     'product' => $serviceName,
                     'cost' => $finalUserCostUsd,
                     'provider_cost' => $actualCostUsd,
@@ -1018,7 +1045,7 @@ class VirtualNumberController extends Controller
                 return response()->json(['order' => $order]);
             }
 
-            $provider = $this->getProvider($order->server ?? 'server1');
+            $provider = $this->getOrderProvider($order);
             $checkData = $provider->checkOrder($order->api_order_id);
             $status = isset($checkData['status']) ? (int) $checkData['status'] : 1;
 
@@ -1092,7 +1119,7 @@ class VirtualNumberController extends Controller
             if (!$order || $order->status !== 'pending' || !empty($order->sms_code)) {
                 return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
             }
-            $provider = $this->getProvider($order->server ?? 'server1');
+            $provider = $this->getOrderProvider($order);
 
             // Verify provider state immediately before cancellation. If the provider
             // reports an SMS or an unknown state, fail closed and never refund.
@@ -1142,7 +1169,10 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'This order is no longer eligible for SMS resend.'], 409);
             }
 
-            $provider = $this->getProvider($order->server ?? 'server1');
+            if (($order->provider_key ?? null) === 'daisysms') {
+                return response()->json(['error' => 'SMS resend is not supported for this Server 3 rental.'], 409);
+            }
+            $provider = $this->getOrderProvider($order);
             $resendData = $provider->resendOrder($order->api_order_id);
 
             // Only transition back to pending if it is still eligible. Do not overwrite
@@ -1273,8 +1303,15 @@ class VirtualNumberController extends Controller
             $stockCount = null;
             $successRate = null;
 
-            // Server 3 quotes are live and restricted to the current Gold supplier set.
-            if ($server === 'server3') {
+            // DaisySMS handles only the four allowlisted USA service variants.
+            if ($this->isDaisyService($server, (string) $country, (string) $productId)) {
+                $daisyOffer = collect($this->daisysms->getPricesForCountry((string) $country))->firstWhere('service', (string) $productId);
+                if (!$daisyOffer || (int) ($daisyOffer['stock'] ?? 0) <= 0) {
+                    return response()->json(['success' => false, 'out_of_stock' => true, 'stock' => 0, 'service_name' => $serviceName, 'message' => 'This service is currently out of stock on Server 3.']);
+                }
+                $activeWholesalePrice = (float) $daisyOffer['price'];
+                $stockCount = (int) $daisyOffer['stock'];
+            } elseif ($server === 'server3') {
                 Cache::forget('smsbower_gold_top_' . md5((string) $productId));
                 $liveGoldOffer = $this->smsbower->getLiveGoldOffer($country, (string) $productId);
                 if (empty($liveGoldOffer['provider_ids']) || (float) ($liveGoldOffer['price'] ?? 0) <= 0) {
