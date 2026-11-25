@@ -88,17 +88,45 @@ class DaisySmsService
             return [];
         }
 
-        $catalogue = $this->decoded($this->request(['action' => 'getPricesVerification']));
-        if (!$catalogue) {
-            $catalogue = $this->decoded($this->request(['action' => 'getPrices']));
-        }
-
         $rows = [];
-        // getPricesVerification: service => country => offer.
-        foreach ($catalogue as $serviceCode => $countries) {
-            if (is_array($countries) && isset($countries[$country]) && is_array($countries[$country])) {
+
+        // Try both documented endpoints and parse either documented orientation,
+        // regardless of which endpoint returns which shape for this account.
+        foreach (['getPricesVerification', 'getPrices'] as $action) {
+            $catalogue = $this->decoded($this->request(['action' => $action]));
+
+            // Some compatible API responses wrap the catalogue in a data object.
+            if (isset($catalogue['data']) && is_array($catalogue['data'])) {
+                $catalogue = $catalogue['data'];
+            }
+
+            // Shape A: service => country => offer.
+            foreach ($catalogue as $serviceCode => $countries) {
+                if (!is_array($countries) || !isset($countries[$country]) || !is_array($countries[$country])) {
+                    continue;
+                }
+
                 $offer = $countries[$country];
-                if (array_key_exists('cost', $offer) || array_key_exists('count', $offer)) {
+                if (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer)) {
+                    continue;
+                }
+
+                $rows[(string) $serviceCode] = [
+                    'service_code' => (string) $serviceCode,
+                    'country_id' => $country,
+                    'cost_usd' => isset($offer['cost']) ? (float) $offer['cost'] : null,
+                    'stock' => isset($offer['count']) ? (int) $offer['count'] : null,
+                    'multi' => isset($offer['multi']) ? (int) $offer['multi'] : null,
+                ];
+            }
+
+            // Shape B: country => service => offer.
+            if (isset($catalogue[$country]) && is_array($catalogue[$country])) {
+                foreach ($catalogue[$country] as $serviceCode => $offer) {
+                    if (!is_array($offer) || (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer))) {
+                        continue;
+                    }
+
                     $rows[(string) $serviceCode] = [
                         'service_code' => (string) $serviceCode,
                         'country_id' => $country,
@@ -108,21 +136,9 @@ class DaisySmsService
                     ];
                 }
             }
-        }
 
-        // getPrices: country => service => offer.
-        if (isset($catalogue[$country]) && is_array($catalogue[$country])) {
-            foreach ($catalogue[$country] as $serviceCode => $offer) {
-                if (!is_array($offer) || (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer))) {
-                    continue;
-                }
-                $rows[(string) $serviceCode] = [
-                    'service_code' => (string) $serviceCode,
-                    'country_id' => $country,
-                    'cost_usd' => isset($offer['cost']) ? (float) $offer['cost'] : null,
-                    'stock' => isset($offer['count']) ? (int) $offer['count'] : null,
-                    'multi' => isset($offer['multi']) ? (int) $offer['multi'] : null,
-                ];
+            if ($rows) {
+                break;
             }
         }
 
