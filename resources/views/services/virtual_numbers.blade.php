@@ -787,9 +787,13 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             result.classList.add('d-none');
             waiting.classList.remove('d-none');
-            waiting.textContent = order.daisy_extra_activation_status === 'waiting'
-                ? 'Your additional SMS is queued and will be checked automatically.'
-                : 'Waiting for your additional SMS...';
+            if (order.daisy_extra_activation_status === 'waiting') {
+                waiting.textContent = 'Your additional SMS is queued and will be checked automatically.';
+            } else if (order.daisy_extra_activation_status === 'failed' || order.daisy_extra_activation_status === 'canceled') {
+                waiting.textContent = 'The additional SMS activation ended without a code. The request fee remains charged because the provider accepted the request.';
+            } else {
+                waiting.textContent = 'Waiting for your additional SMS...';
+            }
         }
     }
 
