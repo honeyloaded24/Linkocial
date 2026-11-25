@@ -100,6 +100,54 @@ class DaisySmsServiceTest extends TestCase
         $this->assertSame('Your code is 654321', $status['full_sms']);
     }
 
+    public function test_extra_activation_can_be_requested_immediately(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('ACCESS_NUMBER:act-next:+12025550123', 200),
+        ]);
+
+        $result = app(DaisySmsService::class)->requestExtraActivation('act-previous');
+
+        $this->assertSame([
+            'status' => 'ready',
+            'activation_id' => 'act-next',
+            'phone_number' => '+12025550123',
+            'ready_at' => null,
+        ], $result);
+
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'getExtraActivation'
+            && $request['activationId'] === 'act-previous'
+            && $request['api_key'] === 'test-daisy-key'
+        );
+    }
+
+    public function test_extra_activation_can_return_a_wait_until_timestamp(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('ASLEEP:act-next:+12025550123:1795640400', 200),
+        ]);
+
+        $result = app(DaisySmsService::class)->requestExtraActivation('act-previous');
+
+        $this->assertSame('waiting', $result['status']);
+        $this->assertSame('act-next', $result['activation_id']);
+        $this->assertSame('+12025550123', $result['phone_number']);
+        $this->assertSame(1795640400, $result['ready_at']);
+    }
+
+    public function test_extra_activation_rejects_provider_bad_id(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('BAD_ID', 200),
+        ]);
+
+        $this->expectException(\\RuntimeException::class);
+        $this->expectExceptionMessage('cannot provide another activation');
+
+        app(DaisySmsService::class)->requestExtraActivation('act-missing');
+    }
+
     public function test_cancellation_requires_provider_confirmation(): void
     {
         $sequence = Http::sequence()
