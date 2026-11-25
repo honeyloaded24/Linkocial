@@ -1242,8 +1242,11 @@ class VirtualNumberController extends Controller
             return response()->json(['error' => 'A resend request is already in progress for this order.'], 409);
         }
 
-        $feeReference = 'VN-EXTRA-DEBIT-' . $order->id;
-        $refundReference = 'VN-EXTRA-REFUND-' . $order->id;
+        // Each rejected attempt can be retried, so ledger references must be
+        // unique per attempt while remaining paired for reconciliation.
+        $attemptReference = strtoupper((string) \Illuminate\Support\Str::uuid());
+        $feeReference = 'VN-EXTRA-DEBIT-' . $order->id . '-' . $attemptReference;
+        $refundReference = 'VN-EXTRA-REFUND-' . $order->id . '-' . $attemptReference;
 
         try {
             $order = $order->fresh();
