@@ -333,7 +333,7 @@ class DaisySmsService
     public function requestExtraActivation(string $activationId): array
     {
         if ($activationId === '') {
-            throw new \\InvalidArgumentException('A valid DaisySMS activation is required.');
+            throw new \InvalidArgumentException('A valid DaisySMS activation is required.');
         }
 
         $response = $this->request([
@@ -366,7 +366,7 @@ class DaisySmsService
             'NO_BALANCE' => 'Server 3 provider balance is insufficient for another SMS activation.',
         ];
 
-        throw new \\RuntimeException($messages[$body] ?? 'Server 3 could not request another SMS activation: '.$body);
+        throw new \RuntimeException($messages[$body] ?? 'Server 3 could not request another SMS activation: '.$body);
     }
 
     public function finishOrder(string $activationId): array
