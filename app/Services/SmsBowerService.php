@@ -313,7 +313,7 @@ class SmsBowerService
                     $responses = Http::pool(function (Pool $pool) use ($batch) {
                         $pending = [];
                         foreach ($batch as $code) {
-                            $pending[] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
+                            $pending[] = $pool->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
                                 'api_key' => $this->apiKey,
                                 'action' => 'getTopCountriesByService',
                                 'service' => $code,
@@ -323,8 +323,8 @@ class SmsBowerService
                     });
 
                     foreach ($batch as $index => $code) {
-                        // Http::pool returns responses in the order of the
-                        // request array unless explicitly keyed by the caller.
+                        // Requests are intentionally left numerically indexed above,
+                        // so pooled responses map to the same numeric positions.
                         $response = $responses[$index] ?? null;
                         if (!$response || !$response->successful()) {
                             Log::warning('Server 3 Gold catalogue request failed.', [
