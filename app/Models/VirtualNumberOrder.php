@@ -50,11 +50,18 @@ class VirtualNumberOrder extends Model
 
     protected $hidden = ['provider_key'];
 
-    protected $appends = ['supports_resend'];
+    protected $appends = ['supports_resend', 'resend_fee_notice'];
 
     public function getSupportsResendAttribute(): bool
     {
         return true;
+    }
+
+    public function getResendFeeNoticeAttribute(): ?string
+    {
+        return ($this->provider_key ?? null) === 'daisysms'
+            ? 'USD $0.20 converted to your wallet currency is deducted when you request another SMS.'
+            : null;
     }
 
     protected $casts = [
