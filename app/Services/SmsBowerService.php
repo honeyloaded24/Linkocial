@@ -322,8 +322,10 @@ class SmsBowerService
                         return $pending;
                     });
 
-                    foreach ($batch as $code) {
-                        $response = $responses[$code] ?? null;
+                    foreach ($batch as $index => $code) {
+                        // Http::pool returns responses in the order of the
+                        // request array unless explicitly keyed by the caller.
+                        $response = $responses[$index] ?? null;
                         if (!$response || !$response->successful()) {
                             Log::warning('Server 3 Gold catalogue request failed.', [
                                 'service' => $code, 'country' => $country,
