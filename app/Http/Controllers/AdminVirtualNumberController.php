@@ -149,6 +149,30 @@ class AdminVirtualNumberController extends Controller
             ->with('success', 'DaisySMS API key saved securely. Server 3 routing has not been changed.');
     }
 
+
+    /**
+     * Read the live USA service catalogue for admin verification.
+     * The API credential is never returned or logged.
+     */
+    public function daisySmsCatalogue(\App\Services\DaisySmsService $daisysms)
+    {
+        try {
+            return response()->json([
+                'success' => true,
+                'country_id' => \App\Services\DaisySmsService::USA_COUNTRY_ID,
+                'services' => $daisysms->getCatalogueForCountry(\App\Services\DaisySmsService::USA_COUNTRY_ID),
+                'routing_enabled' => false,
+                'message' => 'Live catalogue only. No service routing or purchases were changed.',
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('DaisySMS admin catalogue check failed: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to read the live Server 3 catalogue. Check the API key and provider response.',
+            ], 502);
+        }
+    }
+
     /**
      * Show Virtual Numbers Pricing & Markup Settings
      */
