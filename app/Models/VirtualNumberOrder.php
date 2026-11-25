@@ -57,6 +57,13 @@ class VirtualNumberOrder extends Model
         return true;
     }
 
+    public function getResendFeeLabelAttribute(): string
+    {
+        return ($this->provider_key ?? null) === 'daisysms'
+            ? 'Request Additional SMS · $0.20 converted'
+            : 'Resend Code / Reuse';
+    }
+
     public function getResendFeeNoticeAttribute(): ?string
     {
         return ($this->provider_key ?? null) === 'daisysms'
