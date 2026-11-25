@@ -324,6 +324,51 @@ class DaisySmsService
         return ['success' => true, 'status' => 'canceled'];
     }
 
+    /**
+     * Request an additional SMS on an existing DaisySMS number.
+     *
+     * DaisySMS may return ASLEEP with a Unix readiness timestamp while the
+     * number is being switched, or ACCESS_NUMBER when it is ready immediately.
+     */
+    public function requestExtraActivation(string $activationId): array
+    {
+        if ($activationId === '') {
+            throw new \\InvalidArgumentException('A valid DaisySMS activation is required.');
+        }
+
+        $response = $this->request([
+            'action' => 'getExtraActivation',
+            'activationId' => $activationId,
+        ], 30);
+
+        $body = trim($response->body());
+
+        if (preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
+            return [
+                'status' => 'ready',
+                'activation_id' => $matches[1],
+                'phone_number' => $matches[2],
+                'ready_at' => null,
+            ];
+        }
+
+        if (preg_match('/^ASLEEP:([^:]+):([^:]+):(\\d+)$/', $body, $matches)) {
+            return [
+                'status' => 'waiting',
+                'activation_id' => $matches[1],
+                'phone_number' => $matches[2],
+                'ready_at' => (int) $matches[3],
+            ];
+        }
+
+        $messages = [
+            'BAD_ID' => 'DaisySMS cannot provide another activation for this number. It may no longer be available.',
+            'NO_BALANCE' => 'Server 3 provider balance is insufficient for another SMS activation.',
+        ];
+
+        throw new \\RuntimeException($messages[$body] ?? 'Server 3 could not request another SMS activation: '.$body);
+    }
+
     public function finishOrder(string $activationId): array
     {
         $response = $this->request([
