@@ -983,6 +983,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
                         showReceivedState(cardNode, data.order.sms_code);
+                        // showReceivedState reveals the resend control; hide it again
+                        // when the one permitted DaisySMS extra activation already exists.
+                        renderExtraSms(cardNode, data.order);
                     } else if (data.order && (status === 'canceled' || status === 'expired' || status === 'refunded' || status === 'failed')) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
@@ -992,7 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(err => console.error('Failed to poll order status:', err));
-        }, 5000); // poll every 5 seconds
+        }, 15000); // DaisySMS recommends polling every 15 seconds
     }
     
     function cancelOrder(id, cardNode) {
