@@ -1075,18 +1075,69 @@ class VirtualNumberController extends Controller
     public function checkStatus($id)
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->findOrFail($id);
-        // Received orders without a saved code must remain recoverable: poll the
-        // provider again instead of permanently returning an empty SMS result.
-        if ($order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
+        $isDaisyExtra = ($order->provider_key ?? null) === 'daisysms' && !empty($order->daisy_extra_activation_id);
+        if (!$isDaisyExtra && $order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
             return response()->json(['order' => $order]);
         }
 
         $actionLock = Cache::lock("vn_order_action_{$order->id}", 60);
-        if (!$actionLock->get()) return response()->json(['error' => 'Another action is being processed for this order. Please retry shortly.'], 409);
+        if (!$actionLock->get()) return response()->json(['order' => $order->fresh(), 'polling' => true]);
 
         try {
             $order = $order->fresh();
-            if (!$order || !($order->status === 'pending' || ($order->status === 'received' && empty($order->sms_code)))) {
+            if (!$order) return response()->json(['error' => 'Order not found.'], 404);
+
+            // DaisySMS extra activations are independent rentals. Poll their activation ID
+            // separately and never overwrite the first SMS code/message.
+            if (($order->provider_key ?? null) === 'daisysms' && !empty($order->daisy_extra_activation_id)
+                && empty($order->daisy_extra_sms_code)
+                && !in_array($order->daisy_extra_activation_status, ['failed', 'canceled'], true)) {
+                $extraCheck = $this->daisysms->checkOrder((string) $order->daisy_extra_activation_id);
+                $extraStatus = (int) ($extraCheck['status'] ?? 1);
+
+                if ($extraStatus === 3) {
+                    $extraCode = $extraCheck['sms_code'] ?? $extraCheck['sms'] ?? $extraCheck['code'] ?? '';
+                    $extraText = $extraCheck['full_sms'] ?? $extraCheck['sms_text'] ?? $extraCode;
+                    if (is_array($extraCode)) $extraCode = $extraCode['code'] ?? $extraCode['sms'] ?? '';
+                    $extraCode = trim((string) $extraCode);
+                    $extraText = is_scalar($extraText) ? trim((string) $extraText) : '';
+                    if ($extraCode === '' && $extraText !== '') {
+                        $decoded = trim(strip_tags(html_entity_decode($extraText, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+                        if (preg_match('/(?:code|otp|verification)\\D{0,50}(\\d{3,10})/i', $decoded, $matches)
+                            || preg_match('/\\b\\d{3,10}\\b/', $decoded, $matches)) {
+                            $extraCode = $matches[1] ?? $matches[0] ?? '';
+                        }
+                    }
+                    if ($extraCode !== '') {
+                        DB::transaction(function () use ($order, $extraCode, $extraText) {
+                            $locked = VirtualNumberOrder::whereKey($order->id)->lockForUpdate()->first();
+                            if ($locked && empty($locked->daisy_extra_sms_code)) {
+                                $locked->update([
+                                    'daisy_extra_sms_code' => $extraCode,
+                                    'daisy_extra_sms_text' => $extraText !== '' ? $extraText : $extraCode,
+                                    'daisy_extra_activation_status' => 'received',
+                                ]);
+                            }
+                        });
+                    }
+                } elseif (in_array($extraStatus, [2, 5, 6], true)) {
+                    VirtualNumberOrder::whereKey($order->id)
+                        ->whereNull('daisy_extra_sms_code')
+                        ->update(['daisy_extra_activation_status' => 'failed']);
+                } else {
+                    VirtualNumberOrder::whereKey($order->id)->update([
+                        'daisy_extra_activation_status' => $order->daisy_extra_activation_status === 'waiting' ? 'waiting' : 'ready',
+                    ]);
+                }
+
+                $order = $order->fresh();
+            }
+
+            // Once the original SMS exists, only the additional activation needs polling.
+            if ($order->status === 'received' && !empty($order->sms_code)) {
+                return response()->json(['order' => $order]);
+            }
+            if ($order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
                 return response()->json(['order' => $order]);
             }
 
@@ -1097,18 +1148,10 @@ class VirtualNumberController extends Controller
             if ($status === 3) {
                 $smsCode = $checkData['sms'] ?? $checkData['sms_code'] ?? $checkData['code'] ?? '';
                 $fullSms = $checkData['full_sms'] ?? $checkData['sms_text'] ?? $smsCode;
-                if (is_array($smsCode)) {
-                    $smsCode = $smsCode['code'] ?? $smsCode['sms'] ?? '';
-                }
+                if (is_array($smsCode)) $smsCode = $smsCode['code'] ?? $smsCode['sms'] ?? '';
                 $smsCode = trim((string) $smsCode);
                 $fullSms = is_scalar($fullSms) ? trim((string) $fullSms) : '';
-
-                // Decode provider HTML entities before extracting the OTP. Providers
-                // may return escaped SMS content (e.g. &amp;lt;...&amp;gt;).
-                $decodedSms = html_entity_decode($fullSms, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                $decodedSms = trim(strip_tags($decodedSms));
-
-                // Some provider responses expose the message but not a separate code.
+                $decodedSms = trim(strip_tags(html_entity_decode($fullSms, ENT_QUOTES | ENT_HTML5, 'UTF-8')));
                 if ($smsCode === '' && $decodedSms !== '') {
                     if (preg_match('/(?:code|验证码|otp|verification)\\D{0,50}(\\d{3,10})/i', $decodedSms, $matches)) {
                         $smsCode = $matches[1];
@@ -1116,7 +1159,6 @@ class VirtualNumberController extends Controller
                         $smsCode = $matches[0];
                     }
                 }
-
                 if ($smsCode !== '') {
                     DB::transaction(function () use ($order, $smsCode, $fullSms) {
                         $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
@@ -1130,9 +1172,7 @@ class VirtualNumberController extends Controller
                     });
                 } else {
                     Log::warning('Provider reported SMS received but no code was extractable; keeping order recoverable.', [
-                        'order_id' => $order->id,
-                        'server' => $order->server,
-                        'response_keys' => array_keys($checkData),
+                        'order_id' => $order->id, 'server' => $order->server, 'response_keys' => array_keys($checkData),
                     ]);
                 }
             } elseif (in_array($status, [2, 5, 6], true) && $order->status === 'pending') {
@@ -1140,7 +1180,7 @@ class VirtualNumberController extends Controller
             }
 
             return response()->json(['order' => $order->fresh()]);
-        } catch (\Exception $e) {
+        } catch (\\Exception $e) {
             Log::error('Virtual number checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to check status.'], 500);
         } finally {
