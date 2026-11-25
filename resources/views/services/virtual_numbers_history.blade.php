@@ -37,7 +37,7 @@
                                 <div class="fw-bold">{{ $order->product }}</div>
                                 <div class="d-flex align-items-center gap-1">
                                     <small class="text-muted">{{ $order->country }}</small>
-                                    <span class="badge {{ $order->server === 'server2' ? 'bg-secondary' : 'bg-danger' }} text-white" style="font-size: 0.62rem; padding: 2px 6px;">{{ $order->server === 'server2' ? 'Server 2' : 'Server 1 (HOT)' }}</span>
+                                    <span class="badge {{ $order->server === 'server2' ? 'bg-secondary' : ($order->server === 'server3' ? 'bg-primary' : 'bg-danger') }} text-white" style="font-size: 0.62rem; padding: 2px 6px;">{{ $order->server === 'server3' ? 'Server 3' : ($order->server === 'server2' ? 'Server 2' : 'Server 1 (HOT)') }}</span>
                                 </div>
                             </td>
                             <td class="fw-bold text-nowrap">
