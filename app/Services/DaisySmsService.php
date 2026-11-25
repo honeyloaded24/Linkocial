@@ -77,6 +77,59 @@ class DaisySmsService
         return null;
     }
 
+
+    /**
+     * Return the live service identifiers and offers for the configured account.
+     * This is an admin-only diagnostic; it does not enable or change routing.
+     */
+    public function getCatalogueForCountry(string $country): array
+    {
+        if ($country !== self::USA_COUNTRY_ID) {
+            return [];
+        }
+
+        $catalogue = $this->decoded($this->request(['action' => 'getPricesVerification']));
+        if (!$catalogue) {
+            $catalogue = $this->decoded($this->request(['action' => 'getPrices']));
+        }
+
+        $rows = [];
+        // getPricesVerification: service => country => offer.
+        foreach ($catalogue as $serviceCode => $countries) {
+            if (is_array($countries) && isset($countries[$country]) && is_array($countries[$country])) {
+                $offer = $countries[$country];
+                if (array_key_exists('cost', $offer) || array_key_exists('count', $offer)) {
+                    $rows[(string) $serviceCode] = [
+                        'service_code' => (string) $serviceCode,
+                        'country_id' => $country,
+                        'cost_usd' => isset($offer['cost']) ? (float) $offer['cost'] : null,
+                        'stock' => isset($offer['count']) ? (int) $offer['count'] : null,
+                        'multi' => isset($offer['multi']) ? (int) $offer['multi'] : null,
+                    ];
+                }
+            }
+        }
+
+        // getPrices: country => service => offer.
+        if (isset($catalogue[$country]) && is_array($catalogue[$country])) {
+            foreach ($catalogue[$country] as $serviceCode => $offer) {
+                if (!is_array($offer) || (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer))) {
+                    continue;
+                }
+                $rows[(string) $serviceCode] = [
+                    'service_code' => (string) $serviceCode,
+                    'country_id' => $country,
+                    'cost_usd' => isset($offer['cost']) ? (float) $offer['cost'] : null,
+                    'stock' => isset($offer['count']) ? (int) $offer['count'] : null,
+                    'multi' => isset($offer['multi']) ? (int) $offer['multi'] : null,
+                ];
+            }
+        }
+
+        ksort($rows);
+        return array_values($rows);
+    }
+
     public function getPricesForCountry(string $country): array
     {
         if ($country !== self::USA_COUNTRY_ID) {
