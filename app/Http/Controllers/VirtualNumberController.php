@@ -1429,6 +1429,7 @@ class VirtualNumberController extends Controller
     {
         $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v4_{$country}", default => "smspool_prices_{$country}" };
         $cached = Cache::get($cacheKey);
+
         if ($cached && is_array($cached) && !empty($cached)) {
             $pricesData = $cached;
         } else {
@@ -1437,28 +1438,21 @@ class VirtualNumberController extends Controller
                 if (!empty($pricesData) && is_array($pricesData)) {
                     Cache::put($cacheKey, $pricesData, $server === 'server3' ? 5 : 60);
                 }
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 Log::error("Failed fetching prices for country {$country} on {$server}: " . $e->getMessage());
                 if ($server === 'server3') throw $e;
                 return [];
             }
         }
 
-        if ($server === 'server3' && (string) $country === DaisySmsService::USA_COUNTRY_ID) {
-            $daisyRows = $this->daisysms->getPricesForCountry((string) $country);
+        if ($server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID) {
+            $daisyRows = $this->daisysms->getPricesForCountry($country);
             $routedCodes = array_keys(DaisySmsService::ROUTED_SERVICES);
             $pricesData = array_values(array_filter($pricesData, fn ($row) => !in_array((string) ($row['service'] ?? ''), $routedCodes, true)));
             $pricesData = array_merge($pricesData, $daisyRows);
         }
 
         return $pricesData ?: [];
-        } catch (\Throwable $e) {
-            Log::error("Failed fetching prices for country {$country} on {$server}: " . $e->getMessage());
-            if ($server === 'server3') {
-                throw $e;
-            }
-            return [];
-        }
     }
 
     /**
