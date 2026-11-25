@@ -100,6 +100,17 @@ class DaisySmsServiceTest extends TestCase
         $this->assertSame('Your code is 654321', $status['full_sms']);
     }
 
+    public function test_status_waiting_is_treated_as_waiting_for_extra_activation(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('STATUS_WAITING', 200),
+        ]);
+
+        $status = app(DaisySmsService::class)->checkOrder('act-next');
+
+        $this->assertSame(['status' => 1], $status);
+    }
+
     public function test_extra_activation_can_be_requested_immediately(): void
     {
         Http::fake([
