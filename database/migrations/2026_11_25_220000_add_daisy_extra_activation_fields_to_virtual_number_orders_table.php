@@ -12,9 +12,7 @@ return new class extends Migration
             $table->string('daisy_extra_activation_id')->nullable();
             $table->string('daisy_extra_activation_status', 24)->nullable();
             $table->timestamp('daisy_extra_activation_requested_at')->nullable();
-            $table->decimal('daisy_extra_activation_fee',
-                'daisy_extra_sms_code',
-                'daisy_extra_sms_text', 12, 4)->default(0);
+            $table->decimal('daisy_extra_activation_fee', 12, 4)->default(0);
             $table->string('daisy_extra_sms_code')->nullable();
             $table->text('daisy_extra_sms_text')->nullable();
         });
@@ -28,6 +26,8 @@ return new class extends Migration
                 'daisy_extra_activation_status',
                 'daisy_extra_activation_requested_at',
                 'daisy_extra_activation_fee',
+                'daisy_extra_sms_code',
+                'daisy_extra_sms_text',
             ]);
         });
     }
