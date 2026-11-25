@@ -67,7 +67,7 @@ class AdminVirtualNumberController extends Controller
     /**
      * Force refund/cancel an order
      */
-    public function refund($id, SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly, \App\Services\SmsBowerService $smsbower)
+    public function refund($id, SmsPoolService $smspool, \App\Services\GrizzlySmsService $grizzly, \App\Services\SmsBowerService $smsbower, \App\Services\DaisySmsService $daisysms)
     {
         try {
             DB::beginTransaction();
@@ -95,10 +95,14 @@ class AdminVirtualNumberController extends Controller
                 return back()->with('error', 'Only pending virtual-number orders without received SMS can be refunded.');
             }
 
-            $provider = match ($order->server) {
-                'server2' => $grizzly,
-                'server3' => $smsbower,
-                default => $smspool,
+            $provider = match ($order->provider_key ?? null) {
+                'daisysms' => $daisysms,
+                'smsbower' => $smsbower,
+                default => match ($order->server) {
+                    'server2' => $grizzly,
+                    'server3' => $smsbower,
+                    default => $smspool,
+                },
             };
             $provider->cancelOrder($order->api_order_id);
 
