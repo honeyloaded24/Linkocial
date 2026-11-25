@@ -1197,14 +1197,136 @@ class VirtualNumberController extends Controller
             ->whereIn('status', ['received', 'pending'])
             ->findOrFail($id);
 
-        // Prevent duplicate resend calls for the same order from concurrent requests.
         $resendLock = Cache::lock("vn_order_action_{$order->id}", 60);
         if (!$resendLock->get()) {
             return response()->json(['error' => 'A resend request is already in progress for this order.'], 409);
         }
 
+        $feeReference = 'VN-EXTRA-DEBIT-' . $order->id;
+        $refundReference = 'VN-EXTRA-REFUND-' . $order->id;
+
         try {
-            // Recheck eligibility under a row lock before contacting the provider.
+            $order = $order->fresh();
+
+            if (($order->provider_key ?? null) === 'daisysms') {
+                if ($order->status !== 'received' || empty($order->sms_code)) {
+                    return response()->json(['error' => 'Receive the first SMS before requesting another SMS.'], 409);
+                }
+                if (!empty($order->daisy_extra_activation_id) ||
+                    in_array($order->daisy_extra_activation_status, ['requested', 'waiting', 'ready', 'unknown'], true)) {
+                    return response()->json(['error' => 'An additional SMS has already been requested for this number.'], 409);
+                }
+
+                // Pass through exactly USD $0.20 at the configured virtual-number
+                // exchange rate. No virtual-number markup is added.
+                $feeNgn = round(0.20 * max(1.0, $this->getProviderRate()), 4);
+
+                $charged = DB::transaction(function () use ($order, $feeNgn, $feeReference) {
+                    $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
+                    if (!$lockedOrder || $lockedOrder->provider_key !== 'daisysms' ||
+                        $lockedOrder->status !== 'received' || empty($lockedOrder->sms_code) ||
+                        !empty($lockedOrder->daisy_extra_activation_id) ||
+                        in_array($lockedOrder->daisy_extra_activation_status, ['requested', 'waiting', 'ready', 'unknown'], true)) {
+                        return ['ok' => false, 'message' => 'This number is not eligible for another SMS request.'];
+                    }
+
+                    $user = \\App\\Models\\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
+                    if (!$user || !$user->deductBalance($feeNgn)) {
+                        return ['ok' => false, 'message' => 'Insufficient wallet balance for the additional SMS fee of ' . money($feeNgn) . '.'];
+                    }
+
+                    Transaction::add(
+                        $user->id,
+                        $feeNgn,
+                        'debit',
+                        'virtual_number',
+                        'Additional SMS request fee (USD 0.20)',
+                        $feeReference
+                    );
+
+                    $lockedOrder->update([
+                        'daisy_extra_activation_status' => 'requesting',
+                        'daisy_extra_activation_requested_at' => now(),
+                        'daisy_extra_activation_fee' => $feeNgn,
+                    ]);
+
+                    return ['ok' => true];
+                });
+
+                if (!$charged['ok']) {
+                    return response()->json(['error' => $charged['message']], 409);
+                }
+
+                try {
+                    $extra = $this->daisysms->requestExtraActivation((string) $order->api_order_id);
+                } catch (\\App\\Exceptions\\ProviderTimeoutException $timeout) {
+                    // The provider may have accepted the request before the connection
+                    // was interrupted. Keep the fee and mark the attempt for reconciliation.
+                    VirtualNumberOrder::whereKey($order->id)->update([
+                        'daisy_extra_activation_status' => 'unknown',
+                    ]);
+                    Log::warning('DaisySMS extra activation outcome is unknown after timeout.', [
+                        'order_id' => $order->id,
+                        'error' => $timeout->getMessage(),
+                    ]);
+                    return response()->json([
+                        'error' => 'The additional SMS request is being verified. The fee has been reserved to prevent a duplicate request. Refresh this order shortly.',
+                        'status' => 'unknown',
+                    ], 202);
+                } catch (\\Throwable $providerError) {
+                    DB::transaction(function () use ($order, $feeNgn, $refundReference, $feeReference) {
+                        $lockedOrder = VirtualNumberOrder::whereKey($order->id)->lockForUpdate()->first();
+                        if (!$lockedOrder || $lockedOrder->daisy_extra_activation_status !== 'requesting') {
+                            return;
+                        }
+
+                        $user = \\App\\Models\\User::whereKey($lockedOrder->user_id)->lockForUpdate()->first();
+                        if ($user) {
+                            $user->addBalance($feeNgn);
+                            Transaction::add(
+                                $user->id,
+                                $feeNgn,
+                                'credit',
+                                'refund',
+                                'Reversal of unsuccessful additional SMS request fee',
+                                $refundReference
+                            );
+                        }
+
+                        $lockedOrder->update([
+                            'daisy_extra_activation_status' => 'failed',
+                            'daisy_extra_activation_fee' => 0,
+                        ]);
+                    });
+
+                    Log::warning('DaisySMS extra activation request failed; fee reversed.', [
+                        'order_id' => $order->id,
+                        'error' => $providerError->getMessage(),
+                    ]);
+                    return response()->json([
+                        'error' => $providerError->getMessage() ?: 'The additional SMS request failed. Your fee has been refunded.',
+                        'fee_refunded' => true,
+                    ], 400);
+                }
+
+                VirtualNumberOrder::whereKey($order->id)->update([
+                    'daisy_extra_activation_id' => $extra['activation_id'],
+                    'daisy_extra_activation_status' => $extra['status'],
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $extra['status'] === 'waiting'
+                        ? 'Your additional SMS request is queued. The fee has been charged.'
+                        : 'Your additional SMS request is ready. Waiting for the new code.',
+                    'extra_sms_status' => $extra['status'],
+                    'ready_at' => $extra['ready_at'],
+                    'fee' => $feeNgn,
+                    'formatted_fee' => money($feeNgn),
+                    'order' => $order->fresh(),
+                ]);
+            }
+
             $eligible = DB::transaction(function () use ($order) {
                 $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
                 return $lockedOrder && in_array($lockedOrder->status, ['received', 'pending'], true);
@@ -1214,31 +1336,21 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'This order is no longer eligible for SMS resend.'], 409);
             }
 
-            if (($order->provider_key ?? null) === 'daisysms') {
-                return response()->json(['error' => 'SMS resend is not supported for this Server 3 rental.'], 409);
-            }
             $provider = $this->getOrderProvider($order);
             $resendData = $provider->resendOrder($order->api_order_id);
 
-            // Only transition back to pending if it is still eligible. Do not overwrite
-            // a concurrent terminal state or a status update made while the provider call ran.
             $updated = DB::transaction(function () use ($order) {
                 $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
                 if (!$lockedOrder || !in_array($lockedOrder->status, ['received', 'pending'], true)) {
                     return false;
                 }
-
-                $lockedOrder->update([
-                    'status' => 'pending',
-                    'sms_code' => null,
-                ]);
+                $lockedOrder->update(['status' => 'pending', 'sms_code' => null]);
                 return true;
             });
 
             if (!$updated) {
-                Log::warning('Provider accepted resend but local order state changed concurrently', ['order_id' => $order->id]);
                 return response()->json([
-                    'error' => 'The provider accepted the resend, but this order changed concurrently. Refresh order history before taking further action.',
+                    'error' => 'The provider accepted the resend, but this order changed concurrently. Refresh order history.',
                     'provider_resend_confirmed' => true,
                 ], 409);
             }
@@ -1248,11 +1360,9 @@ class VirtualNumberController extends Controller
                 'message' => $resendData['message'] ?? 'SMS resend requested successfully. Waiting for new code.',
                 'order' => $order->fresh(),
             ]);
-        } catch (\Exception $e) {
+        } catch (\\Throwable $e) {
             Log::error('Virtual number resendOrder exception', ['order_id' => $order->id, 'error' => $e->getMessage()]);
-            return response()->json([
-                'error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'
-            ], 400);
+            return response()->json(['error' => $e->getMessage() ?: 'Could not request SMS resend at this time.'], 400);
         } finally {
             $resendLock->release();
         }
