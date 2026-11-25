@@ -295,7 +295,7 @@ class DaisySmsService
                 'full_sms' => $response->header('X-Text') ?: $code,
             ];
         }
-        if ($body === 'STATUS_WAIT_CODE') {
+        if (in_array($body, ['STATUS_WAIT_CODE', 'STATUS_WAITING'], true)) {
             return ['status' => 1];
         }
         if ($body === 'STATUS_CANCEL') {
