@@ -804,6 +804,35 @@ class VirtualNumberController extends Controller
 
             // Extract order details
             $apiOrderId = $buyResponse['order_id'] ?? null;
+
+            // A confirmed rental without a verifiable effective price must remain
+            // unresolved. Preserve its activation and number; never refund it as failed.
+            if ($apiOrderId && $this->isDaisyService($server, (string) $country, (string) $productId) && !empty($buyResponse['price_unverified'])) {
+                $rawPhone = trim((string) ($buyResponse['phonenumber'] ?? ''));
+                $digits = preg_replace('/\\D+/', '', $rawPhone);
+                $safePhone = str_starts_with($rawPhone, '+') ? '+' . $digits : ($digits !== '' ? '+' . $digits : 'PENDING');
+
+                DB::transaction(function () use ($attemptRecord, $apiOrderId, $safePhone, $buyResponse) {
+                    $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                    if ($lockedOrder && $lockedOrder->status === 'processing') {
+                        $lockedOrder->update([
+                            'api_order_id' => (string) $apiOrderId,
+                            'phone_number' => $safePhone,
+                            'status' => 'unresolved',
+                            'provider_cost' => 0,
+                            'provider_quote_usd' => (float) ($buyResponse['provider_quote_usd'] ?? 0),
+                            'sms_text' => 'Provider confirmed the rental but omitted its effective price header. Activation preserved; funds retained for reconciliation. No automatic refund.',
+                        ]);
+                    }
+                });
+
+                return response()->json([
+                    'error' => 'The carrier issued the number but did not return a verifiable price. Your payment is retained while the order is reconciled.',
+                    'order_id' => $attemptRecord->id,
+                    'status' => 'unresolved',
+                ], 202);
+            }
+
             if ($apiOrderId && empty($buyResponse['phonenumber'])) {
                 // Activation ID confirms provider-side purchase, but without a phone
                 // number the activation cannot safely be presented as usable.
