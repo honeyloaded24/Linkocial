@@ -139,7 +139,7 @@ class AdminVirtualNumberController extends Controller
             'daisysms_api_key' => 'required|string|max:500',
         ]);
 
-        \App\\Models\\Setting::set('daisysms_api_key', trim($validated['daisysms_api_key']));
+        \App\Models\Setting::set('daisysms_api_key', trim($validated['daisysms_api_key']));
 
         return redirect()->route('hq.virtual-numbers.pricing')
             ->with('success', 'DaisySMS API key saved securely. Server 3 routing has not been changed.');
