@@ -262,16 +262,15 @@ class DaisySmsService
         }
 
         $actualPrice = (float) ($response->header('X-Price') ?? 0);
-        if ($actualPrice <= 0) {
-            // Never guess provider spend if DaisySMS omits its documented effective-price header.
-            throw new \RuntimeException('Server 3 returned a number without a verifiable provider price. Order requires reconciliation.');
-        }
 
         return [
             'order_id' => $matches[1],
             'phonenumber' => $matches[2],
-            'cost' => $actualPrice,
-            'provider_cost' => $actualPrice,
+            // ACCESS_NUMBER confirms a provider rental. Missing X-Price must be
+            // reconciled, not thrown as a failed purchase that could be refunded.
+            'cost' => $actualPrice > 0 ? $actualPrice : 0.0,
+            'provider_cost' => $actualPrice > 0 ? $actualPrice : 0.0,
+            'price_unverified' => $actualPrice <= 0,
             'provider_quote_usd' => $maxPrice,
             'provider_supplier_id' => null,
             'provider_returned_operator' => null,
