@@ -285,7 +285,7 @@ class SmsBowerService
 
     public function getPricesForCountry(string|int $country): array
     {
-        $cacheKey = 'smsbower_gold_middle_catalogue_v3_' . $country;
+        $cacheKey = 'smsbower_gold_middle_catalogue_v4_' . $country;
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
@@ -313,7 +313,7 @@ class SmsBowerService
                     $responses = Http::pool(function (Pool $pool) use ($batch) {
                         $pending = [];
                         foreach ($batch as $code) {
-                            $pending[] = $pool->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
+                            $pending[$code] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
                                 'api_key' => $this->apiKey,
                                 'action' => 'getTopCountriesByService',
                                 'service' => $code,
@@ -322,10 +322,10 @@ class SmsBowerService
                         return $pending;
                     });
 
-                    foreach ($batch as $index => $code) {
-                        // Requests are intentionally left numerically indexed above,
-                        // so pooled responses map to the same numeric positions.
-                        $response = $responses[$index] ?? null;
+                    foreach ($batch as $code) {
+                        // Each request is explicitly keyed by its service code
+                        // through Pool::as(), so read the matching keyed response.
+                        $response = $responses[$code] ?? null;
                         if (!$response || !$response->successful()) {
                             Log::warning('Server 3 Gold catalogue request failed.', [
                                 'service' => $code, 'country' => $country,
