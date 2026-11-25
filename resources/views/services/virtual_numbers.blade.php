@@ -946,8 +946,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 .catch(err => {
                     console.error('Failed to request resend:', err);
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
-                    alertBox.textContent = 'Network error while requesting resend. Please try again.';
+                    btn.innerHTML = btn.title && btn.title.includes('USD $0.20')
+                        ? '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted'
+                        : '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+                    alertBox.textContent = 'Network error while requesting resend. Please check the order status before trying again.';
                     alertBox.classList.remove('d-none');
                 });
             });
