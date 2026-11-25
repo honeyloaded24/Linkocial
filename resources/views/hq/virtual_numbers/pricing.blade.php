@@ -401,6 +401,32 @@
             </div>
         </div>
     </div>
+
+    <!-- Optional Server 3 provider credential -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="premium-card p-4 shadow-sm">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">DaisySMS API Configuration</h5>
+                        <p class="text-muted small mb-0">Optional alternate provider credential for the selected Server 3 services. Saving this key does not enable routing.</p>
+                    </div>
+                    <span class="badge {{ $hasDaisySmsKey ? 'bg-success' : 'bg-secondary' }} rounded-pill px-3 py-2">
+                        {{ $hasDaisySmsKey ? 'API key configured' : 'API key not configured' }}
+                    </span>
+                </div>
+                <form action="{{ route('hq.virtual-numbers.daisysms-key.update') }}" method="POST">
+                    @csrf
+                    <label for="daisysms_api_key" class="form-label fw-bold small text-muted text-uppercase">DaisySMS API Key</label>
+                    <div class="input-group">
+                        <input type="password" name="daisysms_api_key" id="daisysms_api_key" class="form-control" autocomplete="new-password" placeholder="{{ $hasDaisySmsKey ? 'Key is saved. Enter a new key to replace it.' : 'Enter DaisySMS API key' }}" required>
+                        <button type="submit" class="btn btn-info text-white fw-bold px-4">Save API Key</button>
+                    </div>
+                    <div class="form-text">The saved key is never displayed. Use the official <code>daisysms.io</code> API only. Do not paste the key into chat.</div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
