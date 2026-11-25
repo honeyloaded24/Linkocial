@@ -19,24 +19,29 @@ class DaisySmsServiceTest extends TestCase
         Setting::set('daisysms_api_key', 'test-daisy-key');
     }
 
-    public function test_flat_usa_catalogue_exposes_only_the_four_routed_services(): void
+    public function test_flat_usa_catalogue_exposes_only_the_four_confirmed_routed_services_and_live_offer_fields(): void
     {
         Http::fake([
             'daisysms.io/*' => Http::response([
-                'whatsapp' => ['cost' => 1.60, 'count' => 830, 'multi' => 0],
-                'whatsapp_canada' => ['cost' => 0.30, 'count' => 658, 'multi' => 1],
-                'telegram' => ['cost' => 0.92, 'count' => 223, 'multi' => 0],
-                'telegram_canada' => ['cost' => 0.42, 'count' => 540, 'multi' => 0],
+                'whatsapp' => ['cost' => 1.60, 'count' => 279, 'multi' => 0],
+                'whatsapp_canada' => ['cost' => 0.60, 'count' => 821, 'multi' => 1],
+                'telegram' => ['cost' => 0.92, 'count' => 893, 'multi' => 1],
+                'telegram_canada' => ['cost' => 0.42, 'count' => 471, 'multi' => 1],
                 'facebook' => ['cost' => 0.90, 'count' => 320, 'multi' => 0],
             ], 200),
         ]);
 
-        $rows = app(DaisySmsService::class)->getPricesForCountry('187');
+        $rows = collect(app(DaisySmsService::class)->getPricesForCountry('187'))->keyBy('service');
 
         $this->assertCount(4, $rows);
-        $this->assertSame(['telegram', 'telegram_canada', 'whatsapp', 'whatsapp_canada'], collect($rows)->pluck('service')->sort()->values()->all());
-        $this->assertSame(1.60, $rows[0]['price']);
-        $this->assertSame(830, $rows[0]['stock']);
+        $this->assertSame(1.60, $rows['whatsapp']['price']);
+        $this->assertSame(279, $rows['whatsapp']['stock']);
+        $this->assertSame(0.60, $rows['whatsapp_canada']['price']);
+        $this->assertSame(821, $rows['whatsapp_canada']['stock']);
+        $this->assertSame(0.92, $rows['telegram']['price']);
+        $this->assertSame(893, $rows['telegram']['stock']);
+        $this->assertSame(0.42, $rows['telegram_canada']['price']);
+        $this->assertSame(471, $rows['telegram_canada']['stock']);
     }
 
     public function test_non_usa_catalogue_is_not_requested_from_daisy_sms(): void
@@ -66,7 +71,6 @@ class DaisySmsServiceTest extends TestCase
                 && $request['api_key'] === 'test-daisy-key';
         });
     }
-
 
     public function test_successful_activation_without_price_header_is_preserved_for_reconciliation(): void
     {
