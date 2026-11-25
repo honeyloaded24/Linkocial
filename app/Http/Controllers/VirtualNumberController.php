@@ -1230,7 +1230,7 @@ class VirtualNumberController extends Controller
                         return ['ok' => false, 'message' => 'This number is not eligible for another SMS request.'];
                     }
 
-                    $user = \App\Models\\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
+                    $user = \App\Models\User::where('id', $lockedOrder->user_id)->lockForUpdate()->first();
                     if (!$user || !$user->deductBalance($feeNgn)) {
                         return ['ok' => false, 'message' => 'Insufficient wallet balance for the additional SMS fee of ' . money($feeNgn) . '.'];
                     }
@@ -1259,7 +1259,7 @@ class VirtualNumberController extends Controller
 
                 try {
                     $extra = $this->daisysms->requestExtraActivation((string) $order->api_order_id);
-                } catch (\App\Exceptions\\ProviderTimeoutException $timeout) {
+                } catch (\App\Exceptions\ProviderTimeoutException $timeout) {
                     // The provider may have accepted the request before the connection
                     // was interrupted. Keep the fee and mark the attempt for reconciliation.
                     VirtualNumberOrder::whereKey($order->id)->update([
@@ -1280,7 +1280,7 @@ class VirtualNumberController extends Controller
                             return;
                         }
 
-                        $user = \App\Models\\User::whereKey($lockedOrder->user_id)->lockForUpdate()->first();
+                        $user = \App\Models\User::whereKey($lockedOrder->user_id)->lockForUpdate()->first();
                         if ($user) {
                             $user->addBalance($feeNgn);
                             Transaction::add(
