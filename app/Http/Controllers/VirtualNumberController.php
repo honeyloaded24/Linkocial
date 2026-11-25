@@ -1180,7 +1180,7 @@ class VirtualNumberController extends Controller
             }
 
             return response()->json(['order' => $order->fresh()]);
-        } catch (\\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Virtual number checkStatus failed', ['order_id' => $order->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to check status.'], 500);
         } finally {
