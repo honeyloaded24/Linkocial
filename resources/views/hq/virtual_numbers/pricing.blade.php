@@ -422,7 +422,13 @@
                         <input type="password" name="daisysms_api_key" id="daisysms_api_key" class="form-control" autocomplete="new-password" placeholder="{{ $hasDaisySmsKey ? 'Key is saved. Enter a new key to replace it.' : 'Enter DaisySMS API key' }}" required>
                         <button type="submit" class="btn btn-info text-white fw-bold px-4">Save API Key</button>
                     </div>
-                    <div class="form-text">The saved key is never displayed. Use the official <code>daisysms.io</code> API only. Do not paste the key into chat.</div>
+                    <div class="form-text mb-3">The saved key is never displayed. Use the official <code>daisysms.io</code> API only. Do not paste the key into chat.</div>
+                    @if($hasDaisySmsKey)
+                        <a href="{{ route('hq.virtual-numbers.daisysms-catalogue') }}" target="_blank" rel="noopener" class="btn btn-outline-info fw-bold">
+                            <i class="fa-solid fa-list-check me-1"></i> Check Live USA Service Catalogue
+                        </a>
+                        <div class="form-text mt-2">Admin-only diagnostic. It displays live service identifiers, prices and stock; it does not enable routing or purchase a number.</div>
+                    @endif
                 </form>
             </div>
         </div>
