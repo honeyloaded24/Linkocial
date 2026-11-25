@@ -16,6 +16,7 @@ class VirtualNumberOrder extends Model
         'country',
         'operator',
         'server',
+        'provider_key',
         'product',
         'cost',
         'provider_cost',
