@@ -157,6 +157,7 @@ class AdminVirtualNumberController extends Controller
         $hasServer1 = !empty(\App\Models\Setting::get('smspool_api_key'));
         $hasServer2 = !empty(\App\Models\Setting::get('grizzly_api_key'));
         $hasServer3 = !empty(\App\Models\Setting::get('smsbower_api_key'));
+        $hasDaisySmsKey = !empty(\App\Models\Setting::get('daisysms_api_key'));
 
         return view('hq.virtual_numbers.pricing', compact(
             'settings',
