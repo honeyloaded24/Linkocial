@@ -741,7 +741,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (resendBtn && cardNode.dataset.supportsResend !== '0') {
             resendBtn.classList.remove('d-none');
             resendBtn.disabled = false;
-            resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+            resendBtn.innerHTML = resendBtn.title && resendBtn.title.includes('USD $0.20')
+                ? '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted'
+                : '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
         }
         
         const smsArea = cardNode.querySelector('.sms-area');
@@ -917,7 +919,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.error) {
                         btn.disabled = false;
-                        btn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
+                        btn.innerHTML = btn.title && btn.title.includes('USD $0.20')
+                            ? '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted'
+                            : '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
                         alertBox.textContent = data.error;
                         alertBox.classList.remove('d-none');
                         return;
