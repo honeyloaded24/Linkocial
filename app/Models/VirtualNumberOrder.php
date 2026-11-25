@@ -42,6 +42,15 @@ class VirtualNumberOrder extends Model
         return $this->attributes['api_order_id'] ?? null;
     }
 
+    protected $hidden = ['provider_key'];
+
+    protected $appends = ['supports_resend'];
+
+    public function getSupportsResendAttribute(): bool
+    {
+        return ($this->attributes['provider_key'] ?? null) !== 'daisysms';
+    }
+
     protected $casts = [
         'expires_at' => 'datetime',
         'created_at' => 'datetime',
