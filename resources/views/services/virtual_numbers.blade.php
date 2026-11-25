@@ -356,8 +356,8 @@
             
             <div class="mt-3 text-center d-flex justify-content-center align-items-center gap-2 flex-wrap action-buttons">
                 <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold cancel-btn">Cancel & Refund</button>
-                <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS. USD $0.20 converted to your wallet currency is deducted when tapped.">
-                    <i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted
+                <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS / Reuse this number">
+                    <i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse
                 </button>
             </div>
         </div>
@@ -800,6 +800,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         card.setAttribute('data-id', order.id);
         card.dataset.supportsResend = order.supports_resend === false ? '0' : '1';
+        if (order.resend_fee_notice) {
+            const feeButton = card.querySelector('.resend-btn');
+            if (feeButton) {
+                feeButton.title = order.resend_fee_notice;
+                feeButton.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted';
+            }
+        }
         const serviceName = order.product || order.service || 'Service';
         card.querySelector('.service-name').textContent = serviceName;
         card.querySelector('.service-name-inline').textContent = serviceName;
