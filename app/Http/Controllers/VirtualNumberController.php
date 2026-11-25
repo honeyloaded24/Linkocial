@@ -96,6 +96,10 @@ class VirtualNumberController extends Controller
 
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
+            if ($server === 'server3' && !collect($cached)->contains(fn ($row) => (string) ($row['ID'] ?? $row['id'] ?? '') === DaisySmsService::USA_COUNTRY_ID)) {
+                $cached[] = ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '+1'];
+                Cache::put($cacheKey, $cached, 86400);
+            }
             return response()->json($cached);
         }
 
