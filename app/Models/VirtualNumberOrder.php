@@ -52,7 +52,7 @@ class VirtualNumberOrder extends Model
 
     public function getSupportsResendAttribute(): bool
     {
-        return ($this->attributes['provider_key'] ?? null) !== 'daisysms';
+        return true;
     }
 
     protected $casts = [
