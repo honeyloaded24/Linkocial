@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide cancel button and show resend button
         cardNode.querySelector('.cancel-btn').classList.add('d-none');
         const resendBtn = cardNode.querySelector('.resend-btn');
-        if (resendBtn) {
+        if (resendBtn && cardNode.dataset.providerKey !== 'daisysms') {
             resendBtn.classList.remove('d-none');
             resendBtn.disabled = false;
             resendBtn.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
@@ -764,6 +764,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const card = clone.querySelector('.vn-order-item');
         
         card.setAttribute('data-id', order.id);
+        card.dataset.providerKey = order.provider_key || '';
         const serviceName = order.product || order.service || 'Service';
         card.querySelector('.service-name').textContent = serviceName;
         card.querySelector('.service-name-inline').textContent = serviceName;
