@@ -340,6 +340,18 @@
                 </div>
             </div>
 
+            <div class="extra-sms-panel mt-2 p-3 rounded-3 border d-none" style="border-color: var(--border-color, #cbd5e1) !important; background: var(--bg-surface, #fff);">
+                <div class="small fw-bold text-muted mb-1">Additional SMS</div>
+                <div class="extra-sms-waiting small text-muted">Your additional SMS request is being processed...</div>
+                <div class="extra-sms-result d-none text-center">
+                    <div class="extra-sms-text small text-muted mb-2"></div>
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <h4 class="extra-sms-code fw-bold text-success mb-0 user-select-all" style="font-family: monospace; cursor: pointer;" title="Tap to copy additional code"></h4>
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill copy-extra-sms-btn"><i class="fa-regular fa-copy me-1"></i> Copy Additional Code</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="resend-alert mt-2 text-center small text-danger d-none"></div>
             
             <div class="mt-3 text-center d-flex justify-content-center align-items-center gap-2 flex-wrap action-buttons">
@@ -756,6 +768,27 @@ document.addEventListener('DOMContentLoaded', function() {
         if (resendBtn) resendBtn.classList.add('d-none');
     }
 
+    function renderExtraSms(cardNode, order) {
+        const panel = cardNode.querySelector('.extra-sms-panel');
+        if (!panel || !order || (!order.daisy_extra_activation_id && !order.daisy_extra_sms_code)) return;
+        panel.classList.remove('d-none');
+        const waiting = panel.querySelector('.extra-sms-waiting');
+        const result = panel.querySelector('.extra-sms-result');
+        const code = (order.daisy_extra_sms_code || '').toString();
+        if (code) {
+            waiting.classList.add('d-none');
+            result.classList.remove('d-none');
+            panel.querySelector('.extra-sms-code').textContent = code;
+            panel.querySelector('.extra-sms-text').textContent = order.daisy_extra_sms_text || '';
+        } else {
+            result.classList.add('d-none');
+            waiting.classList.remove('d-none');
+            waiting.textContent = order.daisy_extra_activation_status === 'waiting'
+                ? 'Your additional SMS is queued and will be checked automatically.'
+                : 'Waiting for your additional SMS...';
+        }
+    }
+
     function addOrderCard(order) {
         emptyState.classList.add('d-none');
         
@@ -836,6 +869,13 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         card.querySelector('.copy-sms-btn')?.addEventListener('click', copySmsAction);
+        const copyExtraSms = () => {
+            const value = card.querySelector('.extra-sms-code')?.textContent.trim();
+            if (value) navigator.clipboard.writeText(value);
+        };
+        card.querySelector('.copy-extra-sms-btn')?.addEventListener('click', copyExtraSms);
+        card.querySelector('.extra-sms-code')?.addEventListener('click', copyExtraSms);
+        renderExtraSms(card, order);
         card.querySelector('.sms-code')?.addEventListener('click', copySmsAction);
         
         // Cancel btn
@@ -874,8 +914,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         return;
                     }
                     
-                    // Put into waiting state and restart polling
-                    showWaitingState(card, true);
+                    // DaisySMS adds a second activation on the same number. Keep the first
+                    // code visible and show a separate panel for the additional message.
+                    if (data.extra_sms_status) {
+                        renderExtraSms(card, {
+                            daisy_extra_activation_id: true,
+                            daisy_extra_activation_status: data.extra_sms_status
+                        });
+                    } else {
+                        showWaitingState(card, true);
+                    }
                     startPolling(order.id, card);
                 })
                 .catch(err => {
@@ -893,6 +941,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check order status
         if ((order.status === 'received' || order.status === 'finished') && order.sms_code) {
             showReceivedState(card, order.sms_code);
+            renderExtraSms(card, order);
+            if (order.daisy_extra_activation_id && !order.daisy_extra_sms_code) startPolling(order.id, card);
         } else {
             // Keep polling orders whose provider marked SMS received but whose code was not saved.
             startPolling(order.id, card);
@@ -907,6 +957,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(res => res.json())
                 .then(data => {
                     const status = data.order?.status;
+                    if (data.order) renderExtraSms(cardNode, data.order);
+                    if (data.order && data.order.daisy_extra_activation_id && !data.order.daisy_extra_sms_code) {
+                        // Continue polling the additional activation while preserving the original SMS.
+                        if (status === 'received' || status === 'finished') return;
+                    }
                     if (data.order && (status === 'received' || status === 'finished') && data.order.sms_code) {
                         clearInterval(activePolls[id]);
                         delete activePolls[id];
