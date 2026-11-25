@@ -738,7 +738,16 @@ class VirtualNumberController extends Controller
                 }
                 $noPurchaseDueToQuote = (!$isDaisyPurchase && $server === 'server3')
                     || str_contains($providerError, 'below the price of')
-                    || str_contains($providerError, 'suitable pool');
+                    || str_contains($providerError, 'suitable pool')
+                    || ($isDaisyPurchase && (
+                        str_contains($providerError, 'no numbers')
+                        || str_contains($providerError, 'max price exceeded')
+                        || str_contains($providerError, 'too many active rentals')
+                        || str_contains($providerError, 'insufficient')
+                        || str_contains($providerError, 'authentication failed')
+                        || str_contains($providerError, 'not enabled')
+                        || str_contains($providerError, 'spending limit')
+                    ));
 
                 if (isset($attemptRecord) && $attemptRecord) {
                     DB::beginTransaction();
