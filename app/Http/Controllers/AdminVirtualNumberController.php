@@ -161,6 +161,7 @@ class AdminVirtualNumberController extends Controller
                 'success' => true,
                 'country_id' => \App\Services\DaisySmsService::USA_COUNTRY_ID,
                 'services' => $daisysms->getCatalogueForCountry(\App\Services\DaisySmsService::USA_COUNTRY_ID),
+                'catalogue_diagnostics' => $daisysms->getCatalogueDiagnostics(),
                 'routing_enabled' => false,
                 'message' => 'Live catalogue only. No service routing or purchases were changed.',
             ]);
