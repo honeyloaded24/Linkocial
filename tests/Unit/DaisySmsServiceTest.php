@@ -34,7 +34,7 @@ class DaisySmsServiceTest extends TestCase
         $rows = app(DaisySmsService::class)->getPricesForCountry('187');
 
         $this->assertCount(4, $rows);
-        $this->assertSame(['whatsapp', 'telegram', 'whatsapp_canada', 'telegram_canada'], collect($rows)->pluck('service')->sort()->values()->all());
+        $this->assertSame(['telegram', 'telegram_canada', 'whatsapp', 'whatsapp_canada'], collect($rows)->pluck('service')->sort()->values()->all());
         $this->assertSame(1.60, $rows[0]['price']);
         $this->assertSame(830, $rows[0]['stock']);
     }
@@ -98,18 +98,15 @@ class DaisySmsServiceTest extends TestCase
 
     public function test_cancellation_requires_provider_confirmation(): void
     {
-        Http::fake([
-            'daisysms.io/*' => Http::response('ACCESS_CANCEL'),
-        ]);
+        $sequence = Http::sequence()
+            ->push('ACCESS_CANCEL', 200)
+            ->push('ACCESS_READY', 200);
+        Http::fake(['daisysms.io/*' => $sequence]);
 
         $this->assertSame(
             ['success' => true, 'status' => 'canceled'],
             app(DaisySmsService::class)->cancelOrder('act-123')
         );
-
-        Http::fake([
-            'daisysms.io/*' => Http::response('ACCESS_READY'),
-        ]);
 
         try {
             app(DaisySmsService::class)->cancelOrder('act-123');
