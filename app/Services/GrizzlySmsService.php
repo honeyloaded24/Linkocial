@@ -594,8 +594,8 @@ class GrizzlySmsService
 
         try {
             $response = Http::timeout(25)->get($this->baseUrl, $params);
-        } catch (\Illuminate\\Http\\Client\\ConnectionException $e) {
-            throw new \App\\Exceptions\\ProviderTimeoutException(
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            throw new \App\Exceptions\ProviderTimeoutException(
                 'Grizzly purchase outcome could not be confirmed after a connection interruption.',
                 0,
                 $e
@@ -658,7 +658,7 @@ class GrizzlySmsService
             'response' => substr($body, 0, 500),
         ]);
 
-        throw new \App\\Exceptions\\ProviderTimeoutException(
+        throw new \App\Exceptions\ProviderTimeoutException(
             'Grizzly returned an unrecognized purchase response. The activation outcome is unknown and requires reconciliation.'
         );
     }
