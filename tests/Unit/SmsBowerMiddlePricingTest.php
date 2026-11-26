@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\SmsBowerService;
+use App\Http\Controllers\VirtualNumberController;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
