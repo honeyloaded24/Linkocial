@@ -128,6 +128,7 @@
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server4" id="server-btn-4">
                                 <span class="server-dot server-dot-idle"></span>
                                 <span class="fw-bold">Server 4</span>
+                                <span class="badge bg-info ms-1 text-white" style="font-size: 0.58rem;">US &amp; Canada ONLY</span>
                             </button>
                         </div>
                         @endif
