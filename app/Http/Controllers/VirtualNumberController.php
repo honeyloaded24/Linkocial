@@ -31,12 +31,19 @@ class VirtualNumberController extends Controller
 
     protected function isDaisyService(string $server, string $country, string $product): bool
     {
-        if ($server !== 'server4' || !isset(DaisySmsService::SUPPORTED_COUNTRIES[$country]) || $product === '') return false;
+        if ($server !== 'server4' || !isset(DaisySmsService::SUPPORTED_COUNTRIES[$country]) || $product === '') {
+            return false;
+        }
 
         try {
             return collect($this->daisysms->getPricesForCountry($country))
                 ->contains(fn ($row) => (string) ($row['service'] ?? '') === $product);
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
+            Log::warning('DaisySMS live service validation failed.', [
+                'country' => $country,
+                'service' => $product,
+                'error' => $e->getMessage(),
+            ]);
             return false;
         }
     }
@@ -105,8 +112,21 @@ class VirtualNumberController extends Controller
         $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', 'server4' => 'daisysms_countries', default => 'smspool_countries' };
 
         if ($server === 'server4') {
-            if (empty(\App\Models\Setting::get('daisysms_api_key'))) return response()->json([]);
-            return response()->json([['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '1']]);
+            if (empty(\App\Models\Setting::get('daisysms_api_key'))) {
+                return response()->json([]);
+            }
+
+            try {
+                $countries = Cache::remember(
+                    'daisysms_countries_live_v2',
+                    now()->addMinutes(5),
+                    fn () => $this->daisysms->getAvailableCountries()
+                );
+                return response()->json($countries);
+            } catch (\Throwable $e) {
+                Log::warning('DaisySMS Server 4 country catalogue failed.', ['error' => $e->getMessage()]);
+                return response()->json(Cache::get('daisysms_countries_live_v2_stale', []));
+            }
         }
 
         $cached = Cache::get($cacheKey);
@@ -1726,7 +1746,7 @@ class VirtualNumberController extends Controller
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
         if ($server === 'server4') {
-            if ($country !== DaisySmsService::USA_COUNTRY_ID) return [];
+            if (!isset(DaisySmsService::SUPPORTED_COUNTRIES[$country])) return [];
             $cacheKey = "daisysms_prices_{$country}";
             $cached = Cache::get($cacheKey);
             if (is_array($cached) && !empty($cached)) return $cached;
@@ -1738,7 +1758,10 @@ class VirtualNumberController extends Controller
                     return $rows;
                 }
             } catch (\Throwable $e) {
-                Log::warning('DaisySMS Server 4 catalogue refresh failed.', ['country' => $country, 'error' => $e->getMessage()]);
+                Log::warning('DaisySMS Server 4 catalogue refresh failed.', [
+                    'country' => $country,
+                    'error' => $e->getMessage(),
+                ]);
             }
             return Cache::get($cacheKey . '_stale', []);
         }
