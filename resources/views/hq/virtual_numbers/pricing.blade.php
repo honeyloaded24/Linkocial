@@ -403,7 +403,7 @@
         </div>
     </div>
 
-    <!-- Optional Server 3 provider credential -->
+    <!-- Independent Server 4 provider credential -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="premium-card p-4 shadow-sm">
