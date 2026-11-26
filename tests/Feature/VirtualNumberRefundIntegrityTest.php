@@ -5,10 +5,12 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\VirtualNumberOrder;
+use App\Models\Setting;
 use App\Services\SmsPoolService;
 use App\Services\GrizzlySmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Tests\TestCase;
 
@@ -154,6 +156,69 @@ class VirtualNumberRefundIntegrityTest extends TestCase
 
         $this->assertSame(6768.76, (float) $customer->fresh()->balance);
         $this->assertSame(1, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
+    }
+
+    public function test_daisy_cancellation_sends_set_status_without_rate_limited_status_preflight_and_refunds_only_on_confirmation(): void
+    {
+        Setting::clearCache();
+        Setting::set('daisysms_api_key', 'test-daisy-key');
+
+        $customer = new User();
+        $customer->first_name = 'Daisy';
+        $customer->last_name = 'Customer';
+        $customer->username = 'daisy_cancel_customer';
+        $customer->email = 'daisy-cancel-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 0;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'act-daisy-cancel-123',
+            'phone_number' => '+12369020910',
+            'country' => '36',
+            'operator' => 'Server 4',
+            'server' => 'server4',
+            'provider_key' => 'daisysms',
+            'product' => 'WhatsApp Canada',
+            'cost' => 1840,
+            'provider_cost' => 0.60,
+            'status' => 'pending',
+        ]);
+
+        Transaction::create([
+            'user_id' => $customer->id,
+            'amount' => 1840,
+            'type' => 'debit',
+            'transaction_type' => 'virtual_number',
+            'balance_before' => 1840,
+            'balance_after' => 0,
+            'description' => 'Virtual Number Purchase (WhatsApp Canada - 36)',
+            'reference' => 'VN-DEBIT-' . $order->id,
+        ]);
+
+        Http::fake([
+            'daisysms.io/*' => Http::response('ACCESS_CANCEL', 200),
+        ]);
+
+        $this->actingAs($customer)
+            ->postJson('/api/virtual-numbers/' . $order->id . '/cancel')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        // Only setStatus=8 is sent. A getStatus preflight would trigger the
+        // RATE_LIMIT_EXCEEDED response shown by the customer.
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'setStatus'
+            && (string) $request['id'] === 'act-daisy-cancel-123'
+            && (string) $request['status'] === '8'
+            && !isset($request['text'])
+        );
+
+        $this->assertSame(1840.0, (float) $customer->fresh()->balance);
+        $this->assertSame('canceled', $order->fresh()->status);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
     }
 
     public function test_admin_refund_is_withheld_when_provider_cancellation_fails(): void
