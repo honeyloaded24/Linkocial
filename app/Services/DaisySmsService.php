@@ -71,7 +71,7 @@ class DaisySmsService
     protected function request(array $params, int $timeout = 20): Response
     {
         if (empty($this->apiKey)) {
-            throw new \RuntimeException('DaisySMS API key is not configured for Server 4.');
+            throw new \RuntimeException('This number service is temporarily unavailable. Please contact support.');
         }
 
         try {
@@ -79,7 +79,7 @@ class DaisySmsService
                 'api_key' => $this->apiKey,
             ], $params));
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            throw new \App\Exceptions\ProviderTimeoutException('DaisySMS request timed out or the connection was interrupted.', 0, $e);
+            throw new \App\Exceptions\ProviderTimeoutException('The number request timed out or the connection was interrupted.', 0, $e);
         }
 
         if (!$response->successful()) {
@@ -87,7 +87,7 @@ class DaisySmsService
             // state-changing request before returning the HTTP failure. Treat it
             // as ambiguous so callers retain the fee and block duplicate requests.
             throw new \App\Exceptions\ProviderTimeoutException(
-                'DaisySMS returned HTTP '.$response->status().'; request outcome could not be confirmed.'
+                'The number request outcome could not be confirmed.'
             );
         }
 
@@ -328,7 +328,7 @@ class DaisySmsService
     public function buyNumber(string $country, string $service, ?float $maxPrice = null, ?float $quotedPrice = null): array
     {
         if (!isset(self::SUPPORTED_COUNTRIES[$country]) || trim($service) === '') {
-            throw new \RuntimeException('This DaisySMS service is not currently available on Server 4 for the selected country.');
+            throw new \RuntimeException('This service is not currently available for the selected country.');
         }
         $params = [
             'action' => 'getNumber',
@@ -347,7 +347,7 @@ class DaisySmsService
         if (!preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
             $messages = [
                 'NO_NUMBERS' => 'No numbers are currently available for this service on Server 4.',
-                'MAX_PRICE_EXCEEDED' => 'DaisySMS max price exceeded the safe spending limit. Please request a fresh quote.',
+                'MAX_PRICE_EXCEEDED' => 'The current price exceeds the safe spending limit. Please refresh the quote.',
                 'TOO_MANY_ACTIVE_RENTALS' => 'Server 4 has reached its active rental limit. Please try again after an active rental is completed.',
                 'NO_MONEY' => 'Server 4 provider balance is insufficient.',
                 'BAD_KEY' => 'Server 4 API authentication failed. Please contact support.',
@@ -437,7 +437,7 @@ class DaisySmsService
     public function requestExtraActivation(string $activationId): array
     {
         if ($activationId === '') {
-            throw new \InvalidArgumentException('A valid DaisySMS activation is required.');
+            throw new \InvalidArgumentException('A valid number activation is required.');
         }
 
         $response = $this->request([
@@ -466,7 +466,7 @@ class DaisySmsService
         }
 
         $messages = [
-            'BAD_ID' => 'DaisySMS cannot provide another activation for this number. It may no longer be available.',
+            'BAD_ID' => 'Another SMS is not available for this number.',
             'NO_BALANCE' => 'Server 4 provider balance is insufficient for another SMS activation.',
         ];
 
@@ -479,7 +479,7 @@ class DaisySmsService
         // Unknown provider responses are not proof of rejection. DaisySMS may
         // have created the extra activation despite an unfamiliar response.
         throw new \App\Exceptions\ProviderTimeoutException(
-            'DaisySMS returned an unrecognized additional-activation response; outcome is unknown.'
+            'The additional SMS request outcome could not be confirmed.'
         );
     }
 
