@@ -52,13 +52,13 @@ class DaisySmsServiceTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_purchase_sends_the_service_code_and_maximum_price_and_reads_actual_price(): void
+    public function test_purchase_omits_optional_maximum_price_and_reads_actual_price(): void
     {
         Http::fake([
             'daisysms.io/*' => Http::response('ACCESS_NUMBER:act-123:+12025550123', 200, ['X-Price' => '1.60']),
         ]);
 
-        $result = app(DaisySmsService::class)->buyNumber('187', 'whatsapp', 1.75);
+        $result = app(DaisySmsService::class)->buyNumber('187', 'whatsapp');
 
         $this->assertSame('act-123', $result['order_id']);
         $this->assertSame('+12025550123', $result['phonenumber']);
@@ -67,9 +67,24 @@ class DaisySmsServiceTest extends TestCase
         Http::assertSent(function ($request) {
             return $request['action'] === 'getNumber'
                 && $request['service'] === 'whatsapp'
-                && $request['max_price'] === '1.75'
+                && !isset($request['max_price'])
                 && $request['api_key'] === 'test-daisy-key';
         });
+    }
+
+    public function test_purchase_can_still_send_an_explicit_maximum_price_when_requested(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('ACCESS_NUMBER:act-124:+12025550124', 200, ['X-Price' => '1.60']),
+        ]);
+
+        app(DaisySmsService::class)->buyNumber('187', 'telegram', 1.75);
+
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'getNumber'
+            && $request['service'] === 'telegram'
+            && $request['max_price'] === '1.75'
+        );
     }
 
     public function test_successful_activation_without_price_header_is_preserved_for_reconciliation(): void
