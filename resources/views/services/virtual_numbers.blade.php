@@ -119,7 +119,7 @@
                         <div class="col-6 col-md-3">
                             <button type="button" class="btn w-100 rounded-3 text-center server-toggle-btn" data-server="server3" id="server-btn-3">
                                 <span class="server-dot server-dot-idle"></span>
-                                <span class="fw-bold">Server 3</span>
+                                <span class="fw-bold">GLOBAL</span>
                             </button>
                         </div>
                         @endif
@@ -475,7 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
         countryTs.clearOptions();
         countryTs.clear();
         countryTs.disable();
-        const serverName = server === 'server2' ? 'Server 2' : (server === 'server3' ? 'Server 3' : (server === 'server4' ? 'Server 4' : 'Server 1'));
+        const serverName = server === 'server2' ? 'Server 2' : (server === 'server3' ? 'GLOBAL' : (server === 'server4' ? 'Server 4' : 'Server 1'));
         setTsPlaceholder(countryTs, `Loading ${serverName} countries...`);
 
         fetch(`/api/virtual-numbers/countries?server=${encodeURIComponent(server)}`)
@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const serverBadge = (order.server === 'server2')
             ? '<span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Server 2</span>'
             : (order.server === 'server3'
-                ? '<span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Server 3</span>'
+                ? '<span class="badge bg-primary ms-1" style="font-size: 0.65rem;">GLOBAL</span>'
                 : (order.server === 'server4'
                     ? '<span class="badge bg-info ms-1" style="font-size: 0.65rem;">Server 4</span>'
                     : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>'));
