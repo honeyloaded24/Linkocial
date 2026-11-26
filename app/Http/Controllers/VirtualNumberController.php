@@ -122,6 +122,9 @@ class VirtualNumberController extends Controller
                     now()->addMinutes(5),
                     fn () => $this->daisysms->getAvailableCountries()
                 );
+                if (!empty($countries)) {
+                    Cache::put('daisysms_countries_live_v2_stale', $countries, now()->addHours(12));
+                }
                 return response()->json($countries);
             } catch (\Throwable $e) {
                 Log::warning('DaisySMS Server 4 country catalogue failed.', ['error' => $e->getMessage()]);
