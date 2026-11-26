@@ -1269,7 +1269,7 @@ class VirtualNumberController extends Controller
                     if (!$lockedOrder || $lockedOrder->provider_key !== 'daisysms' ||
                         $lockedOrder->status !== 'received' || empty($lockedOrder->sms_code) ||
                         !empty($lockedOrder->daisy_extra_activation_id) ||
-                        in_array($lockedOrder->daisy_extra_activation_status, ['requested', 'waiting', 'ready', 'unknown'], true)) {
+                        in_array($lockedOrder->daisy_extra_activation_status, ['requesting', 'requested', 'waiting', 'ready', 'unknown'], true)) {
                         return ['ok' => false, 'message' => 'This number is not eligible for another SMS request.'];
                     }
 
@@ -1357,7 +1357,7 @@ class VirtualNumberController extends Controller
                         'daisy_extra_activation_id' => $extra['activation_id'],
                         'daisy_extra_activation_status' => $extra['status'],
                     ]);
-                } catch (\\Throwable $persistError) {
+                } catch (\Throwable $persistError) {
                     // The provider has confirmed a new activation, but its ID could
                     // not be persisted. Never refund or issue another request blindly.
                     VirtualNumberOrder::whereKey($order->id)->update([
