@@ -354,7 +354,7 @@ class DaisySmsServiceTest extends TestCase
         try {
             app(DaisySmsService::class)->cancelOrder('act-code-received');
             $this->fail('A received SMS must never be refunded.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('already received an SMS', $exception->getMessage());
         }
     }
@@ -369,7 +369,7 @@ class DaisySmsServiceTest extends TestCase
         try {
             app(DaisySmsService::class)->cancelOrder('act-still-active');
             $this->fail('A still-active rental must not be refunded.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('still active with the provider', $exception->getMessage());
         }
     }
