@@ -468,45 +468,10 @@ class VirtualNumberController extends Controller
             // Execute Purchase on chosen server
             try {
                 if ($server === 'server1') {
-                    // Explicitly start with the lowest-priced valid SMSPool pool.
-                    // If it is exhausted, the fallback below tries the next cheapest pool.
-                    $initialPoolName = null;
-                    $purchasePools = $this->smspool->getValidPools($country, $productId);
-                    $purchasePools = array_values(array_filter(array_map(function ($pool) {
-                        if (!is_array($pool)) {
-                            return null;
-                        }
-
-                        $poolId = $pool['pool'] ?? $pool['pool_id'] ?? $pool['id'] ?? null;
-                        $poolName = $pool['name'] ?? $pool['pool_name'] ?? $pool['pool'] ?? $poolId;
-                        $poolPrice = (float) ($pool['price'] ?? $pool['cost'] ?? $pool['rate'] ?? 0);
-                        if ($poolId === null || $poolName === null || $poolPrice <= 0 || $poolPrice > $maxAllowedProviderUsd) {
-                            return null;
-                        }
-                        if (isset($pool['stock']) && (int) $pool['stock'] <= 0) {
-                            return null;
-                        }
-
-                        return [
-                            'id' => (string) $poolId,
-                            'name' => (string) $poolName,
-                            'price' => $poolPrice,
-                        ];
-                    }, $purchasePools)));
-
-                    usort($purchasePools, fn ($a, $b) => $a['price'] <=> $b['price']);
-                    if (!empty($purchasePools)) {
-                        $initialPoolName = (string) $purchasePools[0]['name'];
-                    }
-
+                    // Preserve SMSPool's native automatic cheapest-pool routing.
+                    // Explicit pool forcing is avoided because pool metadata can be stale.
                     try {
-                        $buyResponse = $this->smspool->buyNumber(
-                            $country,
-                            $productId,
-                            null,
-                            0,
-                            $initialPoolName
-                        );
+                        $buyResponse = $this->smspool->buyNumber($country, $productId, null, 0, null);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         // CRITICAL FINANCIAL SAFETY – TIMEOUT HANDLING:
                         // A network timeout means we do NOT know whether SMSPool created a number or not.
@@ -628,9 +593,6 @@ class VirtualNumberController extends Controller
                                 });
 
                                 $exhaustedPools = [];
-                                if ($initialPoolName !== null) {
-                                    $exhaustedPools[] = strtolower($initialPoolName);
-                                }
                                 if (stripos($firstError, 'foxtrot') !== false) $exhaustedPools[] = 'foxtrot';
                                 if (stripos($firstError, 'sierra') !== false) $exhaustedPools[] = 'sierra';
                                 if (stripos($firstError, 'mike') !== false) $exhaustedPools[] = 'mike';
@@ -728,12 +690,10 @@ class VirtualNumberController extends Controller
                     }
                 } elseif ($server === 'server2') {
                     try {
-                        // First request the cheapest live Grizzly price. Only when Grizzly
-                        // explicitly reports no numbers at that price do we retry without
-                        // the price ceiling so it can allocate the next available price tier.
-                        try {
-                            $buyResponse = $this->grizzly->buyNumber($country, $productId, $activeWholesalePrice);
-                        } catch (\Exception $priceTierEx) {
+                        // Preserve Grizzly's established automatic price-tier selection.
+                        // A quote-derived maxPrice may be stale by the time the request arrives.
+                        $buyResponse = $this->grizzly->buyNumber($country, $productId);
+                    } catch (\Exception $priceTierEx) {
                             $priceTierError = strtolower($priceTierEx->getMessage());
                             $isNoNumbers = str_contains($priceTierError, 'no_numbers')
                                 || str_contains($priceTierError, 'no numbers')
