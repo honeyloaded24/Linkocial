@@ -710,7 +710,7 @@ class VirtualNumberController extends Controller
                 } else {
                     try {
                         $buyResponse = $this->isDaisyService($server, (string) $country, (string) $productId)
-                            ? $this->daisysms->buyNumber((string) $country, (string) $productId, $maxAllowedProviderUsd)
+                            ? $this->daisysms->buyNumber((string) $country, (string) $productId)
                             : $this->smsbower->buyNumber($country, (string) $productId, $maxAllowedProviderUsd);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         DB::transaction(function () use ($attemptRecord) {
@@ -884,6 +884,38 @@ class VirtualNumberController extends Controller
             $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)
                 ? (float) $buyResponse['cost']
                 : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
+
+            // DaisySMS is called without max_price. The customer confirms a fresh
+            // retail quote before purchase; the provider-side ceiling derived from
+            // our profit floor must not reject an otherwise valid rental.
+            // If the actual provider charge changes above the safe spend ceiling
+            // between quote and purchase, preserve the activation for reconciliation.
+            if ($this->isDaisyService($server, (string) $country, (string) $productId)
+                && $actualCostUsd > ($maxAllowedProviderUsd + 0.0001)) {
+                $safePhone = str_starts_with($providerPhoneNumber, '+')
+                    ? '+' . preg_replace('/\\D+/', '', $providerPhoneNumber)
+                    : '+' . ($buyResponse['cc'] ?? '') . preg_replace('/\\D+/', '', $providerPhoneNumber);
+
+                DB::transaction(function () use ($attemptRecord, $apiOrderId, $safePhone, $actualCostUsd, $activeWholesalePrice) {
+                    $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                    if ($lockedOrder && $lockedOrder->status === 'processing') {
+                        $lockedOrder->update([
+                            'api_order_id' => (string) $apiOrderId,
+                            'phone_number' => $safePhone,
+                            'provider_cost' => $actualCostUsd,
+                            'provider_quote_usd' => $activeWholesalePrice,
+                            'status' => 'unresolved',
+                            'sms_text' => 'DaisySMS confirmed the activation, but its actual charge exceeded the pre-purchase safe spend ceiling. Activation and customer payment preserved for reconciliation; no automatic refund.',
+                        ]);
+                    }
+                });
+
+                return response()->json([
+                    'error' => 'The carrier issued the number at a price different from the confirmed quote. Your payment and activation have been preserved while the order is verified. Please contact support before purchasing again.',
+                    'order_id' => $attemptRecord->id,
+                    'status' => 'unresolved',
+                ], 202);
+            }
 
             // Resolve human-friendly country name from provider list
             $countryName = null;
