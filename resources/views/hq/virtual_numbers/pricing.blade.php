@@ -426,7 +426,7 @@
                     <div class="form-text mb-3">The saved key is never displayed. Use the official <code>daisysms.io</code> API only. Do not paste the key into chat.</div>
                     @if($hasDaisySmsKey)
                         <a href="{{ route('hq.virtual-numbers.daisysms-catalogue') }}" target="_blank" rel="noopener" class="btn btn-outline-info fw-bold">
-                            <i class="fa-solid fa-list-check me-1"></i> Check Server 4 Live USA Catalogue
+                            <i class="fa-solid fa-list-check me-1"></i> Check Server 4 US & Canada Catalogue
                         </a>
                         <div class="form-text mt-2">Admin-only diagnostic. It displays live service identifiers, prices and stock; it does not purchase a number.</div>
                     @endif
