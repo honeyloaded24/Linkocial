@@ -160,7 +160,7 @@ class GrizzlySmsServiceTest extends TestCase
         try {
             app(GrizzlySmsService::class)->cancelOrder('activation-50');
             $this->fail('An early cancellation must be rejected until the provider permits it.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertSame('Please wait 50 seconds before cancelling this number.', $exception->getMessage());
         }
     }
@@ -174,7 +174,7 @@ class GrizzlySmsServiceTest extends TestCase
         try {
             app(GrizzlySmsService::class)->cancelOrder('activation-early');
             $this->fail('An early cancellation must be rejected.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Please wait a little longer', $exception->getMessage());
             $this->assertStringNotContainsString('2-minute', $exception->getMessage());
         }
