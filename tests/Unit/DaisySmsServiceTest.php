@@ -49,21 +49,16 @@ class DaisySmsServiceTest extends TestCase
     public function test_canada_catalogue_is_exposed_only_when_daisy_returns_live_canada_offers(): void
     {
         Http::fake([
-            'daisysms.io/*' => Http::sequence()
-                ->push([
-                    'whatsapp' => ['187' => ['cost' => 1.60, 'count' => 20], '36' => ['cost' => 0.80, 'count' => 12]],
-                    'telegram' => ['187' => ['cost' => 1.00, 'count' => 30], '36' => ['cost' => 0.50, 'count' => 8]],
-                ], 200)
-                ->push([
-                    '187' => [
-                        'whatsapp' => ['cost' => 1.60, 'count' => 20],
-                        'telegram' => ['cost' => 1.00, 'count' => 30],
-                    ],
-                    '36' => [
-                        'whatsapp' => ['cost' => 0.80, 'count' => 12],
-                        'telegram' => ['cost' => 0.50, 'count' => 8],
-                    ],
-                ], 200),
+            'daisysms.io/*' => Http::response([
+                'whatsapp' => [
+                    '187' => ['cost' => 1.60, 'count' => 20],
+                    '36' => ['cost' => 0.80, 'count' => 12],
+                ],
+                'telegram' => [
+                    '187' => ['cost' => 1.00, 'count' => 30],
+                    '36' => ['cost' => 0.50, 'count' => 8],
+                ],
+            ], 200),
         ]);
 
         $service = app(DaisySmsService::class);
@@ -74,6 +69,7 @@ class DaisySmsServiceTest extends TestCase
         $this->assertSame(0.80, $canada['whatsapp']['price']);
         $this->assertSame(12, $canada['whatsapp']['stock']);
     }
+
 
     public function test_non_usa_catalogue_is_not_requested_from_daisy_sms(): void
     {
