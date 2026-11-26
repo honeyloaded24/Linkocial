@@ -25,27 +25,41 @@ class DaisySmsService
      */
     public const SERVICE_NAMES = [
         'whatsapp' => 'WhatsApp',
+        'wa' => 'WhatsApp',
         'whatsapp_canada' => 'WhatsApp Canada',
         'telegram' => 'Telegram',
+        'tg' => 'Telegram',
         'telegram_canada' => 'Telegram Canada',
         'facebook' => 'Facebook',
+        'fb' => 'Facebook',
         'facebook_reset' => 'Facebook Reset',
         'google' => 'Google',
+        'go' => 'Google',
         'google_chat' => 'Google Chat',
         'google_voice' => 'Google Voice',
         'google_gmail' => 'Google / YouTube / Gmail',
         'instagram' => 'Instagram',
+        'ig' => 'Instagram',
         'instagram_threads' => 'Instagram / Threads',
         'twitter' => 'X / Twitter',
+        'tw' => 'X / Twitter',
         'tiktok' => 'TikTok',
         'amazon' => 'Amazon',
+        'am' => 'Amazon',
         'discord' => 'Discord',
+        'ds' => 'Discord',
         'snapchat' => 'Snapchat',
+        'sn' => 'Snapchat',
         'linkedin' => 'LinkedIn',
+        'li' => 'LinkedIn',
         'uber' => 'Uber',
+        'ub' => 'Uber',
         'paypal' => 'PayPal',
+        'pp' => 'PayPal',
         'apple' => 'Apple',
+        'ap' => 'Apple',
         'microsoft' => 'Microsoft',
+        'mm' => 'Microsoft',
         'netflix' => 'Netflix',
     ];
 
@@ -157,7 +171,12 @@ class DaisySmsService
         // Try both documented endpoints and parse either documented orientation,
         // regardless of which endpoint returns which shape for this account.
         foreach (['getPricesVerification', 'getPrices'] as $action) {
-            $catalogue = $this->decoded($this->request(['action' => $action]));
+            try {
+                $catalogue = $this->decoded($this->request(['action' => $action]));
+            } catch (\\Throwable $e) {
+                report($e);
+                continue;
+            }
 
             // Some compatible API responses wrap the catalogue in a data object.
             if (isset($catalogue['data']) && is_array($catalogue['data'])) {
