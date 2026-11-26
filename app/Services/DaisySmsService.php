@@ -399,10 +399,10 @@ class DaisySmsService
             return ['status' => 6];
         }
         if ($body === 'RATE_LIMIT_EXCEEDED') {
-            throw new \RuntimeException('DaisySMS is temporarily rate-limiting status checks. Please wait a short time and retry.');
+            throw new \RuntimeException('The number status service is temporarily busy. Please wait briefly and try again.');
         }
 
-        throw new \RuntimeException('DaisySMS status could not be verified: '.$body);
+        throw new \RuntimeException('The number status could not be verified. Please wait briefly and try again.);
     }
 
     public function cancelOrder(string $activationId): array
@@ -418,9 +418,9 @@ class DaisySmsService
             // ACCESS_READY means the rental is missing or has already received a code.
             // RATE_LIMIT_EXCEEDED is retryable; neither response authorizes a refund.
             $message = match ($body) {
-                'ACCESS_READY' => 'DaisySMS reports that this rental is no longer cancellable or may already have received a code. No refund was issued.',
-                'RATE_LIMIT_EXCEEDED' => 'DaisySMS is temporarily rate-limiting cancellation. No refund was issued. Please wait briefly and try again.',
-                default => 'DaisySMS did not confirm cancellation. No refund was issued.',
+                'ACCESS_READY' => 'This number is no longer eligible for cancellation or may already have received an SMS. No refund was issued.',
+                'RATE_LIMIT_EXCEEDED' => 'The cancellation service is temporarily busy. No refund was issued. Please wait briefly and try again.',
+                default => 'Cancellation could not be confirmed. No refund was issued. Please try again shortly.',
             };
             throw new \RuntimeException($message);
         }
@@ -491,7 +491,7 @@ class DaisySmsService
             'status' => 6,
         ]);
         if (trim($response->body()) !== 'ACCESS_ACTIVATION') {
-            throw new \RuntimeException('DaisySMS could not mark this rental as finished.');
+            throw new \RuntimeException('The number could not be marked as finished.');
         }
 
         return ['success' => true];
