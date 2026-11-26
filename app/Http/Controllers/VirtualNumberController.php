@@ -62,6 +62,7 @@ class VirtualNumberController extends Controller
         $activeOrders = VirtualNumberOrder::where('user_id', Auth::id())
             ->where(function ($query) {
                 $query->where('status', 'pending')
+                      ->orWhere('status', 'unresolved')
                       ->orWhere(function ($q) {
                           $q->where('status', 'received')
                             ->where('created_at', '>=', now()->subMinutes(20));
