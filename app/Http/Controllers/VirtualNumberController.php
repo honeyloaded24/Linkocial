@@ -1778,7 +1778,7 @@ class VirtualNumberController extends Controller
 
         $cacheKey = match ($server) {
             'server2' => "grizzly_prices_{$country}",
-            'server3' => "smsbower_country_prices_v2_{$country}",
+            'server3' => "smsbower_country_prices_v3_{$country}",
             default => "smspool_prices_{$country}",
         };
         $cached = Cache::get($cacheKey);
