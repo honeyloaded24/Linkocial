@@ -524,21 +524,11 @@ class GrizzlySmsService
         }
 
         try {
-            $params = [
+            $response = Http::timeout(25)->get($this->baseUrl, [
                 'api_key' => $this->apiKey,
                 'action' => 'getPrices',
                 'country' => $country,
-            ];
-
-            try {
-            $response = Http::timeout(25)->get($this->baseUrl, $params);
-        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
-            throw new \\App\\Exceptions\\ProviderTimeoutException(
-                'Grizzly purchase outcome could not be confirmed after a connection interruption.',
-                0,
-                $e
-            );
-        }
+            ]);
 
             if ($response->failed()) {
                 Log::error('Grizzly getPrices failed: ' . $response->body());
@@ -550,8 +540,7 @@ class GrizzlySmsService
                 return [];
             }
 
-            // Structure is typically: { "countryId": { "serviceCode": { "cost": 15.5, "count": 120 } } }
-            $countryData = $data[(string)$country] ?? $data[(int)$country] ?? $data;
+            $countryData = $data[(string) $country] ?? $data[(int) $country] ?? $data;
             if (!is_array($countryData)) {
                 return [];
             }
@@ -562,30 +551,22 @@ class GrizzlySmsService
                     continue;
                 }
 
-                $cost = isset($val['cost']) ? (float)$val['cost'] : (isset($val['price']) ? (float)$val['price'] : null);
-                $count = isset($val['count']) ? (int)$val['count'] : 1;
-
-                if ($cost === null || $cost <= 0) {
+                $cost = isset($val['cost']) ? (float) $val['cost'] : (isset($val['price']) ? (float) $val['price'] : null);
+                $count = isset($val['count']) ? (int) $val['count'] : 1;
+                if ($cost === null || $cost <= 0 || $count <= 0) {
                     continue;
                 }
-
-                // If count is zero, skip out-of-stock
-                if ($count <= 0) {
-                    continue;
-                }
-
-                $serviceName = $this->getServiceName($code);
 
                 $items[] = [
                     'service' => (string) $code,
-                    'service_name' => $serviceName,
+                    'service_name' => $this->getServiceName((string) $code),
                     'price' => $cost,
                     'count' => $count,
                 ];
             }
 
             return $items;
-        } catch (\Throwable $e) {
+        } catch (\\Throwable $e) {
             Log::error('Grizzly getPricesForCountry exception: ' . $e->getMessage());
             return [];
         }
@@ -597,7 +578,7 @@ class GrizzlySmsService
     public function buyNumber(string|int $country, string $service, ?float $maxPrice = null): array
     {
         if (empty($this->apiKey)) {
-            throw new \Exception('Grizzly SMS API key is not configured. Please contact support.');
+            throw new \\RuntimeException('Grizzly SMS API key is not configured. Please contact support.');
         }
 
         $params = [
@@ -608,64 +589,70 @@ class GrizzlySmsService
         ];
 
         if ($maxPrice !== null) {
-            $params['maxPrice'] = $maxPrice;
+            $params['maxPrice'] = number_format($maxPrice, 2, '.', '');
         }
 
-        $response = Http::timeout(25)->get($this->baseUrl, $params);
+        try {
+            $response = Http::timeout(25)->get($this->baseUrl, $params);
+        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+            throw new \\App\\Exceptions\\ProviderTimeoutException(
+                'Grizzly purchase outcome could not be confirmed after a connection interruption.',
+                0,
+                $e
+            );
+        }
+
         $body = trim($response->body());
 
-        // Check if returned standard error string
-        if ($body === 'NO_NUMBERS') {
-            throw new \Exception('No numbers currently available for this service and country on Server 2. Please try again or select another service.');
-        }
-        if ($body === 'NO_BALANCE') {
-            throw new \Exception('Server 2 provider balance is temporarily depleted. Please use Server 1 or contact admin.');
-        }
-        if ($body === 'BAD_KEY') {
-            throw new \Exception('Invalid Server 2 API configuration.');
-        }
-        if (str_contains($body, 'SERVICE_UNAVAILABLE') || str_contains($body, 'prohibited')) {
-            throw new \\Exception('This service is currently restricted in this country.');
-        }
-        if (str_contains($body, 'MAX_PRICE_EXCEEDED') || str_contains($body, 'PRICE_LIMIT')) {
-            throw new \\Exception('The current Grizzly price exceeds the confirmed safe spending limit. Please refresh the quote.');
-        }
-        if (str_contains($body, 'SERVICE_UNAVAILABLE_REGION')) {
-            throw new \\Exception('Grizzly is temporarily unavailable from this server region.');
+        // These responses explicitly confirm that no activation was created.
+        if (in_array($body, ['NO_NUMBERS', 'NO_BALANCE', 'BAD_KEY'], true)
+            || str_contains($body, 'SERVICE_UNAVAILABLE')
+            || str_contains(strtolower($body), 'prohibited')
+            || str_contains($body, 'MAX_PRICE_EXCEEDED')
+            || str_contains($body, 'PRICE_LIMIT')) {
+            throw new \\RuntimeException(match (true) {
+                $body === 'NO_NUMBERS' => 'No numbers currently available for this service and country on Server 2. Please try again or select another service.',
+                $body === 'NO_BALANCE' => 'Server 2 provider balance is temporarily depleted. Please use another server or contact support.',
+                $body === 'BAD_KEY' => 'Invalid Server 2 API configuration.',
+                str_contains($body, 'MAX_PRICE_EXCEEDED') || str_contains($body, 'PRICE_LIMIT') => 'The current Grizzly price exceeds the confirmed safe spending limit. Please refresh the quote.',
+                default => 'This service is currently restricted or unavailable on Server 2.',
+            });
         }
 
-        // Try parsing JSON (getNumberV2 response)
+        // A valid activation payload is authoritative even if the upstream HTTP
+        // status is unusual; persist it rather than risking a duplicate purchase.
         $data = $response->json();
-        if (is_array($data) && isset($data['activationId']) && isset($data['phoneNumber'])) {
-            $serviceName = $this->getServiceName($service);
+        if (is_array($data) && isset($data['activationId'], $data['phoneNumber'])) {
             return [
                 'success' => 1,
-                'order_id' => (string)$data['activationId'],
-                'phonenumber' => (string)$data['phoneNumber'],
-                'cost' => (isset($data['activationCost']) && (float)$data['activationCost'] > 0) ? (float)$data['activationCost'] : null,
-                'country' => (string)($data['countryCode'] ?? $country),
-                'service' => $serviceName,
+                'order_id' => (string) $data['activationId'],
+                'phonenumber' => (string) $data['phoneNumber'],
+                'cost' => (isset($data['activationCost']) && (float) $data['activationCost'] > 0)
+                    ? (float) $data['activationCost']
+                    : null,
+                'country' => (string) ($data['countryCode'] ?? $country),
+                'service' => $this->getServiceName($service),
                 'time_left' => 1200,
             ];
         }
 
-        // Fallback: parse V1 string response format: ACCESS_NUMBER:38496653:66846426435
         if (str_starts_with($body, 'ACCESS_NUMBER:')) {
             $parts = explode(':', $body);
-            if (count($parts) >= 3) {
-                $serviceName = $this->getServiceName($service);
+            if (count($parts) >= 3 && $parts[1] !== '' && $parts[2] !== '') {
                 return [
                     'success' => 1,
-                    'order_id' => (string)$parts[1],
-                    'phonenumber' => (string)$parts[2],
-                    'cost' => null, // Controller will safely use the quoted wholesale price
-                    'country' => (string)$country,
-                    'service' => $serviceName,
+                    'order_id' => (string) $parts[1],
+                    'phonenumber' => (string) $parts[2],
+                    'cost' => null,
+                    'country' => (string) $country,
+                    'service' => $this->getServiceName($service),
                     'time_left' => 1200,
                 ];
             }
         }
 
+        // Any unrecognized response (including upstream HTTP errors) is ambiguous:
+        // the provider may have created an activation before the response failed.
         Log::error('Grizzly buyNumber returned an unrecognized response.', [
             'http_status' => $response->status(),
             'response' => substr($body, 0, 500),
