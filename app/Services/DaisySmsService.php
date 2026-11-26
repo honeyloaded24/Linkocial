@@ -310,7 +310,7 @@ class DaisySmsService
 
     public function buyNumber(string $country, string $service, ?float $maxPrice = null, ?float $quotedPrice = null): array
     {
-        if (!isset(self::SUPPORTED_COUNTRIES[$country]) || !collect($this->getPricesForCountry($country))->contains(fn ($row) => (string) $row['service'] === $service)) {
+        if (!isset(self::SUPPORTED_COUNTRIES[$country]) || trim($service) === '') {
             throw new \RuntimeException('This DaisySMS service is not currently available on Server 4 for the selected country.');
         }
         $params = [
