@@ -29,7 +29,7 @@ class DaisySmsService
     protected function request(array $params, int $timeout = 20): Response
     {
         if (empty($this->apiKey)) {
-            throw new \RuntimeException('DaisySMS API key is not configured for Server 3.');
+            throw new \RuntimeException('DaisySMS API key is not configured for Server 4.');
         }
 
         try {
