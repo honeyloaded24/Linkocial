@@ -435,10 +435,10 @@ class DaisySmsService
             }
 
             if ((int) ($status['status'] ?? -1) === 3) {
-                throw new \\RuntimeException('This number has already received an SMS and cannot be refunded.');
+                throw new \RuntimeException('This number has already received an SMS and cannot be refunded.');
             }
 
-            throw new \\RuntimeException('The number is still active with the provider. Cancellation was not confirmed and no refund was issued. Please retry shortly.');
+            throw new \RuntimeException('The number is still active with the provider. Cancellation was not confirmed and no refund was issued. Please retry shortly.');
         }
 
         if ($body !== 'ACCESS_CANCEL') {
@@ -447,7 +447,7 @@ class DaisySmsService
                 'RATE_LIMIT_EXCEEDED' => 'The cancellation service is temporarily busy. No refund was issued. Please wait briefly and try again.',
                 default => 'Cancellation could not be confirmed. No refund was issued. Please try again shortly.',
             };
-            throw new \\RuntimeException($message);
+            throw new \RuntimeException($message);
         }
 
         return ['success' => true, 'status' => 'canceled'];
