@@ -53,4 +53,4 @@ jobs:
           php artisan migrate --force
 
       - name: Run Financial Integrity Regression Tests
-        run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest|DaisySmsServiceTest|AiToolsIntegrationTest|AffiliateLedgerReconciliationTest|AlaricAmbiguousResponseTest|SmsBowerMiddlePricingTest'
+        run: php artisan test --filter='GiftCardBackendFoundationTest|VirtualNumberRefundIntegrityTest|DaisySmsServiceTest|GrizzlySmsServiceTest|AiToolsIntegrationTest|AffiliateLedgerReconciliationTest|AlaricAmbiguousResponseTest|SmsBowerMiddlePricingTest'
