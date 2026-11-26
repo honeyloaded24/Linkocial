@@ -263,47 +263,39 @@ class VirtualNumberController extends Controller
                 $activeWholesalePrice = (float) $liveGoldOffer['price'];
             }
 
-            // For Server 1 (SMSPool): verify real-time stock and active in-stock pool price
+            // For Server 1 (SMSPool), always use current valid pool prices.
+            // Do not infer the wholesale price from a previous customer quote.
             if ($server === 'server1') {
-                // 1. Check if an active live pool quote was recently established (e.g. Sierra at $1.96)
-                $cachedLiveWholesale = Cache::get("smspool_live_active_price_{$country}_{$productId}");
-                if ($cachedLiveWholesale !== null && (float)$cachedLiveWholesale > 0) {
-                    $activeWholesalePrice = (float)$cachedLiveWholesale;
-                }
-
-                // 2. If customer confirmed an expected_price that reflects a higher live quote,
-                // deduce the corresponding wholesale rate to guarantee cost protection
-                if ($request->filled('expected_price')) {
-                    $expPrice = (float) $request->input('expected_price');
-                    $providerRate = max(1.0, $this->getProviderRate());
-                    $markupFee = $this->getMarkupFee();
-                    if ($expPrice > $markupFee) {
-                        $deducedWholesale = round(($expPrice - $markupFee) / $providerRate, 2);
-                        if ($deducedWholesale > $activeWholesalePrice) {
-                            $activeWholesalePrice = $deducedWholesale;
-                        }
+                $livePools = $this->smspool->getValidPools($country, $productId);
+                $validPoolPrices = [];
+                foreach ($livePools as $pool) {
+                    if (!is_array($pool)) continue;
+                    $poolPrice = (float) ($pool['price'] ?? $pool['cost'] ?? $pool['rate'] ?? 0);
+                    if ($poolPrice > 0 && (!isset($pool['stock']) || (int) $pool['stock'] > 0)) {
+                        $validPoolPrices[] = $poolPrice;
                     }
                 }
 
-                $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
+                if (!empty($validPoolPrices)) {
+                    $activeWholesalePrice = min($validPoolPrices);
+                    Cache::put("smspool_live_active_price_{$country}_{$productId}", $activeWholesalePrice, now()->addMinutes(5));
+                }
 
+                $liveInfo = $this->smspool->getServiceLiveInfo($productId, $country);
                 if ($liveInfo !== null) {
                     $stock = $liveInfo['stock'] ?? 0;
-                    if ($stock <= 0) {
+                    if ($stock <= 0 && empty($validPoolPrices)) {
                         return response()->json([
                             'error' => "{$serviceName} is currently out of stock for this country on Server 1. Please try Server 2 or select another country."
                         ], 400);
                     }
-
-                    if ($cachedLiveWholesale === null && !$request->filled('expected_price')) {
-                        if (isset($liveInfo['low_price']) && (float)$liveInfo['low_price'] > 0) {
-                            $activeWholesalePrice = (float)$liveInfo['low_price'];
-                        } elseif (isset($liveInfo['price']) && (float)$liveInfo['price'] > 0) {
-                            $activeWholesalePrice = (float)$liveInfo['price'];
+                    if (empty($validPoolPrices)) {
+                        if (isset($liveInfo['low_price']) && (float) $liveInfo['low_price'] > 0) {
+                            $activeWholesalePrice = (float) $liveInfo['low_price'];
+                        } elseif (isset($liveInfo['price']) && (float) $liveInfo['price'] > 0) {
+                            $activeWholesalePrice = (float) $liveInfo['price'];
                         }
                     }
-                } elseif ($cachedLiveWholesale === null && !$request->filled('expected_price') && count($allPoolPrices) > 0) {
-                    $activeWholesalePrice = min($allPoolPrices);
                 }
             }
 
