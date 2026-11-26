@@ -131,16 +131,56 @@ class SmsBowerService
         return [];
     }
 
-    protected function findGoldPartners(string $serviceCode, string $countryName): array
+    protected function getGoldTopCountries(string $serviceCode): array
     {
-        $data = Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
+        return Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
             $response = $this->request(['action' => 'getTopCountriesByService', 'service' => $serviceCode], 15);
-            if (!$response->successful()) throw new \RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+            if (!$response->successful()) throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
             $json = $response->json();
-            if (!is_array($json)) throw new \RuntimeException('Server 3 returned an invalid Gold supplier response.');
+            if (!is_array($json)) throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
             return $json;
         });
-        return $this->goldPartnersFromResponse($data, $countryName);
+    }
+
+    protected function hasCountryInGoldResponse(array $data, string $countryName): bool
+    {
+        $target = $this->countryKey($countryName);
+        foreach ($data as $countryKey => $partners) {
+            if ($this->countryKey((string) $countryKey) === $target && is_array($partners)) return true;
+        }
+        return false;
+    }
+
+    protected function findGoldPartners(string $serviceCode, string $countryName): array
+    {
+        return $this->goldPartnersFromResponse($this->getGoldTopCountries($serviceCode), $countryName);
+    }
+
+    /**
+     * Parse country-specific getPricesV3 data. Unlike getTopCountriesByService,
+     * this endpoint is queried for one country and is not limited to top-ten countries.
+     */
+    protected function countryServiceOffers(array $data, string|int $country, string $service): array
+    {
+        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? null;
+        if (!is_array($countryData) && count($data) === 1) $countryData = reset($data);
+        if (!is_array($countryData)) return [];
+
+        $serviceData = $countryData[$service] ?? null;
+        if (!is_array($serviceData) && count($countryData) === 1) $serviceData = reset($countryData);
+        if (!is_array($serviceData)) return [];
+
+        $offers = [];
+        foreach ($serviceData as $providerKey => $details) {
+            if (!is_array($details)) continue;
+            $providerId = (string) ($details['provider_id'] ?? $providerKey);
+            $price = (float) ($details['price'] ?? $details['cost'] ?? 0);
+            $stock = (int) ($details['count'] ?? 0);
+            if ($providerId === '' || $price <= 0 || $stock <= 0) continue;
+            $offers[] = ['id' => $providerId, 'price' => $price, 'stock' => $stock];
+        }
+        usort($offers, fn ($a, $b) => $a['price'] <=> $b['price']);
+        return $offers;
     }
 
     /**
@@ -217,64 +257,46 @@ class SmsBowerService
 
     protected function resolveLiveGoldOffer(string|int $country, string $service, array $countryRow): array
     {
-        $goldPartners = $this->findGoldPartners($service, $countryRow['name']);
-        if (empty($goldPartners)) {
-            return [];
+        // The Gold endpoint exposes only its top 10 countries per service.
+        // When the selected country is absent, use its country-specific getPricesV3
+        // response rather than incorrectly treating it as having no services.
+        $goldPartners = [];
+        $countryIsRanked = false;
+        try {
+            $goldData = $this->getGoldTopCountries($service);
+            $countryIsRanked = $this->hasCountryInGoldResponse($goldData, $countryRow['name']);
+            if ($countryIsRanked) {
+                $goldPartners = $this->goldPartnersFromResponse($goldData, $countryRow['name']);
+            }
+        } catch (\\Throwable $e) {
+            Log::warning('Server 3 Gold country ranking unavailable; falling back to country-specific live prices.', [
+                'service' => $service, 'country' => $country, 'error' => $e->getMessage(),
+            ]);
         }
 
-        $goldIds = array_map('strval', array_column($goldPartners, 'id'));
         $response = $this->request([
             'action' => 'getPricesV3',
             'service' => $service,
             'country' => $country,
         ], 15);
-
         if (!$response->successful()) {
-            throw new \RuntimeException('Server 3 could not verify live Gold supplier stock and pricing.');
+            throw new \\RuntimeException('Server 3 could not verify live supplier stock and pricing.');
         }
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \RuntimeException('Server 3 returned invalid live Gold pricing data.');
+            throw new \\RuntimeException('Server 3 returned invalid live pricing data.');
         }
 
-        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? (count($data) === 1 ? reset($data) : $data);
-        $serviceData = is_array($countryData)
-            ? ($countryData[$service] ?? (count($countryData) === 1 ? reset($countryData) : $countryData))
-            : [];
-        if (!is_array($serviceData)) {
-            return [];
-        }
-
-        $offers = [];
-        foreach ($serviceData as $providerKey => $details) {
-            if (!is_array($details)) {
-                continue;
-            }
-
-            $providerId = (string) ($details['provider_id'] ?? $providerKey);
-            $price = (float) ($details['price'] ?? $details['cost'] ?? 0);
-            $stock = (int) ($details['count'] ?? 0);
-
-            if (!in_array($providerId, $goldIds, true) || $price <= 0 || $stock <= 0) {
-                continue;
-            }
-
-            $offers[] = [
-                'id' => $providerId,
-                'price' => $price,
-                'stock' => $stock,
-            ];
+        $offers = $this->countryServiceOffers($data, $country, $service);
+        if ($countryIsRanked) {
+            $goldIds = array_map('strval', array_column($goldPartners, 'id'));
+            $offers = array_values(array_filter($offers, fn ($offer) => in_array((string) $offer['id'], $goldIds, true)));
         }
 
         $offers = $this->middlePricedOffers($offers);
-        if (empty($offers)) {
-            return [];
-        }
+        if (empty($offers)) return [];
 
-        // Quote the cheapest retained middle band because buyNumber tries suppliers
-        // in ascending order. More expensive fallbacks remain bounded by the
-        // controller's provider-spend ceiling and cannot silently overcharge users.
         return [
             'price' => $this->customerQuotePrice($offers),
             'stock' => array_sum(array_column($offers, 'stock')),
