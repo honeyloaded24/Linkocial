@@ -478,9 +478,9 @@ class VirtualNumberController extends Controller
                         }
 
                         $poolId = $pool['pool'] ?? $pool['pool_id'] ?? $pool['id'] ?? null;
-                        $poolName = $pool['name'] ?? $pool['pool_name'] ?? $pool['pool'] ?? null;
+                        $poolName = $pool['name'] ?? $pool['pool_name'] ?? $pool['pool'] ?? $poolId;
                         $poolPrice = (float) ($pool['price'] ?? $pool['cost'] ?? $pool['rate'] ?? 0);
-                        if ($poolId === null || $poolName === null || $poolPrice <= 0) {
+                        if ($poolId === null || $poolName === null || $poolPrice <= 0 || $poolPrice > $maxAllowedProviderUsd) {
                             return null;
                         }
                         if (isset($pool['stock']) && (int) $pool['stock'] <= 0) {
