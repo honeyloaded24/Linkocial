@@ -149,6 +149,26 @@ class DaisySmsServiceTest extends TestCase
         );
     }
 
+    public function test_max_price_exceeded_is_a_definite_purchase_rejection(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('MAX_PRICE_EXCEEDED', 200),
+        ]);
+
+        try {
+            app(DaisySmsService::class)->buyNumber('187', 'whatsapp', 1.50, 1.60);
+            $this->fail('A price-cap rejection must not be treated as a successful purchase.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('max price exceeded', strtolower($exception->getMessage()));
+        }
+
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'getNumber'
+            && $request['service'] === 'whatsapp'
+            && $request['max_price'] === '1.50'
+        );
+    }
+
     public function test_successful_activation_without_price_header_is_preserved_for_reconciliation(): void
     {
         Http::fake([
