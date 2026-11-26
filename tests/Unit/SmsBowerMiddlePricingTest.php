@@ -104,7 +104,7 @@ class SmsBowerMiddlePricingTest extends TestCase
     }
 
 
-    public function test_united_states_catalogue_uses_country_specific_prices_when_missing_from_top_ten(): void
+    public function test_country_catalogue_uses_one_get_prices_request_for_all_available_services(): void
     {
         Setting::set('smsbower_api_key', 'test-smsbower-key');
         Cache::flush();
@@ -117,22 +117,18 @@ class SmsBowerMiddlePricingTest extends TestCase
                 ], 200),
                 'getServicesList' => Http::response([
                     'status' => 'success',
-                    'services' => [['code' => 'wa', 'name' => 'WhatsApp']],
-                ], 200),
-                'getTopCountriesByService' => Http::response([
-                    'uk' => [
-                        'uk-gold-a' => ['price' => 0.10, 'count' => 20],
-                        'uk-gold-b' => ['price' => 0.20, 'count' => 15],
-                        'uk-gold-c' => ['price' => 0.30, 'count' => 10],
+                    'services' => [
+                        ['code' => 'wa', 'name' => 'WhatsApp'],
+                        ['code' => 'tg', 'name' => 'Telegram'],
+                        ['code' => 'ig', 'name' => 'Instagram'],
                     ],
                 ], 200),
-                'getPricesV3' => Http::response([
-                    '187' => [
-                        'wa' => [
-                            'us-a' => ['provider_id' => 'us-a', 'price' => 0.10, 'count' => 20],
-                            'us-b' => ['provider_id' => 'us-b', 'price' => 0.20, 'count' => 15],
-                            'us-c' => ['provider_id' => 'us-c', 'price' => 0.30, 'count' => 10],
-                        ],
+                'getPrices' => Http::response([
+                    'usa' => [
+                        'wa' => ['cost' => 0.20, 'count' => 25],
+                        'tg' => ['cost' => 0.15, 'count' => 10],
+                        'ig' => ['cost' => 0, 'count' => 0],
+                        'unknown' => ['cost' => 0.10, 'count' => 99],
                     ],
                 ], 200),
                 default => Http::response('BAD_ACTION', 400),
@@ -141,18 +137,20 @@ class SmsBowerMiddlePricingTest extends TestCase
 
         $rows = app(SmsBowerService::class)->getPricesForCountry('187');
 
-        $this->assertCount(1, $rows);
-        $this->assertSame('wa', $rows[0]['service']);
-        $this->assertSame('WhatsApp', $rows[0]['service_name']);
-        $this->assertSame(0.20, $rows[0]['price']);
-        $this->assertSame(15, $rows[0]['count']);
+        $this->assertCount(2, $rows);
+        $this->assertSame(['wa', 'tg'], array_column($rows, 'service'));
+        $this->assertSame(['WhatsApp', 'Telegram'], array_column($rows, 'service_name'));
+        $this->assertSame([0.20, 0.15], array_column($rows, 'price'));
 
         Http::assertSent(fn ($request) =>
-            ($request->data()['action'] ?? null) === 'getPricesV3'
+            ($request->data()['action'] ?? null) === 'getPrices'
             && (string) ($request->data()['country'] ?? '') === '187'
-            && ($request->data()['service'] ?? null) === 'wa'
+        );
+        Http::assertNotSent(fn ($request) =>
+            ($request->data()['action'] ?? null) === 'getTopCountriesByService'
         );
     }
+
 
     public function test_server3_country_list_always_includes_documented_uk_and_us_ids(): void
     {
