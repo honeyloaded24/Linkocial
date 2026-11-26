@@ -453,6 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.head.appendChild(script);
 
     let countryTs, serviceTs;
+    let serviceLoadSequence = 0;
 
     function setTsPlaceholder(tsInstance, text) {
         if (!tsInstance) return;
@@ -512,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
         // On country select, load service pricing for active server
         countryTs.on('change', function(countryId) {
+            const requestSequence = ++serviceLoadSequence;
             serviceTs.clearOptions();
             serviceTs.clear();
             priceBox.classList.add('d-none');
@@ -526,32 +528,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTsPlaceholder(serviceTs, 'Loading services...');
                 const requestedServer = currentServer;
                 
-                fetch(`/api/virtual-numbers/products?country=${encodeURIComponent(countryId)}&server=${encodeURIComponent(requestedServer)}`)
-                    .then(res => res.json())
-                    .then(services => {
-                        // Discard if server changed
-                        if (requestedServer !== currentServer) return;
+                const loadServices = async () => {
+                    let lastError = null;
+                    for (let attempt = 0; attempt < (requestedServer === 'server3' ? 2 : 1); attempt++) {
+                        try {
+                            const response = await fetch(`/api/virtual-numbers/products?country=${encodeURIComponent(countryId)}&server=${encodeURIComponent(requestedServer)}`);
+                            const services = await response.json();
 
-                        if (!Array.isArray(services)) {
-                            setTsPlaceholder(serviceTs, services?.error || 'Failed to load services');
-                            return;
+                            // Ignore responses for a previous country or server selection.
+                            if (requestSequence !== serviceLoadSequence
+                                || requestedServer !== currentServer
+                                || String(countryTs.getValue()) !== String(countryId)) return;
+
+                            if (response.ok && Array.isArray(services) && services.length > 0) {
+                                services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                                services.forEach(s => {
+                                    serviceTs.addOption({value: s.id, text: `${s.name} — ${s.formatted_price}`, formatted_price: s.formatted_price});
+                                });
+                                setTsPlaceholder(serviceTs, 'Select Service');
+                                serviceTs.enable();
+                                return;
+                            }
+
+                            lastError = Array.isArray(services)
+                                ? (services.length === 0 ? 'No services available' : 'Failed to load services')
+                                : (services?.error || 'Failed to load services');
+
+                            // Server 3's Gold catalogue is assembled from several provider
+                            // lookups. Retry one transient/empty response before showing failure.
+                            if (requestedServer !== 'server3' || attempt === 1) {
+                                setTsPlaceholder(serviceTs, lastError);
+                                return;
+                            }
+                        } catch (err) {
+                            lastError = 'Failed to load services';
+                            if (requestedServer !== 'server3' || attempt === 1) {
+                                if (requestSequence === serviceLoadSequence && requestedServer === currentServer) {
+                                    setTsPlaceholder(serviceTs, lastError);
+                                }
+                                console.error('Failed to load services', err);
+                                return;
+                            }
                         }
-                        if (services.length === 0) {
-                            setTsPlaceholder(serviceTs, 'No services available');
-                            return;
-                        }
-                        services.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                        services.forEach(s => {
-                            serviceTs.addOption({value: s.id, text: `${s.name} — ${s.formatted_price}`, formatted_price: s.formatted_price});
-                        });
-                        setTsPlaceholder(serviceTs, 'Select Service');
-                        serviceTs.enable();
-                    })
-                    .catch(err => {
-                        if (requestedServer !== currentServer) return;
-                        setTsPlaceholder(serviceTs, 'Failed to load services');
-                        console.error('Failed to load services', err);
-                    });
+
+                        await new Promise(resolve => setTimeout(resolve, 600));
+                    }
+                    if (requestSequence === serviceLoadSequence && requestedServer === currentServer) {
+                        setTsPlaceholder(serviceTs, lastError || 'Failed to load services');
+                    }
+                };
+                loadServices();
             } else {
                 setTsPlaceholder(serviceTs, 'Select country first');
                 serviceTs.disable();
