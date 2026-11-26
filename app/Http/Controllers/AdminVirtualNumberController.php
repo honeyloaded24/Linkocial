@@ -151,7 +151,7 @@ class AdminVirtualNumberController extends Controller
 
 
     /**
-     * Read the live USA service catalogue for Server 4 admin verification.
+     * Read the live US and Canada service catalogues for Server 4 admin verification.
      * The API credential is never returned or logged.
      */
     public function daisySmsCatalogue(\App\Services\DaisySmsService $daisysms)
