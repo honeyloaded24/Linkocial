@@ -885,33 +885,12 @@ class VirtualNumberController extends Controller
             // Extract order details
             $apiOrderId = $buyResponse['order_id'] ?? null;
 
-            // A confirmed rental without a verifiable effective price must remain
-            // unresolved. Preserve its activation and number; never refund it as failed.
-            if ($apiOrderId && $server === 'server4' && !empty($buyResponse['price_unverified'])) {
-                $rawPhone = trim((string) ($buyResponse['phonenumber'] ?? ''));
-                $digits = preg_replace('/\\D+/', '', $rawPhone);
-                $safePhone = str_starts_with($rawPhone, '+') ? '+' . $digits : ($digits !== '' ? '+' . $digits : 'PENDING');
-
-                DB::transaction(function () use ($attemptRecord, $apiOrderId, $safePhone, $buyResponse) {
-                    $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
-                    if ($lockedOrder && $lockedOrder->status === 'processing') {
-                        $lockedOrder->update([
-                            'api_order_id' => (string) $apiOrderId,
-                            'phone_number' => $safePhone,
-                            'status' => 'unresolved',
-                            'provider_cost' => 0,
-                            'provider_quote_usd' => (float) ($buyResponse['provider_quote_usd'] ?? 0),
-                            'sms_text' => 'Provider confirmed the rental but omitted its effective price header. Activation preserved; funds retained for reconciliation. No automatic refund.',
-                        ]);
-                    }
-                });
-
-                return response()->json([
-                    'error' => 'The carrier issued the number but did not return a verifiable price. Your payment is retained while the order is reconciled.',
-                    'order_id' => $attemptRecord->id,
-                    'status' => 'unresolved',
-                ], 202);
-            }
+            // Server 4 purchase is only attempted after a fresh live catalogue quote
+            // has been fetched and checked for positive price and stock. DaisySMS may
+            // omit X-Price on ACCESS_NUMBER, so use that fresh quote as the authoritative
+            // fallback instead of marking a real, number-bearing activation unresolved.
+            // This allows the order to be saved as pending and appear immediately in the
+            // customer's Active Verifications, where normal SMS polling can begin.
 
             if ($apiOrderId && empty($buyResponse['phonenumber'])) {
                 // Activation ID confirms provider-side purchase, but without a phone
@@ -961,9 +940,15 @@ class VirtualNumberController extends Controller
                     ? $providerPhoneNumber
                     : ('+' . ($buyResponse['cc'] ?? '') . $providerPhoneNumber);
             }
-            $actualCostUsd = (isset($buyResponse['cost']) && (float)$buyResponse['cost'] > 0)
-                ? (float) $buyResponse['cost']
-                : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
+            $actualCostUsd = (float) ($buyResponse['cost'] ?? 0);
+            if ($actualCostUsd <= 0) {
+                $actualCostUsd = (float) ($buyResponse['provider_quote_usd'] ?? 0);
+            }
+            if ($actualCostUsd <= 0 && $server === 'server4') {
+                // The fresh DaisySMS catalogue quote was verified immediately before
+                // purchase and is safer than retaining a confirmed activation at $0 cost.
+                $actualCostUsd = (float) $activeWholesalePrice;
+            }
 
             // All providers are called without stale provider-side price caps.
             // Live quotes and the configured minimum-profit ceiling are validated
