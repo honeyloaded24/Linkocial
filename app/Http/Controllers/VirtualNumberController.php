@@ -96,8 +96,8 @@ class VirtualNumberController extends Controller
 
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
-            if ($server === 'server3' && !collect($cached)->contains(fn ($row) => (string) ($row['ID'] ?? $row['id'] ?? '') === DaisySmsService::USA_COUNTRY_ID)) {
-                $cached[] = ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '+1'];
+            if ($server === 'server3') {
+                $cached = $this->ensureSmsBowerCoreCountries($cached);
                 Cache::put($cacheKey, $cached, 86400);
             }
             return response()->json($cached);
@@ -105,8 +105,8 @@ class VirtualNumberController extends Controller
 
         try {
             $data = $this->getProvider($server)->getCountries();
-            if ($server === 'server3' && !collect($data)->contains(fn ($row) => (string) ($row['ID'] ?? $row['id'] ?? '') === DaisySmsService::USA_COUNTRY_ID)) {
-                $data[] = ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '+1'];
+            if ($server === 'server3') {
+                $data = $this->ensureSmsBowerCoreCountries($data);
             }
             if (!empty($data) && is_array($data)) {
                 Cache::put($cacheKey, $data, 86400);
@@ -116,6 +116,32 @@ class VirtualNumberController extends Controller
             Log::error("Virtual numbers getCountries failed for {$server}: " . $e->getMessage());
             return response()->json([]);
         }
+    }
+
+    /**
+     * SMSBower's documented country IDs include United Kingdom (16) and
+     * United States (187). Keep these selectable even when an account's
+     * country response/cache omits a row temporarily.
+     */
+    protected function ensureSmsBowerCoreCountries(array $countries): array
+    {
+        $required = [
+            ['ID' => '16', 'name' => 'United Kingdom', 'cc' => '+44'],
+            ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '+1'],
+        ];
+
+        $existingIds = array_map(
+            fn ($row) => (string) ($row['ID'] ?? $row['id'] ?? ''),
+            $countries
+        );
+
+        foreach ($required as $country) {
+            if (!in_array($country['ID'], $existingIds, true)) {
+                $countries[] = $country;
+            }
+        }
+
+        return $countries;
     }
 
     /**
