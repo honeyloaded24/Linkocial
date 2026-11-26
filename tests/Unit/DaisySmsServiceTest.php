@@ -170,6 +170,34 @@ class DaisySmsServiceTest extends TestCase
         app(DaisySmsService::class)->requestExtraActivation('act-missing');
     }
 
+    public function test_unknown_extra_activation_response_is_treated_as_ambiguous_not_rejected(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('TEMPORARY_ERROR', 200),
+        ]);
+
+        try {
+            app(DaisySmsService::class)->requestExtraActivation('act-previous');
+            $this->fail('An unknown provider response must remain ambiguous.');
+        } catch (\App\Exceptions\ProviderTimeoutException $exception) {
+            $this->assertStringContainsString('outcome is unknown', $exception->getMessage());
+        }
+    }
+
+    public function test_extra_activation_http_server_error_is_treated_as_ambiguous(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('Gateway error', 502),
+        ]);
+
+        try {
+            app(DaisySmsService::class)->requestExtraActivation('act-previous');
+            $this->fail('A gateway error must not be treated as a confirmed rejection.');
+        } catch (\App\Exceptions\ProviderTimeoutException $exception) {
+            $this->assertStringContainsString('outcome could not be confirmed', $exception->getMessage());
+        }
+    }
+
     public function test_cancellation_requires_provider_confirmation(): void
     {
         $sequence = Http::sequence()
