@@ -570,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         } catch (err) {
                             lastError = 'Failed to load services';
-                            if (requestedServer !== 'server3' || attempt === 1) {
+                            if (!['server3', 'server4'].includes(requestedServer) || attempt === 1) {
                                 if (requestSequence === serviceLoadSequence && requestedServer === currentServer) {
                                     setTsPlaceholder(serviceTs, lastError);
                                 }
