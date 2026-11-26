@@ -146,12 +146,12 @@ class AdminVirtualNumberController extends Controller
         \App\Models\Setting::set('daisysms_api_key', trim($validated['daisysms_api_key']));
 
         return redirect()->route('hq.virtual-numbers.pricing')
-            ->with('success', 'DaisySMS API key saved securely. Server 3 routing has not been changed.');
+            ->with('success', 'DaisySMS API key saved securely. Server 4 is now available independently of Server 3.');
     }
 
 
     /**
-     * Read the live USA service catalogue for admin verification.
+     * Read the live USA service catalogue for Server 4 admin verification.
      * The API credential is never returned or logged.
      */
     public function daisySmsCatalogue(\App\Services\DaisySmsService $daisysms)
@@ -162,8 +162,9 @@ class AdminVirtualNumberController extends Controller
                 'country_id' => \App\Services\DaisySmsService::USA_COUNTRY_ID,
                 'services' => $daisysms->getCatalogueForCountry(\App\Services\DaisySmsService::USA_COUNTRY_ID),
                 'catalogue_diagnostics' => $daisysms->getCatalogueDiagnostics(),
-                'routing_enabled' => false,
-                'message' => 'Live catalogue only. No service routing or purchases were changed.',
+                'routing_enabled' => true,
+                'server' => 'Server 4',
+                'message' => 'Live Server 4 catalogue. This diagnostic does not purchase a number.',
             ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('DaisySMS admin catalogue check failed: '.$e->getMessage());
