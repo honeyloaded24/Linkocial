@@ -135,9 +135,9 @@ class SmsBowerService
     {
         return Cache::remember('smsbower_gold_top_' . md5($serviceCode), now()->addMinutes(15), function () use ($serviceCode) {
             $response = $this->request(['action' => 'getTopCountriesByService', 'service' => $serviceCode], 15);
-            if (!$response->successful()) throw new \\RuntimeException('Server 3 could not retrieve Gold supplier availability.');
+            if (!$response->successful()) throw new \RuntimeException('Server 3 could not retrieve Gold supplier availability.');
             $json = $response->json();
-            if (!is_array($json)) throw new \\RuntimeException('Server 3 returned an invalid Gold supplier response.');
+            if (!is_array($json)) throw new \RuntimeException('Server 3 returned an invalid Gold supplier response.');
             return $json;
         });
     }
@@ -268,7 +268,7 @@ class SmsBowerService
             if ($countryIsRanked) {
                 $goldPartners = $this->goldPartnersFromResponse($goldData, $countryRow['name']);
             }
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning('Server 3 Gold country ranking unavailable; falling back to country-specific live prices.', [
                 'service' => $service, 'country' => $country, 'error' => $e->getMessage(),
             ]);
@@ -280,12 +280,12 @@ class SmsBowerService
             'country' => $country,
         ], 15);
         if (!$response->successful()) {
-            throw new \\RuntimeException('Server 3 could not verify live supplier stock and pricing.');
+            throw new \RuntimeException('Server 3 could not verify live supplier stock and pricing.');
         }
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \\RuntimeException('Server 3 returned invalid live pricing data.');
+            throw new \RuntimeException('Server 3 returned invalid live pricing data.');
         }
 
         $offers = $this->countryServiceOffers($data, $country, $service);
@@ -315,7 +315,7 @@ class SmsBowerService
             if (!$countryRow) return [];
 
             $services = $this->getServices();
-            if (empty($services)) throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
+            if (empty($services)) throw new \RuntimeException('Server 3 returned no services from its service catalogue.');
 
             $topData = [];
             $missingTop = [];
@@ -351,7 +351,7 @@ class SmsBowerService
                         $topData[$code] = $json;
                         Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
                     }
-                } catch (\\Throwable $e) {
+                } catch (\Throwable $e) {
                     Log::warning('Server 3 Gold catalogue batch failed; country-specific stock lookup will be used.', [
                         'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
                     ]);
@@ -396,7 +396,7 @@ class SmsBowerService
                         $json = $response->json();
                         if (is_array($json)) $countryPriceData[$code] = $json;
                     }
-                } catch (\\Throwable $e) {
+                } catch (\Throwable $e) {
                     Log::warning('Server 3 country-specific catalogue batch failed.', [
                         'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
                     ]);
