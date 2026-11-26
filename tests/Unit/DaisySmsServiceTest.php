@@ -102,6 +102,28 @@ class DaisySmsServiceTest extends TestCase
         $this->assertSame(1.25, $result['provider_quote_usd']);
     }
 
+    public function test_confirmed_activation_uses_fresh_catalogue_quote_when_price_header_is_missing(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response('ACCESS_NUMBER:act-457:+15822719990', 200),
+        ]);
+
+        $result = app(DaisySmsService::class)->buyNumber('187', 'whatsapp_canada', null, 0.60);
+
+        $this->assertSame('act-457', $result['order_id']);
+        $this->assertSame('+15822719990', $result['phonenumber']);
+        $this->assertSame(0.60, $result['cost']);
+        $this->assertSame(0.60, $result['provider_cost']);
+        $this->assertFalse($result['price_unverified']);
+        $this->assertSame(0.60, $result['provider_quote_usd']);
+
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'getNumber'
+            && $request['service'] === 'whatsapp_canada'
+            && !isset($request['max_price'])
+        );
+    }
+
     public function test_status_response_maps_sms_code_and_full_message(): void
     {
         Http::fake([
