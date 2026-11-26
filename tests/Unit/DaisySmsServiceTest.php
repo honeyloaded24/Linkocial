@@ -123,6 +123,7 @@ class DaisySmsServiceTest extends TestCase
 
         $this->assertSame('act-123', $result['order_id']);
         $this->assertSame('+12025550123', $result['phonenumber']);
+        $this->assertSame('1', $result['cc']);
         $this->assertSame(1.60, $result['cost']);
 
         Http::assertSent(function ($request) {
