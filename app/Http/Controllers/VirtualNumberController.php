@@ -1670,6 +1670,26 @@ class VirtualNumberController extends Controller
             $stockCount = null;
             $successRate = null;
 
+            // Server 2 quotes must always come from a fresh Grizzly catalogue.
+            // Cached prices are discovery data only and cannot be shown as live quotes.
+            if ($server === 'server2') {
+                $grizzlyOffer = collect($this->grizzly->getPricesForCountry($country))
+                    ->firstWhere('service', (string) $productId);
+
+                if (!$grizzlyOffer || (int) ($grizzlyOffer['count'] ?? 0) <= 0 || (float) ($grizzlyOffer['price'] ?? 0) <= 0) {
+                    return response()->json([
+                        'success' => false,
+                        'out_of_stock' => true,
+                        'stock' => 0,
+                        'service_name' => $serviceName,
+                        'message' => 'This Grizzly service is temporarily unavailable or out of stock. Please refresh and try again.',
+                    ], 409);
+                }
+
+                $activeWholesalePrice = (float) $grizzlyOffer['price'];
+                $stockCount = (int) $grizzlyOffer['count'];
+            }
+
             // Server 4 must validate every dynamically discovered DaisySMS service
             // against its current country-specific price and stock before quoting.
             if ($server === 'server4') {
