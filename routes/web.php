@@ -276,6 +276,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/virtual-numbers/daisysms-key', [\App\Http\Controllers\AdminVirtualNumberController::class, 'updateDaisySmsKey'])->name('hq.virtual-numbers.daisysms-key.update');
         Route::get('/virtual-numbers/daisysms-catalogue', [\App\Http\Controllers\AdminVirtualNumberController::class, 'daisySmsCatalogue'])->name('hq.virtual-numbers.daisysms-catalogue');
         Route::post('/virtual-numbers/{id}/refund', [\App\Http\Controllers\AdminVirtualNumberController::class, 'refund'])->name('hq.virtual-numbers.refund');
+        Route::post('/virtual-numbers/{id}/confirm-daisy-no-rental', [\App\Http\Controllers\AdminVirtualNumberController::class, 'confirmDaisySmsNoRental'])->name('hq.virtual-numbers.confirm-daisy-no-rental');
 
         Route::get('/vtu', [\App\Http\Controllers\AdminVtuController::class, 'index'])->name('hq.vtu');
         Route::get('/vtu/pricing', [\App\Http\Controllers\AdminVtuController::class, 'pricing'])->name('hq.vtu.pricing');
