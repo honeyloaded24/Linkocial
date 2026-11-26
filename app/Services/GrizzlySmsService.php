@@ -737,10 +737,14 @@ class GrizzlySmsService
             $body = trim($response->body());
             Log::info("Grizzly cancelOrder result: {$body}");
 
-            if ($body === 'EARLY_CANCEL_DENIED') {
-                // Grizzly does not include a fixed delay in this response. Never
-                // invent a universal waiting period when the provider omits one.
-                throw new \RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
+            if (str_starts_with($body, 'EARLY_CANCEL_DENIED')) {
+                // Use an exact delay only when the provider includes one. The
+                // documented bare response does not specify a universal wait.
+                if (preg_match('/(\\d+)\\s*seconds?/i', $body, $waitMatch)) {
+                    throw new \\RuntimeException('Please wait ' . $waitMatch[1] . ' seconds before cancelling this number.');
+                }
+
+                throw new \\RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
             }
 
             // Only the explicit cancellation acknowledgement is proof of cancellation.
