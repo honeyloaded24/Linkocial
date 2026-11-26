@@ -317,11 +317,69 @@ class DaisySmsServiceTest extends TestCase
         }
     }
 
+    public function test_expired_daisy_activation_is_reconciled_and_can_be_refunded(): void
+    {
+        $sequence = Http::sequence()
+            ->push('ACCESS_READY', 200)
+            ->push('NO_ACTIVATION', 200);
+        Http::fake(['daisysms.io/*' => $sequence]);
+
+        $result = app(DaisySmsService::class)->cancelOrder('act-expired');
+
+        $this->assertSame([
+            'success' => true,
+            'status' => 'expired',
+            'provider_missing' => true,
+        ], $result);
+
+        Http::assertSentCount(2);
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'setStatus'
+            && (string) $request['id'] === 'act-expired'
+            && (string) $request['status'] === '8'
+        );
+        Http::assertSent(fn ($request) =>
+            $request['action'] === 'getStatus'
+            && (string) $request['id'] === 'act-expired'
+        );
+    }
+
+    public function test_daisy_access_ready_with_received_sms_never_authorizes_refund(): void
+    {
+        $sequence = Http::sequence()
+            ->push('ACCESS_READY', 200)
+            ->push('STATUS_OK:654321', 200, ['X-Text' => 'Verification code 654321']);
+        Http::fake(['daisysms.io/*' => $sequence]);
+
+        try {
+            app(DaisySmsService::class)->cancelOrder('act-code-received');
+            $this->fail('A received SMS must never be refunded.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('already received an SMS', $exception->getMessage());
+        }
+    }
+
+    public function test_daisy_access_ready_with_still_active_rental_does_not_authorize_refund(): void
+    {
+        $sequence = Http::sequence()
+            ->push('ACCESS_READY', 200)
+            ->push('STATUS_WAIT_CODE', 200);
+        Http::fake(['daisysms.io/*' => $sequence]);
+
+        try {
+            app(DaisySmsService::class)->cancelOrder('act-still-active');
+            $this->fail('A still-active rental must not be refunded.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('still active with the provider', $exception->getMessage());
+        }
+    }
+
     public function test_cancellation_requires_provider_confirmation(): void
     {
         $sequence = Http::sequence()
             ->push('ACCESS_CANCEL', 200)
-            ->push('ACCESS_READY', 200);
+            ->push('ACCESS_READY', 200)
+            ->push('STATUS_WAIT_CODE', 200);
         Http::fake(['daisysms.io/*' => $sequence]);
 
         $this->assertSame(
@@ -333,7 +391,7 @@ class DaisySmsServiceTest extends TestCase
             app(DaisySmsService::class)->cancelOrder('act-123');
             $this->fail('Cancellation without provider confirmation must throw.');
         } catch (\RuntimeException $exception) {
-            $this->assertStringContainsString('No refund was issued', $exception->getMessage());
+            $this->assertStringContainsString('still active with the provider', $exception->getMessage());
         }
     }
 }
