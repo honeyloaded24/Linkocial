@@ -479,4 +479,48 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(0, Transaction::where('user_id', $customer->id)->count());
     }
 
+    public function test_grizzly_cancel_waits_until_provider_activation_cancel_timestamp_without_calling_provider(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Grizzly';
+        $customer->last_name = 'Cancel';
+        $customer->username = 'grizzly_cancel_wait_customer';
+        $customer->email = 'grizzly-cancel-wait@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 750;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'GRIZZLY-CANCEL-WAIT-1',
+            'phone_number' => '+66846426435',
+            'country' => '187',
+            'operator' => 'Server 2',
+            'server' => 'server2',
+            'product' => 'WhatsApp',
+            'cost' => 250,
+            'provider_cost' => 1,
+            'status' => 'pending',
+            'cancel_available_at' => now()->addSeconds(50),
+        ]);
+
+        $this->mock(GrizzlySmsService::class, function ($mock) {
+            $mock->shouldNotReceive('checkOrder');
+            $mock->shouldNotReceive('cancelOrder');
+        });
+
+        $response = $this->actingAs($customer)
+            ->postJson('/api/virtual-numbers/' . $order->id . '/cancel')
+            ->assertStatus(409)
+            ->assertJsonPath('error', fn ($value) => str_contains($value, 'Please wait'))
+            ->assertJsonStructure(['retry_after_seconds', 'cancel_available_at']);
+
+        $remaining = (int) $response->json('retry_after_seconds');
+        $this->assertGreaterThan(0, $remaining);
+        $this->assertLessThanOrEqual(50, $remaining);
+        $this->assertSame(750.0, (float) $customer->fresh()->balance);
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
 }
