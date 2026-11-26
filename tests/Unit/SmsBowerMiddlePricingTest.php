@@ -99,7 +99,7 @@ class SmsBowerMiddlePricingTest extends TestCase
     public function test_server3_country_list_always_includes_documented_uk_and_us_ids(): void
     {
         $controller = (new ReflectionClass(VirtualNumberController::class))->newInstanceWithoutConstructor();
-        $method = new \\ReflectionMethod(VirtualNumberController::class, 'ensureSmsBowerCoreCountries');
+        $method = new \ReflectionMethod(VirtualNumberController::class, 'ensureSmsBowerCoreCountries');
         $method->setAccessible(true);
 
         $countries = $method->invoke($controller, [
