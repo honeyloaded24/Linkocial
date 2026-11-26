@@ -485,12 +485,12 @@ class GrizzlySmsService
             ]);
 
             if (!$response->successful()) {
-                throw new \\RuntimeException('Grizzly country catalogue returned HTTP ' . $response->status());
+                throw new \RuntimeException('Grizzly country catalogue returned HTTP ' . $response->status());
             }
 
             $json = $response->json();
             if (!is_array($json) || empty($json)) {
-                throw new \\RuntimeException('Grizzly returned an empty or invalid country catalogue.');
+                throw new \RuntimeException('Grizzly returned an empty or invalid country catalogue.');
             }
 
             $list = [];
@@ -508,7 +508,7 @@ class GrizzlySmsService
             }
 
             return $list;
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning('Grizzly country catalogue refresh failed.', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -566,7 +566,7 @@ class GrizzlySmsService
             }
 
             return $items;
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::error('Grizzly getPricesForCountry exception: ' . $e->getMessage());
             return [];
         }
@@ -578,7 +578,7 @@ class GrizzlySmsService
     public function buyNumber(string|int $country, string $service, ?float $maxPrice = null): array
     {
         if (empty($this->apiKey)) {
-            throw new \\RuntimeException('Grizzly SMS API key is not configured. Please contact support.');
+            throw new \RuntimeException('Grizzly SMS API key is not configured. Please contact support.');
         }
 
         $params = [
@@ -594,8 +594,8 @@ class GrizzlySmsService
 
         try {
             $response = Http::timeout(25)->get($this->baseUrl, $params);
-        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
-            throw new \\App\\Exceptions\\ProviderTimeoutException(
+        } catch (\Illuminate\\Http\\Client\\ConnectionException $e) {
+            throw new \App\\Exceptions\\ProviderTimeoutException(
                 'Grizzly purchase outcome could not be confirmed after a connection interruption.',
                 0,
                 $e
@@ -610,7 +610,7 @@ class GrizzlySmsService
             || str_contains(strtolower($body), 'prohibited')
             || str_contains($body, 'MAX_PRICE_EXCEEDED')
             || str_contains($body, 'PRICE_LIMIT')) {
-            throw new \\RuntimeException(match (true) {
+            throw new \RuntimeException(match (true) {
                 $body === 'NO_NUMBERS' => 'No numbers currently available for this service and country on Server 2. Please try again or select another service.',
                 $body === 'NO_BALANCE' => 'Server 2 provider balance is temporarily depleted. Please use another server or contact support.',
                 $body === 'BAD_KEY' => 'Invalid Server 2 API configuration.',
@@ -658,7 +658,7 @@ class GrizzlySmsService
             'response' => substr($body, 0, 500),
         ]);
 
-        throw new \\App\\Exceptions\\ProviderTimeoutException(
+        throw new \App\\Exceptions\\ProviderTimeoutException(
             'Grizzly returned an unrecognized purchase response. The activation outcome is unknown and requires reconciliation.'
         );
     }
@@ -740,7 +740,7 @@ class GrizzlySmsService
             if ($body === 'EARLY_CANCEL_DENIED') {
                 // Grizzly does not include a fixed delay in this response. Never
                 // invent a universal waiting period when the provider omits one.
-                throw new \\RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
+                throw new \RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
             }
 
             // Only the explicit cancellation acknowledgement is proof of cancellation.
