@@ -305,139 +305,89 @@ class SmsBowerService
         ];
     }
 
+    /**
+     * Build the country catalogue with one provider request. SMSBower's
+     * getPrices endpoint returns every service for the selected country;
+     * getTopCountriesByService is intentionally limited to ten countries
+     * and must not be used as the country catalogue source.
+     */
+    protected function parseCountryPricesResponse(array $data, string|int $country, string $countryName, array $services): array
+    {
+        $countryData = $data[(string) $country] ?? $data[(int) $country] ?? null;
+
+        if (!is_array($countryData)) {
+            $target = $this->countryKey($countryName);
+            foreach ($data as $countryKey => $rows) {
+                if (is_array($rows) && $this->countryKey((string) $countryKey) === $target) {
+                    $countryData = $rows;
+                    break;
+                }
+            }
+        }
+
+        if (!is_array($countryData) && count($data) === 1) {
+            $countryData = reset($data);
+        }
+        if (!is_array($countryData)) return [];
+
+        $names = [];
+        foreach ($services as $service) {
+            $code = (string) ($service['code'] ?? '');
+            $name = trim((string) ($service['name'] ?? ''));
+            if ($code !== '' && $name !== '') $names[$code] = $name;
+        }
+
+        $items = [];
+        foreach ($countryData as $code => $details) {
+            if (!is_array($details) || !isset($names[(string) $code])) continue;
+            $price = (float) ($details['cost'] ?? $details['price'] ?? 0);
+            $count = (int) ($details['count'] ?? 0);
+            if ($price <= 0 || $count <= 0) continue;
+
+            $items[] = [
+                'service' => (string) $code,
+                'service_name' => $names[(string) $code],
+                // This is a discovery price only. The selected service is
+                // re-quoted against live Gold/provider prices before purchase.
+                'price' => $price,
+                'count' => $count,
+            ];
+        }
+
+        return $items;
+    }
+
     public function getPricesForCountry(string|int $country): array
     {
-        // Versioned cache avoids serving the previous top-ten-only catalogue.
-        $cacheKey = 'smsbower_country_middle_catalogue_v5_' . $country;
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($country) {
+        $cacheKey = 'smsbower_country_catalogue_v6_' . $country;
+
+        return Cache::remember($cacheKey, now()->addMinutes(2), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
             if (!$countryRow) return [];
 
             $services = $this->getServices();
-            if (empty($services)) throw new \RuntimeException('Server 3 returned no services from its service catalogue.');
-
-            $topData = [];
-            $missingTop = [];
-            foreach ($services as $service) {
-                $code = (string) ($service['code'] ?? '');
-                if ($code === '') continue;
-                $cached = Cache::get('smsbower_gold_top_' . md5($code));
-                if (is_array($cached)) $topData[$code] = $cached;
-                else $missingTop[] = $code;
+            if (empty($services)) {
+                throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
             }
 
-            // First obtain Gold rankings in bounded parallel batches. The API
-            // returns only ten countries per service, so absence is not proof
-            // that the selected country has no stock.
-            foreach (array_chunk(array_values(array_unique($missingTop)), 12) as $batch) {
-                try {
-                    $responses = Http::pool(function (Pool $pool) use ($batch) {
-                        $pending = [];
-                        foreach ($batch as $code) {
-                            $pending[$code] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
-                                'api_key' => $this->apiKey,
-                                'action' => 'getTopCountriesByService',
-                                'service' => $code,
-                            ]);
-                        }
-                        return $pending;
-                    });
-                    foreach ($batch as $code) {
-                        $response = $responses[$code] ?? null;
-                        if (!$response || !$response->successful()) continue;
-                        $json = $response->json();
-                        if (!is_array($json)) continue;
-                        $topData[$code] = $json;
-                        Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Server 3 Gold catalogue batch failed; country-specific stock lookup will be used.', [
-                        'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
-                    ]);
-                }
+            // One country-specific request replaces hundreds of sequential/
+            // batched per-service calls that could exceed the web request timeout.
+            $response = $this->request([
+                'action' => 'getPrices',
+                'country' => $country,
+            ], 25);
+
+            if (!$response->successful()) {
+                throw new \\RuntimeException('Server 3 could not retrieve the selected country service catalogue (HTTP ' . $response->status() . ').');
             }
 
-            // For services where the country is not in the top-ten ranking (or
-            // ranking lookup failed), query getPricesV3 for this exact country.
-            $fallbackServices = [];
-            foreach ($services as $service) {
-                $code = (string) ($service['code'] ?? '');
-                if ($code === '') continue;
-                if (!isset($topData[$code]) || !$this->hasCountryInGoldResponse($topData[$code], $countryRow['name'])) {
-                    $fallbackServices[] = $code;
-                }
+            $data = $response->json();
+            if (!is_array($data)) {
+                throw new \\RuntimeException('Server 3 returned an invalid country prices response.');
             }
 
-            $countryPriceData = [];
-            foreach (array_chunk(array_values(array_unique($fallbackServices)), 12) as $batch) {
-                try {
-                    $responses = Http::pool(function (Pool $pool) use ($batch, $country) {
-                        $pending = [];
-                        foreach ($batch as $code) {
-                            $pending[$code] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
-                                'api_key' => $this->apiKey,
-                                'action' => 'getPricesV3',
-                                'service' => $code,
-                                'country' => $country,
-                            ]);
-                        }
-                        return $pending;
-                    });
-                    foreach ($batch as $code) {
-                        $response = $responses[$code] ?? null;
-                        if (!$response || !$response->successful()) {
-                            Log::warning('Server 3 country-specific catalogue lookup failed.', [
-                                'service' => $code, 'country' => $country,
-                                'status' => $response ? $response->status() : null,
-                            ]);
-                            continue;
-                        }
-                        $json = $response->json();
-                        if (is_array($json)) $countryPriceData[$code] = $json;
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('Server 3 country-specific catalogue batch failed.', [
-                        'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            $items = [];
-            foreach ($services as $service) {
-                $code = (string) ($service['code'] ?? '');
-                $name = trim((string) ($service['name'] ?? ''));
-                if ($code === '' || $name === '') continue;
-
-                if (isset($topData[$code]) && $this->hasCountryInGoldResponse($topData[$code], $countryRow['name'])) {
-                    $offers = $this->goldPartnersFromResponse($topData[$code], $countryRow['name']);
-                    $offers = array_values(array_filter($offers, fn ($offer) => (int) ($offer['count'] ?? 0) > 0));
-                    $offers = $this->middlePricedOffers(array_map(
-                        fn ($offer) => ['id' => $offer['id'], 'price' => $offer['price'], 'stock' => $offer['count']],
-                        $offers
-                    ));
-                } elseif (isset($countryPriceData[$code])) {
-                    // The selected country is outside the top-ten Gold ranking.
-                    // Use live country-specific provider prices and stock, applying
-                    // the same middle-price safety rule before displaying a service.
-                    $offers = $this->middlePricedOffers(
-                        $this->countryServiceOffers($countryPriceData[$code], $country, $code)
-                    );
-                } else {
-                    continue;
-                }
-
-                if (empty($offers)) continue;
-                $items[] = [
-                    'service' => $code,
-                    'service_name' => $name,
-                    'price' => $this->customerQuotePrice($offers),
-                    'count' => (int) array_sum(array_column($offers, 'stock')),
-                    'gold_provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
-                ];
-            }
-
-            return $items;
+            return $this->parseCountryPricesResponse($data, $country, $countryRow['name'], $services);
         });
     }
 
