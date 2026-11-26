@@ -876,8 +876,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? '<span class="badge bg-info ms-1" style="font-size: 0.65rem;">Server 4</span>'
                     : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>'));
         card.querySelector('.country-name').innerHTML = `${order.country} ${serverBadge}`;
-        card.querySelector('.phone-number').value = order.phone_number;
-        
+        card.querySelector('.phone-number').value = order.status === 'unresolved'
+            ? 'Purchase being verified'
+            : order.phone_number;
+        if (order.status === 'unresolved') {
+            const copyNumberButton = card.querySelector('.copy-btn');
+            const cancelButton = card.querySelector('.cancel-btn');
+            const resendButton = card.querySelector('.resend-btn');
+            const spinner = card.querySelector('.waiting-spinner');
+            const waitingText = card.querySelector('.waiting-text');
+            if (copyNumberButton) copyNumberButton.classList.add('d-none');
+            if (cancelButton) cancelButton.classList.add('d-none');
+            if (resendButton) resendButton.classList.add('d-none');
+            if (spinner) spinner.classList.add('d-none');
+            if (waitingText) {
+                waitingText.textContent = 'Your purchase is being verified with the carrier. Please do not purchase this service again until verification is complete.';
+                waitingText.classList.remove('d-none');
+            }
+        }
+
         // Setup countdown timer for pending orders
         if (order.expires_at && order.status === 'pending') {
             const countdownEl = card.querySelector('.countdown-timer');
@@ -1020,6 +1037,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         activeOrdersContainer.prepend(card);
         
+        // An unresolved purchase has no confirmed provider activation ID yet.
+        // Keep it visible for the customer, but do not poll or retry it automatically.
+        if (order.status === 'unresolved') {
+            return;
+        }
+
         // Check order status
         if ((order.status === 'received' || order.status === 'finished') && order.sms_code) {
             showReceivedState(card, order.sms_code);
