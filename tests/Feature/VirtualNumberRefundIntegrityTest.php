@@ -86,6 +86,76 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
     }
 
+    public function test_admin_can_refund_daisy_attempt_after_confirming_no_rental_and_cannot_refund_twice(): void
+    {
+        $admin = new User();
+        $admin->first_name = 'Daisy';
+        $admin->last_name = 'Admin';
+        $admin->username = 'daisy_no_rental_admin';
+        $admin->email = 'daisy-no-rental-admin@example.test';
+        $admin->password = bcrypt('password');
+        $admin->email_verified_at = now();
+        $admin->is_admin = true;
+        $admin->role = 'admin';
+        $admin->save();
+
+        $customer = new User();
+        $customer->first_name = 'Daisy';
+        $customer->last_name = 'Customer';
+        $customer->username = 'daisy_no_rental_customer';
+        $customer->email = 'daisy-no-rental-customer@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 4928.76;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'ATT_' . $customer->id . '_123456_' . str_repeat('a', 8),
+            'phone_number' => 'PENDING',
+            'country' => '187',
+            'operator' => 'Server 4',
+            'server' => 'server4',
+            'provider_key' => 'daisysms',
+            'product' => 'WhatsApp Canada',
+            'cost' => 1840,
+            'provider_cost' => 0,
+            'status' => 'unresolved',
+            'sms_text' => 'DaisySMS Server 4 purchase timed out.',
+        ]);
+
+        Transaction::create([
+            'user_id' => $customer->id,
+            'amount' => 1840,
+            'type' => 'debit',
+            'transaction_type' => 'virtual_number',
+            'balance_before' => 6768.76,
+            'balance_after' => 4928.76,
+            'description' => 'Virtual Number Purchase (WhatsApp Canada - 187)',
+            'reference' => 'VN-DEBIT-' . $order->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->withHeader('referer', route('hq.virtual-numbers'))
+            ->post(route('hq.virtual-numbers.confirm-daisy-no-rental', $order->id), [
+                'confirm_no_rental' => '1',
+            ])
+            ->assertRedirect(route('hq.virtual-numbers'));
+
+        $this->assertSame(6768.76, (float) $customer->fresh()->balance);
+        $this->assertSame('failed', $order->fresh()->status);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
+
+        $this->actingAs($admin)
+            ->withHeader('referer', route('hq.virtual-numbers'))
+            ->post(route('hq.virtual-numbers.confirm-daisy-no-rental', $order->id), [
+                'confirm_no_rental' => '1',
+            ])
+            ->assertRedirect(route('hq.virtual-numbers'));
+
+        $this->assertSame(6768.76, (float) $customer->fresh()->balance);
+        $this->assertSame(1, Transaction::where('reference', 'REF-VN-ADMIN-' . $order->id)->count());
+    }
+
     public function test_admin_refund_is_withheld_when_provider_cancellation_fails(): void
     {
         $admin = new User();
