@@ -813,6 +813,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 feeButton.innerHTML = '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted';
             }
         }
+
+        // An uncertain DaisySMS extra-activation request must remain locked after
+        // a page refresh. Do not invite the customer to submit a duplicate request.
+        if (order.provider_key === 'daisysms' &&
+            ['requesting', 'requested', 'waiting', 'ready', 'unknown'].includes(order.daisy_extra_activation_status)) {
+            const feeButton = card.querySelector('.resend-btn');
+            const alertBox = card.querySelector('.resend-alert');
+            if (feeButton) {
+                feeButton.disabled = true;
+                feeButton.classList.add('d-none');
+            }
+            if (alertBox) {
+                alertBox.textContent = order.daisy_extra_activation_status === 'unknown'
+                    ? 'Your additional SMS request is being verified. Please do not request another SMS while this check is in progress.'
+                    : 'An additional SMS request has already been submitted for this number.';
+                alertBox.classList.remove('d-none');
+            }
+        }
         const serviceName = order.product || order.service || 'Service';
         card.querySelector('.service-name').textContent = serviceName;
         card.querySelector('.service-name-inline').textContent = serviceName;
@@ -921,6 +939,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(res => res.json())
                 .then(data => {
+                    if (data.status === 'unknown') {
+                        btn.disabled = true;
+                        btn.innerHTML = '<i class="fa-solid fa-clock me-1"></i> Verifying Request...';
+                        alertBox.textContent = data.error || 'Your additional SMS request is being verified. Please do not submit another request.';
+                        alertBox.classList.remove('d-none');
+                        return;
+                    }
+
                     if (data.error) {
                         btn.disabled = false;
                         btn.innerHTML = btn.title && btn.title.includes('USD $0.20')
@@ -945,11 +971,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(err => {
                     console.error('Failed to request resend:', err);
-                    btn.disabled = false;
-                    btn.innerHTML = btn.title && btn.title.includes('USD $0.20')
-                        ? '<i class="fa-solid fa-rotate-right me-1"></i> Request Another SMS · $0.20 converted'
-                        : '<i class="fa-solid fa-rotate-right me-1"></i> Resend Code / Reuse';
-                    alertBox.textContent = 'Network error while requesting resend. Please check the order status before trying again.';
+                    // The request may have reached the server even if its response
+                    // was lost. Keep the control locked until the customer refreshes
+                    // and the order's persisted activation state is reloaded.
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-clock me-1"></i> Verifying Request...';
+                    alertBox.textContent = 'We could not confirm the response. Your request may still be processing. Please refresh the order before trying again.';
                     alertBox.classList.remove('d-none');
                 });
             });
