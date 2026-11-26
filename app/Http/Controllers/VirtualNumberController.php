@@ -307,6 +307,26 @@ class VirtualNumberController extends Controller
                 }
             }
 
+            // Refresh Server 2 and DaisySMS prices immediately before quoting/debiting.
+            // Cached catalogues are discovery aids, never the final purchase quote.
+            if ($server === 'server2' && $productId) {
+                $freshRows = $this->grizzly->getPricesForCountry($country);
+                $freshOffer = collect($freshRows)->first(fn ($row) => (string) ($row['service'] ?? '') === (string) $productId);
+                if ($freshOffer && (float) ($freshOffer['price'] ?? 0) > 0) {
+                    $activeWholesalePrice = (float) $freshOffer['price'];
+                }
+            } elseif ($this->isDaisyService($server, (string) $country, (string) $productId)) {
+                $freshRows = $this->daisysms->getPricesForCountry((string) $country);
+                $freshOffer = collect($freshRows)->firstWhere('service', (string) $productId);
+                if (!$freshOffer || (int) ($freshOffer['stock'] ?? 0) <= 0 || (float) ($freshOffer['price'] ?? 0) <= 0) {
+                    return response()->json([
+                        'error' => 'This DaisySMS service is temporarily unavailable or out of stock. Please refresh the quote and try again.',
+                        'out_of_stock' => true,
+                    ], 400);
+                }
+                $activeWholesalePrice = (float) $freshOffer['price'];
+            }
+
             // Calculate authoritative verified user cost in NGN with dynamic markup
             $userCostNgn = $this->calculateRetailPrice($activeWholesalePrice);  
             $finalCheckCost = max(0.00, $userCostNgn);
@@ -1680,31 +1700,40 @@ class VirtualNumberController extends Controller
                 $pricesData = $this->getProvider($server)->getPricesForCountry($country);
                 if (!empty($pricesData) && is_array($pricesData)) {
                     Cache::put($cacheKey, $pricesData, $server === 'server3' ? 5 : 60);
+                    Cache::put($cacheKey . '_stale', $pricesData, now()->addHours(2));
                 }
             } catch (\Throwable $e) {
-                Log::error("Failed fetching prices for country {$country} on {$server}: " . $e->getMessage());
-                if ($server === 'server3') throw $e;
-                return [];
+                Log::warning("Provider catalogue refresh failed for {$country} on {$server}; attempting last known catalogue.", [
+                    'error' => $e->getMessage(),
+                ]);
+                $pricesData = Cache::get($cacheKey . '_stale', []);
+                if (empty($pricesData) && $server === 'server3') {
+                    throw $e;
+                }
             }
         }
 
         if ($server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID) {
             $daisyCacheKey = "daisysms_prices_{$country}";
             $daisyStaleKey = "daisysms_prices_stale_{$country}";
-            try {
-                $daisyRows = $this->daisysms->getPricesForCountry($country);
-                if (!empty($daisyRows)) {
-                    Cache::put($daisyCacheKey, $daisyRows, now()->addMinute());
-                    Cache::put($daisyStaleKey, $daisyRows, now()->addHours(2));
-                } else {
-                    $daisyRows = Cache::get($daisyCacheKey, Cache::get($daisyStaleKey, []));
+            $daisyRows = Cache::get($daisyCacheKey);
+
+            if (!is_array($daisyRows) || empty($daisyRows)) {
+                try {
+                    $daisyRows = $this->daisysms->getPricesForCountry($country);
+                    if (!empty($daisyRows)) {
+                        Cache::put($daisyCacheKey, $daisyRows, now()->addMinute());
+                        Cache::put($daisyStaleKey, $daisyRows, now()->addHours(2));
+                    } else {
+                        $daisyRows = Cache::get($daisyStaleKey, []);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('DaisySMS catalogue refresh failed; serving last known catalogue where available.', [
+                        'country' => $country,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $daisyRows = Cache::get($daisyStaleKey, []);
                 }
-            } catch (\\Throwable $e) {
-                Log::warning('DaisySMS catalogue refresh failed; serving last known catalogue where available.', [
-                    'country' => $country,
-                    'error' => $e->getMessage(),
-                ]);
-                $daisyRows = Cache::get($daisyCacheKey, Cache::get($daisyStaleKey, []));
             }
 
             $routedCodes = array_keys(DaisySmsService::ROUTED_SERVICES);
