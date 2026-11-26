@@ -91,7 +91,7 @@
                 <div>
                     <h3 class="fw-bold mb-1 text-warning">₦{{ number_format($vnStats['provider_cost'], 2) }}</h3>
                     <div class="small text-muted" style="font-size: 0.72rem;">
-                        SmsPool/Grizzly (Rate: ₦{{ number_format($vnStats['exchange_rate'], 2) }}/$)
+                        Server 1 & Server 2 (Rate: ₦{{ number_format($vnStats['exchange_rate'], 2) }}/$)
                     </div>
                 </div>
             </div>
@@ -233,7 +233,7 @@
                     </td>
                     <td class="text-end">
                         @if(($order->provider_key ?? null) === 'daisysms' && $order->status === 'unresolved' && str_starts_with((string) $order->api_order_id, 'ATT_') && in_array((string) $order->phone_number, ['', 'PENDING'], true) && empty($order->sms_code))
-                        <form action="{{ route('hq.virtual-numbers.confirm-daisy-no-rental', $order->id) }}" method="POST" onsubmit="return confirm('Only continue if you have checked the DaisySMS Rentals page and confirmed that this order does NOT exist. This will refund the customer and close the attempt. Continue?');">
+                        <form action="{{ route('hq.virtual-numbers.confirm-daisy-no-rental', $order->id) }}" method="POST" onsubmit="return confirm('Only continue if you have checked the Server 4 rentals page and confirmed that this order does NOT exist. This will refund the customer and close the attempt. Continue?');">
                             @csrf
                             <input type="hidden" name="confirm_no_rental" value="1">
                             <button class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold">Confirm No Rental & Refund</button>
