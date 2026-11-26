@@ -4,11 +4,17 @@ namespace Tests\Unit;
 
 use App\Services\SmsBowerService;
 use App\Http\Controllers\VirtualNumberController;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use App\Models\Setting;
 use ReflectionClass;
 
 class SmsBowerMiddlePricingTest extends TestCase
 {
+    use RefreshDatabase;
+
     private function filterMiddlePrices(array $offers): array
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
