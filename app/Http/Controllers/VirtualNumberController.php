@@ -792,8 +792,7 @@ class VirtualNumberController extends Controller
                     }
                 } elseif ($server === 'server2') {
                     try {
-                        // Preserve Grizzly's established automatic price-tier selection.
-                        // A quote-derived maxPrice may be stale by the time the request arrives.
+                        // Enforce the live quote's safe provider-spend ceiling at Grizzly.
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
                     } catch (\App\Exceptions\ProviderTimeoutException|\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         
@@ -856,6 +855,7 @@ class VirtualNumberController extends Controller
                 $isGrizzlyDefiniteRejection = $server === 'server2' && (
                     str_contains($providerError, 'no numbers')
                     || str_contains($providerError, 'no_balance')
+                    || str_contains($providerError, 'provider balance is temporarily depleted')
                     || str_contains($providerError, 'invalid server 2 api configuration')
                     || str_contains($providerError, 'restricted or unavailable')
                     || str_contains($providerError, 'exceeds the confirmed safe spending limit')
