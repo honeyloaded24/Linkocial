@@ -157,14 +157,24 @@ class AdminVirtualNumberController extends Controller
     public function daisySmsCatalogue(\App\Services\DaisySmsService $daisysms)
     {
         try {
+            $countries = $daisysms->getAvailableCountries();
+            $catalogues = [];
+            foreach ($countries as $country) {
+                $countryId = (string) $country['ID'];
+                $catalogues[] = [
+                    'country' => $country,
+                    'services' => $daisysms->getCatalogueForCountry($countryId),
+                ];
+            }
+
             return response()->json([
                 'success' => true,
-                'country_id' => \App\Services\DaisySmsService::USA_COUNTRY_ID,
-                'services' => $daisysms->getCatalogueForCountry(\App\Services\DaisySmsService::USA_COUNTRY_ID),
+                'countries' => $countries,
+                'country_catalogues' => $catalogues,
                 'catalogue_diagnostics' => $daisysms->getCatalogueDiagnostics(),
                 'routing_enabled' => true,
                 'server' => 'Server 4',
-                'message' => 'Live Server 4 catalogue. This diagnostic does not purchase a number.',
+                'message' => 'Live Server 4 catalogues for supported US and Canada services. This diagnostic does not purchase a number.',
             ]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('DaisySMS admin catalogue check failed: '.$e->getMessage());
