@@ -31,7 +31,7 @@ class VirtualNumberController extends Controller
 
     protected function isDaisyService(string $server, string $country, string $product): bool
     {
-        return $server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID && isset(DaisySmsService::ROUTED_SERVICES[$product]);
+        return $server === 'server4' && $country === DaisySmsService::USA_COUNTRY_ID && isset(DaisySmsService::ROUTED_SERVICES[$product]);
     }
 
     protected function getOrderProvider(VirtualNumberOrder $order)
@@ -49,6 +49,7 @@ class VirtualNumberController extends Controller
         return match ($server) {
             'server2' => $this->grizzly,
             'server3' => $this->smsbower,
+            'server4' => $this->daisysms,
             default => $this->smspool,
         };
     }
@@ -70,8 +71,9 @@ class VirtualNumberController extends Controller
             ->get();
 
         $server3Enabled = !empty(\App\Models\Setting::get('smsbower_api_key'));
+        $server4Enabled = !empty(\App\Models\Setting::get('daisysms_api_key'));
 
-        return view('services.virtual_numbers', compact('activeOrders', 'server3Enabled'));
+        return view('services.virtual_numbers', compact('activeOrders', 'server3Enabled', 'server4Enabled'));
     }
 
     /**
@@ -92,7 +94,12 @@ class VirtualNumberController extends Controller
     public function getCountries(Request $request)
     {
         $server = $request->query('server', 'server1');
-        $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', default => 'smspool_countries' };
+        $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', 'server4' => 'daisysms_countries', default => 'smspool_countries' };
+
+        if ($server === 'server4') {
+            if (empty(\\App\\Models\\Setting::get('daisysms_api_key'))) return response()->json([]);
+            return response()->json([['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '1']]);
+        }
 
         $cached = Cache::get($cacheKey);
         if ($cached && is_array($cached) && !empty($cached)) {
@@ -210,8 +217,8 @@ class VirtualNumberController extends Controller
             return response()->json($finalServices);
         } catch (\Throwable $e) {
             Log::error("getPricesForCountry failed for {$server}: " . $e->getMessage(), ['country' => $country]);
-            if ($server === 'server3') {
-                return response()->json(['error' => 'Server 3 services could not be loaded. Please try again shortly.'], 502);
+            if (in_array($server, ['server3', 'server4'], true)) {
+                return response()->json(['error' => ($server === 'server4' ? 'Server 4' : 'Server 3') . ' services could not be loaded. Please try again shortly.'], 502);
             }
             return response()->json([]);
         }
@@ -266,7 +273,7 @@ class VirtualNumberController extends Controller
             }
 
             if ($cheapestPrice === null) {
-                return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1')) . '.'], 400);
+                return response()->json(['error' => 'Product not available for this country on ' . ($server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1'))) . '.'], 400);
             }
 
             if ($server === 'server2' && $productId) {
@@ -277,7 +284,7 @@ class VirtualNumberController extends Controller
 
             // Server 3 must revalidate live stock and pricing against current Gold IDs
             // before any wallet debit or purchase-attempt ledger entry is created.
-            if ($server === 'server3' && !$this->isDaisyService($server, (string) $country, (string) $productId)) {
+            if ($server === 'server3') {
                 Cache::forget('smsbower_gold_top_' . md5((string) $productId));
                 $liveGoldOffer = $this->smsbower->getLiveGoldOffer($country, (string) $productId);
                 if (empty($liveGoldOffer['provider_ids']) || (float) ($liveGoldOffer['price'] ?? 0) <= 0) {
@@ -412,7 +419,7 @@ class VirtualNumberController extends Controller
                     'country' => (string) $country,
                     'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1'),
                     'server' => $server,
-                    'provider_key' => $this->isDaisyService($server, (string) $country, (string) $productId) ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
+                    'provider_key' => $server === 'server4' ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
                     'product' => (string) ($serviceName ?? $product),
                     'cost' => $finalCheckCost,
                     'provider_cost' => 0.0,
@@ -750,7 +757,7 @@ class VirtualNumberController extends Controller
                     }
                 } else {
                     try {
-                        $buyResponse = $this->isDaisyService($server, (string) $country, (string) $productId)
+                        $buyResponse = $server === 'server4'
                             ? $this->daisysms->buyNumber((string) $country, (string) $productId, null, $activeWholesalePrice)
                             : $this->smsbower->buyNumber($country, (string) $productId);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
@@ -761,7 +768,7 @@ class VirtualNumberController extends Controller
                             }
                         });
                         return response()->json([
-                            'error' => 'Your request timed out while communicating with Server 3. The purchase is being verified to prevent a duplicate charge. Please check order history shortly.',
+                            'error' => 'Your request timed out while communicating with ' . ($server === 'server4' ? 'Server 4' : 'Server 3') . '. The purchase is being verified to prevent a duplicate charge. Please check order history shortly.',
                             'order_id' => $attemptRecord->id,
                             'status' => 'unresolved',
                         ], 504);
@@ -1116,8 +1123,8 @@ class VirtualNumberController extends Controller
                 || stripos($rawError, 'out of stock') !== false
             )) {
                 $userFacingError = "No verified Gold supplier currently has stock for this service and country. Your wallet was not charged. Please try another service, country, or server.";
-            } elseif ($server === 'server3') {
-                $userFacingError = "Server 3 is temporarily unable to fulfil this request. Your wallet was not charged. Please try again shortly or choose another server.";
+            } elseif ($server === 'server3' || $server === 'server4') {
+                $userFacingError = ($server === 'server4' ? 'Server 4' : 'Server 3') . " is temporarily unable to fulfil this request. Your wallet was not charged. Please try again shortly or choose another server.";
             } elseif (stripos($rawError, 'below the price of') !== false || stripos($rawError, 'suitable pool') !== false) {
                 $userFacingError = "This service is temporarily unavailable due to carrier pricing updates. Your wallet was not charged. Please refresh for an updated quote or select Server 2.";
             } elseif (stripos($rawError, 'occupied') !== false || stripos($rawError, 'out of stock') !== false || stripos($rawError, 'no numbers') !== false) {
@@ -1710,67 +1717,43 @@ class VirtualNumberController extends Controller
      */
     protected function getCachedPricesForCountry(string $country, string $server = 'server1'): array
     {
-        $cacheKey = match ($server) { 'server2' => "grizzly_prices_{$country}", 'server3' => "smsbower_middle_prices_v4_{$country}", default => "smspool_prices_{$country}" };
-        $cached = Cache::get($cacheKey);
-
-        if ($cached && is_array($cached) && !empty($cached)) {
-            $pricesData = $cached;
-        } else {
+        if ($server === 'server4') {
+            if ($country !== DaisySmsService::USA_COUNTRY_ID) return [];
+            $cacheKey = "daisysms_prices_{$country}";
+            $cached = Cache::get($cacheKey);
+            if (is_array($cached) && !empty($cached)) return $cached;
             try {
-                $pricesData = $this->getProvider($server)->getPricesForCountry($country);
-                if (!empty($pricesData) && is_array($pricesData)) {
-                    Cache::put($cacheKey, $pricesData, $server === 'server3' ? 5 : 60);
-                    Cache::put($cacheKey . '_stale', $pricesData, now()->addHours(2));
+                $rows = $this->daisysms->getPricesForCountry($country);
+                if (!empty($rows)) {
+                    Cache::put($cacheKey, $rows, now()->addMinute());
+                    Cache::put($cacheKey . '_stale', $rows, now()->addHours(2));
+                    return $rows;
                 }
             } catch (\Throwable $e) {
-                Log::warning("Provider catalogue refresh failed for {$country} on {$server}; attempting last known catalogue.", [
-                    'error' => $e->getMessage(),
-                ]);
-                $pricesData = Cache::get($cacheKey . '_stale', []);
+                Log::warning('DaisySMS Server 4 catalogue refresh failed.', ['country' => $country, 'error' => $e->getMessage()]);
             }
+            return Cache::get($cacheKey . '_stale', []);
         }
 
-        if ($server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID) {
-            $daisyCacheKey = "daisysms_prices_{$country}";
-            $daisyStaleKey = "daisysms_prices_stale_{$country}";
-            $daisyRows = Cache::get($daisyCacheKey);
+        $cacheKey = match ($server) {
+            'server2' => "grizzly_prices_{$country}",
+            'server3' => "smsbower_middle_prices_v4_{$country}",
+            default => "smspool_prices_{$country}",
+        };
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && !empty($cached)) return $cached;
 
-            if (!is_array($daisyRows) || empty($daisyRows)) {
-                try {
-                    $daisyRows = $this->daisysms->getPricesForCountry($country);
-                    if (!empty($daisyRows)) {
-                        Cache::put($daisyCacheKey, $daisyRows, now()->addMinute());
-                        Cache::put($daisyStaleKey, $daisyRows, now()->addHours(2));
-                    } else {
-                        $daisyRows = Cache::get($daisyStaleKey, []);
-                    }
-                } catch (\Throwable $e) {
-                    Log::warning('DaisySMS catalogue refresh failed; serving last known catalogue where available.', [
-                        'country' => $country,
-                        'error' => $e->getMessage(),
-                    ]);
-                    $daisyRows = Cache::get($daisyStaleKey, []);
-                }
+        try {
+            $pricesData = $this->getProvider($server)->getPricesForCountry($country);
+            if (!empty($pricesData) && is_array($pricesData)) {
+                Cache::put($cacheKey, $pricesData, $server === 'server3' ? 5 : 60);
+                Cache::put($cacheKey . '_stale', $pricesData, now()->addHours(2));
+                return $pricesData;
             }
-
-            $routedCodes = array_keys(DaisySmsService::ROUTED_SERVICES);
-            $routedNames = array_map('strtolower', array_values(DaisySmsService::ROUTED_SERVICES));
-
-            // These USA service names belong exclusively to DaisySMS on Server 3.
-            // Remove SMSBower rows by both code and display name so duplicate names
-            // cannot cause getProducts() to retain SMSBower's ID as the purchase ID.
-            $pricesData = array_values(array_filter($pricesData, function ($row) use ($routedCodes, $routedNames) {
-                $serviceCode = (string) ($row['service'] ?? '');
-                $serviceName = strtolower(trim((string) ($row['service_name'] ?? '')));
-
-                return !in_array($serviceCode, $routedCodes, true)
-                    && !in_array($serviceName, $routedNames, true);
-            }));
-
-            $pricesData = array_merge($pricesData, is_array($daisyRows) ? $daisyRows : []);
+        } catch (\Throwable $e) {
+            Log::warning("Provider catalogue refresh failed for {$country} on {$server}; attempting last known catalogue.", ['error' => $e->getMessage()]);
         }
-
-        return $pricesData ?: [];
+        return Cache::get($cacheKey . '_stale', []);
     }
 
     /**
