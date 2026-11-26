@@ -31,7 +31,14 @@ class VirtualNumberController extends Controller
 
     protected function isDaisyService(string $server, string $country, string $product): bool
     {
-        return $server === 'server4' && $country === DaisySmsService::USA_COUNTRY_ID && isset(DaisySmsService::ROUTED_SERVICES[$product]);
+        if ($server !== 'server4' || !isset(DaisySmsService::SUPPORTED_COUNTRIES[$country]) || $product === '') return false;
+
+        try {
+            return collect($this->daisysms->getPricesForCountry($country))
+                ->contains(fn ($row) => (string) ($row['service'] ?? '') === $product);
+        } catch (\\Throwable $e) {
+            return false;
+        }
     }
 
     protected function getOrderProvider(VirtualNumberOrder $order)
