@@ -741,10 +741,10 @@ class GrizzlySmsService
                 // Use an exact delay only when the provider includes one. The
                 // documented bare response does not specify a universal wait.
                 if (preg_match('/(\\d+)\\s*seconds?/i', $body, $waitMatch)) {
-                    throw new \\RuntimeException('Please wait ' . $waitMatch[1] . ' seconds before cancelling this number.');
+                    throw new \RuntimeException('Please wait ' . $waitMatch[1] . ' seconds before cancelling this number.');
                 }
 
-                throw new \\RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
+                throw new \RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
             }
 
             // Only the explicit cancellation acknowledgement is proof of cancellation.
