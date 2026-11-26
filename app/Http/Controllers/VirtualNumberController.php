@@ -897,11 +897,10 @@ class VirtualNumberController extends Controller
                 ? (float) $buyResponse['cost']
                 : (float) ($buyResponse['provider_quote_usd'] ?? $activeWholesalePrice);
 
-            // DaisySMS is called without max_price. The customer confirms a fresh
-            // retail quote before purchase; the provider-side ceiling derived from
-            // our profit floor must not reject an otherwise valid rental.
-            // If the actual provider charge changes above the safe spend ceiling
-            // between quote and purchase, preserve the activation for reconciliation.
+            // All providers are called without stale provider-side price caps.
+            // Live quotes and the configured minimum-profit ceiling are validated
+            // before purchase; if the provider's actual charge changes beyond that
+            // ceiling after issuing an activation, preserve it for reconciliation.
             if ($actualCostUsd > ($maxAllowedProviderUsd + 0.0001)) {
                 $safePhone = str_starts_with($providerPhoneNumber, '+')
                     ? '+' . preg_replace('/\\D+/', '', $providerPhoneNumber)
@@ -1699,9 +1698,6 @@ class VirtualNumberController extends Controller
                     'error' => $e->getMessage(),
                 ]);
                 $pricesData = Cache::get($cacheKey . '_stale', []);
-                if (empty($pricesData) && $server === 'server3') {
-                    throw $e;
-                }
             }
         }
 
