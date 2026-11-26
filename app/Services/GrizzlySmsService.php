@@ -623,6 +623,21 @@ class GrizzlySmsService
         // status is unusual; persist it rather than risking a duplicate purchase.
         $data = $response->json();
         if (is_array($data) && isset($data['activationId'], $data['phoneNumber'])) {
+            $cancelAvailableAt = null;
+            if (!empty($data['activationCancel'])) {
+                try {
+                    // Grizzly documents activationCancel as a UTC timestamp.
+                    $cancelAvailableAt = \\Illuminate\\Support\\Carbon::parse($data['activationCancel'], 'UTC')
+                        ->utc()
+                        ->toDateTimeString();
+                } catch (\\Throwable $dateError) {
+                    Log::warning('Grizzly returned an invalid activationCancel timestamp.', [
+                        'activation_id' => $data['activationId'],
+                        'value' => $data['activationCancel'],
+                    ]);
+                }
+            }
+
             return [
                 'success' => 1,
                 'order_id' => (string) $data['activationId'],
@@ -633,6 +648,7 @@ class GrizzlySmsService
                 'country' => (string) ($data['countryCode'] ?? $country),
                 'service' => $this->getServiceName($service),
                 'time_left' => 1200,
+                'cancel_available_at' => $cancelAvailableAt,
             ];
         }
 
