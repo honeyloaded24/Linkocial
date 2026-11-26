@@ -1,14 +1,14 @@
 <?php
 
-namespace Tests\\Unit;
+namespace Tests\Unit;
 
-use App\\Exceptions\\ProviderTimeoutException;
-use App\\Models\\Setting;
-use App\\Services\\GrizzlySmsService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Illuminate\\Http\\Client\\ConnectionException;
-use Illuminate\\Support\\Facades\\Http;
-use Tests\\TestCase;
+use App\Exceptions\ProviderTimeoutException;
+use App\Models\Setting;
+use App\Services\GrizzlySmsService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
 class GrizzlySmsServiceTest extends TestCase
 {
@@ -43,7 +43,7 @@ class GrizzlySmsServiceTest extends TestCase
             'api.grizzlysms.com/*' => Http::response('temporary error', 502),
         ]);
 
-        $this->expectException(\\RuntimeException::class);
+        $this->expectException(\RuntimeException::class);
         app(GrizzlySmsService::class)->getCountries();
     }
 
@@ -117,7 +117,7 @@ class GrizzlySmsServiceTest extends TestCase
         try {
             app(GrizzlySmsService::class)->buyNumber('187', 'wa', 1.25);
             $this->fail('NO_NUMBERS must be rejected as a definite no-purchase response.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('No numbers currently available', $exception->getMessage());
         }
     }
