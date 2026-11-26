@@ -442,7 +442,7 @@ class DaisySmsService
 
         $messages = [
             'BAD_ID' => 'DaisySMS cannot provide another activation for this number. It may no longer be available.',
-            'NO_BALANCE' => 'Server 3 provider balance is insufficient for another SMS activation.',
+            'NO_BALANCE' => 'Server 4 provider balance is insufficient for another SMS activation.',
         ];
 
         if (isset($messages[$body])) {
