@@ -468,9 +468,45 @@ class VirtualNumberController extends Controller
             // Execute Purchase on chosen server
             try {
                 if ($server === 'server1') {
-                    // Step 1: Automatic pool routing (pricing_option = 0 for cheapest available pool under max_price)
+                    // Explicitly start with the lowest-priced valid SMSPool pool.
+                    // If it is exhausted, the fallback below tries the next cheapest pool.
+                    $initialPoolName = null;
+                    $purchasePools = $this->smspool->getValidPools($country, $productId);
+                    $purchasePools = array_values(array_filter(array_map(function ($pool) {
+                        if (!is_array($pool)) {
+                            return null;
+                        }
+
+                        $poolId = $pool['pool'] ?? $pool['pool_id'] ?? $pool['id'] ?? null;
+                        $poolName = $pool['name'] ?? $pool['pool_name'] ?? $pool['pool'] ?? null;
+                        $poolPrice = (float) ($pool['price'] ?? $pool['cost'] ?? $pool['rate'] ?? 0);
+                        if ($poolId === null || $poolName === null || $poolPrice <= 0) {
+                            return null;
+                        }
+                        if (isset($pool['stock']) && (int) $pool['stock'] <= 0) {
+                            return null;
+                        }
+
+                        return [
+                            'id' => (string) $poolId,
+                            'name' => (string) $poolName,
+                            'price' => $poolPrice,
+                        ];
+                    }, $purchasePools)));
+
+                    usort($purchasePools, fn ($a, $b) => $a['price'] <=> $b['price']);
+                    if (!empty($purchasePools)) {
+                        $initialPoolName = (string) $purchasePools[0]['name'];
+                    }
+
                     try {
-                        $buyResponse = $this->smspool->buyNumber($country, $productId, null, 0, null);
+                        $buyResponse = $this->smspool->buyNumber(
+                            $country,
+                            $productId,
+                            null,
+                            0,
+                            $initialPoolName
+                        );
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         // CRITICAL FINANCIAL SAFETY – TIMEOUT HANDLING:
                         // A network timeout means we do NOT know whether SMSPool created a number or not.
@@ -592,6 +628,9 @@ class VirtualNumberController extends Controller
                                 });
 
                                 $exhaustedPools = [];
+                                if ($initialPoolName !== null) {
+                                    $exhaustedPools[] = strtolower($initialPoolName);
+                                }
                                 if (stripos($firstError, 'foxtrot') !== false) $exhaustedPools[] = 'foxtrot';
                                 if (stripos($firstError, 'sierra') !== false) $exhaustedPools[] = 'sierra';
                                 if (stripos($firstError, 'mike') !== false) $exhaustedPools[] = 'mike';
@@ -689,7 +728,28 @@ class VirtualNumberController extends Controller
                     }
                 } elseif ($server === 'server2') {
                     try {
-                        $buyResponse = $this->grizzly->buyNumber($country, $productId);
+                        // First request the cheapest live Grizzly price. Only when Grizzly
+                        // explicitly reports no numbers at that price do we retry without
+                        // the price ceiling so it can allocate the next available price tier.
+                        try {
+                            $buyResponse = $this->grizzly->buyNumber($country, $productId, $activeWholesalePrice);
+                        } catch (\Exception $priceTierEx) {
+                            $priceTierError = strtolower($priceTierEx->getMessage());
+                            $isNoNumbers = str_contains($priceTierError, 'no_numbers')
+                                || str_contains($priceTierError, 'no numbers')
+                                || str_contains($priceTierError, 'no number');
+
+                            if (!$isNoNumbers) {
+                                throw $priceTierEx;
+                            }
+
+                            Log::info('Grizzly cheapest price tier has no numbers; retrying with next available tier.', [
+                                'country' => $country,
+                                'service' => $productId,
+                                'cheapest_price' => $activeWholesalePrice,
+                            ]);
+                            $buyResponse = $this->grizzly->buyNumber($country, $productId, null);
+                        }
                     } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
