@@ -173,7 +173,7 @@ class DaisySmsService
         foreach (['getPricesVerification', 'getPrices'] as $action) {
             try {
                 $catalogue = $this->decoded($this->request(['action' => $action]));
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 report($e);
                 continue;
             }
