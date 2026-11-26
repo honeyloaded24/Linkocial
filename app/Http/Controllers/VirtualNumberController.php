@@ -458,7 +458,7 @@ class VirtualNumberController extends Controller
                 if ($server === 'server1') {
                     // Step 1: Automatic pool routing (pricing_option = 0 for cheapest available pool under max_price)
                     try {
-                        $buyResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, null);
+                        $buyResponse = $this->smspool->buyNumber($country, $productId, null, 0, null);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         // CRITICAL FINANCIAL SAFETY – TIMEOUT HANDLING:
                         // A network timeout means we do NOT know whether SMSPool created a number or not.
@@ -632,7 +632,7 @@ class VirtualNumberController extends Controller
                                     }
 
                                     try {
-                                        $fallbackResponse = $this->smspool->buyNumber($country, $productId, $maxAllowedProviderUsd, 0, (string)$cName);
+                                        $fallbackResponse = $this->smspool->buyNumber($country, $productId, null, 0, (string)$cName);
                                         Log::info("SMSPool intelligent fallback succeeded with pool {$cName} ({$cId}) at cost {$cPrice}");
                                         break;
                                     } catch (\Exception $fallbackEx) {
@@ -677,7 +677,7 @@ class VirtualNumberController extends Controller
                     }
                 } elseif ($server === 'server2') {
                     try {
-                        $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
+                        $buyResponse = $this->grizzly->buyNumber($country, $productId);
                     } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
@@ -711,7 +711,7 @@ class VirtualNumberController extends Controller
                     try {
                         $buyResponse = $this->isDaisyService($server, (string) $country, (string) $productId)
                             ? $this->daisysms->buyNumber((string) $country, (string) $productId)
-                            : $this->smsbower->buyNumber($country, (string) $productId, $maxAllowedProviderUsd);
+                            : $this->smsbower->buyNumber($country, (string) $productId);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         DB::transaction(function () use ($attemptRecord) {
                             $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
@@ -890,8 +890,7 @@ class VirtualNumberController extends Controller
             // our profit floor must not reject an otherwise valid rental.
             // If the actual provider charge changes above the safe spend ceiling
             // between quote and purchase, preserve the activation for reconciliation.
-            if ($this->isDaisyService($server, (string) $country, (string) $productId)
-                && $actualCostUsd > ($maxAllowedProviderUsd + 0.0001)) {
+            if ($actualCostUsd > ($maxAllowedProviderUsd + 0.0001)) {
                 $safePhone = str_starts_with($providerPhoneNumber, '+')
                     ? '+' . preg_replace('/\\D+/', '', $providerPhoneNumber)
                     : '+' . ($buyResponse['cc'] ?? '') . preg_replace('/\\D+/', '', $providerPhoneNumber);
@@ -905,13 +904,13 @@ class VirtualNumberController extends Controller
                             'provider_cost' => $actualCostUsd,
                             'provider_quote_usd' => $activeWholesalePrice,
                             'status' => 'unresolved',
-                            'sms_text' => 'DaisySMS confirmed the activation, but its actual charge exceeded the pre-purchase safe spend ceiling. Activation and customer payment preserved for reconciliation; no automatic refund.',
+                            'sms_text' => 'Provider confirmed the activation, but its actual charge exceeded the pre-purchase safe spend ceiling. Activation and customer payment preserved for reconciliation; no automatic refund.',
                         ]);
                     }
                 });
 
                 return response()->json([
-                    'error' => 'The carrier issued the number at a price different from the confirmed quote. Your payment and activation have been preserved while the order is verified. Please contact support before purchasing again.',
+                    'error' => 'The carrier issued the number above the confirmed safe spending limit. Your payment and activation have been preserved while the order is verified. Please contact support before purchasing again.',
                     'order_id' => $attemptRecord->id,
                     'status' => 'unresolved',
                 ], 202);
@@ -1690,10 +1689,27 @@ class VirtualNumberController extends Controller
         }
 
         if ($server === 'server3' && $country === DaisySmsService::USA_COUNTRY_ID) {
-            $daisyRows = $this->daisysms->getPricesForCountry($country);
+            $daisyCacheKey = "daisysms_prices_{$country}";
+            $daisyStaleKey = "daisysms_prices_stale_{$country}";
+            try {
+                $daisyRows = $this->daisysms->getPricesForCountry($country);
+                if (!empty($daisyRows)) {
+                    Cache::put($daisyCacheKey, $daisyRows, now()->addMinute());
+                    Cache::put($daisyStaleKey, $daisyRows, now()->addHours(2));
+                } else {
+                    $daisyRows = Cache::get($daisyCacheKey, Cache::get($daisyStaleKey, []));
+                }
+            } catch (\\Throwable $e) {
+                Log::warning('DaisySMS catalogue refresh failed; serving last known catalogue where available.', [
+                    'country' => $country,
+                    'error' => $e->getMessage(),
+                ]);
+                $daisyRows = Cache::get($daisyCacheKey, Cache::get($daisyStaleKey, []));
+            }
+
             $routedCodes = array_keys(DaisySmsService::ROUTED_SERVICES);
             $pricesData = array_values(array_filter($pricesData, fn ($row) => !in_array((string) ($row['service'] ?? ''), $routedCodes, true)));
-            $pricesData = array_merge($pricesData, $daisyRows);
+            $pricesData = array_merge($pricesData, is_array($daisyRows) ? $daisyRows : []);
         }
 
         return $pricesData ?: [];
