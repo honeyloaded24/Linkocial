@@ -239,20 +239,23 @@ class DaisySmsService
         return $rows;
     }
 
-    public function buyNumber(string $country, string $service, float $maxPrice): array
+    public function buyNumber(string $country, string $service, ?float $maxPrice = null): array
     {
         if ($country !== self::USA_COUNTRY_ID || !isset(self::ROUTED_SERVICES[$service])) {
             throw new \RuntimeException('This DaisySMS service is not enabled for the selected Server 3 country.');
         }
-        if ($maxPrice <= 0) {
-            throw new \RuntimeException('The safe provider spending limit is too low to purchase this number.');
-        }
-
-        $response = $this->request([
+        $params = [
             'action' => 'getNumber',
             'service' => $service,
-            'max_price' => number_format($maxPrice, 2, '.', ''),
-        ], 30);
+        ];
+
+        // max_price is optional in DaisySMS. Linkocial's standard purchase flow
+        // omits it after the customer confirms the fresh live retail quote.
+        if ($maxPrice !== null && $maxPrice > 0) {
+            $params['max_price'] = number_format($maxPrice, 2, '.', '');
+        }
+
+        $response = $this->request($params, 30);
 
         $body = trim($response->body());
         if (!preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
@@ -276,7 +279,7 @@ class DaisySmsService
             'cost' => $actualPrice > 0 ? $actualPrice : 0.0,
             'provider_cost' => $actualPrice > 0 ? $actualPrice : 0.0,
             'price_unverified' => $actualPrice <= 0,
-            'provider_quote_usd' => $maxPrice,
+            'provider_quote_usd' => $maxPrice ?? 0.0,
             'provider_supplier_id' => null,
             'provider_returned_operator' => null,
         ];
