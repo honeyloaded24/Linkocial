@@ -765,7 +765,7 @@ class VirtualNumberController extends Controller
                         DB::transaction(function () use ($attemptRecord) {
                             $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                             if ($lockedOrder && $lockedOrder->status === 'processing') {
-                                $lockedOrder->update(['status' => 'unresolved', 'sms_text' => 'Server 3 purchase timed out. Gold supplier activation outcome is unknown; retained for reconciliation. No automatic refund.']);
+                                $lockedOrder->update(['status' => 'unresolved', 'sms_text' => ($server === 'server4' ? 'DaisySMS Server 4 purchase timed out. Activation outcome is unknown; retained for reconciliation. No automatic refund.' : 'Server 3 purchase timed out. Gold supplier activation outcome is unknown; retained for reconciliation. No automatic refund.')]);
                             }
                         });
                         return response()->json([
@@ -783,7 +783,7 @@ class VirtualNumberController extends Controller
                         $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if ($lockedOrder && $lockedOrder->status === 'processing') $lockedOrder->update(['status' => 'unresolved', 'sms_text' => 'DaisySMS purchase outcome is unknown after a network failure. Funds retained for reconciliation; no automatic refund.']);
                     });
-                    return response()->json(['error' => 'The Server 3 purchase is being verified because the carrier response was interrupted. Please check order history before retrying.', 'order_id' => $attemptRecord->id, 'status' => 'unresolved'], 504);
+                    return response()->json(['error' => 'The ' . ($server === 'server4' ? 'Server 4' : 'Server 3') . ' purchase is being verified because the carrier response was interrupted. Please check order history before retrying.', 'order_id' => $attemptRecord->id, 'status' => 'unresolved'], 504);
                 }
                 $noPurchaseDueToQuote = (!$isDaisyPurchase && $server === 'server3')
                     || str_contains($providerError, 'below the price of')
