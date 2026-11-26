@@ -160,7 +160,7 @@ class AdminVirtualNumberController extends Controller
                     && empty($order->sms_code);
 
                 if (!$isEligible) {
-                    throw new \\RuntimeException('This order is not an eligible unconfirmed DaisySMS purchase attempt.');
+                    throw new \RuntimeException('This order is not an eligible unconfirmed DaisySMS purchase attempt.');
                 }
 
                 $refundReferences = [
@@ -169,14 +169,14 @@ class AdminVirtualNumberController extends Controller
                 ];
 
                 if (Transaction::whereIn('reference', $refundReferences)->exists()) {
-                    throw new \\RuntimeException('A refund has already been recorded for this order.');
+                    throw new \RuntimeException('A refund has already been recorded for this order.');
                 }
 
-                $user = \\App\\Models\\User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
+                $user = \App\Models\User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
                 $amount = (float) $order->cost;
 
                 if ($amount <= 0) {
-                    throw new \\RuntimeException('The recorded customer debit is not valid for a refund.');
+                    throw new \RuntimeException('The recorded customer debit is not valid for a refund.');
                 }
 
                 $balanceBefore = (float) $user->balance;
@@ -198,14 +198,14 @@ class AdminVirtualNumberController extends Controller
                     'provider_cost' => 0,
                 ]);
 
-                \\App\\Models\\ActivityLog::log(
+                \App\Models\ActivityLog::log(
                     "Reconciled DaisySMS purchase #{$order->id}: no provider rental found; refunded " . money($amount) . '. Balance before: ' . money($balanceBefore),
                     auth()->user()
                 );
             });
 
             return back()->with('success', "DaisySMS order #{$id} reconciled. The customer has been refunded exactly once.");
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             return back()->with('error', 'DaisySMS reconciliation was not completed: ' . $e->getMessage());
         }
     }
