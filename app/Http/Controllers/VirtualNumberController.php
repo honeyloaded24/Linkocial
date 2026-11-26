@@ -97,7 +97,7 @@ class VirtualNumberController extends Controller
         $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', 'server4' => 'daisysms_countries', default => 'smspool_countries' };
 
         if ($server === 'server4') {
-            if (empty(\\App\\Models\\Setting::get('daisysms_api_key'))) return response()->json([]);
+            if (empty(\App\Models\Setting::get('daisysms_api_key'))) return response()->json([]);
             return response()->json([['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '1']]);
         }
 
@@ -417,7 +417,7 @@ class VirtualNumberController extends Controller
                     'api_order_id' => $clientRef,
                     'phone_number' => 'PENDING',
                     'country' => (string) $country,
-                    'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1'),
+                    'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1')),
                     'server' => $server,
                     'provider_key' => $server === 'server4' ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
                     'product' => (string) ($serviceName ?? $product),
@@ -1029,7 +1029,7 @@ class VirtualNumberController extends Controller
                 $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
                 $expiresInSeconds = $buyResponse['time_left'] ?? $buyResponse['expires_in'] ?? 1200; // Default to 20 mins if missing
-                $operatorLabel = $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : 'Server 1');
+                $operatorLabel = $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1'));
 
                 $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                 $lockedOrder->update([
@@ -1038,7 +1038,7 @@ class VirtualNumberController extends Controller
                     'country' => $countryName,
                     'operator' => $operatorLabel,
                     'server' => $server,
-                    'provider_key' => $this->isDaisyService($server, (string) $country, (string) $productId) ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
+                    'provider_key' => $server === 'server4' ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
                     'product' => $serviceName,
                     'cost' => $finalUserCostUsd,
                     'provider_cost' => $actualCostUsd,
@@ -1584,7 +1584,7 @@ class VirtualNumberController extends Controller
             if ($cheapestPrice === null) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Service currently out of stock or unavailable for this country on ' . ($server === 'server2' ? 'Server 2' : 'Server 1') . '.'
+                    'message' => 'Service currently out of stock or unavailable for this country on ' . ($server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1'))) . '.'
                 ], 404);
             }
 
@@ -1600,7 +1600,7 @@ class VirtualNumberController extends Controller
             if ($this->isDaisyService($server, (string) $country, (string) $productId)) {
                 $daisyOffer = collect($this->daisysms->getPricesForCountry((string) $country))->firstWhere('service', (string) $productId);
                 if (!$daisyOffer || (int) ($daisyOffer['stock'] ?? 0) <= 0) {
-                    return response()->json(['success' => false, 'out_of_stock' => true, 'stock' => 0, 'service_name' => $serviceName, 'message' => 'This service is currently out of stock on Server 3.']);
+                    return response()->json(['success' => false, 'out_of_stock' => true, 'stock' => 0, 'service_name' => $serviceName, 'message' => 'This service is currently out of stock on Server 4.']);
                 }
                 $activeWholesalePrice = (float) $daisyOffer['price'];
                 $stockCount = (int) $daisyOffer['stock'];
