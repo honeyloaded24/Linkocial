@@ -100,10 +100,10 @@ class SmsBowerMiddlePricingTest extends TestCase
     public function test_daisy_sms_is_routed_only_through_server4(): void
     {
         $controller = (new ReflectionClass(VirtualNumberController::class))->newInstanceWithoutConstructor();
-        $method = new \\ReflectionMethod(VirtualNumberController::class, 'isDaisyService');
+        $method = new \ReflectionMethod(VirtualNumberController::class, 'isDaisyService');
         $method->setAccessible(true);
 
-        $serviceCode = array_key_first(\\App\\Services\\DaisySmsService::ROUTED_SERVICES);
+        $serviceCode = array_key_first(\App\Services\DaisySmsService::ROUTED_SERVICES);
         $this->assertNotEmpty($serviceCode);
         $this->assertFalse($method->invoke($controller, 'server3', '187', (string) $serviceCode));
         $this->assertTrue($method->invoke($controller, 'server4', '187', (string) $serviceCode));
