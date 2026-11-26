@@ -46,6 +46,26 @@ class DaisySmsServiceTest extends TestCase
         $this->assertSame(471, $rows['telegram_canada']['stock']);
     }
 
+    public function test_country_first_catalogue_orientation_returns_every_service(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response([
+                '187' => [
+                    'facebook' => ['cost' => 0.90, 'count' => 15, 'multi' => 0],
+                    'google_chat' => ['cost' => 0.33, 'count' => 8, 'multi' => 1],
+                    'new_service_code' => ['cost' => 0.25, 'count' => 4, 'multi' => 0],
+                ],
+            ], 200),
+        ]);
+
+        $rows = collect(app(DaisySmsService::class)->getPricesForCountry('187'))->keyBy('service');
+
+        $this->assertCount(3, $rows);
+        $this->assertSame('Facebook', $rows['facebook']['service_name']);
+        $this->assertSame('Google Chat', $rows['google_chat']['service_name']);
+        $this->assertSame('New Service Code', $rows['new_service_code']['service_name']);
+    }
+
     public function test_canada_catalogue_is_exposed_only_when_daisy_returns_live_canada_offers(): void
     {
         Http::fake([
