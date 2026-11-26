@@ -126,8 +126,8 @@ class VirtualNumberController extends Controller
     protected function ensureSmsBowerCoreCountries(array $countries): array
     {
         $required = [
-            ['ID' => '16', 'name' => 'United Kingdom', 'cc' => '+44'],
-            ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '+1'],
+            ['ID' => '16', 'name' => 'United Kingdom', 'cc' => '44'],
+            ['ID' => DaisySmsService::USA_COUNTRY_ID, 'name' => 'United States', 'cc' => '1'],
         ];
 
         $existingIds = array_map(
