@@ -873,7 +873,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const serverBadge = (order.server === 'server2')
             ? '<span class="badge bg-secondary ms-1" style="font-size: 0.65rem;">Server 2</span>'
             : (order.server === 'server3'
-                ? '<span class="badge bg-primary ms-1" style="font-size: 0.65rem;">GLOBAL</span>'
+                ? '<span class="badge bg-primary ms-1" style="font-size: 0.65rem;">Server 3</span>'
                 : (order.server === 'server4'
                     ? '<span class="badge bg-info ms-1" style="font-size: 0.65rem;">Server 4</span>'
                     : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>'));
