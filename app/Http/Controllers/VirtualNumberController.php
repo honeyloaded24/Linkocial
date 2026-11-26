@@ -111,6 +111,22 @@ class VirtualNumberController extends Controller
         $server = $request->query('server', 'server1');
         $cacheKey = match ($server) { 'server2' => 'grizzly_countries', 'server3' => 'smsbower_countries', 'server4' => 'daisysms_countries', default => 'smspool_countries' };
 
+        if ($server === 'server2') {
+            $freshKey = 'grizzly_countries_live_v2';
+            $staleKey = 'grizzly_countries_live_v2_stale';
+            try {
+                $countries = $this->grizzly->getCountries();
+                if (!empty($countries)) {
+                    Cache::put($freshKey, $countries, now()->addMinutes(5));
+                    Cache::put($staleKey, $countries, now()->addHours(12));
+                    return response()->json($countries);
+                }
+            } catch (\\Throwable $e) {
+                Log::warning('Grizzly Server 2 country catalogue refresh failed; using last known good catalogue.', ['error' => $e->getMessage()]);
+            }
+            return response()->json(Cache::get($staleKey, []));
+        }
+
         if ($server === 'server4') {
             if (empty(\App\Models\Setting::get('daisysms_api_key'))) {
                 return response()->json([]);
@@ -369,10 +385,14 @@ class VirtualNumberController extends Controller
             if ($server === 'server2' && $productId) {
                 $freshRows = $this->grizzly->getPricesForCountry($country);
                 $freshOffer = collect($freshRows)->first(fn ($row) => (string) ($row['service'] ?? '') === (string) $productId);
-                if ($freshOffer && (float) ($freshOffer['price'] ?? 0) > 0) {
-                    $activeWholesalePrice = (float) $freshOffer['price'];
+                if (!$freshOffer || (int) ($freshOffer['count'] ?? 0) <= 0 || (float) ($freshOffer['price'] ?? 0) <= 0) {
+                    return response()->json([
+                        'error' => 'This Grizzly service is currently unavailable or out of stock. Please refresh the catalogue and try again.',
+                        'out_of_stock' => true,
+                    ], 409);
                 }
-            } elseif ($server === 'server4') {
+                $activeWholesalePrice = (float) $freshOffer['price'];
+            }            } elseif ($server === 'server4') {
                 $freshRows = $this->daisysms->getPricesForCountry((string) $country);
                 $freshOffer = collect($freshRows)->firstWhere('service', (string) $productId);
                 if (!$freshOffer || (int) ($freshOffer['stock'] ?? 0) <= 0 || (float) ($freshOffer['price'] ?? 0) <= 0) {
@@ -769,9 +789,8 @@ class VirtualNumberController extends Controller
                     try {
                         // Preserve Grizzly's established automatic price-tier selection.
                         // A quote-derived maxPrice may be stale by the time the request arrives.
-                        $buyResponse = $this->grizzly->buyNumber($country, $productId);
-                    } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
-                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
+                        $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
+                    } catch (\\App\\Exceptions\\ProviderTimeoutException|\\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
                         Log::warning('Grizzly purchase timed out; preserving attempt as unresolved.', [
@@ -955,6 +974,9 @@ class VirtualNumberController extends Controller
             $actualCostUsd = (float) ($buyResponse['cost'] ?? 0);
             if ($actualCostUsd <= 0) {
                 $actualCostUsd = (float) ($buyResponse['provider_quote_usd'] ?? 0);
+            }
+            if ($actualCostUsd <= 0 && $server === 'server2') {
+                $actualCostUsd = (float) $activeWholesalePrice;
             }
             if ($actualCostUsd <= 0 && $server === 'server4') {
                 // The fresh DaisySMS catalogue quote was verified immediately before
