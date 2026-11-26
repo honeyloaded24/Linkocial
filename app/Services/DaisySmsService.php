@@ -144,7 +144,7 @@ class DaisySmsService
     {
         $countries = [];
         foreach (self::SUPPORTED_COUNTRIES as $countryId => $meta) {
-            if ($this->getCatalogueForCountry((string) $countryId)) {
+            if ($this->getPricesForCountry((string) $countryId)) {
                 $countries[] = [
                     'ID' => (string) $countryId,
                     'name' => $meta['name'],
