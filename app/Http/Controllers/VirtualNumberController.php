@@ -114,6 +114,11 @@ class VirtualNumberController extends Controller
         if ($server === 'server2') {
             $freshKey = 'grizzly_countries_live_v2';
             $staleKey = 'grizzly_countries_live_v2_stale';
+            $cachedCountries = Cache::get($freshKey);
+            if (is_array($cachedCountries) && !empty($cachedCountries)) {
+                return response()->json($cachedCountries);
+            }
+
             try {
                 $countries = $this->grizzly->getCountries();
                 if (!empty($countries)) {
@@ -121,7 +126,7 @@ class VirtualNumberController extends Controller
                     Cache::put($staleKey, $countries, now()->addHours(12));
                     return response()->json($countries);
                 }
-            } catch (\\Throwable $e) {
+            } catch (\Throwable $e) {
                 Log::warning('Grizzly Server 2 country catalogue refresh failed; using last known good catalogue.', ['error' => $e->getMessage()]);
             }
             return response()->json(Cache::get($staleKey, []));
@@ -392,7 +397,7 @@ class VirtualNumberController extends Controller
                     ], 409);
                 }
                 $activeWholesalePrice = (float) $freshOffer['price'];
-            }            } elseif ($server === 'server4') {
+            } elseif ($server === 'server4') {
                 $freshRows = $this->daisysms->getPricesForCountry((string) $country);
                 $freshOffer = collect($freshRows)->firstWhere('service', (string) $productId);
                 if (!$freshOffer || (int) ($freshOffer['stock'] ?? 0) <= 0 || (float) ($freshOffer['price'] ?? 0) <= 0) {
@@ -790,7 +795,7 @@ class VirtualNumberController extends Controller
                         // Preserve Grizzly's established automatic price-tier selection.
                         // A quote-derived maxPrice may be stale by the time the request arrives.
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
-                    } catch (\\App\\Exceptions\\ProviderTimeoutException|\\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
+                    } catch (\App\\Exceptions\\ProviderTimeoutException|\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
                         Log::warning('Grizzly purchase timed out; preserving attempt as unresolved.', [
