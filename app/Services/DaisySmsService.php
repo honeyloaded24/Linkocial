@@ -41,7 +41,12 @@ class DaisySmsService
         }
 
         if (!$response->successful()) {
-            throw new \RuntimeException('DaisySMS request failed with HTTP '.$response->status().'.');
+            // A gateway/server error does not prove whether DaisySMS processed a
+            // state-changing request before returning the HTTP failure. Treat it
+            // as ambiguous so callers retain the fee and block duplicate requests.
+            throw new \App\Exceptions\ProviderTimeoutException(
+                'DaisySMS returned HTTP '.$response->status().'; request outcome could not be confirmed.'
+            );
         }
 
         return $response;
@@ -366,7 +371,17 @@ class DaisySmsService
             'NO_BALANCE' => 'Server 3 provider balance is insufficient for another SMS activation.',
         ];
 
-        throw new \RuntimeException($messages[$body] ?? 'Server 3 could not request another SMS activation: '.$body);
+        if (isset($messages[$body])) {
+            // These documented responses explicitly reject the request, so the
+            // controller may safely reverse the customer's fee.
+            throw new \RuntimeException($messages[$body]);
+        }
+
+        // Unknown provider responses are not proof of rejection. DaisySMS may
+        // have created the extra activation despite an unfamiliar response.
+        throw new \App\Exceptions\ProviderTimeoutException(
+            'DaisySMS returned an unrecognized additional-activation response; outcome is unknown.'
+        );
     }
 
     public function finishOrder(string $activationId): array
