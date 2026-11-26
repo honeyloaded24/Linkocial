@@ -151,4 +151,33 @@ class GrizzlySmsServiceTest extends TestCase
         $this->expectException(ProviderTimeoutException::class);
         app(GrizzlySmsService::class)->buyNumber('187', 'wa', 1.25);
     }
+    public function test_cancellation_wait_message_uses_provider_supplied_seconds(): void
+    {
+        Http::fake([
+            'api.grizzlysms.com/*' => Http::response('EARLY_CANCEL_DENIED: Please wait 50 seconds', 200),
+        ]);
+
+        try {
+            app(GrizzlySmsService::class)->cancelOrder('activation-50');
+            $this->fail('An early cancellation must be rejected until the provider permits it.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertSame('Please wait 50 seconds before cancelling this number.', $exception->getMessage());
+        }
+    }
+
+    public function test_bare_early_cancel_denied_does_not_invent_a_fixed_two_minute_wait(): void
+    {
+        Http::fake([
+            'api.grizzlysms.com/*' => Http::response('EARLY_CANCEL_DENIED', 200),
+        ]);
+
+        try {
+            app(GrizzlySmsService::class)->cancelOrder('activation-early');
+            $this->fail('An early cancellation must be rejected.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('Please wait a little longer', $exception->getMessage());
+            $this->assertStringNotContainsString('2-minute', $exception->getMessage());
+        }
+    }
+
 }
