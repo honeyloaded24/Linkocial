@@ -184,10 +184,9 @@ class DaisySmsService
                 ];
             }
 
-            // Shape C: account/country-scoped service => offer.
-            // This is the actual shape returned by the configured account: each
-            // top-level service code maps directly to cost/count/multi.
-            foreach ($catalogue as $serviceCode => $offer) {
+            // Shape C is a flat account-level response. DaisySMS documents
+            // country 187 as USA; never reuse this flat USA data for Canada.
+            if ($country === self::USA_COUNTRY_ID) foreach ($catalogue as $serviceCode => $offer) {
                 if (!is_array($offer) || (!array_key_exists('cost', $offer) && !array_key_exists('count', $offer))) {
                     continue;
                 }
