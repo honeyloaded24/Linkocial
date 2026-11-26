@@ -307,30 +307,30 @@ class SmsBowerService
 
     public function getPricesForCountry(string|int $country): array
     {
-        $cacheKey = 'smsbower_gold_middle_catalogue_v4_' . $country;
+        // Versioned cache avoids serving the previous top-ten-only catalogue.
+        $cacheKey = 'smsbower_country_middle_catalogue_v5_' . $country;
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($country) {
             $countries = $this->getCountries();
             $countryRow = collect($countries)->first(fn ($row) => (string) $row['ID'] === (string) $country);
             if (!$countryRow) return [];
 
             $services = $this->getServices();
-            if (empty($services)) throw new \RuntimeException('Server 3 returned no services from its service catalogue.');
+            if (empty($services)) throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
 
-            // The documented top-countries response already contains Gold supplier prices and stock.
-            // Use it for catalogue discovery; getPricesV3 remains the live quote/purchase revalidation source.
-            // Fetch uncached service responses in bounded concurrent batches instead of sequentially.
             $topData = [];
-            $missing = [];
+            $missingTop = [];
             foreach ($services as $service) {
                 $code = (string) ($service['code'] ?? '');
                 if ($code === '') continue;
                 $cached = Cache::get('smsbower_gold_top_' . md5($code));
                 if (is_array($cached)) $topData[$code] = $cached;
-                else $missing[] = $code;
+                else $missingTop[] = $code;
             }
 
-            $successfulLookups = count($topData);
-            foreach (array_chunk(array_values(array_unique($missing)), 12) as $batch) {
+            // First obtain Gold rankings in bounded parallel batches. The API
+            // returns only ten countries per service, so absence is not proof
+            // that the selected country has no stock.
+            foreach (array_chunk(array_values(array_unique($missingTop)), 12) as $batch) {
                 try {
                     $responses = Http::pool(function (Pool $pool) use ($batch) {
                         $pending = [];
@@ -343,59 +343,100 @@ class SmsBowerService
                         }
                         return $pending;
                     });
-
                     foreach ($batch as $code) {
-                        // Each request is explicitly keyed by its service code
-                        // through Pool::as(), so read the matching keyed response.
+                        $response = $responses[$code] ?? null;
+                        if (!$response || !$response->successful()) continue;
+                        $json = $response->json();
+                        if (!is_array($json)) continue;
+                        $topData[$code] = $json;
+                        Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
+                    }
+                } catch (\\Throwable $e) {
+                    Log::warning('Server 3 Gold catalogue batch failed; country-specific stock lookup will be used.', [
+                        'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            // For services where the country is not in the top-ten ranking (or
+            // ranking lookup failed), query getPricesV3 for this exact country.
+            $fallbackServices = [];
+            foreach ($services as $service) {
+                $code = (string) ($service['code'] ?? '');
+                if ($code === '') continue;
+                if (!isset($topData[$code]) || !$this->hasCountryInGoldResponse($topData[$code], $countryRow['name'])) {
+                    $fallbackServices[] = $code;
+                }
+            }
+
+            $countryPriceData = [];
+            foreach (array_chunk(array_values(array_unique($fallbackServices)), 12) as $batch) {
+                try {
+                    $responses = Http::pool(function (Pool $pool) use ($batch, $country) {
+                        $pending = [];
+                        foreach ($batch as $code) {
+                            $pending[$code] = $pool->as($code)->connectTimeout(5)->timeout(12)->get($this->baseUrl, [
+                                'api_key' => $this->apiKey,
+                                'action' => 'getPricesV3',
+                                'service' => $code,
+                                'country' => $country,
+                            ]);
+                        }
+                        return $pending;
+                    });
+                    foreach ($batch as $code) {
                         $response = $responses[$code] ?? null;
                         if (!$response || !$response->successful()) {
-                            Log::warning('Server 3 Gold catalogue request failed.', [
+                            Log::warning('Server 3 country-specific catalogue lookup failed.', [
                                 'service' => $code, 'country' => $country,
                                 'status' => $response ? $response->status() : null,
                             ]);
                             continue;
                         }
                         $json = $response->json();
-                        if (!is_array($json)) {
-                            Log::warning('Server 3 returned invalid Gold catalogue JSON.', ['service' => $code, 'country' => $country]);
-                            continue;
-                        }
-                        $topData[$code] = $json;
-                        Cache::put('smsbower_gold_top_' . md5($code), $json, now()->addMinutes(15));
-                        $successfulLookups++;
+                        if (is_array($json)) $countryPriceData[$code] = $json;
                     }
-                } catch (\Throwable $e) {
-                    Log::warning('Server 3 concurrent Gold catalogue batch failed.', [
+                } catch (\\Throwable $e) {
+                    Log::warning('Server 3 country-specific catalogue batch failed.', [
                         'country' => $country, 'services' => $batch, 'error' => $e->getMessage(),
                     ]);
                 }
-            }
-
-            if ($successfulLookups === 0) {
-                throw new \RuntimeException('Server 3 could not retrieve Gold supplier catalogue data. Please try again shortly.');
             }
 
             $items = [];
             foreach ($services as $service) {
                 $code = (string) ($service['code'] ?? '');
                 $name = trim((string) ($service['name'] ?? ''));
-                if ($code === '' || $name === '' || !isset($topData[$code])) continue;
-                $goldOffers = $this->goldPartnersFromResponse($topData[$code], $countryRow['name']);
-                $inStockGoldOffers = array_values(array_filter(
-                    $goldOffers,
-                    fn ($offer) => (int) ($offer['count'] ?? 0) > 0
-                ));
-                $middleOffers = $this->middlePricedOffers($inStockGoldOffers);
-                if (empty($middleOffers)) continue;
+                if ($code === '' || $name === '') continue;
 
+                if (isset($topData[$code]) && $this->hasCountryInGoldResponse($topData[$code], $countryRow['name'])) {
+                    $offers = $this->goldPartnersFromResponse($topData[$code], $countryRow['name']);
+                    $offers = array_values(array_filter($offers, fn ($offer) => (int) ($offer['count'] ?? 0) > 0));
+                    $offers = $this->middlePricedOffers(array_map(
+                        fn ($offer) => ['id' => $offer['id'], 'price' => $offer['price'], 'stock' => $offer['count']],
+                        $offers
+                    ));
+                } elseif (isset($countryPriceData[$code])) {
+                    // The selected country is outside the top-ten Gold ranking.
+                    // Use live country-specific provider prices and stock, applying
+                    // the same middle-price safety rule before displaying a service.
+                    $offers = $this->middlePricedOffers(
+                        $this->countryServiceOffers($countryPriceData[$code], $country, $code)
+                    );
+                } else {
+                    continue;
+                }
+
+                if (empty($offers)) continue;
                 $items[] = [
                     'service' => $code,
                     'service_name' => $name,
-                    'price' => $this->customerQuotePrice($middleOffers),
-                    'count' => (int) array_sum(array_column($middleOffers, 'count')),
-                    'gold_provider_ids' => array_values(array_unique(array_column($middleOffers, 'id'))),
+                    'price' => $this->customerQuotePrice($offers),
+                    'count' => (int) array_sum(array_column($offers, 'stock')),
+                    'gold_provider_ids' => array_values(array_unique(array_column($offers, 'id'))),
                 ];
             }
+
             return $items;
         });
     }
