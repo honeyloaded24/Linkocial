@@ -402,7 +402,7 @@ class DaisySmsService
             throw new \RuntimeException('The number status service is temporarily busy. Please wait briefly and try again.');
         }
 
-        throw new \RuntimeException('The number status could not be verified. Please wait briefly and try again.);
+        throw new \RuntimeException('The number status could not be verified. Please wait briefly and try again.');
     }
 
     public function cancelOrder(string $activationId): array
