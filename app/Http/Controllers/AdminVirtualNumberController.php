@@ -135,7 +135,7 @@ class AdminVirtualNumberController extends Controller
     }
 
     /**
-     * Save the DaisySMS credential used by the optional Server 3 routing integration.
+     * Save the DaisySMS credential for the independent Server 4 integration.
      */
     public function updateDaisySmsKey(Request $request)
     {
@@ -170,7 +170,7 @@ class AdminVirtualNumberController extends Controller
             \Illuminate\Support\Facades\Log::warning('DaisySMS admin catalogue check failed: '.$e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to read the live Server 3 catalogue. Check the API key and provider response.',
+                'message' => 'Unable to read the live Server 4 catalogue. Check the API key and provider response.',
             ], 502);
         }
     }
