@@ -40,7 +40,7 @@
                                     @php
                                         $serverBadge = match ($order->server) {
                                             'server4' => ['Server 4', 'bg-info'],
-                                            'server3' => ['Server 3', 'bg-primary'],
+                                            'server3' => ['GLOBAL', 'bg-primary'],
                                             'server2' => ['Server 2', 'bg-secondary'],
                                             default => ['Server 1 (HOT)', 'bg-danger'],
                                         };
