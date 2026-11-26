@@ -795,7 +795,8 @@ class VirtualNumberController extends Controller
                         // Preserve Grizzly's established automatic price-tier selection.
                         // A quote-derived maxPrice may be stale by the time the request arrives.
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
-                    } catch (\App\\Exceptions\\ProviderTimeoutException|\Illuminate\\Http\\Client\\ConnectionException $timeoutEx) {                        // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
+                    } catch (\App\Exceptions\ProviderTimeoutException|\Illuminate\Http\Client\ConnectionException $timeoutEx) {
+                        
                         // the provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
                         Log::warning('Grizzly purchase timed out; preserving attempt as unresolved.', [
