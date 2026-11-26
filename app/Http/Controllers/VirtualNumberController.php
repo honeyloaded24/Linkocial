@@ -1627,8 +1627,9 @@ class VirtualNumberController extends Controller
             $stockCount = null;
             $successRate = null;
 
-            // DaisySMS handles only the four allowlisted USA service variants.
-            if ($this->isDaisyService($server, (string) $country, (string) $productId)) {
+            // Server 4 must validate every dynamically discovered DaisySMS service
+            // against its current country-specific price and stock before quoting.
+            if ($server === 'server4') {
                 $daisyOffer = collect($this->daisysms->getPricesForCountry((string) $country))->firstWhere('service', (string) $productId);
                 if (!$daisyOffer || (int) ($daisyOffer['stock'] ?? 0) <= 0) {
                     return response()->json(['success' => false, 'out_of_stock' => true, 'stock' => 0, 'service_name' => $serviceName, 'message' => 'This service is currently out of stock on Server 4.']);
