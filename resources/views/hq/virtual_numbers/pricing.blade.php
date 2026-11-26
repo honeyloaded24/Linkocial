@@ -148,6 +148,7 @@
                     <span class="badge {{ $hasServer1 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 1</span>
                     <span class="badge {{ $hasServer2 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 2</span>
                     <span class="badge {{ $hasServer3 ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 3</span>
+                    <span class="badge {{ $hasDaisySmsKey ? 'bg-success' : 'bg-secondary' }} rounded-pill px-2">Server 4</span>
                 </div>
                 <small class="text-muted d-block mt-1">
                     {{ number_format($vnStats['completed'] ?? 0) }} SMS verifications completed
@@ -409,7 +410,7 @@
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
                     <div>
                         <h5 class="fw-bold mb-1">DaisySMS API Configuration</h5>
-                        <p class="text-muted small mb-0">Optional alternate provider credential for the selected Server 3 services. Saving this key does not enable routing.</p>
+                        <p class="text-muted small mb-0">API credential for the independent Server 4 service. Saving this key enables Server 4 for customers; it does not alter Server 3.</p>
                     </div>
                     <span class="badge {{ $hasDaisySmsKey ? 'bg-success' : 'bg-secondary' }} rounded-pill px-3 py-2">
                         {{ $hasDaisySmsKey ? 'API key configured' : 'API key not configured' }}
@@ -425,9 +426,9 @@
                     <div class="form-text mb-3">The saved key is never displayed. Use the official <code>daisysms.io</code> API only. Do not paste the key into chat.</div>
                     @if($hasDaisySmsKey)
                         <a href="{{ route('hq.virtual-numbers.daisysms-catalogue') }}" target="_blank" rel="noopener" class="btn btn-outline-info fw-bold">
-                            <i class="fa-solid fa-list-check me-1"></i> Check Live USA Service Catalogue
+                            <i class="fa-solid fa-list-check me-1"></i> Check Server 4 Live USA Catalogue
                         </a>
-                        <div class="form-text mt-2">Admin-only diagnostic. It displays live service identifiers, prices and stock; it does not enable routing or purchase a number.</div>
+                        <div class="form-text mt-2">Admin-only diagnostic. It displays live service identifiers, prices and stock; it does not purchase a number.</div>
                     @endif
                 </form>
             </div>
