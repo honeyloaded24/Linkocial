@@ -136,6 +136,15 @@ class DaisySmsService
     }
 
     /**
+     * Country provider contract used by the shared Virtual Number controller.
+     * DaisySMS uses SMS-Activate country IDs in its catalogue.
+     */
+    public function getCountries(): array
+    {
+        return $this->getAvailableCountries();
+    }
+
+    /**
      * Return countries that currently have at least one live DaisySMS offer.
      * The provider documents USA as 187; Canada is included only if its live
      * catalogue actually returns offers for the SMS-Activate country ID 36.
