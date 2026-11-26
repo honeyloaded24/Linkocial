@@ -1114,7 +1114,8 @@ class VirtualNumberController extends Controller
                     'status' => 'pending',
                     'coupon_code' => null,
                     'discount' => 0.00,
-                    'expires_at' => now()->addSeconds((int)$expiresInSeconds)
+                    'expires_at' => now()->addSeconds((int)$expiresInSeconds),
+                    'cancel_available_at' => $server === 'server2' ? ($buyResponse['cancel_available_at'] ?? null) : null
                 ]);
 
                 DB::commit();
@@ -1348,6 +1349,20 @@ class VirtualNumberController extends Controller
             if (!$order || $order->status !== 'pending' || !empty($order->sms_code)) {
                 return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
             }
+
+            // Grizzly returns the exact UTC time when cancellation becomes
+            // available. Respect it locally and tell the customer the real wait.
+            if (($order->server ?? null) === 'server2' && $order->cancel_available_at
+                && now()->lt($order->cancel_available_at)) {
+                $remainingSeconds = max(1, $order->cancel_available_at->getTimestamp() - now()->timestamp);
+
+                return response()->json([
+                    'error' => 'Please wait ' . $remainingSeconds . ' seconds before cancelling this number.',
+                    'retry_after_seconds' => $remainingSeconds,
+                    'cancel_available_at' => $order->cancel_available_at->toIso8601String(),
+                ], 409);
+            }
+
             $provider = $this->getOrderProvider($order);
 
             if (($order->provider_key ?? null) === 'daisysms') {
