@@ -627,10 +627,10 @@ class GrizzlySmsService
             if (!empty($data['activationCancel'])) {
                 try {
                     // Grizzly documents activationCancel as a UTC timestamp.
-                    $cancelAvailableAt = \\Illuminate\\Support\\Carbon::parse($data['activationCancel'], 'UTC')
+                    $cancelAvailableAt = \Illuminate\Support\Carbon::parse($data['activationCancel'], 'UTC')
                         ->utc()
                         ->toDateTimeString();
-                } catch (\\Throwable $dateError) {
+                } catch (\Throwable $dateError) {
                     Log::warning('Grizzly returned an invalid activationCancel timestamp.', [
                         'activation_id' => $data['activationId'],
                         'value' => $data['activationCancel'],
