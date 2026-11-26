@@ -398,6 +398,12 @@ class DaisySmsService
         if ($body === 'STATUS_CANCEL') {
             return ['status' => 6];
         }
+        if ($body === 'NO_ACTIVATION') {
+            // DaisySMS removes expired rentals from its active system. For a
+            // previously confirmed local activation, NO_ACTIVATION means the
+            // provider no longer has a live rental to cancel or receive SMS on.
+            return ['status' => 2, 'provider_missing' => true];
+        }
         if ($body === 'RATE_LIMIT_EXCEEDED') {
             throw new \RuntimeException('The number status service is temporarily busy. Please wait briefly and try again.');
         }
@@ -414,15 +420,34 @@ class DaisySmsService
         ]);
         $body = trim($response->body());
 
+        if ($body === 'ACCESS_READY') {
+            // DaisySMS documents ACCESS_READY as ambiguous: the rental is either
+            // missing or has already received a code. Only now make a follow-up
+            // status request (not a preflight) to distinguish those cases.
+            $status = $this->checkOrder($activationId);
+
+            if ((int) ($status['status'] ?? -1) === 2 || (int) ($status['status'] ?? -1) === 6) {
+                return [
+                    'success' => true,
+                    'status' => (int) $status['status'] === 2 ? 'expired' : 'canceled',
+                    'provider_missing' => (int) $status['status'] === 2,
+                ];
+            }
+
+            if ((int) ($status['status'] ?? -1) === 3) {
+                throw new \\RuntimeException('This number has already received an SMS and cannot be refunded.');
+            }
+
+            throw new \\RuntimeException('The number is still active with the provider. Cancellation was not confirmed and no refund was issued. Please retry shortly.');
+        }
+
         if ($body !== 'ACCESS_CANCEL') {
-            // ACCESS_READY means the rental is missing or has already received a code.
-            // RATE_LIMIT_EXCEEDED is retryable; neither response authorizes a refund.
+            // RATE_LIMIT_EXCEEDED is retryable; no refund is authorized.
             $message = match ($body) {
-                'ACCESS_READY' => 'This number is no longer eligible for cancellation or may already have received an SMS. No refund was issued.',
                 'RATE_LIMIT_EXCEEDED' => 'The cancellation service is temporarily busy. No refund was issued. Please wait briefly and try again.',
                 default => 'Cancellation could not be confirmed. No refund was issued. Please try again shortly.',
             };
-            throw new \RuntimeException($message);
+            throw new \\RuntimeException($message);
         }
 
         return ['success' => true, 'status' => 'canceled'];
