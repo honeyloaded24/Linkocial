@@ -75,6 +75,7 @@ class GrizzlySmsServiceTest extends TestCase
                 'phoneNumber' => '66846426435',
                 'activationCost' => 1.10,
                 'countryCode' => '2',
+                'activationCancel' => '2026-11-26 23:55:00',
             ], 200),
         ]);
 
@@ -83,6 +84,7 @@ class GrizzlySmsServiceTest extends TestCase
         $this->assertSame('123456', $result['order_id']);
         $this->assertSame('66846426435', $result['phonenumber']);
         $this->assertSame(1.10, $result['cost']);
+        $this->assertSame('2026-11-26 23:55:00', $result['cancel_available_at']);
 
         Http::assertSent(fn ($request) =>
             $request['action'] === 'getNumberV2'
