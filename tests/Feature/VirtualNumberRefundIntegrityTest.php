@@ -328,6 +328,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
 
         Cache::put('smspool_prices_NG', [['service' => 'test-service', 'service_name' => 'Test Service', 'price' => 1.0]], 60);
         $this->mock(SmsPoolService::class, function ($mock) {
+            $mock->shouldReceive('getValidPools')->once()->with('NG', 'test-service')->andReturn([]);
             $mock->shouldReceive('getServiceLiveInfo')->once()->with('test-service', 'NG')->andReturn(['stock' => 0]);
             $mock->shouldNotReceive('buyNumber');
         });
