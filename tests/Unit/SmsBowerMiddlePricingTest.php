@@ -98,6 +98,56 @@ class SmsBowerMiddlePricingTest extends TestCase
     }
 
 
+    public function test_united_states_catalogue_uses_country_specific_prices_when_missing_from_top_ten(): void
+    {
+        Setting::set('smsbower_api_key', 'test-smsbower-key');
+        Cache::flush();
+
+        Http::fake(function ($request) {
+            $params = $request->data();
+            return match ($params['action'] ?? '') {
+                'getCountries' => Http::response([
+                    '187' => ['id' => 187, 'eng' => 'United States', 'prefix' => '1'],
+                ], 200),
+                'getServicesList' => Http::response([
+                    'status' => 'success',
+                    'services' => [['code' => 'wa', 'name' => 'WhatsApp']],
+                ], 200),
+                'getTopCountriesByService' => Http::response([
+                    'uk' => [
+                        'uk-gold-a' => ['price' => 0.10, 'count' => 20],
+                        'uk-gold-b' => ['price' => 0.20, 'count' => 15],
+                        'uk-gold-c' => ['price' => 0.30, 'count' => 10],
+                    ],
+                ], 200),
+                'getPricesV3' => Http::response([
+                    '187' => [
+                        'wa' => [
+                            'us-a' => ['provider_id' => 'us-a', 'price' => 0.10, 'count' => 20],
+                            'us-b' => ['provider_id' => 'us-b', 'price' => 0.20, 'count' => 15],
+                            'us-c' => ['provider_id' => 'us-c', 'price' => 0.30, 'count' => 10],
+                        ],
+                    ],
+                ], 200),
+                default => Http::response('BAD_ACTION', 400),
+            };
+        });
+
+        $rows = app(SmsBowerService::class)->getPricesForCountry('187');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('wa', $rows[0]['service']);
+        $this->assertSame('WhatsApp', $rows[0]['service_name']);
+        $this->assertSame(0.20, $rows[0]['price']);
+        $this->assertSame(15, $rows[0]['count']);
+
+        Http::assertSent(fn ($request) =>
+            ($request->data()['action'] ?? null) === 'getPricesV3'
+            && (string) ($request->data()['country'] ?? '') === '187'
+            && ($request->data()['service'] ?? null) === 'wa'
+        );
+    }
+
     public function test_server3_country_list_always_includes_documented_uk_and_us_ids(): void
     {
         $controller = (new ReflectionClass(VirtualNumberController::class))->newInstanceWithoutConstructor();
