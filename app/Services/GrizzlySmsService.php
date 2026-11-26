@@ -474,38 +474,44 @@ class GrizzlySmsService
      */
     public function getCountries(): array
     {
-        if (!empty($this->apiKey)) {
-            try {
-                $response = Http::timeout(20)->get($this->baseUrl, [
-                    'api_key' => $this->apiKey,
-                    'action' => 'getCountries',
-                ]);
-
-                if ($response->successful()) {
-                    $json = $response->json();
-                    if (is_array($json) && !empty($json)) {
-                        $list = [];
-                        foreach ($json as $id => $countryData) {
-                            $cId = is_array($countryData) && isset($countryData['id']) ? $countryData['id'] : $id;
-                            $name = is_array($countryData) ? ($countryData['eng'] ?? $countryData['name'] ?? "Country #{$cId}") : (string)$countryData;
-                            $list[] = [
-                                'ID' => (string) $cId,
-                                'name' => (string) $name,
-                                'cc' => (string) ($countryData['prefix'] ?? $countryData['code'] ?? '')
-                            ];
-                        }
-                        if (!empty($list)) {
-                            return $list;
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Grizzly getCountries API call failed, using fallback list: ' . $e->getMessage());
-            }
+        if (empty($this->apiKey)) {
+            return [];
         }
 
-        // Standard country dictionary fallback
-        return $this->getDefaultCountryList();
+        try {
+            $response = Http::timeout(20)->get($this->baseUrl, [
+                'api_key' => $this->apiKey,
+                'action' => 'getCountries',
+            ]);
+
+            if (!$response->successful()) {
+                throw new \\RuntimeException('Grizzly country catalogue returned HTTP ' . $response->status());
+            }
+
+            $json = $response->json();
+            if (!is_array($json) || empty($json)) {
+                throw new \\RuntimeException('Grizzly returned an empty or invalid country catalogue.');
+            }
+
+            $list = [];
+            foreach ($json as $id => $countryData) {
+                $cId = is_array($countryData) && isset($countryData['id']) ? $countryData['id'] : $id;
+                $name = is_array($countryData)
+                    ? ($countryData['eng'] ?? $countryData['name'] ?? "Country #{$cId}")
+                    : (string) $countryData;
+
+                $list[] = [
+                    'ID' => (string) $cId,
+                    'name' => (string) $name,
+                    'cc' => (string) (is_array($countryData) ? ($countryData['prefix'] ?? $countryData['code'] ?? '') : ''),
+                ];
+            }
+
+            return $list;
+        } catch (\\Throwable $e) {
+            Log::warning('Grizzly country catalogue refresh failed.', ['error' => $e->getMessage()]);
+            throw $e;
+        }
     }
 
     /**
@@ -524,7 +530,15 @@ class GrizzlySmsService
                 'country' => $country,
             ];
 
+            try {
             $response = Http::timeout(25)->get($this->baseUrl, $params);
+        } catch (\\Illuminate\\Http\\Client\\ConnectionException $e) {
+            throw new \\App\\Exceptions\\ProviderTimeoutException(
+                'Grizzly purchase outcome could not be confirmed after a connection interruption.',
+                0,
+                $e
+            );
+        }
 
             if ($response->failed()) {
                 Log::error('Grizzly getPrices failed: ' . $response->body());
@@ -611,7 +625,13 @@ class GrizzlySmsService
             throw new \Exception('Invalid Server 2 API configuration.');
         }
         if (str_contains($body, 'SERVICE_UNAVAILABLE') || str_contains($body, 'prohibited')) {
-            throw new \Exception('This service is currently restricted in this country.');
+            throw new \\Exception('This service is currently restricted in this country.');
+        }
+        if (str_contains($body, 'MAX_PRICE_EXCEEDED') || str_contains($body, 'PRICE_LIMIT')) {
+            throw new \\Exception('The current Grizzly price exceeds the confirmed safe spending limit. Please refresh the quote.');
+        }
+        if (str_contains($body, 'SERVICE_UNAVAILABLE_REGION')) {
+            throw new \\Exception('Grizzly is temporarily unavailable from this server region.');
         }
 
         // Try parsing JSON (getNumberV2 response)
@@ -646,8 +666,14 @@ class GrizzlySmsService
             }
         }
 
-        Log::error('Grizzly buyNumber unexpected response: ' . $body);
-        throw new \Exception($body ?: 'Failed to order number from Server 2.');
+        Log::error('Grizzly buyNumber returned an unrecognized response.', [
+            'http_status' => $response->status(),
+            'response' => substr($body, 0, 500),
+        ]);
+
+        throw new \\App\\Exceptions\\ProviderTimeoutException(
+            'Grizzly returned an unrecognized purchase response. The activation outcome is unknown and requires reconciliation.'
+        );
     }
 
     /**
@@ -725,7 +751,9 @@ class GrizzlySmsService
             Log::info("Grizzly cancelOrder result: {$body}");
 
             if ($body === 'EARLY_CANCEL_DENIED') {
-                throw new \Exception('Provider requires a 2-minute waiting period before cancellation can be accepted.');
+                // Grizzly does not include a fixed delay in this response. Never
+                // invent a universal waiting period when the provider omits one.
+                throw new \\RuntimeException('Grizzly has not yet enabled cancellation for this number. Please wait a little longer and try again.');
             }
 
             // Only the explicit cancellation acknowledgement is proof of cancellation.
