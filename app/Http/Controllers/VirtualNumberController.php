@@ -762,7 +762,7 @@ class VirtualNumberController extends Controller
                             ? $this->daisysms->buyNumber((string) $country, (string) $productId, null, $activeWholesalePrice)
                             : $this->smsbower->buyNumber($country, (string) $productId);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
-                        DB::transaction(function () use ($attemptRecord) {
+                        DB::transaction(function () use ($attemptRecord, $server) {
                             $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                             if ($lockedOrder && $lockedOrder->status === 'processing') {
                                 $lockedOrder->update(['status' => 'unresolved', 'sms_text' => ($server === 'server4' ? 'DaisySMS Server 4 purchase timed out. Activation outcome is unknown; retained for reconciliation. No automatic refund.' : 'Server 3 purchase timed out. Gold supplier activation outcome is unknown; retained for reconciliation. No automatic refund.')]);
