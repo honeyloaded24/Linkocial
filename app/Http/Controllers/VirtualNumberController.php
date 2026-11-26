@@ -1313,18 +1313,26 @@ class VirtualNumberController extends Controller
             }
             $provider = $this->getOrderProvider($order);
 
-            // Verify provider state immediately before cancellation. If the provider
-            // reports an SMS or an unknown state, fail closed and never refund.
-            $providerStatus = $provider->checkOrder($order->api_order_id);
-            $status = isset($providerStatus['status']) ? (int) $providerStatus['status'] : -1;
-            if ($status === 3) {
-                return response()->json(['error' => 'An SMS has already been received by this number. It cannot be canceled or refunded.'], 409);
+            if (($order->provider_key ?? null) === 'daisysms') {
+                // DaisySMS's setStatus=8 endpoint is itself authoritative: it returns
+                // ACCESS_CANCEL only when cancellation succeeds, and ACCESS_READY when
+                // the rental is missing or has already received a code. Do not call
+                // getStatus first; that extra request can hit DaisySMS rate limits and
+                // prevent a valid cancellation request from ever being sent.
+                $provider->cancelOrder($order->api_order_id);
+            } else {
+                // Other providers require a separate status check before cancellation.
+                // If the provider reports an SMS or an unknown state, never refund.
+                $providerStatus = $provider->checkOrder($order->api_order_id);
+                $status = isset($providerStatus['status']) ? (int) $providerStatus['status'] : -1;
+                if ($status === 3) {
+                    return response()->json(['error' => 'An SMS has already been received by this number. It cannot be canceled or refunded.'], 409);
+                }
+                if ($status !== 1) {
+                    return response()->json(['error' => 'The provider could not confirm that this number is still waiting for an SMS. Cancellation is blocked to protect your wallet. Please retry shortly.'], 409);
+                }
+                $provider->cancelOrder($order->api_order_id);
             }
-            if ($status !== 1) {
-                return response()->json(['error' => 'The provider could not confirm that this number is still waiting for an SMS. Cancellation is blocked to protect your wallet. Please retry shortly.'], 409);
-            }
-
-            $provider->cancelOrder($order->api_order_id);
             $this->refundOrder($order);
             return response()->json(['success' => true, 'order' => $order->fresh()]);
         } catch (\Exception $e) {
