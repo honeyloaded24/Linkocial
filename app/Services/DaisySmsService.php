@@ -217,9 +217,8 @@ class DaisySmsService
                 }
             }
 
-            if ($rows) {
-                break;
-            }
+            // Merge both documented catalogue responses so services present in
+            // either response orientation are not silently omitted.
         }
 
         ksort($rows);
