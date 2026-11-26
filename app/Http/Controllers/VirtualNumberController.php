@@ -751,7 +751,7 @@ class VirtualNumberController extends Controller
                 } else {
                     try {
                         $buyResponse = $this->isDaisyService($server, (string) $country, (string) $productId)
-                            ? $this->daisysms->buyNumber((string) $country, (string) $productId)
+                            ? $this->daisysms->buyNumber((string) $country, (string) $productId, null, $activeWholesalePrice)
                             : $this->smsbower->buyNumber($country, (string) $productId);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         DB::transaction(function () use ($attemptRecord) {
@@ -1754,7 +1754,19 @@ class VirtualNumberController extends Controller
             }
 
             $routedCodes = array_keys(DaisySmsService::ROUTED_SERVICES);
-            $pricesData = array_values(array_filter($pricesData, fn ($row) => !in_array((string) ($row['service'] ?? ''), $routedCodes, true)));
+            $routedNames = array_map('strtolower', array_values(DaisySmsService::ROUTED_SERVICES));
+
+            // These USA service names belong exclusively to DaisySMS on Server 3.
+            // Remove SMSBower rows by both code and display name so duplicate names
+            // cannot cause getProducts() to retain SMSBower's ID as the purchase ID.
+            $pricesData = array_values(array_filter($pricesData, function ($row) use ($routedCodes, $routedNames) {
+                $serviceCode = (string) ($row['service'] ?? '');
+                $serviceName = strtolower(trim((string) ($row['service_name'] ?? '')));
+
+                return !in_array($serviceCode, $routedCodes, true)
+                    && !in_array($serviceName, $routedNames, true);
+            }));
+
             $pricesData = array_merge($pricesData, is_array($daisyRows) ? $daisyRows : []);
         }
 
