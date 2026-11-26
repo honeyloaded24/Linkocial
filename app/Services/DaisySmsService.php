@@ -304,6 +304,14 @@ class DaisySmsService
             ];
         }
 
+        $nameCounts = array_count_values(array_column($rows, 'service_name'));
+        foreach ($rows as &$row) {
+            if (($nameCounts[$row['service_name']] ?? 0) > 1) {
+                $row['service_name'] .= ' (' . $row['service'] . ')';
+            }
+        }
+        unset($row);
+
         usort($rows, fn ($a, $b) => strcasecmp($a['service_name'], $b['service_name']));
         return $rows;
     }
