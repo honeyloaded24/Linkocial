@@ -364,6 +364,7 @@ class DaisySmsService
         return [
             'order_id' => $matches[1],
             'phonenumber' => $matches[2],
+            'cc' => self::SUPPORTED_COUNTRIES[$country]['cc'],
             'cost' => $verifiedPrice > 0 ? $verifiedPrice : 0.0,
             'provider_cost' => $verifiedPrice > 0 ? $verifiedPrice : 0.0,
             'price_unverified' => $verifiedPrice <= 0,
