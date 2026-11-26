@@ -347,7 +347,7 @@ class DaisySmsService
         if (!preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
             $messages = [
                 'NO_NUMBERS' => 'No numbers are currently available for this service on Server 4.',
-                'MAX_PRICE_EXCEEDED' => 'DaisySMS price exceeded the safe spending limit. Please request a fresh quote.',
+                'MAX_PRICE_EXCEEDED' => 'DaisySMS max price exceeded the safe spending limit. Please request a fresh quote.',
                 'TOO_MANY_ACTIVE_RENTALS' => 'Server 4 has reached its active rental limit. Please try again after an active rental is completed.',
                 'NO_MONEY' => 'Server 4 provider balance is insufficient.',
                 'BAD_KEY' => 'Server 4 API authentication failed. Please contact support.',
