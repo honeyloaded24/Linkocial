@@ -33,6 +33,7 @@ class VirtualNumberOrder extends Model
         'sms_text',
         'sms_code',
         'expires_at',
+        'cancel_available_at',
         'fivesim_id',
         'coupon_code',
         'discount',
@@ -73,6 +74,7 @@ class VirtualNumberOrder extends Model
 
     protected $casts = [
         'expires_at' => 'datetime',
+        'cancel_available_at' => 'datetime',
         'daisy_extra_activation_requested_at' => 'datetime',
         'daisy_extra_activation_fee' => 'decimal:4',
         'created_at' => 'datetime',
