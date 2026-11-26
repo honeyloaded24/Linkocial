@@ -408,8 +408,9 @@ class SmsBowerService
                 // One ID per attempt guarantees we try the cheapest live Gold supplier first.
                 'providerIds' => $providerId,
             ];
-            $supplierMaxPrice = $this->supplierMaxPrice($providerPrice, $maxPrice);
-            $params['maxPrice'] = number_format($supplierMaxPrice, 4, '.', '');
+            // The live Gold offer is refreshed immediately before purchase.
+            // Do not send a stale supplier maxPrice ceiling; the controller
+            // validates the customer's confirmed retail price and margin.
 
             try {
                 $response = $this->request($params, 20);
