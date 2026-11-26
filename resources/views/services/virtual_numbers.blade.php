@@ -877,21 +877,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     ? '<span class="badge bg-info ms-1" style="font-size: 0.65rem;">Server 4</span>'
                     : '<span class="badge bg-danger ms-1" style="font-size: 0.65rem;">Server 1</span>'));
         card.querySelector('.country-name').innerHTML = `${order.country} ${serverBadge}`;
-        card.querySelector('.phone-number').value = order.status === 'unresolved'
-            ? 'Purchase being verified'
-            : order.phone_number;
+        const hasConfirmedPhone = Boolean(order.phone_number && !['PENDING', 'Purchase being verified'].includes(String(order.phone_number).trim()));
+        card.querySelector('.phone-number').value = hasConfirmedPhone ? order.phone_number : (order.status === 'unresolved' ? 'Purchase being verified' : (order.phone_number || ''));
         if (order.status === 'unresolved') {
             const copyNumberButton = card.querySelector('.copy-btn');
             const cancelButton = card.querySelector('.cancel-btn');
             const resendButton = card.querySelector('.resend-btn');
             const spinner = card.querySelector('.waiting-spinner');
             const waitingText = card.querySelector('.waiting-text');
-            if (copyNumberButton) copyNumberButton.classList.add('d-none');
+            // If the provider already returned a number, show it immediately even
+            // while financial/provider reconciliation is pending. Keep risky actions locked.
+            if (copyNumberButton && !hasConfirmedPhone) copyNumberButton.classList.add('d-none');
             if (cancelButton) cancelButton.classList.add('d-none');
             if (resendButton) resendButton.classList.add('d-none');
             if (spinner) spinner.classList.add('d-none');
             if (waitingText) {
-                waitingText.textContent = 'Your purchase is being verified with the carrier. Please do not purchase this service again until verification is complete.';
+                waitingText.textContent = hasConfirmedPhone
+                    ? 'Your number is ready. We are completing a provider check; cancellation and resend are temporarily unavailable.'
+                    : 'Your purchase is being verified with the carrier. Please do not purchase this service again until verification is complete.';
                 waitingText.classList.remove('d-none');
             }
         }
