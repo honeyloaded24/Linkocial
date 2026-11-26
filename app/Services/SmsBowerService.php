@@ -368,7 +368,7 @@ class SmsBowerService
 
             $services = $this->getServices();
             if (empty($services)) {
-                throw new \\RuntimeException('Server 3 returned no services from its service catalogue.');
+                throw new \RuntimeException('Server 3 returned no services from its service catalogue.');
             }
 
             // One country-specific request replaces hundreds of sequential/
@@ -379,12 +379,12 @@ class SmsBowerService
             ], 25);
 
             if (!$response->successful()) {
-                throw new \\RuntimeException('Server 3 could not retrieve the selected country service catalogue (HTTP ' . $response->status() . ').');
+                throw new \RuntimeException('Server 3 could not retrieve the selected country service catalogue (HTTP ' . $response->status() . ').');
             }
 
             $data = $response->json();
             if (!is_array($data)) {
-                throw new \\RuntimeException('Server 3 returned an invalid country prices response.');
+                throw new \RuntimeException('Server 3 returned an invalid country prices response.');
             }
 
             return $this->parseCountryPricesResponse($data, $country, $countryRow['name'], $services);
