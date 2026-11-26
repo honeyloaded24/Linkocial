@@ -37,7 +37,15 @@
                                 <div class="fw-bold">{{ $order->product }}</div>
                                 <div class="d-flex align-items-center gap-1">
                                     <small class="text-muted">{{ $order->country }}</small>
-                                    <span class="badge {{ $order->server === 'server2' ? 'bg-secondary' : ($order->server === 'server3' ? 'bg-primary' : 'bg-danger') }} text-white" style="font-size: 0.62rem; padding: 2px 6px;">{{ $order->server === 'server3' ? 'Server 3' : ($order->server === 'server2' ? 'Server 2' : 'Server 1 (HOT)') }}</span>
+                                    @php
+                                        $serverBadge = match ($order->server) {
+                                            'server4' => ['Server 4', 'bg-info'],
+                                            'server3' => ['Server 3', 'bg-primary'],
+                                            'server2' => ['Server 2', 'bg-secondary'],
+                                            default => ['Server 1 (HOT)', 'bg-danger'],
+                                        };
+                                    @endphp
+                                    <span class="badge {{ $serverBadge[1] }} text-white" style="font-size: 0.62rem; padding: 2px 6px;">{{ $serverBadge[0] }}</span>
                                 </div>
                             </td>
                             <td class="fw-bold text-nowrap">
