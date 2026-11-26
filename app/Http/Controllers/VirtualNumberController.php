@@ -790,7 +790,7 @@ class VirtualNumberController extends Controller
                 } else {
                     try {
                         $buyResponse = $server === 'server4'
-                            ? $this->daisysms->buyNumber((string) $country, (string) $productId, null, $activeWholesalePrice)
+                            ? $this->daisysms->buyNumber((string) $country, (string) $productId, $maxAllowedProviderUsd, $activeWholesalePrice)
                             : $this->smsbower->buyNumber($country, (string) $productId);
                     } catch (\App\Exceptions\ProviderTimeoutException $timeoutEx) {
                         DB::transaction(function () use ($attemptRecord, $server) {
