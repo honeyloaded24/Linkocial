@@ -159,7 +159,7 @@ class DaisySmsServiceTest extends TestCase
             app(DaisySmsService::class)->buyNumber('187', 'whatsapp', 1.50, 1.60);
             $this->fail('A price-cap rejection must not be treated as a successful purchase.');
         } catch (\RuntimeException $exception) {
-            $this->assertStringContainsString('max price exceeded', strtolower($exception->getMessage()));
+            $this->assertStringContainsString('safe spending limit', strtolower($exception->getMessage()));
         }
 
         Http::assertSent(fn ($request) =>
@@ -284,7 +284,7 @@ class DaisySmsServiceTest extends TestCase
         ]);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('cannot provide another activation');
+        $this->expectExceptionMessage('Another SMS is not available for this number.');
 
         app(DaisySmsService::class)->requestExtraActivation('act-missing');
     }
@@ -299,7 +299,7 @@ class DaisySmsServiceTest extends TestCase
             app(DaisySmsService::class)->requestExtraActivation('act-previous');
             $this->fail('An unknown provider response must remain ambiguous.');
         } catch (\App\Exceptions\ProviderTimeoutException $exception) {
-            $this->assertStringContainsString('outcome is unknown', $exception->getMessage());
+            $this->assertStringContainsString('outcome could not be confirmed', $exception->getMessage());
         }
     }
 
