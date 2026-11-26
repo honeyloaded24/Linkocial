@@ -797,7 +797,7 @@ class VirtualNumberController extends Controller
                         $buyResponse = $this->grizzly->buyNumber($country, $productId, $maxAllowedProviderUsd);
                     } catch (\App\Exceptions\ProviderTimeoutException|\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         
-                        // the provider may have created an activation before the response was lost.
+                        // The provider may have created an activation before the response was lost.
                         // Never refund or permit another Server 2 purchase until reconciled.
                         Log::warning('Grizzly purchase timed out; preserving attempt as unresolved.', [
                             'user_id' => $user->id,
@@ -853,7 +853,16 @@ class VirtualNumberController extends Controller
                     });
                     return response()->json(['error' => 'The ' . ($server === 'server4' ? 'Server 4' : 'Server 3') . ' purchase is being verified because the carrier response was interrupted. Please check order history before retrying.', 'order_id' => $attemptRecord->id, 'status' => 'unresolved'], 504);
                 }
-                $noPurchaseDueToQuote = (!$isDaisyPurchase && $server === 'server3')
+                $isGrizzlyDefiniteRejection = $server === 'server2' && (
+                    str_contains($providerError, 'no numbers')
+                    || str_contains($providerError, 'no_balance')
+                    || str_contains($providerError, 'invalid server 2 api configuration')
+                    || str_contains($providerError, 'restricted or unavailable')
+                    || str_contains($providerError, 'exceeds the confirmed safe spending limit')
+                );
+
+                $noPurchaseDueToQuote = $isGrizzlyDefiniteRejection
+                    || (!$isDaisyPurchase && $server === 'server3')
                     || str_contains($providerError, 'below the price of')
                     || str_contains($providerError, 'suitable pool')
                     || ($isDaisyPurchase && (
