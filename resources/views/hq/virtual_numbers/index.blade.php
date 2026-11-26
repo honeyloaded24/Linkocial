@@ -224,7 +224,13 @@
                         <div class="small text-muted">{{ $order->created_at->format('H:i') }}</div>
                     </td>
                     <td class="text-end">
-                        @if(in_array($order->status, ['pending', 'received']))
+                        @if(($order->provider_key ?? null) === 'daisysms' && $order->status === 'unresolved' && str_starts_with((string) $order->api_order_id, 'ATT_') && in_array((string) $order->phone_number, ['', 'PENDING'], true) && empty($order->sms_code))
+                        <form action="{{ route('hq.virtual-numbers.confirm-daisy-no-rental', $order->id) }}" method="POST" onsubmit="return confirm('Only continue if you have checked the DaisySMS Rentals page and confirmed that this order does NOT exist. This will refund the customer and close the attempt. Continue?');">
+                            @csrf
+                            <input type="hidden" name="confirm_no_rental" value="1">
+                            <button class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold">Confirm No Rental & Refund</button>
+                        </form>
+                        @elseif(in_array($order->status, ['pending', 'received']))
                         <form action="{{ route('hq.virtual-numbers.refund', $order->id) }}" method="POST" onsubmit="return confirm('Cancel this number and REFUND the user?');">
                             @csrf
                             <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold">Cancel & Refund</button>
