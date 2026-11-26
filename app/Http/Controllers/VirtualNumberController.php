@@ -417,10 +417,22 @@ class VirtualNumberController extends Controller
             // Unlike temporary locks, this restriction does NOT expire on a timer — it persists until
             // the order is definitively resolved (reconciled by cron or reviewed by admin).
             // This prevents duplicate provider charges and ensures provider-specific isolation.
-            $existingUnresolved = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
+            $unresolvedQuery = \App\Models\VirtualNumberOrder::where('user_id', $user->id)
                 ->where('status', 'unresolved')
-                ->where('server', $server)
-                ->exists();
+                ->where('server', $server);
+
+            // Server 4: if DaisySMS has already returned a real phone number, the
+            // rental is visible to the customer and must not block another purchase.
+            // Keep the duplicate-purchase protection only for attempts whose outcome
+            // is genuinely unknown (no phone number was returned).
+            if ($server === 'server4') {
+                $unresolvedQuery->where(function ($query) {
+                    $query->whereNull('phone_number')
+                        ->orWhereIn('phone_number', ['', 'PENDING']);
+                });
+            }
+
+            $existingUnresolved = $unresolvedQuery->exists();
 
             if ($existingUnresolved) {
                 return response()->json([
