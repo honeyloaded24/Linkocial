@@ -693,23 +693,6 @@ class VirtualNumberController extends Controller
                         // Preserve Grizzly's established automatic price-tier selection.
                         // A quote-derived maxPrice may be stale by the time the request arrives.
                         $buyResponse = $this->grizzly->buyNumber($country, $productId);
-                    } catch (\Exception $priceTierEx) {
-                            $priceTierError = strtolower($priceTierEx->getMessage());
-                            $isNoNumbers = str_contains($priceTierError, 'no_numbers')
-                                || str_contains($priceTierError, 'no numbers')
-                                || str_contains($priceTierError, 'no number');
-
-                            if (!$isNoNumbers) {
-                                throw $priceTierEx;
-                            }
-
-                            Log::info('Grizzly cheapest price tier has no numbers; retrying with next available tier.', [
-                                'country' => $country,
-                                'service' => $productId,
-                                'cheapest_price' => $activeWholesalePrice,
-                            ]);
-                            $buyResponse = $this->grizzly->buyNumber($country, $productId, null);
-                        }
                     } catch (\Illuminate\Http\Client\ConnectionException $timeoutEx) {
                         // A timeout from Grizzly's getNumberV2 endpoint is ambiguous:
                         // the provider may have created an activation before the response was lost.
