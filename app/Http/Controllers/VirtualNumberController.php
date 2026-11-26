@@ -807,7 +807,7 @@ class VirtualNumberController extends Controller
                 }
             } catch (\Exception $e) {
                 $providerError = strtolower($e->getMessage());
-                $isDaisyPurchase = $this->isDaisyService($server, (string) $country, (string) $productId);
+                $isDaisyPurchase = $server === 'server4';
                 if ($isDaisyPurchase && ($e instanceof \App\Exceptions\ProviderTimeoutException || str_contains($providerError, 'timed out') || str_contains($providerError, 'timeout') || str_contains($providerError, 'connection'))) {
                     DB::transaction(function () use ($attemptRecord) {
                         $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
@@ -886,7 +886,7 @@ class VirtualNumberController extends Controller
 
             // A confirmed rental without a verifiable effective price must remain
             // unresolved. Preserve its activation and number; never refund it as failed.
-            if ($apiOrderId && $this->isDaisyService($server, (string) $country, (string) $productId) && !empty($buyResponse['price_unverified'])) {
+            if ($apiOrderId && $server === 'server4' && !empty($buyResponse['price_unverified'])) {
                 $rawPhone = trim((string) ($buyResponse['phonenumber'] ?? ''));
                 $digits = preg_replace('/\\D+/', '', $rawPhone);
                 $safePhone = str_starts_with($rawPhone, '+') ? '+' . $digits : ($digits !== '' ? '+' . $digits : 'PENDING');
