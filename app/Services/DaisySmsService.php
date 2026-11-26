@@ -13,12 +13,40 @@ class DaisySmsService
     protected ?string $apiKey;
 
     public const USA_COUNTRY_ID = '187';
+    public const CANADA_COUNTRY_ID = '36';
+    public const SUPPORTED_COUNTRIES = [
+        self::USA_COUNTRY_ID => ['name' => 'United States', 'cc' => '1'],
+        self::CANADA_COUNTRY_ID => ['name' => 'Canada', 'cc' => '1'],
+    ];
 
-    public const ROUTED_SERVICES = [
+    /**
+     * Friendly labels for common DaisySMS shortcodes. Unknown services are
+     * still exposed using a readable version of the provider's own shortcode.
+     */
+    public const SERVICE_NAMES = [
         'whatsapp' => 'WhatsApp',
-        'telegram' => 'Telegram',
         'whatsapp_canada' => 'WhatsApp Canada',
+        'telegram' => 'Telegram',
         'telegram_canada' => 'Telegram Canada',
+        'facebook' => 'Facebook',
+        'facebook_reset' => 'Facebook Reset',
+        'google' => 'Google',
+        'google_chat' => 'Google Chat',
+        'google_voice' => 'Google Voice',
+        'google_gmail' => 'Google / YouTube / Gmail',
+        'instagram' => 'Instagram',
+        'instagram_threads' => 'Instagram / Threads',
+        'twitter' => 'X / Twitter',
+        'tiktok' => 'TikTok',
+        'amazon' => 'Amazon',
+        'discord' => 'Discord',
+        'snapchat' => 'Snapchat',
+        'linkedin' => 'LinkedIn',
+        'uber' => 'Uber',
+        'paypal' => 'PayPal',
+        'apple' => 'Apple',
+        'microsoft' => 'Microsoft',
+        'netflix' => 'Netflix',
     ];
 
     public function __construct()
@@ -83,13 +111,44 @@ class DaisySmsService
     }
 
 
+    protected function serviceName(string $serviceCode): string
+    {
+        $code = strtolower(trim($serviceCode));
+        if (isset(self::SERVICE_NAMES[$code])) {
+            return self::SERVICE_NAMES[$code];
+        }
+
+        return Str::headline(str_replace(['_', '-', '.'], ' ', $serviceCode));
+    }
+
+    /**
+     * Return countries that currently have at least one live DaisySMS offer.
+     * The provider documents USA as 187; Canada is included only if its live
+     * catalogue actually returns offers for the SMS-Activate country ID 36.
+     */
+    public function getAvailableCountries(): array
+    {
+        $countries = [];
+        foreach (self::SUPPORTED_COUNTRIES as $countryId => $meta) {
+            if ($this->getCatalogueForCountry((string) $countryId)) {
+                $countries[] = [
+                    'ID' => (string) $countryId,
+                    'name' => $meta['name'],
+                    'cc' => $meta['cc'],
+                ];
+            }
+        }
+
+        return $countries;
+    }
+
     /**
      * Return the live service identifiers and offers for the configured account.
      * This is an admin-only diagnostic; it does not enable or change routing.
      */
     public function getCatalogueForCountry(string $country): array
     {
-        if ($country !== self::USA_COUNTRY_ID) {
+        if (!isset(self::SUPPORTED_COUNTRIES[$country])) {
             return [];
         }
 
@@ -204,45 +263,38 @@ class DaisySmsService
 
     public function getPricesForCountry(string $country): array
     {
-        if ($country !== self::USA_COUNTRY_ID) {
+        if (!isset(self::SUPPORTED_COUNTRIES[$country])) {
             return [];
         }
 
-        $response = $this->request(['action' => 'getPricesVerification']);
-        $catalogue = $this->decoded($response);
-        if (!$catalogue) {
-            $catalogue = $this->decoded($this->request(['action' => 'getPrices']));
-        }
-
+        $catalogueRows = $this->getCatalogueForCountry($country);
         $rows = [];
-        foreach (self::ROUTED_SERVICES as $code => $name) {
-            $offer = $this->serviceData($catalogue, $code, $country);
-            if (!$offer) {
-                continue;
-            }
 
-            $price = (float) ($offer['cost'] ?? 0);
-            $stock = (int) ($offer['count'] ?? 0);
+        foreach ($catalogueRows as $offer) {
+            $price = (float) ($offer['cost_usd'] ?? 0);
+            $stock = (int) ($offer['stock'] ?? 0);
             if ($price <= 0 || $stock <= 0) {
                 continue;
             }
 
+            $serviceCode = (string) $offer['service_code'];
             $rows[] = [
-                'service' => $code,
-                'service_name' => $name,
+                'service' => $serviceCode,
+                'service_name' => $this->serviceName($serviceCode),
                 'price' => $price,
                 'stock' => $stock,
                 'multi' => (int) ($offer['multi'] ?? 0),
             ];
         }
 
+        usort($rows, fn ($a, $b) => strcasecmp($a['service_name'], $b['service_name']));
         return $rows;
     }
 
     public function buyNumber(string $country, string $service, ?float $maxPrice = null, ?float $quotedPrice = null): array
     {
-        if ($country !== self::USA_COUNTRY_ID || !isset(self::ROUTED_SERVICES[$service])) {
-            throw new \RuntimeException('This DaisySMS service is not enabled for the selected Server 3 country.');
+        if (!isset(self::SUPPORTED_COUNTRIES[$country]) || !collect($this->getPricesForCountry($country))->contains(fn ($row) => (string) $row['service'] === $service)) {
+            throw new \RuntimeException('This DaisySMS service is not currently available on Server 4 for the selected country.');
         }
         $params = [
             'action' => 'getNumber',
@@ -260,13 +312,13 @@ class DaisySmsService
         $body = trim($response->body());
         if (!preg_match('/^ACCESS_NUMBER:([^:]+):(.+)$/', $body, $matches)) {
             $messages = [
-                'NO_NUMBERS' => 'No numbers are currently available for this service on Server 3.',
+                'NO_NUMBERS' => 'No numbers are currently available for this service on Server 4.',
                 'MAX_PRICE_EXCEEDED' => 'DaisySMS price exceeded the safe spending limit. Please request a fresh quote.',
-                'TOO_MANY_ACTIVE_RENTALS' => 'Server 3 has reached its active rental limit. Please try again after an active rental is completed.',
-                'NO_MONEY' => 'Server 3 provider balance is insufficient.',
-                'BAD_KEY' => 'Server 3 API authentication failed. Please contact support.',
+                'TOO_MANY_ACTIVE_RENTALS' => 'Server 4 has reached its active rental limit. Please try again after an active rental is completed.',
+                'NO_MONEY' => 'Server 4 provider balance is insufficient.',
+                'BAD_KEY' => 'Server 4 API authentication failed. Please contact support.',
             ];
-            throw new \RuntimeException($messages[$body] ?? 'Server 3 could not complete the number purchase: '.$body);
+            throw new \RuntimeException($messages[$body] ?? 'Server 4 could not complete the number purchase: '.$body);
         }
 
         $actualPrice = (float) ($response->header('X-Price') ?? 0);
