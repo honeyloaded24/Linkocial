@@ -135,6 +135,82 @@ class AdminVirtualNumberController extends Controller
     }
 
     /**
+     * Reconcile a DaisySMS purchase attempt when an administrator has checked
+     * the provider Rentals page and confirmed that no rental was created.
+     *
+     * This is intentionally restricted to unresolved attempts that still carry
+     * our local ATT_ reference (not a DaisySMS activation ID).
+     */
+    public function confirmDaisySmsNoRental(Request $request, $id)
+    {
+        $request->validate([
+            'confirm_no_rental' => 'required|accepted',
+        ]);
+
+        try {
+            DB::transaction(function () use ($id) {
+                $order = VirtualNumberOrder::where('id', $id)->lockForUpdate()->firstOrFail();
+
+                $isLocalAttempt = str_starts_with((string) $order->api_order_id, 'ATT_');
+                $isEligible = ($order->provider_key ?? null) === 'daisysms'
+                    && $order->server === 'server4'
+                    && $order->status === 'unresolved'
+                    && $isLocalAttempt
+                    && in_array((string) $order->phone_number, ['', 'PENDING'], true)
+                    && empty($order->sms_code);
+
+                if (!$isEligible) {
+                    throw new \\RuntimeException('This order is not an eligible unconfirmed DaisySMS purchase attempt.');
+                }
+
+                $refundReferences = [
+                    'REF-VN-' . $order->id,
+                    'REF-VN-ADMIN-' . $order->id,
+                ];
+
+                if (Transaction::whereIn('reference', $refundReferences)->exists()) {
+                    throw new \\RuntimeException('A refund has already been recorded for this order.');
+                }
+
+                $user = \\App\\Models\\User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
+                $amount = (float) $order->cost;
+
+                if ($amount <= 0) {
+                    throw new \\RuntimeException('The recorded customer debit is not valid for a refund.');
+                }
+
+                $balanceBefore = (float) $user->balance;
+                $user->addBalance($amount);
+
+                Transaction::add(
+                    $user->id,
+                    $amount,
+                    'credit',
+                    'refund',
+                    "Refund for DaisySMS purchase attempt #{$order->id}; administrator confirmed no provider rental exists.",
+                    'REF-VN-ADMIN-' . $order->id,
+                    $order->created_at
+                );
+
+                $order->update([
+                    'status' => 'failed',
+                    'sms_text' => 'Administrator verified that no rental exists in the DaisySMS account. Customer refunded once. Original local attempt reference: ' . $order->api_order_id,
+                    'provider_cost' => 0,
+                ]);
+
+                \\App\\Models\\ActivityLog::log(
+                    "Reconciled DaisySMS purchase #{$order->id}: no provider rental found; refunded " . money($amount) . '. Balance before: ' . money($balanceBefore),
+                    auth()->user()
+                );
+            });
+
+            return back()->with('success', "DaisySMS order #{$id} reconciled. The customer has been refunded exactly once.");
+        } catch (\\Throwable $e) {
+            return back()->with('error', 'DaisySMS reconciliation was not completed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Save the DaisySMS credential for the independent Server 4 integration.
      */
     public function updateDaisySmsKey(Request $request)
