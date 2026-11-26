@@ -371,7 +371,7 @@ class VirtualNumberController extends Controller
                 if ($freshOffer && (float) ($freshOffer['price'] ?? 0) > 0) {
                     $activeWholesalePrice = (float) $freshOffer['price'];
                 }
-            } elseif ($this->isDaisyService($server, (string) $country, (string) $productId)) {
+            } elseif ($server === 'server4') {
                 $freshRows = $this->daisysms->getPricesForCountry((string) $country);
                 $freshOffer = collect($freshRows)->firstWhere('service', (string) $productId);
                 if (!$freshOffer || (int) ($freshOffer['stock'] ?? 0) <= 0 || (float) ($freshOffer['price'] ?? 0) <= 0) {
