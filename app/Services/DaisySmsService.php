@@ -239,7 +239,7 @@ class DaisySmsService
         return $rows;
     }
 
-    public function buyNumber(string $country, string $service, ?float $maxPrice = null): array
+    public function buyNumber(string $country, string $service, ?float $maxPrice = null, ?float $quotedPrice = null): array
     {
         if ($country !== self::USA_COUNTRY_ID || !isset(self::ROUTED_SERVICES[$service])) {
             throw new \RuntimeException('This DaisySMS service is not enabled for the selected Server 3 country.');
@@ -270,16 +270,18 @@ class DaisySmsService
         }
 
         $actualPrice = (float) ($response->header('X-Price') ?? 0);
+        // DaisySMS may omit X-Price on an otherwise confirmed ACCESS_NUMBER.
+        // In that case use the fresh provider catalogue quote obtained immediately
+        // before purchase; do not confuse the optional max_price cap with that quote.
+        $verifiedPrice = $actualPrice > 0 ? $actualPrice : (float) ($quotedPrice ?? 0);
 
         return [
             'order_id' => $matches[1],
             'phonenumber' => $matches[2],
-            // ACCESS_NUMBER confirms a provider rental. Missing X-Price must be
-            // reconciled, not thrown as a failed purchase that could be refunded.
-            'cost' => $actualPrice > 0 ? $actualPrice : 0.0,
-            'provider_cost' => $actualPrice > 0 ? $actualPrice : 0.0,
-            'price_unverified' => $actualPrice <= 0,
-            'provider_quote_usd' => $maxPrice ?? 0.0,
+            'cost' => $verifiedPrice > 0 ? $verifiedPrice : 0.0,
+            'provider_cost' => $verifiedPrice > 0 ? $verifiedPrice : 0.0,
+            'price_unverified' => $verifiedPrice <= 0,
+            'provider_quote_usd' => $quotedPrice ?? $maxPrice ?? 0.0,
             'provider_supplier_id' => null,
             'provider_returned_operator' => null,
         ];
