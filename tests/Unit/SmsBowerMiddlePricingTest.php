@@ -96,6 +96,20 @@ class SmsBowerMiddlePricingTest extends TestCase
         $this->assertSame(0.0, $method->invoke($service, []));
     }
 
+    public function test_server3_country_list_always_includes_documented_uk_and_us_ids(): void
+    {
+        $controller = (new ReflectionClass(VirtualNumberController::class))->newInstanceWithoutConstructor();
+        $method = new \\ReflectionMethod(VirtualNumberController::class, 'ensureSmsBowerCoreCountries');
+        $method->setAccessible(true);
+
+        $countries = $method->invoke($controller, [
+            ['ID' => '74', 'name' => 'Afghanistan', 'cc' => '93'],
+        ]);
+
+        $this->assertContains(['ID' => '16', 'name' => 'United Kingdom', 'cc' => '44'], $countries);
+        $this->assertContains(['ID' => '187', 'name' => 'United States', 'cc' => '1'], $countries);
+    }
+
     public function test_supplier_max_price_never_exceeds_the_selected_supplier_quote(): void
     {
         $service = (new ReflectionClass(SmsBowerService::class))->newInstanceWithoutConstructor();
