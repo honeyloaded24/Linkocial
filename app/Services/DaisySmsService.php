@@ -398,6 +398,9 @@ class DaisySmsService
         if ($body === 'STATUS_CANCEL') {
             return ['status' => 6];
         }
+        if ($body === 'RATE_LIMIT_EXCEEDED') {
+            throw new \RuntimeException('DaisySMS is temporarily rate-limiting status checks. Please wait a short time and retry.');
+        }
 
         throw new \RuntimeException('DaisySMS status could not be verified: '.$body);
     }
@@ -412,10 +415,14 @@ class DaisySmsService
         $body = trim($response->body());
 
         if ($body !== 'ACCESS_CANCEL') {
-            // ACCESS_READY explicitly means cancellation failed / code already received.
-            throw new \RuntimeException($body === 'ACCESS_READY'
-                ? 'DaisySMS reports that this rental is already ready or has received a code. No refund was issued.'
-                : 'DaisySMS did not confirm cancellation. No refund was issued.');
+            // ACCESS_READY means the rental is missing or has already received a code.
+            // RATE_LIMIT_EXCEEDED is retryable; neither response authorizes a refund.
+            $message = match ($body) {
+                'ACCESS_READY' => 'DaisySMS reports that this rental is no longer cancellable or may already have received a code. No refund was issued.',
+                'RATE_LIMIT_EXCEEDED' => 'DaisySMS is temporarily rate-limiting cancellation. No refund was issued. Please wait briefly and try again.',
+                default => 'DaisySMS did not confirm cancellation. No refund was issued.',
+            };
+            throw new \RuntimeException($message);
         }
 
         return ['success' => true, 'status' => 'canceled'];
