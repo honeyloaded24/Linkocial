@@ -158,7 +158,7 @@ class DaisySmsServiceTest extends TestCase
         try {
             app(DaisySmsService::class)->buyNumber('187', 'whatsapp', 1.50, 1.60);
             $this->fail('A price-cap rejection must not be treated as a successful purchase.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('max price exceeded', strtolower($exception->getMessage()));
         }
 
