@@ -71,6 +71,20 @@ class DaisySmsServiceTest extends TestCase
     }
 
 
+    public function test_flat_usa_catalogue_does_not_get_mislabelled_as_canada(): void
+    {
+        Http::fake([
+            'daisysms.io/*' => Http::response([
+                'whatsapp' => ['cost' => 1.60, 'count' => 20, 'multi' => 0],
+                'telegram' => ['cost' => 1.00, 'count' => 30, 'multi' => 1],
+            ], 200),
+        ]);
+
+        $countries = app(DaisySmsService::class)->getAvailableCountries();
+
+        $this->assertSame(['187'], array_column($countries, 'ID'));
+    }
+
     public function test_non_usa_catalogue_is_not_requested_from_daisy_sms(): void
     {
         Http::fake();
