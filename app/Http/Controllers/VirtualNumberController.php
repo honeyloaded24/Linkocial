@@ -214,14 +214,15 @@ class VirtualNumberController extends Controller
                     $serviceName = $this->grizzly->getServiceName($serviceId);
                 }
 
-                if (!isset($grouped[$serviceName])) {
-                    $grouped[$serviceName] = [
+                $groupKey = $server === 'server4' ? (string) $serviceId : $serviceName;
+                if (!isset($grouped[$groupKey])) {
+                    $grouped[$groupKey] = [
                         'id' => $serviceId,
                         'name' => $serviceName,
                         'prices' => [$price]
                     ];
                 } else {
-                    $grouped[$serviceName]['prices'][] = $price;
+                    $grouped[$groupKey]['prices'][] = $price;
                 }
             }
 
