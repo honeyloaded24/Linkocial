@@ -551,7 +551,7 @@ class VirtualNumberRefundIntegrityTest extends TestCase
             $mock->shouldReceive('getActiveActivations')->once()->andReturn([[
                 'activationId' => 'GRZ-ACT-123',
                 'serviceCode' => 'wa',
-                'phoneNumber' => '12025550123',
+                'phoneNumber' => '2025550123',
                 'activationCost' => '0.75',
                 'activationStatus' => '2',
                 'activationTime' => now()->toDateTimeString(),
