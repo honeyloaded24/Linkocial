@@ -602,7 +602,9 @@ class VirtualNumberController extends Controller
             // rental is visible to the customer and must not block another purchase.
             // Keep the duplicate-purchase protection only for attempts whose outcome
             // is genuinely unknown (no phone number was returned).
-            if ($server === 'server4') {
+            if (in_array($server, ['server2', 'server4'], true)) {
+                // Confirmed provider numbers are real rentals, not unknown purchases.
+                // Only attempts without a returned number should block another purchase.
                 $unresolvedQuery->where(function ($query) {
                     $query->whereNull('phone_number')
                         ->orWhereIn('phone_number', ['', 'PENDING']);
@@ -1379,7 +1381,15 @@ class VirtualNumberController extends Controller
     {
         $order = VirtualNumberOrder::where('user_id', Auth::id())->findOrFail($id);
         $isDaisyExtra = ($order->provider_key ?? null) === 'daisysms' && !empty($order->daisy_extra_activation_id);
-        if (!$isDaisyExtra && $order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
+        $isConfirmedGrizzlyUnresolved = ($order->server ?? null) === 'server2'
+            && $order->status === 'unresolved'
+            && !empty($order->api_order_id)
+            && !str_starts_with((string) $order->api_order_id, 'ATT_')
+            && !empty($order->phone_number)
+            && !in_array(strtoupper(trim((string) $order->phone_number)), ['', 'PENDING'], true);
+        if (!$isDaisyExtra && !$isConfirmedGrizzlyUnresolved
+            && $order->status !== 'pending'
+            && !($order->status === 'received' && empty($order->sms_code))) {
             return response()->json(['order' => $order]);
         }
 
@@ -1389,6 +1399,12 @@ class VirtualNumberController extends Controller
         try {
             $order = $order->fresh();
             if (!$order) return response()->json(['error' => 'Order not found.'], 404);
+            $isConfirmedGrizzlyUnresolved = ($order->server ?? null) === 'server2'
+                && $order->status === 'unresolved'
+                && !empty($order->api_order_id)
+                && !str_starts_with((string) $order->api_order_id, 'ATT_')
+                && !empty($order->phone_number)
+                && !in_array(strtoupper(trim((string) $order->phone_number)), ['', 'PENDING'], true);
 
             // DaisySMS extra activations are independent rentals. Poll their activation ID
             // separately and never overwrite the first SMS code/message.
@@ -1440,7 +1456,9 @@ class VirtualNumberController extends Controller
             if ($order->status === 'received' && !empty($order->sms_code)) {
                 return response()->json(['order' => $order]);
             }
-            if ($order->status !== 'pending' && !($order->status === 'received' && empty($order->sms_code))) {
+            if (!$isConfirmedGrizzlyUnresolved
+                && $order->status !== 'pending'
+                && !($order->status === 'received' && empty($order->sms_code))) {
                 return response()->json(['order' => $order]);
             }
 
@@ -1463,9 +1481,12 @@ class VirtualNumberController extends Controller
                     }
                 }
                 if ($smsCode !== '') {
-                    DB::transaction(function () use ($order, $smsCode, $fullSms) {
+                    DB::transaction(function () use ($order, $smsCode, $fullSms, $isConfirmedGrizzlyUnresolved) {
                         $lockedOrder = VirtualNumberOrder::where('id', $order->id)->lockForUpdate()->first();
-                        if ($lockedOrder && in_array($lockedOrder->status, ['pending', 'received'], true) && empty($lockedOrder->sms_code)) {
+                        $allowedStatuses = $isConfirmedGrizzlyUnresolved
+                            ? ['pending', 'received', 'unresolved']
+                            : ['pending', 'received'];
+                        if ($lockedOrder && in_array($lockedOrder->status, $allowedStatuses, true) && empty($lockedOrder->sms_code)) {
                             $lockedOrder->update([
                                 'status' => 'received',
                                 'sms_text' => $fullSms !== '' ? $fullSms : $smsCode,
