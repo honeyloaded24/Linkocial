@@ -563,8 +563,8 @@ class VirtualNumberRefundIntegrityTest extends TestCase
             $mock->shouldReceive('getServiceName')->with('wa')->andReturn('WhatsApp');
         });
 
-        $controller = app(\\App\\Http\\Controllers\\VirtualNumberController::class);
-        $method = new \\ReflectionMethod($controller, 'reconcileGrizzlyUnresolvedOrders');
+        $controller = app(\App\Http\Controllers\VirtualNumberController::class);
+        $method = new \ReflectionMethod($controller, 'reconcileGrizzlyUnresolvedOrders');
         $method->setAccessible(true);
         $method->invoke($controller, $customer->id);
 
