@@ -364,6 +364,7 @@
 
             <div class="resend-alert mt-2 text-center small text-danger d-none"></div>
             
+            <div class="cancel-countdown small text-warning fw-semibold text-center mt-2 d-none" role="status" aria-live="polite"></div>
             <div class="mt-3 text-center d-flex justify-content-center align-items-center gap-2 flex-wrap action-buttons">
                 <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold cancel-btn">Cancel & Refund</button>
                 <button class="btn btn-sm btn-primary-custom rounded-pill fw-bold resend-btn d-none" title="Request another SMS / Reuse this number">
@@ -833,6 +834,50 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    function startCancelCountdown(cardNode, availableAt) {
+        const countdown = cardNode.querySelector('.cancel-countdown');
+        const cancelButton = cardNode.querySelector('.cancel-btn');
+        if (!countdown || !cancelButton || !availableAt) return;
+
+        const availableAtMs = new Date(availableAt).getTime();
+        if (!Number.isFinite(availableAtMs)) return;
+
+        if (cardNode.dataset.cancelCountdownId) {
+            clearInterval(Number(cardNode.dataset.cancelCountdownId));
+            delete cardNode.dataset.cancelCountdownId;
+        }
+
+        const updateCountdown = () => {
+            const remainingSeconds = Math.max(0, Math.ceil((availableAtMs - Date.now()) / 1000));
+            if (remainingSeconds > 0) {
+                const minutes = Math.floor(remainingSeconds / 60);
+                const seconds = remainingSeconds % 60;
+                const timeText = minutes > 0
+                    ? minutes.toString().padStart(2, '0') + ':' + seconds.toString().padStart(2, '0')
+                    : seconds + ' second' + (seconds === 1 ? '' : 's');
+                countdown.textContent = 'You can cancel this number in ' + timeText + '.';
+                countdown.classList.remove('d-none');
+                cancelButton.disabled = true;
+                cancelButton.textContent = 'Available in ' + timeText;
+                return false;
+            }
+
+            countdown.textContent = 'Cancellation is now available.';
+            countdown.classList.remove('d-none');
+            cancelButton.disabled = false;
+            cancelButton.textContent = 'Cancel & Refund';
+            if (cardNode.dataset.cancelCountdownId) {
+                clearInterval(Number(cardNode.dataset.cancelCountdownId));
+                delete cardNode.dataset.cancelCountdownId;
+            }
+            return true;
+        };
+
+        if (!updateCountdown()) {
+            cardNode.dataset.cancelCountdownId = setInterval(updateCountdown, 1000);
+        }
+    }
+
     function addOrderCard(order) {
         emptyState.classList.add('d-none');
         
@@ -898,6 +943,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     : 'Your purchase is being verified with the carrier. Please do not purchase this service again until verification is complete.';
                 waitingText.classList.remove('d-none');
             }
+        }
+
+        // Grizzly's activationCancel timestamp is the exact time cancellation
+        // becomes available. Show a live countdown before the customer taps cancel.
+        if (order.server === 'server2' && order.cancel_available_at && order.status === 'pending') {
+            startCancelCountdown(card, order.cancel_available_at);
         }
 
         // Setup countdown timer for pending orders
@@ -1105,9 +1156,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json())
         .then(data => {
             if (data.error) {
-                alert(data.error);
-                cardNode.querySelector('.cancel-btn').disabled = false;
-                cardNode.querySelector('.cancel-btn').textContent = 'Cancel & Refund';
+                const cancelButton = cardNode.querySelector('.cancel-btn');
+                if (data.cancel_available_at) {
+                    startCancelCountdown(cardNode, data.cancel_available_at);
+                } else {
+                    alert(data.error);
+                    cancelButton.disabled = false;
+                    cancelButton.textContent = 'Cancel & Refund';
+                }
                 return;
             }
             if (activePolls[id]) {
@@ -1116,6 +1172,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (cardNode.dataset.timerId) {
                 clearInterval(cardNode.dataset.timerId);
+            }
+            if (cardNode.dataset.cancelCountdownId) {
+                clearInterval(Number(cardNode.dataset.cancelCountdownId));
             }
             cardNode.remove();
             checkEmptyState();
