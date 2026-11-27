@@ -94,7 +94,7 @@ class VirtualNumberController extends Controller
 
         try {
             $activations = $this->grizzly->getActiveActivations();
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::warning('Grizzly unresolved purchase reconciliation could not load active activations.', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -111,7 +111,7 @@ class VirtualNumberController extends Controller
                     $countryPrefixes[$countryId] = $prefix;
                 }
             }
-        } catch (\\Throwable $e) {
+        } catch (\Throwable $e) {
             Log::notice('Grizzly country list unavailable while reconciling activations; matching by service and time only.', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -152,8 +152,8 @@ class VirtualNumberController extends Controller
                 }
 
                 try {
-                    $providerTime = \\Illuminate\\Support\\Carbon::parse($activationTime);
-                } catch (\\Throwable $e) {
+                    $providerTime = \Illuminate\Support\Carbon::parse($activationTime);
+                } catch (\Throwable $e) {
                     return false;
                 }
 
@@ -170,7 +170,7 @@ class VirtualNumberController extends Controller
             $activation = $matches->first();
             $activationId = (string) ($activation['activationId'] ?? $activation['id']);
             $phone = trim((string) ($activation['phoneNumber'] ?? $activation['phone']));
-            $phone = str_starts_with($phone, '+') ? $phone : '+' . preg_replace('/\\D+/', '', $phone);
+            $phone = str_starts_with($phone, '+') ? $phone : '+' . preg_replace('/\D+/', '', $phone);
             $smsCode = $activation['smsCode'] ?? null;
             if (is_array($smsCode)) {
                 $smsCode = implode(', ', array_filter($smsCode));
@@ -1127,7 +1127,7 @@ class VirtualNumberController extends Controller
                 // SMSBower's phoneNumber is the number to present to the customer.
                 // Its countryCode field is not safe to prepend here: it can be a
                 // provider country identifier rather than an international dial prefix.
-                $phoneDigits = preg_replace('/\\D+/', '', $providerPhoneNumber);
+                $phoneDigits = preg_replace('/\D+/', '', $providerPhoneNumber);
                 $phoneNumber = str_starts_with($providerPhoneNumber, '+')
                     ? '+' . $phoneDigits
                     : ($phoneDigits !== '' ? '+' . $phoneDigits : '');
@@ -1155,8 +1155,8 @@ class VirtualNumberController extends Controller
             // ceiling after issuing an activation, preserve it for reconciliation.
             if ($actualCostUsd > ($maxAllowedProviderUsd + 0.0001)) {
                 $safePhone = str_starts_with($providerPhoneNumber, '+')
-                    ? '+' . preg_replace('/\\D+/', '', $providerPhoneNumber)
-                    : '+' . ($buyResponse['cc'] ?? '') . preg_replace('/\\D+/', '', $providerPhoneNumber);
+                    ? '+' . preg_replace('/\D+/', '', $providerPhoneNumber)
+                    : '+' . ($buyResponse['cc'] ?? '') . preg_replace('/\D+/', '', $providerPhoneNumber);
 
                 DB::transaction(function () use ($attemptRecord, $apiOrderId, $safePhone, $actualCostUsd, $activeWholesalePrice) {
                     $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
