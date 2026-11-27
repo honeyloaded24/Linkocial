@@ -11,6 +11,7 @@ use App\Services\GrizzlySmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Tests\TestCase;
 
@@ -623,6 +624,59 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame('654321', $order->fresh()->sms_code);
         $this->assertSame(750.0, (float) $customer->fresh()->balance);
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
+    public function test_confirmed_activation_finalization_ignores_missing_optional_schema_columns(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Schema';
+        $customer->last_name = 'Recovery';
+        $customer->username = 'grizzly_schema_recovery';
+        $customer->email = 'grizzly-schema-recovery@example.test';
+        $customer->password = bcrypt('password');
+        $customer->email_verified_at = now();
+        $customer->balance = 5000;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'GRZ-SCHEMA-SAFE-1',
+            'phone_number' => 'PENDING',
+            'country' => 'United States',
+            'operator' => 'Server 2',
+            'server' => 'server2',
+            'product' => 'WhatsApp',
+            'cost' => 2400,
+            'provider_cost' => 1.50,
+            'status' => 'processing',
+        ]);
+
+        if (Schema::hasColumn('virtual_number_orders', 'cancel_available_at')) {
+            Schema::table('virtual_number_orders', function ($table) {
+                $table->dropColumn('cancel_available_at');
+            });
+        }
+
+        $controller = app(\\App\\Http\\Controllers\\VirtualNumberController::class);
+        $method = new \\ReflectionMethod($controller, 'persistConfirmedActivation');
+        $method->setAccessible(true);
+        $saved = $method->invoke($controller, $order, [
+            'api_order_id' => 'GRZ-SCHEMA-SAFE-1',
+            'phone_number' => '+12025550123',
+            'country' => 'United States',
+            'operator' => 'Server 2',
+            'server' => 'server2',
+            'product' => 'WhatsApp',
+            'cost' => 2400,
+            'provider_cost' => 1.50,
+            'status' => 'pending',
+            'expires_at' => now()->addMinutes(20),
+            'cancel_available_at' => now()->addSeconds(50),
+        ]);
+
+        $this->assertSame('pending', $saved->status);
+        $this->assertSame('+12025550123', $saved->phone_number);
+        $this->assertSame('GRZ-SCHEMA-SAFE-1', $saved->api_order_id);
     }
 
 }
