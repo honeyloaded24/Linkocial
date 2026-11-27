@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class VirtualNumberController extends Controller
 {
@@ -66,6 +67,19 @@ class VirtualNumberController extends Controller
             'server4' => $this->daisysms,
             default => $this->smspool,
         };
+    }
+
+    /**
+     * Save a provider-confirmed activation using only columns available in this
+     * database. Optional metadata migrations must not invalidate a real purchase.
+     */
+    protected function persistConfirmedActivation(VirtualNumberOrder $order, array $attributes): VirtualNumberOrder
+    {
+        $columns = array_flip(Schema::getColumnListing($order->getTable()));
+        $order->forceFill(array_intersect_key($attributes, $columns));
+        $order->save();
+
+        return $order->fresh();
     }
 
     /**
@@ -1258,8 +1272,8 @@ class VirtualNumberController extends Controller
                 $operatorLabel = $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1'));
 
                 $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
-                $lockedOrder->update([
-                    'api_order_id' => $apiOrderId,
+                $this->persistConfirmedActivation($lockedOrder, [
+                    'api_order_id' => (string) $apiOrderId,
                     'phone_number' => $phoneNumber,
                     'country' => $countryName,
                     'operator' => $operatorLabel,
@@ -1274,8 +1288,8 @@ class VirtualNumberController extends Controller
                     'status' => 'pending',
                     'coupon_code' => null,
                     'discount' => 0.00,
-                    'expires_at' => now()->addSeconds((int)$expiresInSeconds),
-                    'cancel_available_at' => $server === 'server2' ? ($buyResponse['cancel_available_at'] ?? null) : null
+                    'expires_at' => now()->addSeconds((int) $expiresInSeconds),
+                    'cancel_available_at' => $server === 'server2' ? ($buyResponse['cancel_available_at'] ?? null) : null,
                 ]);
 
                 DB::commit();
@@ -1290,22 +1304,43 @@ class VirtualNumberController extends Controller
                 // Provider already returned an activation. A local persistence
                 // failure must not refund the user because the number may be live.
                 try {
-                    DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $e) {
-                        $lockedOrder = \App\Models\VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
-                        if ($lockedOrder && $lockedOrder->status === 'processing') {
-                            $lockedOrder->update([
-                                'api_order_id' => (string) $apiOrderId,
-                                'phone_number' => $phoneNumber ?: 'PENDING',
-                                'country' => $countryName ?: $lockedOrder->country,
-                                'operator' => ($server === 'server2') ? 'Server 2' : 'Server 1',
-                                'server' => $server,
-                                'product' => $serviceName,
-                                'provider_cost' => $actualCostUsd,
-                                'status' => 'unresolved',
-                                'sms_text' => 'Provider activation confirmed but local finalization failed. Retained without refund. Error: ' . substr($e->getMessage(), 0, 150),
-                            ]);
+                    $recoveredOrder = DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $finalUserCostUsd, $expiresInSeconds, $buyResponse) {
+                        $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
+                        if (!$lockedOrder) {
+                            throw new \\RuntimeException('Purchase attempt record disappeared during recovery.');
                         }
+
+                        return $this->persistConfirmedActivation($lockedOrder, [
+                            'api_order_id' => (string) $apiOrderId,
+                            'phone_number' => $phoneNumber ?: 'PENDING',
+                            'country' => $countryName ?: $lockedOrder->country,
+                            'operator' => $server === 'server2' ? 'Server 2' : ($server === 'server3' ? 'Server 3' : ($server === 'server4' ? 'Server 4' : 'Server 1')),
+                            'server' => $server,
+                            'provider_key' => $server === 'server4' ? 'daisysms' : ($server === 'server3' ? 'smsbower' : null),
+                            'product' => $serviceName,
+                            'cost' => $finalUserCostUsd,
+                            'provider_cost' => $actualCostUsd,
+                            'status' => $phoneNumber ? 'pending' : 'unresolved',
+                            'expires_at' => now()->addSeconds((int) ($expiresInSeconds ?? 1200)),
+                            'cancel_available_at' => $server === 'server2' ? ($buyResponse['cancel_available_at'] ?? null) : null,
+                            'sms_text' => null,
+                        ]);
                     });
+
+                    if ($recoveredOrder && $recoveredOrder->status === 'pending' && $recoveredOrder->phone_number !== 'PENDING') {
+                        Log::warning('Provider-confirmed activation was saved by recovery finalization after primary save failed.', [
+                            'attempt_id' => $attemptRecord->id,
+                            'provider_order_id' => $apiOrderId,
+                            'server' => $server,
+                            'original_error' => $e->getMessage(),
+                        ]);
+
+                        return response()->json([
+                            'success' => true,
+                            'order' => $recoveredOrder,
+                            'recovered' => true,
+                        ]);
+                    }
                 } catch (\Throwable $recoveryError) {
                     Log::critical('Failed to preserve provider-confirmed virtual number after local finalization error.', [
                         'attempt_id' => $attemptRecord->id ?? null,
@@ -1315,9 +1350,12 @@ class VirtualNumberController extends Controller
                 }
 
                 Log::critical('Provider-confirmed virtual number could not be finalized locally; refund withheld.', [
-                    'attempt_id' => $attemptRecord->id ?? null,
+                    'attempt_id' => $attemptRecord->id,
                     'provider_order_id' => $apiOrderId,
-                    'error' => $e->getMessage(),
+                    'server' => $server,
+                    'original_error_class' => get_class($e),
+                    'original_error' => $e->getMessage(),
+                    'trace' => substr($e->getTraceAsString(), 0, 4000),
                 ]);
 
                 return response()->json([
