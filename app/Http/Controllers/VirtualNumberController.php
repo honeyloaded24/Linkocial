@@ -1307,7 +1307,7 @@ class VirtualNumberController extends Controller
                     $recoveredOrder = DB::transaction(function () use ($attemptRecord, $apiOrderId, $phoneNumber, $countryName, $server, $serviceName, $actualCostUsd, $finalUserCostUsd, $expiresInSeconds, $buyResponse) {
                         $lockedOrder = VirtualNumberOrder::where('id', $attemptRecord->id)->lockForUpdate()->first();
                         if (!$lockedOrder) {
-                            throw new \\RuntimeException('Purchase attempt record disappeared during recovery.');
+                            throw new \RuntimeException('Purchase attempt record disappeared during recovery.');
                         }
 
                         return $this->persistConfirmedActivation($lockedOrder, [
