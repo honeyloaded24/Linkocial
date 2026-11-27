@@ -657,8 +657,8 @@ class VirtualNumberRefundIntegrityTest extends TestCase
             });
         }
 
-        $controller = app(\\App\\Http\\Controllers\\VirtualNumberController::class);
-        $method = new \\ReflectionMethod($controller, 'persistConfirmedActivation');
+        $controller = app(\App\Http\Controllers\VirtualNumberController::class);
+        $method = new \ReflectionMethod($controller, 'persistConfirmedActivation');
         $method->setAccessible(true);
         $saved = $method->invoke($controller, $order, [
             'api_order_id' => 'GRZ-SCHEMA-SAFE-1',
