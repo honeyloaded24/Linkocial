@@ -102,6 +102,22 @@ class VirtualNumberController extends Controller
             return;
         }
 
+        $countryPrefixes = [];
+        try {
+            foreach ($this->grizzly->getCountries() as $countryRow) {
+                $countryId = (string) ($countryRow['ID'] ?? '');
+                $prefix = (string) ($countryRow['cc'] ?? '');
+                if ($countryId !== '' && $prefix !== '') {
+                    $countryPrefixes[$countryId] = $prefix;
+                }
+            }
+        } catch (\\Throwable $e) {
+            Log::notice('Grizzly country list unavailable while reconciling activations; matching by service and time only.', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $claimedIds = VirtualNumberOrder::where('server', 'server2')
             ->whereNotNull('api_order_id')
             ->pluck('api_order_id')
@@ -114,7 +130,7 @@ class VirtualNumberController extends Controller
                 continue;
             }
 
-            $matches = collect($activations)->filter(function ($activation) use ($attempt, $attemptTime, $claimedIds) {
+            $matches = collect($activations)->filter(function ($activation) use ($attempt, $attemptTime, $claimedIds, $countryPrefixes) {
                 $activationId = (string) ($activation['activationId'] ?? $activation['id'] ?? '');
                 $phone = trim((string) ($activation['phoneNumber'] ?? $activation['phone'] ?? ''));
                 $serviceCode = (string) ($activation['serviceCode'] ?? $activation['service'] ?? '');
@@ -129,7 +145,9 @@ class VirtualNumberController extends Controller
                     return false;
                 }
 
-                if ($countryCode !== '' && $countryCode !== (string) $attempt->country) {
+                $expectedCountryPrefix = $countryPrefixes[(string) $attempt->country] ?? '';
+                if ($countryCode !== '' && $countryCode !== (string) $attempt->country
+                    && ($expectedCountryPrefix === '' || $countryCode !== $expectedCountryPrefix)) {
                     return false;
                 }
 
