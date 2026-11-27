@@ -686,7 +686,7 @@ class GrizzlySmsService
     public function getActiveActivations(): array
     {
         if (empty($this->apiKey)) {
-            throw new \\RuntimeException('Grizzly SMS API key is not configured.');
+            throw new \RuntimeException('Grizzly SMS API key is not configured.');
         }
 
         $response = Http::timeout(20)->get($this->baseUrl, [
@@ -695,7 +695,7 @@ class GrizzlySmsService
         ]);
 
         if (!$response->successful()) {
-            throw new \\RuntimeException('Grizzly active activations request failed with HTTP ' . $response->status());
+            throw new \RuntimeException('Grizzly active activations request failed with HTTP ' . $response->status());
         }
 
         $body = trim($response->body());
@@ -705,12 +705,12 @@ class GrizzlySmsService
 
         $data = $response->json();
         if (!is_array($data)) {
-            throw new \\RuntimeException('Grizzly returned an invalid active activations response.');
+            throw new \RuntimeException('Grizzly returned an invalid active activations response.');
         }
 
         $activations = $data['activeActivations'] ?? $data['activations'] ?? $data;
         if (!is_array($activations)) {
-            throw new \\RuntimeException('Grizzly active activations payload is malformed.');
+            throw new \RuntimeException('Grizzly active activations payload is malformed.');
         }
 
         return array_values(array_filter($activations, 'is_array'));
