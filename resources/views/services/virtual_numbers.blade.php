@@ -1042,9 +1042,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         activeOrdersContainer.prepend(card);
         
-        // An unresolved purchase has no confirmed provider activation ID yet.
-        // Keep it visible for the customer, but do not poll or retry it automatically.
-        if (order.status === 'unresolved') {
+        // Unknown attempts must not be polled. A Grizzly order with a returned
+        // number is a confirmed rental and should continue SMS status polling.
+        const confirmedGrizzlyNumber = order.server === 'server2'
+            && Boolean(order.phone_number)
+            && !['PENDING', 'Purchase being verified'].includes(String(order.phone_number).trim());
+        if (order.status === 'unresolved' && !confirmedGrizzlyNumber) {
             return;
         }
 
