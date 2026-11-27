@@ -852,13 +852,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (remainingSeconds > 0) {
                 const minutes = Math.floor(remainingSeconds / 60);
                 const seconds = remainingSeconds % 60;
-                const timeText = minutes > 0
+                const clockText = minutes > 0
                     ? minutes.toString().padStart(2, '0') + ':' + seconds.toString().padStart(2, '0')
-                    : seconds + ' second' + (seconds === 1 ? '' : 's');
-                countdown.textContent = 'You can cancel this number in ' + timeText + '.';
+                    : remainingSeconds + 's';
+                countdown.textContent = 'You can cancel this number in ' + clockText + ' (' + remainingSeconds + ' seconds).';
                 countdown.classList.remove('d-none');
                 cancelButton.disabled = true;
-                cancelButton.textContent = 'Available in ' + timeText;
+                cancelButton.textContent = 'Cancel in ' + remainingSeconds + 's';
                 return false;
             }
 
