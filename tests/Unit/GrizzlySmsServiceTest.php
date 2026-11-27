@@ -67,6 +67,41 @@ class GrizzlySmsServiceTest extends TestCase
         $this->assertSame(5, $offers[0]['count']);
     }
 
+    public function test_active_activations_returns_normalized_activation_records(): void
+    {
+        Http::fake([
+            'api.grizzlysms.com/*' => Http::response([
+                'status' => 'success',
+                'activeActivations' => [[
+                    'activationId' => 'act-123',
+                    'serviceCode' => 'wa',
+                    'phoneNumber' => '66846426435',
+                    'activationCost' => '0.80',
+                    'activationStatus' => '2',
+                    'activationTime' => '2026-11-27 05:30:00',
+                    'countryCode' => '1',
+                ]],
+            ], 200),
+        ]);
+
+        $activations = app(GrizzlySmsService::class)->getActiveActivations();
+
+        $this->assertCount(1, $activations);
+        $this->assertSame('act-123', $activations[0]['activationId']);
+        $this->assertSame('wa', $activations[0]['serviceCode']);
+        Http::assertSent(fn ($request) => $request['action'] === 'getActiveActivations'
+            && $request['api_key'] === 'test-grizzly-key');
+    }
+
+    public function test_active_activations_accepts_provider_no_activations_response(): void
+    {
+        Http::fake([
+            'api.grizzlysms.com/*' => Http::response('NO_ACTIVATIONS', 200),
+        ]);
+
+        $this->assertSame([], app(GrizzlySmsService::class)->getActiveActivations());
+    }
+
     public function test_purchase_sends_the_safe_maximum_price_and_parses_activation(): void
     {
         Http::fake([
