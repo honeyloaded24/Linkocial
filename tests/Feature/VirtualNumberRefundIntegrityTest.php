@@ -523,4 +523,58 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
     }
 
+    public function test_grizzly_unresolved_purchase_is_recovered_from_a_unique_recent_active_activation(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Grizzly';
+        $customer->last_name = 'Recovery';
+        $customer->username = 'grizzly_recovery_customer';
+        $customer->email = 'grizzly-recovery@example.test';
+        $customer->password = bcrypt('password');
+        $customer->balance = 750;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'ATT_' . $customer->id . '_123456_' . str_repeat('a', 8),
+            'phone_number' => 'PENDING',
+            'country' => '187',
+            'operator' => 'Server 2',
+            'server' => 'server2',
+            'product' => 'WhatsApp',
+            'cost' => 250,
+            'provider_cost' => 0,
+            'status' => 'unresolved',
+        ]);
+
+        $this->mock(GrizzlySmsService::class, function ($mock) {
+            $mock->shouldReceive('getActiveActivations')->once()->andReturn([[
+                'activationId' => 'GRZ-ACT-123',
+                'serviceCode' => 'wa',
+                'phoneNumber' => '12025550123',
+                'activationCost' => '0.75',
+                'activationStatus' => '2',
+                'activationTime' => now()->toDateTimeString(),
+                'countryCode' => '1',
+            ]]);
+            $mock->shouldReceive('getCountries')->once()->andReturn([
+                ['ID' => '187', 'name' => 'United States', 'cc' => '1'],
+            ]);
+            $mock->shouldReceive('getServiceName')->with('wa')->andReturn('WhatsApp');
+        });
+
+        $controller = app(\\App\\Http\\Controllers\\VirtualNumberController::class);
+        $method = new \\ReflectionMethod($controller, 'reconcileGrizzlyUnresolvedOrders');
+        $method->setAccessible(true);
+        $method->invoke($controller, $customer->id);
+
+        $recovered = $order->fresh();
+        $this->assertSame('GRZ-ACT-123', $recovered->api_order_id);
+        $this->assertSame('+12025550123', $recovered->phone_number);
+        $this->assertSame('pending', $recovered->status);
+        $this->assertSame(0.75, (float) $recovered->provider_cost);
+        $this->assertSame(750.0, (float) $customer->fresh()->balance);
+        $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
+
 }
