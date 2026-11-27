@@ -69,6 +69,132 @@ class VirtualNumberController extends Controller
     }
 
     /**
+     * Recover Grizzly activations whose purchase response was lost.
+     *
+     * We only attach an activation when there is exactly one unclaimed provider
+     * activation matching service, country, and a narrow creation-time window.
+     * Ambiguous matches remain unresolved; they are never guessed or refunded.
+     */
+    protected function reconcileGrizzlyUnresolvedOrders(int $userId): void
+    {
+        $attempts = VirtualNumberOrder::where('user_id', $userId)
+            ->where('server', 'server2')
+            ->where('status', 'unresolved')
+            ->where(function ($query) {
+                $query->whereNull('phone_number')->orWhereIn('phone_number', ['', 'PENDING']);
+            })
+            ->orderBy('created_at')
+            ->get()
+            ->filter(fn ($order) => str_starts_with((string) $order->api_order_id, 'ATT_')
+                && !empty($order->product));
+
+        if ($attempts->isEmpty()) {
+            return;
+        }
+
+        try {
+            $activations = $this->grizzly->getActiveActivations();
+        } catch (\\Throwable $e) {
+            Log::warning('Grizzly unresolved purchase reconciliation could not load active activations.', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+            return;
+        }
+
+        $claimedIds = VirtualNumberOrder::where('server', 'server2')
+            ->whereNotNull('api_order_id')
+            ->pluck('api_order_id')
+            ->map(fn ($id) => (string) $id)
+            ->all();
+
+        foreach ($attempts as $attempt) {
+            $attemptTime = $attempt->created_at;
+            if (!$attemptTime) {
+                continue;
+            }
+
+            $matches = collect($activations)->filter(function ($activation) use ($attempt, $attemptTime, $claimedIds) {
+                $activationId = (string) ($activation['activationId'] ?? $activation['id'] ?? '');
+                $phone = trim((string) ($activation['phoneNumber'] ?? $activation['phone'] ?? ''));
+                $serviceCode = (string) ($activation['serviceCode'] ?? $activation['service'] ?? '');
+                $countryCode = (string) ($activation['countryCode'] ?? $activation['country'] ?? '');
+                $activationTime = $activation['activationTime'] ?? $activation['createdAt'] ?? null;
+
+                if ($activationId === '' || $phone === '' || in_array($activationId, $claimedIds, true) || $serviceCode === '' || !$activationTime) {
+                    return false;
+                }
+
+                if (strcasecmp($this->grizzly->getServiceName($serviceCode), (string) $attempt->product) !== 0) {
+                    return false;
+                }
+
+                if ($countryCode !== '' && $countryCode !== (string) $attempt->country) {
+                    return false;
+                }
+
+                try {
+                    $providerTime = \\Illuminate\\Support\\Carbon::parse($activationTime);
+                } catch (\\Throwable $e) {
+                    return false;
+                }
+
+                return $providerTime->between(
+                    $attemptTime->copy()->subMinutes(2),
+                    $attemptTime->copy()->addMinutes(5)
+                );
+            })->values();
+
+            if ($matches->count() !== 1) {
+                continue;
+            }
+
+            $activation = $matches->first();
+            $activationId = (string) ($activation['activationId'] ?? $activation['id']);
+            $phone = trim((string) ($activation['phoneNumber'] ?? $activation['phone']));
+            $phone = str_starts_with($phone, '+') ? $phone : '+' . preg_replace('/\\D+/', '', $phone);
+            $smsCode = $activation['smsCode'] ?? null;
+            if (is_array($smsCode)) {
+                $smsCode = implode(', ', array_filter($smsCode));
+            }
+
+            DB::transaction(function () use ($attempt, $activationId, $phone, $activation, $smsCode) {
+                $lockedOrder = VirtualNumberOrder::whereKey($attempt->id)->lockForUpdate()->first();
+                if (!$lockedOrder || $lockedOrder->status !== 'unresolved'
+                    || !str_starts_with((string) $lockedOrder->api_order_id, 'ATT_')) {
+                    return;
+                }
+
+                $updates = [
+                    'api_order_id' => $activationId,
+                    'phone_number' => $phone,
+                    'provider_cost' => (float) ($activation['activationCost'] ?? $lockedOrder->provider_cost ?? 0),
+                    'status' => 'pending',
+                    'sms_text' => null,
+                ];
+
+                if (is_string($smsCode) && trim($smsCode) !== '') {
+                    $updates['sms_code'] = trim($smsCode);
+                    $updates['status'] = 'received';
+                }
+                if (!empty($activation['smsText'])) {
+                    $smsText = $activation['smsText'];
+                    $updates['sms_text'] = is_array($smsText) ? implode("\\n", $smsText) : (string) $smsText;
+                }
+
+                $lockedOrder->update($updates);
+            });
+
+            $claimedIds[] = $activationId;
+            Log::info('Recovered Grizzly activation after an interrupted purchase response.', [
+                'user_id' => $userId,
+                'order_id' => $attempt->id,
+                'activation_id' => $activationId,
+            ]);
+        }
+    }
+
+    /**
      * Show the main Virtual Numbers purchasing interface.
      */
     public function index()
@@ -455,6 +581,12 @@ class VirtualNumberController extends Controller
                     $query->whereNull('phone_number')
                         ->orWhereIn('phone_number', ['', 'PENDING']);
                 });
+            }
+
+            // Before blocking a new Server 2 purchase, try to recover a previous
+            // activation that Grizzly created even though the original response was lost.
+            if ($server === 'server2') {
+                $this->reconcileGrizzlyUnresolvedOrders((int) $user->id);
             }
 
             $existingUnresolved = $unresolvedQuery->exists();
