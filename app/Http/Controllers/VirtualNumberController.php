@@ -170,7 +170,15 @@ class VirtualNumberController extends Controller
             $activation = $matches->first();
             $activationId = (string) ($activation['activationId'] ?? $activation['id']);
             $phone = trim((string) ($activation['phoneNumber'] ?? $activation['phone']));
-            $phone = str_starts_with($phone, '+') ? $phone : '+' . preg_replace('/\D+/', '', $phone);
+            if (!str_starts_with($phone, '+')) {
+                $digits = preg_replace('/\D+/', '', $phone);
+                $prefix = $countryPrefixes[(string) $attempt->country]
+                    ?? (string) ($activation['countryCode'] ?? '');
+                if ($prefix !== '' && !str_starts_with($digits, $prefix)) {
+                    $digits = $prefix . $digits;
+                }
+                $phone = '+' . $digits;
+            }
             $smsCode = $activation['smsCode'] ?? null;
             if (is_array($smsCode)) {
                 $smsCode = implode(', ', array_filter($smsCode));
