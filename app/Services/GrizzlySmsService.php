@@ -680,6 +680,43 @@ class GrizzlySmsService
     }
 
     /**
+     * Retrieve all active activations for safe recovery after a lost purchase response.
+     * An empty list is valid only when the provider explicitly reports NO_ACTIVATIONS.
+     */
+    public function getActiveActivations(): array
+    {
+        if (empty($this->apiKey)) {
+            throw new \\RuntimeException('Grizzly SMS API key is not configured.');
+        }
+
+        $response = Http::timeout(20)->get($this->baseUrl, [
+            'api_key' => $this->apiKey,
+            'action' => 'getActiveActivations',
+        ]);
+
+        if (!$response->successful()) {
+            throw new \\RuntimeException('Grizzly active activations request failed with HTTP ' . $response->status());
+        }
+
+        $body = trim($response->body());
+        if ($body === 'NO_ACTIVATIONS' || $body === 'NO_ACTIVE_ACTIVATIONS') {
+            return [];
+        }
+
+        $data = $response->json();
+        if (!is_array($data)) {
+            throw new \\RuntimeException('Grizzly returned an invalid active activations response.');
+        }
+
+        $activations = $data['activeActivations'] ?? $data['activations'] ?? $data;
+        if (!is_array($activations)) {
+            throw new \\RuntimeException('Grizzly active activations payload is malformed.');
+        }
+
+        return array_values(array_filter($activations, 'is_array'));
+    }
+
+    /**
      * Check status of an active number order / poll for SMS.
      * Statuses matching SMSPool format:
      * 1 = pending
