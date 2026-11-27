@@ -576,5 +576,53 @@ class VirtualNumberRefundIntegrityTest extends TestCase
         $this->assertSame(750.0, (float) $customer->fresh()->balance);
         $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
     }
+ 
+    public function test_confirmed_grizzly_number_marked_unresolved_can_still_be_polled_for_sms(): void
+    {
+        $customer = new User();
+        $customer->first_name = 'Grizzly';
+        $customer->last_name = 'Polling';
+        $customer->username = 'grizzly_confirmed_poll_customer';
+        $customer->email = 'grizzly-confirmed-poll@example.test';
+        $customer->password = bcrypt('password');
+        $customer->email_verified_at = now();
+        $customer->balance = 750;
+        $customer->save();
+
+        $order = VirtualNumberOrder::create([
+            'user_id' => $customer->id,
+            'api_order_id' => 'GRZ-CONFIRMED-ACT-456',
+            'phone_number' => '+12025550123',
+            'country' => 'United States',
+            'operator' => 'Server 2',
+            'server' => 'server2',
+            'product' => 'WhatsApp',
+            'cost' => 250,
+            'provider_cost' => 1.25,
+            'status' => 'unresolved',
+        ]);
+
+        $this->mock(GrizzlySmsService::class, function ($mock) {
+            $mock->shouldReceive('checkOrder')
+                ->once()
+                ->with('GRZ-CONFIRMED-ACT-456')
+                ->andReturn([
+                    'status' => 3,
+                    'sms' => '654321',
+                    'full_sms' => 'Your verification code is: 654321',
+                ]);
+        });
+
+        $this->actingAs($customer)
+            ->getJson('/api/virtual-numbers/' . $order->id . '/check')
+            ->assertOk()
+            ->assertJsonPath('order.status', 'received')
+            ->assertJsonPath('order.sms_code', '654321');
+
+        $this->assertSame('received', $order->fresh()->status);
+        $this->assertSame('654321', $order->fresh()->sms_code);
+        $this->assertSame(750.0, (float) $customer->fresh()->balance);
+        $this->assertSame(0, Transaction::where('reference', 'REF-VN-' . $order->id)->count());
+    }
 
 }
