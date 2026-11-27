@@ -1567,6 +1567,18 @@ class VirtualNumberController extends Controller
                 return response()->json(['error' => 'This order is no longer eligible for cancellation.'], 409);
             }
 
+            // If the production schema is missing the Grizzly cancellation
+            // timestamp column, fail closed rather than risk an early provider cancel.
+            if (($order->server ?? null) === 'server2'
+                && !Schema::hasColumn('virtual_number_orders', 'cancel_available_at')) {
+                Log::critical('Grizzly cancellation blocked because cancel_available_at migration is missing.', [
+                    'order_id' => $order->id,
+                ]);
+                return response()->json([
+                    'error' => 'Cancellation is temporarily unavailable while this number is being secured. Please try again shortly or contact support.',
+                ], 503);
+            }
+
             // Grizzly returns the exact UTC time when cancellation becomes
             // available. Respect it locally and tell the customer the real wait.
             if (($order->server ?? null) === 'server2' && $order->cancel_available_at
